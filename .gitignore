@@ -1,0 +1,44 @@
+# Environment and secrets
+.env
+.env.*
+!.env.development.example
+!.env.test.example
+!.env.production.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+coverage.xml
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime
+logs/
+*.log
