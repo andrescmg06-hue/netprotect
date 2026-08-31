@@ -1,0 +1,6 @@
+# Copia esta línea dentro de tu local.properties existente si necesitas cambiar la API.
+# Emulador Android Studio -> host local:
+NETPROTECT_API_BASE_URL=http://10.0.2.2:8000
+
+# En un dispositivo físico usa la IP LAN del computador, por ejemplo:
+# NETPROTECT_API_BASE_URL=http://192.168.1.50:8000
