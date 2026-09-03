@@ -47,7 +47,7 @@ async def ping_redis() -> None:
             asyncio.open_connection(host=host, port=port, ssl=tls_context),
             timeout=3,
         )
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         raise RedisHealthError("redis_unavailable") from exc
 
     try:

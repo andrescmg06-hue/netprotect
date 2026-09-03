@@ -14,7 +14,7 @@ services:
       retries: 10
     restart: unless-stopped
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+      - postgres_prod_data:/var/lib/postgresql
     networks:
       - private
 

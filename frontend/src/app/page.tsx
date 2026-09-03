@@ -11,45 +11,54 @@ type ReadyPayload = {
   redis: "connected";
 };
 
+function fetchReadiness(baseUrl: string, signal: AbortSignal): Promise<ReadyPayload> {
+  return fetch(`${baseUrl}/api/v1/health/ready`, { signal, cache: "no-store" }).then(
+    (response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json() as Promise<ReadyPayload>;
+    },
+  );
+}
+
 export default function Home() {
   const [apiState, setApiState] = useState<ApiState>("checking");
   const [detail, setDetail] = useState("Comprobando Backend, PostgreSQL y Redis…");
   const [ready, setReady] = useState<ReadyPayload | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
-  const checkInfrastructure = useCallback(async () => {
-    setApiState("checking");
-    setReady(null);
-    setDetail("Comprobando Backend, PostgreSQL y Redis…");
-
+  useEffect(() => {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5000);
 
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/health/ready`, {
-        signal: controller.signal,
-        cache: "no-store",
+    fetchReadiness(baseUrl, controller.signal)
+      .then((payload) => {
+        setReady(payload);
+        setApiState("online");
+        setDetail("Cadena Web → Backend → PostgreSQL validada. Redis también está disponible.");
+      })
+      .catch(() => {
+        setApiState("offline");
+        setDetail("No se pudo validar la infraestructura. Revisa backend, PostgreSQL, Redis y CORS.");
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const payload = (await response.json()) as ReadyPayload;
-      setReady(payload);
-      setApiState("online");
-      setDetail("Cadena Web → Backend → PostgreSQL validada. Redis también está disponible.");
-    } catch {
-      setApiState("offline");
-      setDetail("No se pudo validar la infraestructura. Revisa backend, PostgreSQL, Redis y CORS.");
-    } finally {
+    return () => {
+      controller.abort();
       window.clearTimeout(timeout);
-    }
-  }, []);
+    };
+  }, [attempt]);
 
-  useEffect(() => {
-    void checkInfrastructure();
-  }, [checkInfrastructure]);
+  const checkInfrastructure = useCallback(() => {
+    setApiState("checking");
+    setReady(null);
+    setDetail("Comprobando Backend, PostgreSQL y Redis…");
+    setAttempt((current) => current + 1);
+  }, []);
 
   return (
     <main className="shell">
@@ -67,7 +76,7 @@ export default function Home() {
             <strong>Estado del incremento</strong>
           </div>
           <span className="statusText">{detail}</span>
-          <button type="button" onClick={() => void checkInfrastructure()}>
+          <button type="button" onClick={checkInfrastructure}>
             Volver a comprobar
           </button>
         </div>

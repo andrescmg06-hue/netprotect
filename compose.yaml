@@ -3,32 +3,36 @@ name: netprotect-dev
 services:
   db:
     image: postgres:18.6-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-netprotect}
       POSTGRES_USER: ${POSTGRES_USER:-netprotect}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_only}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-netprotect} -d ${POSTGRES_DB:-netprotect}"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 20
+      start_period: 10s
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql
     networks:
       - netprotect
 
   redis:
     image: redis:8.2-alpine
+    restart: unless-stopped
     command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"']
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis_dev_only}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?falta REDIS_PASSWORD en .env}
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 20
+      start_period: 5s
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -40,13 +44,14 @@ services:
     build:
       context: ./backend
       target: runtime
+    restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_VERSION: ${APP_VERSION:-0.1.0-sprint1}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://netprotect:change_me_dev_only@db:5432/netprotect}
-      REDIS_URL: ${REDIS_URL:-redis://:change_me_redis_dev_only@redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL:?falta DATABASE_URL en .env}
+      REDIS_URL: ${REDIS_URL:?falta REDIS_URL en .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.0.2.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
@@ -57,7 +62,8 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
       interval: 10s
       timeout: 5s
-      retries: 12
+      retries: 20
+      start_period: 15s
     ports:
       - "127.0.0.1:8000:8000"
     networks:
@@ -68,6 +74,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
@@ -81,8 +88,11 @@ services:
 
 volumes:
   postgres_dev_data:
+    name: netprotect_postgres_dev_data
   redis_dev_data:
+    name: netprotect_redis_dev_data
 
 networks:
   netprotect:
+    name: netprotect_network
     driver: bridge
