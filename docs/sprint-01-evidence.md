@@ -157,19 +157,39 @@ Captura de pantalla del emulador tras el arranque: las tres filas muestran **CON
 (`Android → Backend`, `Backend → PostgreSQL`, `Backend → Redis`), confirmando el criterio 8 del
 Sprint 1 contra la pila real de `compose.yaml` (no simulado, no mockeado).
 
+## Repositorio remoto y CI (03/09/2026, sesión posterior)
+
+Se creó el repositorio público `https://github.com/andrescmg06-hue/netprotect` con GitHub CLI y se
+subieron los 5 commits existentes (`git push -u origin main`). Se confirmó que ningún `.env` real ni
+credencial quedó versionado (`git ls-files | grep -iE "^\.env$|\.env\.[^.]*$"` → vacío).
+
+El push disparó el workflow `ci` automáticamente. Resultado real (run `33819186959`):
+
+```text
+✓ android      2m56s   ./gradlew test assembleDebug
+✓ backend        23s   ruff check + pytest
+✓ frontend       30s   npm ci + lint + build
+✓ integration    35s   docker compose -f compose.test.yaml up (backend exit 0)
+```
+
+Los 4 jobs terminaron en verde en un runner de GitHub limpio (no en este equipo), lo que confirma que
+el build no depende de nada específico de esta máquina. Único aviso, no bloqueante: GitHub marca
+`actions/checkout@v4` y `actions/setup-node@v4`/`setup-python@v5` como apuntando a un Node.js 20
+obsoleto (el runner lo fuerza a Node 24 automáticamente); se puede resolver subiendo a `@v5` en un
+sprint posterior, no es urgente.
+
 ## Pendiente
 
 1. **Prueba negativa en el emulador** (detener el backend con la app abierta y confirmar el mensaje de
-   error): no se pudo ejecutar en esta sesión porque el emulador (proceso `qemu-system-x86_64`) está
-   consumiendo una cantidad de CPU suficiente para que el CLI de Docker deje de responder en este
-   equipo — no es un problema del proyecto, es contención de recursos con el emulador corriendo a la
-   vez. Queda pendiente para una comprobación posterior con menos carga en la máquina.
-2. Pipeline de CI en GitHub (no se ha hecho push todavía).
-3. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
+   error): no se pudo ejecutar porque, durante la sesión de trabajo, el CLI de Docker en este equipo
+   dejó de responder (primero por la carga del emulador, y después el propio Docker Desktop quedó en un
+   estado que requiere reiniciarse manualmente). No es un problema del proyecto ni de la app. Queda
+   pendiente para una comprobación posterior.
+2. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
    y el HTML inicial en estado "checking"; ver nota en la sección Web).
 
 ## No se marca como verificado
 
-Todo lo anterior son comandos ejecutados realmente en este equipo, con su salida real, incluida la
-captura de pantalla del emulador. Lo que aparece en "Pendiente" no se da por bueno: no hay prueba
-negativa en el emulador, ni pipeline de CI ejecutado, ni confirmación visual en navegador.
+Todo lo anterior son comandos ejecutados realmente, con su salida real, incluidas la captura de pantalla
+del emulador y la corrida de CI en GitHub. Lo que aparece en "Pendiente" no se da por bueno: no hay
+prueba negativa en el emulador ni confirmación visual en navegador.

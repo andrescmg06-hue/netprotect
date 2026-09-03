@@ -356,7 +356,7 @@ Ambos mensajes terminan con la línea de coautoría acordada para el proyecto.
 - [x] El manifiesto de release tiene `usesCleartextTraffic="false"`.
 - [x] `compose.test.yaml` termina con código 0 (`7 passed, 3 warnings`; corregido B9 para lograrlo).
 - [x] No hay credenciales versionadas y `.env` sigue ignorado.
-- [ ] CI en verde en los cuatro jobs. **Pendiente de push**.
+- [x] CI en verde en los cuatro jobs (run `33819186959` en `github.com/andrescmg06-hue/netprotect`).
 - [x] `docs/sprint-01-evidence.md` contiene salidas reales.
 - [x] Todo commiteado y sin cambios sueltos en `git status`.
 
