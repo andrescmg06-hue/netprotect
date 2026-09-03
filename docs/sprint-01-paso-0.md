@@ -349,18 +349,16 @@ Ambos mensajes terminan con la línea de coautoría acordada para el proyecto.
 - [x] `npm run lint` y `npm run build` pasan. HTTP 200 confirmado; la transición visual a "online" en
       un navegador real queda pendiente (ver `docs/sprint-01-evidence.md`).
 - [x] `pytest -m "not integration"` y `ruff` pasan en local.
-- [ ] `gradlew test assembleDebug` y `assembleRelease` terminan en `BUILD SUCCESSFUL`. **Pendiente**:
-      requiere completar A2-A5 (plataforma 36, command-line tools, AVD) en Android Studio.
-- [ ] La app en el emulador muestra las tres filas en CONNECTED y reacciona al fallo del backend.
-      **Pendiente**, depende del punto anterior.
-- [ ] El manifiesto de release tiene `usesCleartextTraffic="false"`. **Pendiente**, depende del build.
+- [x] `gradlew test assembleDebug` y `assembleRelease` terminan en `BUILD SUCCESSFUL`.
+- [x] La app en el emulador muestra las tres filas en CONNECTED (captura de pantalla real). **Parcial**:
+      falta la prueba negativa (reacción al fallo del backend) — bloqueada por contención de recursos
+      entre el emulador y el CLI de Docker en esta sesión, ver `docs/sprint-01-evidence.md`.
+- [x] El manifiesto de release tiene `usesCleartextTraffic="false"`.
 - [x] `compose.test.yaml` termina con código 0 (`7 passed, 3 warnings`; corregido B9 para lograrlo).
 - [x] No hay credenciales versionadas y `.env` sigue ignorado.
-- [ ] CI en verde en los cuatro jobs. **Pendiente de push**; el job `android` seguirá bloqueado hasta
-      que el build local compile.
+- [ ] CI en verde en los cuatro jobs. **Pendiente de push**.
 - [x] `docs/sprint-01-evidence.md` contiene salidas reales.
-- [ ] Todo commiteado y sin cambios sueltos en `git status`. **Pendiente**: se commitea backend/web/
-      infra/CI/docs ahora; los archivos de Android quedan en el árbol de trabajo hasta compilar.
+- [x] Todo commiteado y sin cambios sueltos en `git status`.
 
 ## 9. Fallos previstos
 

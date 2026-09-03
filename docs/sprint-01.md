@@ -111,6 +111,23 @@ python scripts/verify_sprint1.py
 
 Para un dispositivo físico, agregar `NETPROTECT_API_BASE_URL=http://IP_DEL_PC:8000` a `mobile/local.properties` y garantizar que el backend sea accesible desde la LAN de forma controlada.
 
+### Combinación de versiones verificada (03/09/2026)
+
+Compilado con éxito (`./gradlew test assembleDebug` y `assembleRelease`) y ejecutado en un emulador
+Pixel 8 API 36 (Google APIs, x86_64) contra la pila de `compose.yaml`:
+
+| Herramienta | Versión |
+|---|---|
+| Gradle (wrapper) | 9.3.0 |
+| Android Gradle Plugin | 8.13.2 |
+| Kotlin | 2.3.21 |
+| Compose BOM | 2026.06.00 |
+| JDK | 21 (Temurin/Oracle) |
+| compileSdk / targetSdk | 36 |
+
+No fue necesario ajustar ninguna versión: la combinación que ya estaba en el repositorio compiló a la
+primera. Esta tabla se actualiza si en un sprint futuro cambia alguna de estas versiones.
+
 ## Pruebas
 
 Backend unitario:

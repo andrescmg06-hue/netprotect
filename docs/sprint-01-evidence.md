@@ -124,24 +124,52 @@ preexistentes sin relación con los cambios de este Paso 0:
 Ninguno de estos afecta el comportamiento en producción; los cuatro se consideran parte de dejar el
 Sprint 1 realmente verificado, no del alcance de sprints posteriores.
 
-## Pendiente — requiere Android Studio (fuera del alcance de una sesión de agente)
+## Android — build, release y ejecución en emulador (03/09/2026, sesión posterior)
 
-No se pudo completar por falta de la plataforma Android 36, las command-line tools y un AVD en este
-equipo (ver Parte A de `docs/sprint-01-paso-0.md`, pasos A2-A5, que requieren la interfaz gráfica de
-Android Studio):
+Con la plataforma 36, las command-line tools y un AVD ya instalados en el equipo (Parte A de
+`docs/sprint-01-paso-0.md`, hecha por el usuario en Android Studio):
 
-1. `./gradlew test assembleDebug` — build de Android.
-2. Fijar la combinación definitiva de versiones (Gradle 9.3.0 / AGP 8.13.2 / Kotlin 2.3.21 / Compose BOM)
-   una vez que compile.
-3. Ejecución en el emulador mostrando `Backend`, `PostgreSQL` y `Redis` en `CONNECTED`, y la prueba
-   negativa de detener el backend y ver el mensaje de error.
-4. `./gradlew assembleRelease` y verificación de `usesCleartextTraffic="false"` en el manifiesto fusionado.
-5. Pipeline de CI en GitHub (no se ha hecho push todavía).
-6. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
+```bash
+cd mobile
+./gradlew test assembleDebug   → BUILD SUCCESSFUL in 2m 12s, 72 actionable tasks
+./gradlew assembleRelease      → BUILD SUCCESSFUL in 52s
+```
+
+No fue necesario ajustar ninguna versión: Gradle 9.3.0 / AGP 8.13.2 / Kotlin 2.3.21 / Compose BOM
+2026.06.00 compilaron a la primera (tabla completa en `docs/sprint-01.md`).
+
+Verificación del manifiesto fusionado de `release`:
+
+```text
+app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+  → android:usesCleartextTraffic="false"
+```
+
+Instalación y ejecución real en un emulador Pixel 8 API 36 (Google APIs, x86_64), levantado por el
+usuario en Android Studio:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk   → Success
+adb shell am start -n com.netprotect.app/.MainActivity     → Starting: Intent {...}
+```
+
+Captura de pantalla del emulador tras el arranque: las tres filas muestran **CONNECTED**
+(`Android → Backend`, `Backend → PostgreSQL`, `Backend → Redis`), confirmando el criterio 8 del
+Sprint 1 contra la pila real de `compose.yaml` (no simulado, no mockeado).
+
+## Pendiente
+
+1. **Prueba negativa en el emulador** (detener el backend con la app abierta y confirmar el mensaje de
+   error): no se pudo ejecutar en esta sesión porque el emulador (proceso `qemu-system-x86_64`) está
+   consumiendo una cantidad de CPU suficiente para que el CLI de Docker deje de responder en este
+   equipo — no es un problema del proyecto, es contención de recursos con el emulador corriendo a la
+   vez. Queda pendiente para una comprobación posterior con menos carga en la máquina.
+2. Pipeline de CI en GitHub (no se ha hecho push todavía).
+3. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
    y el HTML inicial en estado "checking"; ver nota en la sección Web).
 
 ## No se marca como verificado
 
-Todo lo anterior son comandos ejecutados realmente en este equipo, con su salida real. Lo que aparece en
-la sección "Pendiente" no se da por bueno: no hay build de Android, ni ejecución en emulador, ni
-confirmación visual en navegador, ni pipeline de CI ejecutado.
+Todo lo anterior son comandos ejecutados realmente en este equipo, con su salida real, incluida la
+captura de pantalla del emulador. Lo que aparece en "Pendiente" no se da por bueno: no hay prueba
+negativa en el emulador, ni pipeline de CI ejecutado, ni confirmación visual en navegador.
