@@ -90,6 +90,17 @@ No se completó un login real en el emulador en esta sesión: el emulador estaba
 reabra, seleccionar una cuenta de Google en el selector de Credential Manager exige interacción
 humana con la UI del sistema, que una sesión de agente no puede ejecutar.
 
+## CI en GitHub Actions
+
+Run `33827042758`, los 4 jobs en verde:
+
+```text
+✓ android       ./gradlew test assembleDebug
+✓ backend  20s  ruff check + pytest
+✓ integration 46s  build → run --rm migrate → up --abort-on-container-exit db redis backend
+✓ frontend 30s  npm ci + lint + build
+```
+
 ## Pendiente — requiere interacción humana
 
 1. Abrir `http://localhost:3000`, hacer clic en "Iniciar sesión con Google", elegir la cuenta de
