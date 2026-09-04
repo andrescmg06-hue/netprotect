@@ -16,7 +16,9 @@ revision:
 	cd backend && alembic revision --autogenerate -m "$(m)"
 
 test:
-	docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from backend
+	docker compose -f compose.test.yaml build
+	docker compose -f compose.test.yaml run --rm migrate
+	docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
 
 verify:
 	python scripts/verify_sprint1.py

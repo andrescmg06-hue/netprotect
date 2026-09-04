@@ -32,6 +32,10 @@ services:
     networks:
       - netprotect_test
 
+  # Run explicitly with `docker compose -f compose.test.yaml run --rm migrate` before
+  # `up --abort-on-container-exit`, NOT via a `depends_on` on `backend`: that flag aborts
+  # the whole stack as soon as ANY container exits, and this one-shot service exits by
+  # design, killing `backend` before its tests even start. See ci.yml / Makefile.
   migrate:
     build:
       context: ./backend
@@ -63,8 +67,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     networks:
       - netprotect_test
 

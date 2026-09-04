@@ -17,11 +17,19 @@ docker compose up --build
 
 Archivo de ejemplo: `.env.test.example`.
 
-`compose.test.yaml` usa PostgreSQL temporal en `tmpfs` y ejecuta `pytest`, incluyendo la prueba de conectividad cuando `RUN_INTEGRATION_TESTS=1`.
+`compose.test.yaml` usa PostgreSQL temporal en `tmpfs`, aplica las migraciones con el servicio
+`migrate` y ejecuta `pytest`, incluyendo la prueba de conectividad cuando `RUN_INTEGRATION_TESTS=1`.
 
 ```bash
-docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from backend
+docker compose -f compose.test.yaml build
+docker compose -f compose.test.yaml run --rm migrate
+docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
 ```
+
+`migrate` se ejecuta aparte, con `run --rm`, y no como dependencia de `backend`: `--abort-on-container-exit`
+detiene todo el stack en cuanto cualquier contenedor termina, y `migrate` termina por diseño en cuanto
+aplica las migraciones — si fuera una dependencia de `backend` dentro del mismo `up`, abortaría la
+ejecución antes de que las pruebas llegaran a correr.
 
 ## Producción base
 

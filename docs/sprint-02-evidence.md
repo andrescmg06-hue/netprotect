@@ -70,37 +70,59 @@ automáticamente el `.env` de la raíz del proyecto sin importar qué archivo `-
 de variables en `compose.test.yaml`: al ser un stack efímero y desechable, no tiene ninguna razón
 legítima para leer el `.env` de nadie.
 
-## Ejecución de `compose.test.yaml` — resultado real, con una falla intermitente documentada
+## `compose.test.yaml` — bug real encontrado en CI, con un diagnóstico local equivocado corregido
 
-Se ejecutó tres veces de forma consecutiva, con `docker compose -f compose.test.yaml down -v` entre
-cada corrida:
+Al ejecutar `compose.test.yaml` localmente varias veces seguidas, el resultado fue inconsistente:
+2 de 3 corridas pasaron limpio (`9 passed`) y 1 falló con `socket.gaierror: Name or service not known`
+al resolver el host `db`. La hipótesis inicial, registrada aquí por error, fue "inestabilidad
+intermitente de red de Docker Desktop en Windows". **Esa hipótesis era incorrecta** y se corrige en
+este mismo documento en vez de dejarla escrita: al hacer push, el job `integration` de GitHub Actions
+—Linux, Docker Engine real, sin Docker Desktop— falló **de forma consistente y determinística**, no
+intermitente, revelando la causa real.
 
-| Corrida | Resultado | Causa |
-|---|---|---|
-| 1 | `5 failed, 4 passed` | `socket.gaierror: Name or service not known` al resolver el host `db` desde el contenedor `backend` |
-| 2 | `9 passed` | — |
-| 3 | `9 passed` | — |
+**Causa real:** `docker compose up --build --abort-on-container-exit --exit-code-from backend` aborta
+todo el stack en cuanto **cualquier** contenedor termina, sin distinguir un servicio que termina por
+diseño (`migrate`, que aplica la migración y sale) de uno que debe seguir corriendo. Como `backend`
+tenía `depends_on: migrate: condition: service_completed_successfully`, Compose no arrancaba `backend`
+hasta que `migrate` terminara — es decir, `migrate` **siempre** termina antes de que `backend` arranque,
+lo cual dispara el aborto de inmediato. El log de CI lo muestra sin ambigüedad: `migrate-1` corre y
+termina con éxito, aparece "Aborting on container exit...", y `backend-1` nunca llega a imprimir una
+sola línea, ni siquiera la cabecera de pytest.
 
-La corrida 1 ocurrió **antes** de corregir la filtración de `.env` descrita arriba, pero al repetir la
-misma prueba ya corregida se obtuvo el mismo error una vez más antes de que dos corridas consecutivas
-pasaran limpio con exactamente la misma configuración. Esto descarta que la filtración de `.env` fuera
-la causa raíz: es un fallo intermitente de resolución DNS del propio Docker Desktop para Windows en este
-equipo, que ya se había puesto inestable antes en esta sesión de trabajo (requirió un reinicio manual
-documentado en `docs/sprint-01-evidence.md`). El servicio `migrate` —que también resuelve el mismo host
-`db`— nunca falló en ninguna de las tres corridas, lo que refuerza que no es un problema de la
-configuración de red de Compose sino del motor de Docker Desktop en sí.
+Que localmente pasara 2 de 3 veces fue casualidad de temporización (imágenes ya construidas en caché
+hacían que `backend` alcanzara a correr sus 9 pruebas —tardan bajo un segundo— antes de que el
+observador de aborto de Compose reaccionara a la salida de `migrate`); en un runner en frío como el de
+CI, sin ese margen, la carrera se pierde siempre.
 
-No se oculta este resultado: se registra tal cual, y el criterio definitivo de aceptación es la corrida
-en GitHub Actions (Linux, Docker Engine real, sin Docker Desktop de por medio), que se registra a
-continuación.
+**Corrección:** se quitó `migrate` de `depends_on` en `backend` dentro de `compose.test.yaml`, y la
+migración pasó a ejecutarse aparte, con `docker compose -f compose.test.yaml run --rm migrate` — que no
+participa del `--abort-on-container-exit` porque no es parte de ese `up` — seguido de
+`docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend`,
+limitando explícitamente qué servicios arrancan. Actualizado en `.github/workflows/ci.yml`, `Makefile` y
+`docs/environments.md`.
+
+Verificado localmente, dos corridas limpias consecutivas con la secuencia corregida:
+
+```text
+docker compose -f compose.test.yaml run --rm migrate
+→ Running upgrade  -> e27f40867c61, ...
+
+docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+→ backend-1 | 9 passed, 3 warnings in 0.7x s
+→ backend-1 exited with code 0
+```
+
+`compose.yaml` (desarrollo) no tenía este problema: usa `up --build -d` (sin `--abort-on-container-exit`),
+así que `migrate` como dependencia de `backend` siempre funcionó correctamente ahí y no se tocó.
 
 ## CI en GitHub Actions
 
-Pendiente de push al cierre de este documento; se actualiza esta sección con el resultado del run en
-cuanto se ejecute.
+Primer intento (`4d142be`, antes de esta corrección): falló en el job `integration` por la causa
+descrita arriba; `android`, `backend` y `frontend` pasaron. Segundo intento, con la corrección aplicada:
+se registra en cuanto se ejecute el push correspondiente.
 
 ## No se marca como verificado
 
-Todo lo anterior son comandos ejecutados realmente, con su salida real, incluida la falla intermitente
-de la corrida 1 de `compose.test.yaml`, registrada sin maquillar. La sección de CI se completa sólo
-después de que el pipeline corra de verdad.
+Todo lo anterior son comandos ejecutados realmente, con su salida real, incluido el diagnóstico
+inicial equivocado y su corrección — no se oculta el error de análisis, se corrige explícitamente. La
+sección de CI se completa sólo después de que el pipeline corra de verdad con el fix aplicado.

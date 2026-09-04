@@ -112,7 +112,10 @@ resto de las 25 tablas del modelo conceptual, que se crean en el sprint que las 
 
 Todos los criterios de aceptación tienen evidencia ejecutada realmente: migración aplicada y revertida
 contra PostgreSQL real, roles sembrados verificados por consulta directa, prueba de integración en
-verde, `ruff` limpio, y el flujo completo (`db` → `migrate` → `backend`) probado de punta a punta en
-Docker, dos de tres veces limpio localmente (la tercera falló por inestabilidad de red intermitente del
-propio Docker Desktop en este equipo, no por el código; ver `docs/sprint-02-evidence.md`). CI en GitHub
-Actions es el criterio definitivo.
+verde, y `ruff` limpio. El flujo completo (`db` → `migrate` → `backend`) se probó de punta a punta en
+Docker; una primera versión usaba `migrate` como dependencia de `backend` dentro del mismo
+`up --abort-on-container-exit`, lo que aborta el stack en cuanto `migrate` termina —por diseño, antes de
+que `backend` llegue a correr sus pruebas— y CI lo detectó de forma consistente. Corregido separando la
+migración (`run --rm migrate`) del `up` que vigila el abort; ver el diagnóstico completo, incluida la
+hipótesis inicial equivocada que se corrigió, en `docs/sprint-02-evidence.md`. CI en GitHub Actions es
+el criterio definitivo.

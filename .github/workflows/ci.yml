@@ -63,6 +63,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f compose.test.yaml config
-      - run: docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from backend
+      - run: docker compose -f compose.test.yaml build
+      - run: docker compose -f compose.test.yaml run --rm migrate
+      - run: docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
       - if: always()
         run: docker compose -f compose.test.yaml down -v
