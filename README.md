@@ -127,6 +127,7 @@ La actualización del proyecto exige dejar establecida la arquitectura antes de 
 - `docs/diagrams/03-flujo-autenticacion.md`.
 - `docs/diagrams/04-flujo-vinculacion.md`.
 - `docs/diagrams/05-modelo-datos-conceptual.md`.
+- `docs/diagrams/06-modelo-datos-fisico-sprint2.md`.
 - `docs/android/capability-matrix.md`.
 - `docs/planning/product-backlog.md`.
 - `docs/planning/user-stories.md`.
@@ -139,3 +140,9 @@ La actualización del proyecto exige dejar establecida la arquitectura antes de 
 Incluye repositorio, proyectos base, PostgreSQL, Redis, Docker, ambientes, variables, CI/CD inicial, conexiones de infraestructura y documentación. No implementa todavía Google Login, RBAC, vinculación, reglas, ubicación, geocercas, tiempo real ni supervisión remota.
 
 El detalle de criterios de aceptación y verificación se encuentra en `docs/sprint-01.md`.
+
+## Alcance del Sprint 2
+
+Esquema de base de datos versionado con Alembic: `users`, `roles`, `user_roles`, `devices`, `device_status`, `tutor_devices`, `pairing_codes`, `sessions`, `audit_logs`. Las migraciones corren automáticamente (servicio `migrate`) antes de que el backend arranque, tanto en desarrollo como en pruebas. Google Login, RBAC funcional y vinculación real siguen pendientes de los sprints 3 a 5.
+
+El detalle está en `docs/sprint-02.md`.

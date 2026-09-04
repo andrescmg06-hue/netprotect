@@ -4,11 +4,11 @@ services:
   db:
     image: postgres:18.6-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-netprotect_test}
-      POSTGRES_USER: ${POSTGRES_USER:-netprotect_test}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_test_only}
+      POSTGRES_DB: netprotect_test
+      POSTGRES_USER: netprotect_test
+      POSTGRES_PASSWORD: change_me_test_only
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-netprotect_test} -d ${POSTGRES_DB:-netprotect_test}"]
+      test: ["CMD-SHELL", "pg_isready -U netprotect_test -d netprotect_test"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -21,7 +21,7 @@ services:
     image: redis:8.2-alpine
     command: ["sh", "-c", 'exec redis-server --save "" --appendonly no --requirepass "$${REDIS_PASSWORD}"']
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis_test_only}
+      REDIS_PASSWORD: change_me_redis_test_only
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 3s
@@ -32,6 +32,19 @@ services:
     networks:
       - netprotect_test
 
+  migrate:
+    build:
+      context: ./backend
+      target: test
+    environment:
+      DATABASE_URL: postgresql+asyncpg://netprotect_test:change_me_test_only@db:5432/netprotect_test
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - netprotect_test
+
   backend:
     build:
       context: ./backend
@@ -39,8 +52,8 @@ services:
     environment:
       APP_ENV: test
       APP_VERSION: 0.1.0-sprint1
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://netprotect_test:change_me_test_only@db:5432/netprotect_test}
-      REDIS_URL: ${REDIS_URL:-redis://:change_me_redis_test_only@redis:6379/0}
+      DATABASE_URL: postgresql+asyncpg://netprotect_test:change_me_test_only@db:5432/netprotect_test
+      REDIS_URL: redis://:change_me_redis_test_only@redis:6379/0
       CORS_ORIGINS: http://localhost:3000
       ALLOWED_HOSTS: localhost,127.0.0.1,backend,testserver
       LOG_LEVEL: WARNING
@@ -50,6 +63,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - netprotect_test
 

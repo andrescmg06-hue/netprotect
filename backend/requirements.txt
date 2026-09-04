@@ -3,3 +3,4 @@ uvicorn[standard]>=0.35.0,<0.36.0
 pydantic-settings>=2.10.0,<3.0.0
 SQLAlchemy[asyncio]>=2.0.40,<2.1.0
 asyncpg>=0.30.0,<0.31.0
+alembic>=1.13.0,<2.0.0

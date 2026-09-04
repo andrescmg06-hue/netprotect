@@ -1,4 +1,4 @@
-.PHONY: dev down logs test verify backend-test frontend-check android-check
+.PHONY: dev down logs test verify backend-test frontend-check android-check migrate revision
 
 dev:
 	docker compose up --build
@@ -8,6 +8,12 @@ down:
 
 logs:
 	docker compose logs -f --tail=200
+
+migrate:
+	docker compose run --rm migrate
+
+revision:
+	cd backend && alembic revision --autogenerate -m "$(m)"
 
 test:
 	docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from backend
