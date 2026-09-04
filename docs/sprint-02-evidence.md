@@ -118,11 +118,23 @@ así que `migrate` como dependencia de `backend` siempre funcionó correctamente
 ## CI en GitHub Actions
 
 Primer intento (`4d142be`, antes de esta corrección): falló en el job `integration` por la causa
-descrita arriba; `android`, `backend` y `frontend` pasaron. Segundo intento, con la corrección aplicada:
-se registra en cuanto se ejecute el push correspondiente.
+descrita arriba; `android`, `backend` y `frontend` pasaron.
+
+Segundo intento (`560131c`, con la corrección aplicada), run `33822070006`: los 4 jobs en verde.
+
+```text
+✓ android       1m07s   ./gradlew test assembleDebug
+✓ backend         ~20s  ruff check + pytest
+✓ frontend        ~30s  npm ci + lint + build
+✓ integration       39s docker compose build → run --rm migrate → up --abort-on-container-exit ...
+```
+
+El job `integration` muestra explícitamente los cuatro pasos nuevos en secuencia: `build`,
+`run --rm migrate`, el `up --abort-on-container-exit ... db redis backend` acotado, y `down -v`.
 
 ## No se marca como verificado
 
 Todo lo anterior son comandos ejecutados realmente, con su salida real, incluido el diagnóstico
-inicial equivocado y su corrección — no se oculta el error de análisis, se corrige explícitamente. La
-sección de CI se completa sólo después de que el pipeline corra de verdad con el fix aplicado.
+inicial equivocado y su corrección — no se oculta el error de análisis, se corrige explícitamente.
+Sprint 2 queda cerrado: los 4 jobs de CI en verde en un runner limpio de GitHub Actions, además de la
+verificación local completa (migración, reversibilidad, pruebas, ruff).
