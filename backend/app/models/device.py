@@ -23,11 +23,25 @@ _STATUS_LIST_SQL = ", ".join(f"'{value}'" for value in DEVICE_STATUSES)
 
 class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "devices"
+    __table_args__ = (
+        # Scoped to the supervised user rather than global: one account's app must not be
+        # able to claim an identifier another account is already using.
+        Index(
+            "uq_devices_instance_per_supervised_user",
+            "supervised_user_id",
+            "device_instance_id",
+            unique=True,
+            postgresql_where=text("device_instance_id IS NOT NULL"),
+        ),
+    )
 
     name: Mapped[str] = mapped_column(String(255))
     platform: Mapped[str] = mapped_column(String(32), default="ANDROID", server_default="ANDROID")
     os_version: Mapped[str | None] = mapped_column(String(64))
     app_version: Mapped[str | None] = mapped_column(String(32))
+    # Stable identifier generated once by the installed app, so re-pairing the same phone
+    # (or pairing it to a second tutor) reuses this row instead of creating a duplicate.
+    device_instance_id: Mapped[str | None] = mapped_column(String(64))
     supervised_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )

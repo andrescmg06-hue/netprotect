@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db.session import dispose_engine, get_session_factory
 from app.main import app
 from app.services.google_auth import GoogleIdentity
 
@@ -16,14 +15,6 @@ pytestmark = [
         reason="Set RUN_INTEGRATION_TESTS=1 and provide PostgreSQL.",
     ),
 ]
-
-
-@pytest.fixture
-async def db_session():
-    factory = get_session_factory()
-    async with factory() as session:
-        yield session
-    await dispose_engine()
 
 
 def _login() -> str:

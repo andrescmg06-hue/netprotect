@@ -1,6 +1,7 @@
-import asyncio
-import ssl
-from urllib.parse import unquote, urlparse
+from dataclasses import dataclass
+
+import redis.asyncio as redis
+from redis.exceptions import RedisError
 
 from app.core.config import settings
 
@@ -9,70 +10,94 @@ class RedisHealthError(RuntimeError):
     """Raised when the configured Redis service cannot answer a health probe."""
 
 
-def _encode_command(*parts: str) -> bytes:
-    encoded = [part.encode("utf-8") for part in parts]
-    chunks = [f"*{len(encoded)}\r\n".encode("ascii")]
-    for item in encoded:
-        chunks.append(f"${len(item)}\r\n".encode("ascii"))
-        chunks.append(item + b"\r\n")
-    return b"".join(chunks)
+class RateLimitBackendError(RuntimeError):
+    """Raised when a rate-limit counter cannot be read or written."""
 
 
-async def _read_simple_response(reader: asyncio.StreamReader) -> str:
-    line = await asyncio.wait_for(reader.readline(), timeout=3)
-    if not line:
-        raise RedisHealthError("redis_connection_closed")
+_client: redis.Redis | None = None
 
-    prefix, payload = line[:1], line[1:].rstrip(b"\r\n")
-    if prefix == b"+":
-        return payload.decode("utf-8", errors="replace")
-    if prefix == b"-":
-        raise RedisHealthError("redis_command_failed")
-    raise RedisHealthError("redis_unexpected_response")
+# INCR followed by EXPIRE only on the first hit, in one round trip. Doing it as two
+# separate commands leaves a window where a counter exists with no TTL — if the process
+# dies in between, that key never expires and the caller stays locked out forever.
+_INCREMENT_WITH_TTL = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return {current, redis.call('TTL', KEYS[1])}
+"""
+
+
+@dataclass(frozen=True)
+class RateLimitResult:
+    allowed: bool
+    current: int
+    limit: int
+    retry_after_seconds: int
+
+
+def get_redis() -> redis.Redis:
+    global _client
+    if _client is None:
+        _client = redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=3,
+            socket_timeout=3,
+            health_check_interval=30,
+        )
+    return _client
 
 
 async def ping_redis() -> None:
-    parsed = urlparse(settings.redis_url)
-    if parsed.scheme not in {"redis", "rediss"}:
-        raise RedisHealthError("redis_invalid_scheme")
-
-    host = parsed.hostname or "localhost"
-    port = parsed.port or 6379
-    tls_context: ssl.SSLContext | bool | None = None
-    if parsed.scheme == "rediss":
-        tls_context = ssl.create_default_context()
-
     try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(host=host, port=port, ssl=tls_context),
-            timeout=3,
-        )
-    except (TimeoutError, OSError) as exc:
+        if not await get_redis().ping():
+            raise RedisHealthError("redis_unavailable")
+    except (RedisError, OSError) as exc:
         raise RedisHealthError("redis_unavailable") from exc
 
-    try:
-        password = unquote(parsed.password) if parsed.password else None
-        username = unquote(parsed.username) if parsed.username else None
-        if password:
-            auth_command = (
-                _encode_command("AUTH", username, password)
-                if username
-                else _encode_command("AUTH", password)
-            )
-            writer.write(auth_command)
-            await writer.drain()
-            if await _read_simple_response(reader) != "OK":
-                raise RedisHealthError("redis_auth_failed")
 
-        writer.write(_encode_command("PING"))
-        await writer.drain()
-        if await _read_simple_response(reader) != "PONG":
-            raise RedisHealthError("redis_unavailable")
-    finally:
-        writer.close()
-        await writer.wait_closed()
+async def hit_rate_limit(key: str, *, limit: int, window_seconds: int) -> RateLimitResult:
+    """Counts one attempt against `key` and reports whether it is still within `limit`.
+
+    Fails closed: if Redis is unreachable the caller gets an error rather than an
+    unlimited allowance, so an outage can't silently disable brute-force protection.
+    """
+    try:
+        current, ttl = await get_redis().eval(_INCREMENT_WITH_TTL, 1, key, window_seconds)
+    except (RedisError, OSError) as exc:
+        raise RateLimitBackendError("rate_limit_backend_unavailable") from exc
+
+    retry_after = ttl if ttl and ttl > 0 else window_seconds
+    return RateLimitResult(
+        allowed=current <= limit,
+        current=current,
+        limit=limit,
+        retry_after_seconds=retry_after,
+    )
+
+
+async def reset_rate_limit(key: str) -> None:
+    try:
+        await get_redis().delete(key)
+    except (RedisError, OSError) as exc:
+        raise RateLimitBackendError("rate_limit_backend_unavailable") from exc
 
 
 async def close_redis() -> None:
-    # Sprint 1 uses short-lived readiness probes and keeps no Redis connection pool.
-    return None
+    """Best-effort shutdown.
+
+    The client is a process-wide singleton bound to whichever event loop first used it. In
+    the server that is the only loop there is, but anywhere a second loop closes it (tests,
+    scripts) the underlying socket teardown raises about a future "attached to a different
+    loop". Failing to close a socket at shutdown is never actionable for the caller, so it
+    is swallowed instead of propagating out of the application lifespan.
+    """
+    global _client
+    client, _client = _client, None
+    if client is None:
+        return
+    try:
+        await client.aclose()
+    except (RedisError, OSError, RuntimeError):
+        pass

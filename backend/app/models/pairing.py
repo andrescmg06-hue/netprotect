@@ -16,6 +16,9 @@ class PairingCode(UUIDPrimaryKeyMixin, Base):
     code_hash: Mapped[str] = mapped_column(String(128), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Kept separate from used_at on purpose: "the tutor cancelled this code" and "a device
+    # redeemed this code" are different facts, and the audit trail has to tell them apart.
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     device_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("devices.id", ondelete="SET NULL")
     )

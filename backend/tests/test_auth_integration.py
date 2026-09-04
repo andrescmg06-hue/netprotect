@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.db.session import dispose_engine, get_session_factory
 from app.main import app
 from app.models import AuditLog, User
 from app.services.google_auth import GoogleIdentity
@@ -30,19 +29,6 @@ def _fake_identity(unique: str) -> GoogleIdentity:
         display_name="Usuaria de Prueba",
         avatar_url="https://example.com/avatar.png",
     )
-
-
-async def _get_session():
-    factory = get_session_factory()
-    async with factory() as session:
-        yield session
-    await dispose_engine()
-
-
-@pytest.fixture
-async def db_session():
-    async for session in _get_session():
-        yield session
 
 
 def _login(unique: str) -> dict:

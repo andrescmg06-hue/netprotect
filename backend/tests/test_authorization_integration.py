@@ -6,7 +6,6 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.deps import require_role, require_tutor_of_device
-from app.db.session import dispose_engine, get_session_factory
 from app.models import Device, TutorDevice, User, UserRole
 
 pytestmark = [
@@ -16,14 +15,6 @@ pytestmark = [
         reason="Set RUN_INTEGRATION_TESTS=1 and provide PostgreSQL.",
     ),
 ]
-
-
-@pytest.fixture
-async def db_session():
-    factory = get_session_factory()
-    async with factory() as session:
-        yield session
-    await dispose_engine()
 
 
 async def _make_user(db_session, unique: str) -> User:

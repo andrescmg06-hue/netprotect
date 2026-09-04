@@ -152,3 +152,15 @@ El detalle está en `docs/sprint-02.md`.
 Login con Google en los tres frentes: el backend verifica el ID token de Google y emite sus propios tokens (access JWT corto + refresh rotativo); la web usa Google Identity Services; Android usa Credential Manager y cifra el refresh token con una clave del Android Keystore. Requiere `GOOGLE_WEB_CLIENT_ID` y `JWT_SECRET` en `.env` (ver `.env.development.example`). RBAC funcional y vinculación por código siguen pendientes de los sprints 4 y 5.
 
 El detalle está en `docs/sprint-03.md`.
+
+## Alcance del Sprint 4
+
+Selección de rol (TUTOR / SUPERVISADO) y la autorización real: `require_role` para acciones sin recurso y `require_tutor_of_device` para todo lo que apunte a un dispositivo concreto, que responde 404 tanto si el dispositivo no existe como si no es tuyo. Poseer un rol no concede acceso a nada por sí solo. Matriz de permisos en `docs/security-baseline.md`.
+
+El detalle está en `docs/sprint-04.md`.
+
+## Alcance del Sprint 5
+
+Vinculación por código de 6 dígitos: generación con CSPRNG, vigencia de 3 minutos, un solo uso, revocación y desvinculación. El código se guarda como HMAC con una clave de servidor (`PAIRING_CODE_PEPPER`), nunca en claro; todos los fallos devuelven la misma respuesta; y los intentos se limitan por cuenta y por IP con Redis. Requiere `PAIRING_CODE_PEPPER` en `.env`.
+
+El detalle está en `docs/sprint-05.md`.

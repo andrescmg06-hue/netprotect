@@ -67,6 +67,7 @@ services:
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.0.2.2}
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:?falta GOOGLE_WEB_CLIENT_ID en .env}
       JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET en .env}
+      PAIRING_CODE_PEPPER: ${PAIRING_CODE_PEPPER:?falta PAIRING_CODE_PEPPER en .env}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
