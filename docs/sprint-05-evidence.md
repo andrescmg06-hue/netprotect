@@ -63,7 +63,8 @@ además la que corre CI.
 
 ## CI en GitHub Actions
 
-Pendiente de push al cierre de este documento.
+Run `33885229903`, los 4 jobs en verde: `backend` (24s), `frontend` (32s), `integration` (52s),
+`android` (1m32s).
 
 ## No se marca como verificado
 
