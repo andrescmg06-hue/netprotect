@@ -59,7 +59,8 @@ docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-fro
 
 ## CI en GitHub Actions
 
-Pendiente de push al cierre de este documento; se completa con el resultado del run correspondiente.
+Run `33880296787`, los 4 jobs en verde: `backend`, `frontend`, `integration` (38s, con la secuencia
+`build` → `run --rm migrate` → `up --abort-on-container-exit`), `android` (1m17s).
 
 ## No se marca como verificado
 
