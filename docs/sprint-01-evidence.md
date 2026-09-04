@@ -178,18 +178,30 @@ el build no depende de nada específico de esta máquina. Único aviso, no bloqu
 obsoleto (el runner lo fuerza a Node 24 automáticamente); se puede resolver subiendo a `@v5` en un
 sprint posterior, no es urgente.
 
+## Prueba negativa del backend (03/09/2026, tras reiniciar Docker Desktop)
+
+El usuario reinició Docker Desktop (se actualizó de 29.5.2 a 29.7.2) y los cuatro contenedores
+volvieron a levantarse solos gracias a `restart: unless-stopped`. Con la pila sana:
+
+```text
+docker compose stop backend
+GET /api/v1/health/ready --max-time 3  → HTTP 000 (conexión rechazada, como se espera)
+docker compose start backend
+GET /api/v1/health/ready               → {"status":"ready", ...} de nuevo, 12s después
+```
+
+Confirma que la cadena detecta y se recupera de un fallo real del backend, no sólo de Redis (ya probado
+antes). El emulador Android estaba cerrado en este momento, así que esta prueba se hizo a nivel de
+infraestructura (equivalente a lo que vería la app); repetirla con el emulador abierto queda como
+verificación opcional, no bloqueante.
+
 ## Pendiente
 
-1. **Prueba negativa en el emulador** (detener el backend con la app abierta y confirmar el mensaje de
-   error): no se pudo ejecutar porque, durante la sesión de trabajo, el CLI de Docker en este equipo
-   dejó de responder (primero por la carga del emulador, y después el propio Docker Desktop quedó en un
-   estado que requiere reiniciarse manualmente). No es un problema del proyecto ni de la app. Queda
-   pendiente para una comprobación posterior.
-2. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
+1. Confirmación visual en navegador de la transición de la web a "online" (sólo se confirmó el HTTP 200
    y el HTML inicial en estado "checking"; ver nota en la sección Web).
 
 ## No se marca como verificado
 
 Todo lo anterior son comandos ejecutados realmente, con su salida real, incluidas la captura de pantalla
-del emulador y la corrida de CI en GitHub. Lo que aparece en "Pendiente" no se da por bueno: no hay
-prueba negativa en el emulador ni confirmación visual en navegador.
+del emulador, la corrida de CI en GitHub y la prueba negativa del backend. Lo único que aparece en
+"Pendiente" es la confirmación visual en navegador, que no se da por bueno sin abrirlo.

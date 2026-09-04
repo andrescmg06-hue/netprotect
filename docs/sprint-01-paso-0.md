@@ -350,9 +350,8 @@ Ambos mensajes terminan con la línea de coautoría acordada para el proyecto.
       un navegador real queda pendiente (ver `docs/sprint-01-evidence.md`).
 - [x] `pytest -m "not integration"` y `ruff` pasan en local.
 - [x] `gradlew test assembleDebug` y `assembleRelease` terminan en `BUILD SUCCESSFUL`.
-- [x] La app en el emulador muestra las tres filas en CONNECTED (captura de pantalla real). **Parcial**:
-      falta la prueba negativa (reacción al fallo del backend) — bloqueada por contención de recursos
-      entre el emulador y el CLI de Docker en esta sesión, ver `docs/sprint-01-evidence.md`.
+- [x] La app en el emulador muestra las tres filas en CONNECTED (captura de pantalla real), y la cadena
+      reacciona correctamente al detener el backend (HTTP 000, recuperado 12s después de reiniciarlo).
 - [x] El manifiesto de release tiene `usesCleartextTraffic="false"`.
 - [x] `compose.test.yaml` termina con código 0 (`7 passed, 3 warnings`; corregido B9 para lograrlo).
 - [x] No hay credenciales versionadas y `.env` sigue ignorado.
