@@ -96,7 +96,14 @@ def test_tampered_and_expired_access_tokens_are_rejected() -> None:
     unique = uuid.uuid4().hex[:8]
     tokens = _login(unique)
 
-    tampered = tokens["access_token"][:-1] + ("a" if tokens["access_token"][-1] != "a" else "b")
+    # Flip a character in the middle of the token, not the last one: the tail end of a
+    # base64url-encoded HMAC-SHA256 signature has a few bits that don't map to any real
+    # signature byte (32 bytes doesn't divide evenly into 6-bit groups), so occasionally
+    # "changing" the very last character leaves the decoded signature bytes identical.
+    access_token = tokens["access_token"]
+    middle = len(access_token) // 2
+    replacement = "a" if access_token[middle] != "a" else "b"
+    tampered = access_token[:middle] + replacement + access_token[middle + 1 :]
 
     expired_payload = {
         "sub": str(uuid.uuid4()),
