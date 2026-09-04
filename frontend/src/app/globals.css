@@ -101,6 +101,46 @@ h1 {
   text-align: right;
 }
 
+.authCard {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.authCard .userRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.authCard .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+.authCard .userName {
+  font-weight: 600;
+}
+
+.authCard .userEmail {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.authError {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin: 4px 0 0;
+}
+
 .grid {
   margin-top: 24px;
   display: grid;

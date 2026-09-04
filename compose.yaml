@@ -65,6 +65,8 @@ services:
       REDIS_URL: ${REDIS_URL:?falta REDIS_URL en .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.0.2.2}
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:?falta GOOGLE_WEB_CLIENT_ID en .env}
+      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET en .env}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
@@ -89,10 +91,12 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:?falta NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID en .env}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:?falta NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID en .env}
     depends_on:
       backend:
         condition: service_healthy

@@ -24,6 +24,10 @@ val debugApiBaseUrl = providers.environmentVariable("NETPROTECT_API_BASE_URL").o
 val releaseApiBaseUrl = providers.environmentVariable("NETPROTECT_RELEASE_API_BASE_URL").orNull
     ?: "https://api.netprotect.invalid"
 
+val googleWebClientId = providers.environmentVariable("NETPROTECT_GOOGLE_WEB_CLIENT_ID").orNull
+    ?: localProperties.getProperty("NETPROTECT_GOOGLE_WEB_CLIENT_ID")
+    ?: ""
+
 android {
     namespace = "com.netprotect.app"
     compileSdk = 36
@@ -36,6 +40,7 @@ android {
         versionName = "0.1.0-sprint1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", googleWebClientId.asBuildConfigString())
     }
 
     buildTypes {
@@ -80,6 +85,11 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

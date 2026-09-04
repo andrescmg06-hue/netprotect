@@ -146,3 +146,9 @@ El detalle de criterios de aceptación y verificación se encuentra en `docs/spr
 Esquema de base de datos versionado con Alembic: `users`, `roles`, `user_roles`, `devices`, `device_status`, `tutor_devices`, `pairing_codes`, `sessions`, `audit_logs`. Las migraciones corren automáticamente (servicio `migrate`) antes de que el backend arranque, tanto en desarrollo como en pruebas. Google Login, RBAC funcional y vinculación real siguen pendientes de los sprints 3 a 5.
 
 El detalle está en `docs/sprint-02.md`.
+
+## Alcance del Sprint 3
+
+Login con Google en los tres frentes: el backend verifica el ID token de Google y emite sus propios tokens (access JWT corto + refresh rotativo); la web usa Google Identity Services; Android usa Credential Manager y cifra el refresh token con una clave del Android Keystore. Requiere `GOOGLE_WEB_CLIENT_ID` y `JWT_SECRET` en `.env` (ver `.env.development.example`). RBAC funcional y vinculación por código siguen pendientes de los sprints 4 y 5.
+
+El detalle está en `docs/sprint-03.md`.

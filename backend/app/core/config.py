@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     allowed_hosts: str = "localhost,127.0.0.1,testserver"
     log_level: str = "INFO"
 
+    google_web_client_id: str = ""
+    # Dev-only placeholder, kept >=32 bytes to avoid PyJWT's HS256 key-length warning.
+    jwt_secret: str = "change_me_dev_only_jwt_secret_at_least_32_bytes_long"  # noqa: S105
+    access_token_ttl_minutes: int = 15
+    refresh_token_ttl_days: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

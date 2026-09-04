@@ -13,7 +13,10 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S"]
-ignore = ["S101"]
+# S101: assert is fine in a codebase with no -O deployment.
+# B008: Depends(...)/Query(...) in a default argument is FastAPI's documented DI
+# pattern, not the mutable-default-argument bug this rule is meant to catch.
+ignore = ["S101", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
 # Alembic generates create_table/create_index calls on single long lines;

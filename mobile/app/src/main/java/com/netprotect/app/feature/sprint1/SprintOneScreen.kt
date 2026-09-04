@@ -23,10 +23,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.netprotect.app.BuildConfig
+import com.netprotect.app.core.auth.AuthRepository
+import com.netprotect.app.core.network.CurrentUser
 import com.netprotect.app.core.network.InfrastructureHealth
 import com.netprotect.app.core.network.InfrastructureHealthClient
 import kotlinx.coroutines.launch
@@ -37,11 +41,26 @@ private sealed interface InfrastructureState {
     data class Error(val message: String) : InfrastructureState
 }
 
+private sealed interface AuthUiState {
+    data object Loading : AuthUiState
+    data class SignedOut(val error: String? = null) : AuthUiState
+    data class SignedIn(val user: CurrentUser) : AuthUiState
+}
+
 @Composable
 fun SprintOneScreen() {
+    val context = LocalContext.current
     val client = remember { InfrastructureHealthClient(BuildConfig.API_BASE_URL) }
+    val authRepository = remember {
+        AuthRepository(
+            applicationContext = context.applicationContext,
+            baseUrl = BuildConfig.API_BASE_URL,
+            googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID,
+        )
+    }
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<InfrastructureState>(InfrastructureState.Checking) }
+    var authState by remember { mutableStateOf<AuthUiState>(AuthUiState.Loading) }
 
     suspend fun checkInfrastructure() {
         state = InfrastructureState.Checking
@@ -52,8 +71,29 @@ fun SprintOneScreen() {
         }
     }
 
+    fun signIn() {
+        scope.launch {
+            authState = try {
+                AuthUiState.SignedIn(authRepository.signIn(context))
+            } catch (_: GetCredentialCancellationException) {
+                AuthUiState.SignedOut()
+            } catch (exception: Exception) {
+                AuthUiState.SignedOut(exception.message ?: "No se pudo iniciar sesión")
+            }
+        }
+    }
+
+    fun signOut() {
+        scope.launch {
+            authRepository.signOut()
+            authState = AuthUiState.SignedOut()
+        }
+    }
+
     LaunchedEffect(Unit) {
         checkInfrastructure()
+        authState = authRepository.restoreSession()?.let { AuthUiState.SignedIn(it) }
+            ?: AuthUiState.SignedOut()
     }
 
     Surface(
@@ -67,14 +107,14 @@ fun SprintOneScreen() {
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                text = "NETPROTECT · SPRINT 1",
+                text = "NETPROTECT · SPRINT 3",
                 color = Color(0xFF6BE3BF),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Arquitectura y entorno",
+                text = "Autenticación con Google",
                 color = Color.White,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -82,12 +122,16 @@ fun SprintOneScreen() {
             Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = "Una sola aplicación Android para los futuros modos Tutor y Supervisado. " +
-                    "En este sprint se valida Android → Backend → PostgreSQL y la disponibilidad de Redis.",
+                    "En este sprint se valida el inicio de sesión con Google contra la misma API.",
                 color = Color(0xFFABB5C4),
                 fontSize = 17.sp,
                 lineHeight = 25.sp,
             )
             Spacer(modifier = Modifier.height(28.dp))
+
+            AuthCard(authState, onSignIn = ::signIn, onSignOut = ::signOut)
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             StatusCard(state)
 
@@ -106,6 +150,62 @@ fun SprintOneScreen() {
                 ),
             ) {
                 Text("Volver a comprobar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthCard(state: AuthUiState, onSignIn: () -> Unit, onSignOut: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF121722),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            when (state) {
+                AuthUiState.Loading -> {
+                    Text("Comprobando sesión…", color = Color.White)
+                }
+                is AuthUiState.SignedOut -> {
+                    Text(
+                        text = "Inicia sesión con tu cuenta de Google para continuar.",
+                        color = Color(0xFFABB5C4),
+                    )
+                    state.error?.let {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(it, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = onSignIn,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1D6E5A),
+                            contentColor = Color.White,
+                        ),
+                    ) {
+                        Text("Iniciar sesión con Google")
+                    }
+                }
+                is AuthUiState.SignedIn -> {
+                    Text(
+                        text = state.user.displayName ?: state.user.email,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(state.user.email, color = Color(0xFFABB5C4), fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = onSignOut,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color(0xFFFFB4AB),
+                        ),
+                    ) {
+                        Text("Cerrar sesión")
+                    }
+                }
             }
         }
     }

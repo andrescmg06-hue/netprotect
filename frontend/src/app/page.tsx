@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { useAuth } from "@/contexts/AuthContext";
+
 type ApiState = "checking" | "online" | "offline";
 
 type ReadyPayload = {
@@ -23,6 +26,7 @@ function fetchReadiness(baseUrl: string, signal: AbortSignal): Promise<ReadyPayl
 }
 
 export default function Home() {
+  const { status: authStatus, user, signOut } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("checking");
   const [detail, setDetail] = useState("Comprobando Backend, PostgreSQL y Redis…");
   const [ready, setReady] = useState<ReadyPayload | null>(null);
@@ -63,12 +67,39 @@ export default function Home() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">NETPROTECT · SPRINT 1</p>
-        <h1>Arquitectura y entorno</h1>
+        <p className="eyebrow">NETPROTECT · SPRINT 3</p>
+        <h1>Autenticación con Google</h1>
         <p className="lead">
           Base ejecutable de NetProtect con una única API, PostgreSQL como fuente de verdad,
           Redis para datos temporales y clientes Web/Android sobre la misma arquitectura.
         </p>
+
+        <div className="authCard" aria-live="polite">
+          {authStatus === "loading" && <span className="statusText">Comprobando sesión…</span>}
+          {authStatus === "unauthenticated" && (
+            <>
+              <span className="statusText">Inicia sesión con tu cuenta de Google para continuar.</span>
+              <GoogleSignInButton />
+            </>
+          )}
+          {authStatus === "authenticated" && user && (
+            <>
+              <div className="userRow">
+                {user.avatar_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="avatar" src={user.avatar_url} alt="" />
+                )}
+                <div>
+                  <div className="userName">{user.display_name ?? user.email}</div>
+                  <div className="userEmail">{user.email}</div>
+                </div>
+              </div>
+              <button type="button" onClick={() => void signOut()}>
+                Cerrar sesión
+              </button>
+            </>
+          )}
+        </div>
 
         <div className="statusCard" aria-live="polite">
           <div>

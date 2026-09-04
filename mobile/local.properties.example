@@ -4,3 +4,7 @@ NETPROTECT_API_BASE_URL=http://10.0.2.2:8000
 
 # En un dispositivo físico usa la IP LAN del computador, por ejemplo:
 # NETPROTECT_API_BASE_URL=http://192.168.1.50:8000
+
+# ID de cliente Web de Google Cloud (no el de Android). No es secreto, pero es específico
+# de cada proyecto de Google Cloud, así que cada quien pone el suyo.
+NETPROTECT_GOOGLE_WEB_CLIENT_ID=tu-id-de-cliente.apps.googleusercontent.com
