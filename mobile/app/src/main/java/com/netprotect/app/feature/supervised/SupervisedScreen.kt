@@ -31,12 +31,16 @@ import androidx.compose.ui.unit.sp
 import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.DeviceIdentity
 import com.netprotect.app.core.auth.LinkedDeviceStore
+import com.netprotect.app.core.inventory.AppInventoryCollector
+import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.PairingClient
+import com.netprotect.app.core.permissions.UsageAccessPermission
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val HEARTBEAT_INTERVAL_MS = 60_000L
+private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
 
 private sealed interface SupervisedState {
     data object CheckingLink : SupervisedState
@@ -55,10 +59,12 @@ fun SupervisedScreen(
     val scope = rememberCoroutineScope()
     val pairingClient = remember { PairingClient(baseUrl) }
     val deviceClient = remember { DeviceClient(baseUrl) }
+    val applicationsClient = remember { ApplicationsClient(baseUrl) }
     val deviceInstanceId = remember { DeviceIdentity.getOrCreate(context) }
 
     var state by remember { mutableStateOf<SupervisedState>(SupervisedState.CheckingLink) }
     var codeInput by remember { mutableStateOf("") }
+    var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
 
     // The local cache is only a UI shortcut. On every start we ask the server who this
     // account's device actually is: a different Google account signing into the same phone,
@@ -93,6 +99,28 @@ fun SupervisedScreen(
                 deviceClient.sendHeartbeat(accessToken, deviceId, Build.VERSION.RELEASE, BuildConfig.VERSION_NAME)
             }
             delay(HEARTBEAT_INTERVAL_MS)
+        }
+    }
+
+    // Same foreground-only approach as the heartbeat above, on a longer interval since
+    // reading the full app list and today's usage is heavier than a plain ping. Gated on
+    // hasUsageAccess: the app list alone needs no permission, but sending it without usage
+    // numbers would be a half-finished sync, so both wait for the same signal.
+    LaunchedEffect(state, hasUsageAccess) {
+        state as? SupervisedState.Linked ?: return@LaunchedEffect
+        if (!hasUsageAccess) return@LaunchedEffect
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
+        while (true) {
+            runCatching {
+                applicationsClient.syncApplications(
+                    accessToken = accessToken,
+                    deviceId = deviceId,
+                    usageDate = AppInventoryCollector.todayDateString(),
+                    installedApps = AppInventoryCollector.collectInstalledApps(context),
+                    dailyUsage = AppInventoryCollector.collectTodayUsage(context),
+                )
+            }
+            delay(APP_SYNC_INTERVAL_MS)
         }
     }
 
@@ -176,6 +204,43 @@ fun SupervisedScreen(
                             color = Color(0xFF7D899A),
                             fontSize = 12.sp,
                         )
+                    }
+                }
+            }
+        }
+
+        if (state is SupervisedState.Linked && !hasUsageAccess) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF121722),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Acceso a uso de apps",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Para que tu tutor vea qué apps usas y cuánto tiempo, actívalo en " +
+                            "Ajustes → Acceso a datos de uso. Android exige que este permiso se " +
+                            "conceda ahí, no aquí.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { UsageAccessPermission.openSettings(context) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
+                    ) {
+                        Text("Abrir Ajustes")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { hasUsageAccess = UsageAccessPermission.isGranted(context) }) {
+                        Text("Ya lo activé, verificar de nuevo", color = Color(0xFFABB5C4))
                     }
                 }
             }

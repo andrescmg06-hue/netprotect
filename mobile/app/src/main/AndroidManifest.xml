@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Sprint 7 (inventario de apps): sin esto, Android 11+ oculta por defecto los paquetes
+         instalados que no estén en un elemento <queries> — y no podemos enumerarlos de
+         antemano porque no sabemos qué apps tendrá cada dispositivo supervisado. Publicar en
+         Play exigiría el formulario de declaración de permisos; este proyecto se instala por
+         sideload (Android Studio/adb), así que no aplica. Ver docs/android/capability-matrix.md. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <!-- Permiso especial: declararlo aquí no basta, el usuario debe concederlo aparte desde
+         Ajustes (Settings.ACTION_USAGE_ACCESS_SETTINGS). Ver capability-matrix.md. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="false"

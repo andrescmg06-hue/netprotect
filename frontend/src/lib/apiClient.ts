@@ -143,3 +143,29 @@ export function unlinkDevice(
 ): Promise<{ device_id: string; unlinked_at: string }> {
   return requestJson(`/api/v1/devices/${deviceId}/link`, { method: "DELETE" }, accessToken);
 }
+
+export type LatestUsage = {
+  usage_date: string;
+  foreground_seconds: number;
+};
+
+export type DeviceApplication = {
+  package_name: string;
+  app_label: string;
+  is_system_app: boolean;
+  first_seen_at: string;
+  last_seen_at: string;
+  uninstalled_at: string | null;
+  latest_usage: LatestUsage | null;
+};
+
+export function listDeviceApplications(
+  accessToken: string,
+  deviceId: string
+): Promise<{ applications: DeviceApplication[] }> {
+  return requestJson<{ applications: DeviceApplication[] }>(
+    `/api/v1/devices/${deviceId}/applications`,
+    { method: "GET" },
+    accessToken
+  );
+}

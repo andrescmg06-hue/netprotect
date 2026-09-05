@@ -1,3 +1,4 @@
+from app.models.application import DeviceApplication, DeviceApplicationUsage
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.device import Device, DeviceStatus, TutorDevice
@@ -10,6 +11,8 @@ __all__ = [
     "AuditLog",
     "Base",
     "Device",
+    "DeviceApplication",
+    "DeviceApplicationUsage",
     "DeviceStatus",
     "PairingCode",
     "Role",

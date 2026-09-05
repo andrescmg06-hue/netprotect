@@ -55,7 +55,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 - `docs/planning/plan-desarrollo.md` — el plan completo de 27 pasos, con qué instalar y cuándo.
 - `docs/planning/roadmap.md` — la lista de sprints y su incremento.
-- `docs/sprint-01.md` … `docs/sprint-06.md` (+ sus `-evidence.md`) — el historial real, sprint por
+- `docs/sprint-01.md` … `docs/sprint-07.md` (+ sus `-evidence.md`) — el historial real, sprint por
   sprint. Son la fuente de verdad de qué existe y por qué; no lo repitas de memoria, léelos.
 - `docs/security-baseline.md` — controles de seguridad aplicados y la matriz de permisos (quién
   puede hacer qué, y por qué se decidió así).
@@ -66,22 +66,34 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (05/09/2026)
 
-Sprints 1 a 6 completos y verificados en CI (run `33941379603`, los 4 jobs en verde). Existe:
-arquitectura y Docker; base de datos con
-migraciones; login con Google (backend + web + Android); roles y autorización por recurso
-(`require_tutor_of_device`, 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de
-6 dígitos con HMAC, límite de intentos y revocación; listado/detalle/renombrado/desvinculación de
-dispositivos con estado calculado por heartbeat, en Android (app del tutor y del supervisado) y en
-el panel web. Android tiene un router real (`HomeScreen`: sesión → rol → modo Tutor/Supervisado);
-la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su chequeo de
-infraestructura vive ahora en la pantalla de sesión cerrada.
+Sprints 1 a 6 completos y verificados en CI (run `33941379603`, los 4 jobs en verde). Sprint 7
+verificado localmente (backend en contenedor, dos corridas verdes; Android compila y empaqueta
+debug/release; web pasa lint y build) — falta confirmar su propio run de CI tras el push, ver
+`docs/sprint-07-evidence.md`. Existe: arquitectura y Docker; base de datos con migraciones; login
+con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
+404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
+de intentos y revocación; listado/detalle/renombrado/desvinculación de dispositivos con estado
+calculado por heartbeat, en Android (app del tutor y del supervisado) y en el panel web; inventario
+de apps instaladas y tiempo de uso diario, reportado por el dispositivo supervisado y visible en la
+app del tutor y en el panel web. Android tiene un router real (`HomeScreen`: sesión → rol → modo
+Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su
+chequeo de infraestructura vive ahora en la pantalla de sesión cerrada.
 
-**Siguiente: Sprint 7 — Inventario de aplicaciones.** Antes de escribir código: repetir el
-procedimiento obligatorio de la Fase C (verificar API oficial, versión mínima, permisos,
-restricciones, políticas de Play, viabilidad y alternativa) y actualizar
-`docs/android/capability-matrix.md` **antes** de implementar. `PACKAGE_USAGE_STATS` es un permiso
-especial que se concede desde Ajustes, no un permiso runtime normal — no asumir que un simple
-`requestPermissions` alcanza.
+**Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
+permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
+divulgación destacada, política anti-stalkerware para apps de control parental) sólo se activan si
+la app se **publica** en la tienda. Este proyecto se instala por sideload (Android Studio/`adb`)
+para el trabajo de la universidad, así que esas políticas quedan documentadas pero no aplican hoy.
+Sí sigue aplicando siempre, publicado o no: el permiso mismo debe existir, declararse correctamente
+y (si es especial) concederse por el mecanismo real de Android — sideload no exime de eso. Ver el
+detalle verificado en `docs/android/capability-matrix.md`.
+
+**Siguiente: Sprint 8 — Reglas de aplicaciones y bloqueo.** Antes de escribir código: repetir el
+procedimiento obligatorio de la Fase C para el mecanismo de bloqueo sin device owner (detección de
+app en primer plano + pantalla de bloqueo propia) y actualizar `docs/android/capability-matrix.md`
+**antes** de implementar. Documentar explícitamente los límites de ese mecanismo (qué puede evadirlo
+un usuario con conocimientos técnicos) en vez de prometer un bloqueo que Android no garantiza a una
+app sin privilegios de administrador de dispositivo.
 
 ## Entorno de trabajo
 
@@ -157,3 +169,11 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   cancelar), de modo que cada `setState` quede dentro de un callback de promesa ya resuelta, nunca de
   forma síncrona ni delegado a un helper. Ver `frontend/src/app/page.tsx` (patrón ya existente desde
   el Sprint 3) o `frontend/src/components/DevicesPanel.tsx` (Sprint 6) como referencia.
+- `compose.yaml` (el stack de desarrollo persistente) tiene `backend`, `web` y `migrate` como
+  servicios con imágenes independientes aunque `backend` y `migrate` compartan el mismo
+  `Dockerfile` de `backend/`. Reconstruir `backend`/`web` con `docker compose build` no reconstruye
+  `migrate`. Si además se corrió `alembic upgrade head` directo desde el entorno local contra esta
+  base (para verificar una migración nueva), la base queda en una revisión que el contenedor
+  `migrate` desactualizado no reconoce, y el siguiente `up` falla con
+  `Can't locate revision identified by '<revision>'`. Reconstruir los tres servicios juntos
+  (`docker compose -f compose.yaml build backend web migrate`) cuando cualquiera de los dos cambie.

@@ -11,6 +11,8 @@ import {
   unlinkDevice,
 } from "@/lib/apiClient";
 
+import { DeviceApplicationsList } from "./DeviceApplicationsList";
+
 type PanelState =
   | { kind: "loading" }
   | { kind: "loaded"; devices: Device[] }
@@ -33,6 +35,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [expandedAppsId, setExpandedAppsId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -155,7 +158,18 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     <button type="button" className="dangerButton" onClick={() => handleUnlink(device.id)}>
                       Desvincular
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedAppsId(expandedAppsId === device.id ? null : device.id)
+                      }
+                    >
+                      {expandedAppsId === device.id ? "Ocultar apps" : "Ver apps"}
+                    </button>
                   </div>
+                  {expandedAppsId === device.id && (
+                    <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
+                  )}
                 </>
               )}
             </li>

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.applications import router as applications_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.devices import router as devices_router
 from app.api.v1.endpoints.health import router as health_router
@@ -12,3 +13,4 @@ api_router.include_router(auth_router)
 api_router.include_router(roles_router)
 api_router.include_router(pairing_router)
 api_router.include_router(devices_router)
+api_router.include_router(applications_router)

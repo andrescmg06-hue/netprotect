@@ -21,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.netprotect.app.core.network.ApplicationsClient
+import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.DeviceSummary
 import com.netprotect.app.core.network.PairingClient
@@ -42,6 +45,12 @@ private sealed interface DevicesState {
     data class Error(val message: String) : DevicesState
 }
 
+private sealed interface AppsState {
+    data object Loading : AppsState
+    data class Loaded(val apps: List<DeviceApplicationSummary>) : AppsState
+    data class Error(val message: String) : AppsState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -52,18 +61,37 @@ fun TutorScreen(
     val scope = rememberCoroutineScope()
     val pairingClient = remember { PairingClient(baseUrl) }
     val deviceClient = remember { DeviceClient(baseUrl) }
+    val applicationsClient = remember { ApplicationsClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
     var codeError by remember { mutableStateOf<String?>(null) }
     var renamingDeviceId by remember { mutableStateOf<String?>(null) }
     var renameText by remember { mutableStateOf("") }
+    var expandedAppsDeviceId by remember { mutableStateOf<String?>(null) }
+    val appsStateByDevice = remember { mutableStateMapOf<String, AppsState>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
             DevicesState.Loaded(deviceClient.listDevices(accessToken))
         } catch (exception: Exception) {
             DevicesState.Error(exception.message ?: "No se pudo cargar la lista")
+        }
+    }
+
+    fun toggleApps(deviceId: String) {
+        if (expandedAppsDeviceId == deviceId) {
+            expandedAppsDeviceId = null
+            return
+        }
+        expandedAppsDeviceId = deviceId
+        appsStateByDevice[deviceId] = AppsState.Loading
+        scope.launch {
+            appsStateByDevice[deviceId] = try {
+                AppsState.Loaded(applicationsClient.getApplications(accessToken, deviceId))
+            } catch (exception: Exception) {
+                AppsState.Error(exception.message ?: "No se pudo cargar la lista de apps")
+            }
         }
     }
 
@@ -188,6 +216,9 @@ fun TutorScreen(
                                         reloadDevices()
                                     }
                                 },
+                                isAppsExpanded = expandedAppsDeviceId == device.id,
+                                appsState = appsStateByDevice[device.id],
+                                onToggleApps = { toggleApps(device.id) },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -213,6 +244,9 @@ private fun DeviceRow(
     onConfirmRename: () -> Unit,
     onCancelRename: () -> Unit,
     onUnlink: () -> Unit,
+    isAppsExpanded: Boolean,
+    appsState: AppsState?,
+    onToggleApps: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -247,9 +281,70 @@ private fun DeviceRow(
                 Row {
                     TextButton(onClick = onStartRename) { Text("Renombrar") }
                     TextButton(onClick = onUnlink) { Text("Desvincular", color = Color(0xFFFFB4AB)) }
+                    TextButton(onClick = onToggleApps) {
+                        Text(if (isAppsExpanded) "Ocultar apps" else "Ver apps")
+                    }
+                }
+                if (isAppsExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AppsList(appsState)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AppsList(state: AppsState?) {
+    when (state) {
+        null, AppsState.Loading -> Text("Cargando apps…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is AppsState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is AppsState.Loaded -> {
+            if (state.apps.isEmpty()) {
+                Text(
+                    "Todavía no se sincronizó ninguna app desde este dispositivo.",
+                    color = Color(0xFFABB5C4),
+                    fontSize = 13.sp,
+                )
+            } else {
+                val sorted = state.apps.sortedByDescending { it.latestUsageSeconds ?: -1 }
+                Column {
+                    sorted.forEach { app -> AppUsageRow(app) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppUsageRow(app: DeviceApplicationSummary) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(app.appLabel, color = Color.White, fontSize = 14.sp)
+            if (app.uninstalledAt != null) {
+                Text("Desinstalada", color = Color(0xFF7D899A), fontSize = 11.sp)
+            }
+        }
+        Text(
+            text = app.latestUsageSeconds?.let(::formatUsageDuration) ?: "Sin datos de uso",
+            color = Color(0xFFABB5C4),
+            fontSize = 12.sp,
+        )
+    }
+}
+
+private fun formatUsageDuration(totalSeconds: Int): String {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    return when {
+        hours > 0 -> "${hours} h ${minutes} min"
+        minutes > 0 -> "$minutes min"
+        else -> "< 1 min"
     }
 }
 

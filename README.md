@@ -170,3 +170,9 @@ El detalle está en `docs/sprint-05.md`.
 Gestión de dispositivos con estado real: listado, detalle, renombrado y desvinculación, disponibles en la app del tutor (Android) y en el panel web. El heartbeat del dispositivo supervisado actualiza `last_seen_at`; el estado `OFFLINE` se calcula al leer, comparándolo contra `device_offline_threshold_seconds`, sin ningún job en segundo plano. `GET /devices/me` permite al dispositivo supervisado confirmar su propio vínculo y quién lo supervisa, para no depender sólo de una caché local que podría quedar obsoleta. En Android, `HomeScreen` reemplaza a la pantalla de diagnóstico del Sprint 1 como punto de entrada: inicio de sesión → selección de rol → modo Tutor o modo Supervisado.
 
 El detalle está en `docs/sprint-06.md`.
+
+## Alcance del Sprint 7
+
+Inventario de aplicaciones: el dispositivo supervisado reporta qué apps tiene instaladas (sólo las que tienen ícono propio) y cuánto se usó cada una hoy, visible en la app del tutor y en el panel web. Requiere dos permisos de Android verificados contra fuentes oficiales antes de implementar (`QUERY_ALL_PACKAGES` y `PACKAGE_USAGE_STATS`, éste último concedido por el usuario en Ajustes, no por un diálogo runtime) — ver `docs/android/capability-matrix.md` para el detalle, incluida la aclaración de que las políticas de Google Play sobre estos permisos sólo aplican si la app se publica en la tienda, no al instalarla por sideload como en este proyecto. Una app que deja de reportarse se marca como desinstalada sin borrar su historial de uso.
+
+El detalle está en `docs/sprint-07.md`.
