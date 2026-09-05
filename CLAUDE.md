@@ -123,6 +123,20 @@ No `docker compose -f compose.test.yaml up --build ...` con `migrate` en `depend
 aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina por diseño — mató
 `backend` antes de que corriera sus pruebas la primera vez que se intentó (ver `docs/sprint-02-evidence.md`).
 
+## Herramientas de apoyo instaladas
+
+- **Impeccable** (`/impeccable`) — guía de diseño para el acabado visual de la web y de Android.
+  Instalado a nivel de proyecto en `.claude/`, licencia Apache-2.0, corre local sin claves ni red.
+  Las definiciones (skill, referencias, agentes) están versionadas; el binario del detector y
+  `settings.local.json` no — en una máquina nueva se reinstala con `npx impeccable install`.
+  Empezar con `/impeccable init` una sola vez para fijar el contexto de diseño del producto.
+- **`/security-review`** — viene incluido con Claude Code, no hay que instalar nada. Revisa los
+  cambios pendientes de la rama buscando vulnerabilidades. Correrlo **antes de cerrar cada sprint**,
+  junto con las pruebas: este proyecto maneja datos sensibles de menores (inventario de apps, uso,
+  y más adelante ubicación), así que la revisión de seguridad es parte del cierre, no un extra.
+- **`/code-review`** — también incluido. Revisa el diff buscando errores de corrección y
+  simplificaciones. Útil antes de un commit grande de sprint.
+
 ## Convenciones de código
 
 - Backend: FastAPI + SQLAlchemy 2.0 (`Mapped`/`mapped_column`) + Alembic. `ruff check app tests
