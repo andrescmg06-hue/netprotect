@@ -103,7 +103,9 @@ comando, por diseño desde el Sprint 5).
 
 ## CI en GitHub Actions
 
-Pendiente de confirmar tras el push de este sprint.
+Run [`33972875905`](https://github.com/andrescmg06-hue/netprotect/actions/runs/33972875905), commit
+`1090dd8`, los 4 jobs en verde: `backend` (22s), `frontend` (31s), `integration` (48s), `android`
+(1m39s).
 
 ## No se marca como verificado
 

@@ -66,10 +66,8 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (05/09/2026)
 
-Sprints 1 a 6 completos y verificados en CI (run `33941379603`, los 4 jobs en verde). Sprint 7
-verificado localmente (backend en contenedor, dos corridas verdes; Android compila y empaqueta
-debug/release; web pasa lint y build) — falta confirmar su propio run de CI tras el push, ver
-`docs/sprint-07-evidence.md`. Existe: arquitectura y Docker; base de datos con migraciones; login
+Sprints 1 a 7 completos y verificados en CI (Sprint 7: run `33972875905`, los 4 jobs en verde).
+Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
 de intentos y revocación; listado/detalle/renombrado/desvinculación de dispositivos con estado
