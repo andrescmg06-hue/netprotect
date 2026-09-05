@@ -130,6 +130,13 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   Las definiciones (skill, referencias, agentes) están versionadas; el binario del detector y
   `settings.local.json` no — en una máquina nueva se reinstala con `npx impeccable install`.
   Empezar con `/impeccable init` una sola vez para fijar el contexto de diseño del producto.
+- **Skills de Emil Kowalski** (MIT, `emilkowalski/skills`) — `emil-design-eng` (criterio de diseño),
+  `animate`, `review-animations`, `improve-animations`, `find-animation-opportunities`,
+  `animation-vocabulary`, `apple-design` y `pick-ui-library`. Markdown puro, versionados. Se
+  reinstalan con `npx skills@latest add emilkowalski/skills -s <nombre> -a claude-code --copy -y`.
+  No se instalaron `animate-expo`, `write-swift` ni `ask-sonner`: este proyecto no usa React Native,
+  ni Swift, ni Sonner. Ojo: estos skills están pensados para web (React/CSS); para las pantallas de
+  Compose sirve el criterio de diseño, no el código de las recetas.
 - **`/security-review`** — viene incluido con Claude Code, no hay que instalar nada. Revisa los
   cambios pendientes de la rama buscando vulnerabilidades. Correrlo **antes de cerrar cada sprint**,
   junto con las pruebas: este proyecto maneja datos sensibles de menores (inventario de apps, uso,
