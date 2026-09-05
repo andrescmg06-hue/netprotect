@@ -1,0 +1,136 @@
+# NetProtect — guía para quien continúe este proyecto con Claude Code
+
+Este archivo se carga automáticamente cada vez que Claude Code abre este repositorio. Léelo también
+tú si eres humano y estás retomando el proyecto: explica cómo se ha construido hasta ahora y cómo
+seguir sin romper las reglas que lo mantienen honesto.
+
+## Qué es esto
+
+NetProtect es una plataforma de control parental: una única app Android (Kotlin/Compose) que opera
+como Tutor o Supervisado según lo decide el backend, un panel web (Next.js) para el tutor, y un
+backend FastAPI + PostgreSQL + Redis que es la única fuente de verdad para ambos. El documento
+original con el alcance completo (48 secciones, 27 sprints) está fuera de este repo; lo que importa
+de él ya quedó traducido a artefactos versionados — ver la sección "Dónde está cada cosa" abajo.
+
+## La regla que gobierna todo lo demás
+
+**Nada se marca como terminado sin evidencia real de que se ejecutó.** No mocks disfrazados de
+pruebas, no "debería funcionar", no marcar un criterio de aceptación como cumplido por inspección del
+código. Si algo no se pudo probar (por ejemplo, un login real de Google exige que una persona elija
+su cuenta en un selector — ningún agente puede hacer eso), se dice explícitamente que quedó
+pendiente, en vez de darlo por bueno.
+
+Esto se sostiene con un patrón de dos documentos por sprint:
+
+- `docs/sprint-NN.md` — objetivo, historias de usuario, criterios de aceptación, decisiones de
+  diseño y **por qué** se tomaron (no sólo qué se hizo).
+- `docs/sprint-NN-evidence.md` — comandos ejecutados realmente, con su salida real. Incluye los
+  errores encontrados en el camino y cómo se corrigieron, no sólo el resultado final feliz.
+
+Antes de decir que un sprint está cerrado: la suite de pruebas corre en verde dentro de contenedores
+Docker reales (no mocks de base de datos), y **CI en GitHub Actions pasa en los 4 jobs**
+(`backend`, `frontend`, `android`, `integration`) en un runner limpio — eso es lo que de verdad
+certifica que algo funciona independientemente de esta máquina.
+
+## Cómo se construye, sprint por sprint
+
+1. Explicar el objetivo del sprint.
+2. Historias de usuario y criterios de aceptación.
+3. Decisiones de diseño — especialmente las de seguridad, explicadas con su motivo.
+4. Cambios de base de datos (modelos SQLAlchemy + migración Alembic).
+5. Backend.
+6. Cliente Android y/o web, cuando el sprint los toque.
+7. Pruebas de integración contra PostgreSQL/Redis reales en Docker — nunca mockeadas salvo la pieza
+   que exige una persona real (p. ej. la verificación de Google se simula con
+   `unittest.mock.patch` sobre la función que llama a Google, no sobre la lógica propia).
+8. Verificación local, luego en `compose.test.yaml` dentro de contenedor (ver nota de rendimiento
+   abajo), luego push y CI.
+9. Documentar (`sprint-NN.md` + `sprint-NN-evidence.md`), incluyendo cualquier hallazgo o error real
+   encontrado en el camino — no se ocultan los tropiezos, se documentan y se corrigen.
+
+No se avanza al siguiente sprint sin cerrar el anterior con CI en verde, salvo que quede pendiente
+explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
+
+## Dónde está cada cosa
+
+- `docs/planning/plan-desarrollo.md` — el plan completo de 27 pasos, con qué instalar y cuándo.
+- `docs/planning/roadmap.md` — la lista de sprints y su incremento.
+- `docs/sprint-01.md` … `docs/sprint-05.md` (+ sus `-evidence.md`) — el historial real, sprint por
+  sprint. Son la fuente de verdad de qué existe y por qué; no lo repitas de memoria, léelos.
+- `docs/security-baseline.md` — controles de seguridad aplicados y la matriz de permisos (quién
+  puede hacer qué, y por qué se decidió así).
+- `docs/diagrams/06-modelo-datos-fisico-sprint2.md` — el ER real del esquema, con las decisiones de
+  diseño de cada tabla.
+- `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
+  referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
+
+## Estado actual (04/09/2026)
+
+Sprints 1 a 5 completos y verificados en CI. Existe: arquitectura y Docker; base de datos con
+migraciones; login con Google (backend + web + Android); roles y autorización por recurso
+(`require_tutor_of_device`, 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de
+6 dígitos con HMAC, límite de intentos y revocación.
+
+**Siguiente: Sprint 6 — Gestión de dispositivos** (listado, detalle, renombrado, máquina de estados
+de conexión vía heartbeat). La web y Android todavía no tienen pantalla de vinculación ni de
+dispositivos — eso se construye en este sprint, consumiendo la API que ya existe.
+
+## Entorno de trabajo
+
+- Windows con Docker Desktop, Android Studio (SDK 36 + un AVD con Google APIs) y Node/Python locales
+  para correr pruebas fuera de contenedor cuando hace falta iterar rápido.
+- `docs/sprint-01-paso-0.md` tiene el detalle de cómo se dejó Android Studio y Docker funcionando en
+  esta máquina la primera vez, por si hay que replicarlo en otra.
+- Variables de entorno: copiar `.env.development.example` a `.env` y completar los valores marcados
+  como `change_me_*` o `your-*`. El `.env` real **nunca** se versiona.
+- Credenciales de Google Cloud (`GOOGLE_WEB_CLIENT_ID`) ya existen para este proyecto en la cuenta de
+  Google Cloud del dueño original; pídeselas directamente o crea un proyecto de Google Cloud propio
+  siguiendo `docs/sprint-03.md` (sección de autenticación) — la app está en modo "Prueba", así que
+  cualquier cuenta que use el login debe estar agregada como *tester* en la pantalla de
+  consentimiento OAuth.
+
+### Nota de rendimiento en Windows
+
+Las pruebas de integración corren en segundos dentro de un contenedor y en varios minutos si se
+ejecutan desde Windows contra los puertos publicados (cada petición paga ~1.4s en el proxy de
+puertos de Docker Desktop). Para verificar, usar siempre:
+
+```bash
+docker compose -f compose.test.yaml build
+docker compose -f compose.test.yaml run --rm migrate
+docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+```
+
+No `docker compose -f compose.test.yaml up --build ...` con `migrate` en `depends_on`: ese flag
+aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina por diseño — mató
+`backend` antes de que corriera sus pruebas la primera vez que se intentó (ver `docs/sprint-02-evidence.md`).
+
+## Convenciones de código
+
+- Backend: FastAPI + SQLAlchemy 2.0 (`Mapped`/`mapped_column`) + Alembic. `ruff check app tests
+  alembic` debe pasar limpio (config en `backend/pyproject.toml`, con `B008` ignorado a propósito:
+  es el patrón `Depends(...)` de FastAPI, no el bug que esa regla busca).
+- Nunca `Base.metadata.create_all`: todo cambio de esquema es una migración de Alembic versionada.
+- Secretos: cada uno con su propio nombre de variable y su propio valor — nunca reutilizar
+  `JWT_SECRET` para otra cosa "porque ya existe". Si algo necesita un secreto nuevo, generarlo con
+  `secrets.token_urlsafe(48)` y documentarlo en los tres `.env.*.example`.
+- Frontend: Next.js App Router, componentes cliente (`"use client"`). Ver `src/contexts/AuthContext.tsx`
+  para el patrón de sesión actual (en memoria + `sessionStorage`, no cookie `HttpOnly` — decisión
+  documentada y deliberadamente pospuesta en `docs/sprint-03.md`).
+- Android: sin Hilt/DI ni ViewModel todavía — el proyecto es pequeño y se ha mantenido así a
+  propósito; no introducir esas dependencias sin que el tamaño del proyecto lo justifique.
+- Commits: mensajes explicando el *por qué*, no sólo el qué. Co-autoría con el modelo que hizo el
+  trabajo (revisar la guía de atribución vigente en cada sesión).
+
+## Errores que ya se cometieron una vez — no repetirlos
+
+- Un JWT firmado con HS256 puede coincidir carácter por carácter con otro si sólo cambia el último
+  byte de la firma (relleno de Base64). Para pruebas que "alteran" un token, tocar un carácter del
+  medio, no el último.
+- Los tokens de acceso necesitan un `jti` aleatorio: sin él, dos emitidos en el mismo segundo para el
+  mismo usuario son idénticos.
+- Mezclar `TestClient` (corre la app en su propio *event loop*) con un fixture de base de datos que
+  usa el motor global de la aplicación falla en contenedor (asyncpg rechaza conexiones de otro loop).
+  El fixture compartido en `backend/tests/conftest.py` crea su propio motor por test; usarlo siempre.
+- Las pruebas que ejercitan rate limiting necesitan una IP/host único por test — los contadores viven
+  15 minutos en Redis y se filtran entre pruebas si comparten dirección.
