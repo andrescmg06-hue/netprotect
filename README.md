@@ -164,3 +164,9 @@ El detalle está en `docs/sprint-04.md`.
 Vinculación por código de 6 dígitos: generación con CSPRNG, vigencia de 3 minutos, un solo uso, revocación y desvinculación. El código se guarda como HMAC con una clave de servidor (`PAIRING_CODE_PEPPER`), nunca en claro; todos los fallos devuelven la misma respuesta; y los intentos se limitan por cuenta y por IP con Redis. Requiere `PAIRING_CODE_PEPPER` en `.env`.
 
 El detalle está en `docs/sprint-05.md`.
+
+## Alcance del Sprint 6
+
+Gestión de dispositivos con estado real: listado, detalle, renombrado y desvinculación, disponibles en la app del tutor (Android) y en el panel web. El heartbeat del dispositivo supervisado actualiza `last_seen_at`; el estado `OFFLINE` se calcula al leer, comparándolo contra `device_offline_threshold_seconds`, sin ningún job en segundo plano. `GET /devices/me` permite al dispositivo supervisado confirmar su propio vínculo y quién lo supervisa, para no depender sólo de una caché local que podría quedar obsoleta. En Android, `HomeScreen` reemplaza a la pantalla de diagnóstico del Sprint 1 como punto de entrada: inicio de sesión → selección de rol → modo Tutor o modo Supervisado.
+
+El detalle está en `docs/sprint-06.md`.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { DevicesPanel } from "@/components/DevicesPanel";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -26,7 +27,7 @@ function fetchReadiness(baseUrl: string, signal: AbortSignal): Promise<ReadyPayl
 }
 
 export default function Home() {
-  const { status: authStatus, user, signOut } = useAuth();
+  const { status: authStatus, user, accessToken, signOut } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("checking");
   const [detail, setDetail] = useState("Comprobando Backend, PostgreSQL y Redis…");
   const [ready, setReady] = useState<ReadyPayload | null>(null);
@@ -67,11 +68,11 @@ export default function Home() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">NETPROTECT · SPRINT 3</p>
-        <h1>Autenticación con Google</h1>
+        <p className="eyebrow">NETPROTECT · SPRINT 6</p>
+        <h1>Panel del tutor</h1>
         <p className="lead">
-          Base ejecutable de NetProtect con una única API, PostgreSQL como fuente de verdad,
-          Redis para datos temporales y clientes Web/Android sobre la misma arquitectura.
+          Inicia sesión con Google, vincula dispositivos desde la app Android y gestiona su
+          estado, nombre y vínculo desde este panel.
         </p>
 
         <div className="authCard" aria-live="polite">
@@ -100,6 +101,8 @@ export default function Home() {
             </>
           )}
         </div>
+
+        {authStatus === "authenticated" && accessToken && <DevicesPanel accessToken={accessToken} />}
 
         <div className="statusCard" aria-live="polite">
           <div>

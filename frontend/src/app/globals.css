@@ -141,6 +141,115 @@ h1 {
   margin: 4px 0 0;
 }
 
+.devicesPanel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.devicesPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.devicesPanelHeader button {
+  margin-top: 0;
+}
+
+.deviceList {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.deviceRow {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.deviceName {
+  font-weight: 600;
+}
+
+.deviceMeta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.deviceActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.deviceActions button,
+.deviceRenameForm button {
+  margin-top: 0;
+}
+
+.deviceRenameForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.deviceRenameForm input {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.dangerButton {
+  border-color: rgba(255, 123, 131, 0.4);
+  color: var(--danger);
+}
+
+.dangerButton:hover {
+  border-color: rgba(255, 123, 131, 0.8);
+}
+
+.statusPill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.statusPill.online {
+  color: var(--accent);
+  border-color: rgba(107, 227, 191, 0.4);
+}
+
+.statusPill.offline,
+.statusPill.unlinked {
+  color: var(--danger);
+  border-color: rgba(255, 123, 131, 0.4);
+}
+
 .grid {
   margin-top: 24px;
   display: grid;

@@ -78,3 +78,18 @@ async def require_tutor_of_device(
     if device is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
     return device
+
+
+async def require_supervised_owner_of_device(
+    device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Device:
+    """The mirror image of require_tutor_of_device: only the person this device belongs to
+    (the one it supervises) may act as it — e.g. send its heartbeat. Same 404-for-both
+    reasoning as the tutor check.
+    """
+    device = await db.get(Device, device_id)
+    if device is None or device.supervised_user_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
+    return device

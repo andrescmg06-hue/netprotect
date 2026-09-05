@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     pairing_redeem_max_per_ip: int = 30
     pairing_redeem_window_seconds: int = 900
 
+    # A device that hasn't sent a heartbeat within this window is reported OFFLINE even
+    # though its stored status still says ONLINE — computed at read time, not written by a
+    # background sweep, since no scheduler exists yet in this project.
+    device_offline_threshold_seconds: int = 300
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

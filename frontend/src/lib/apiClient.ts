@@ -54,3 +54,92 @@ export function fetchCurrentUser(accessToken: string): Promise<CurrentUser> {
     headers: { Authorization: `Bearer ${accessToken}` },
   }).then((response) => parseJsonOrThrow<CurrentUser>(response));
 }
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+async function requestJson<T>(
+  path: string,
+  init: RequestInit,
+  accessToken: string
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: { ...init.headers, Authorization: `Bearer ${accessToken}` },
+  });
+  const bodyText = await response.text();
+  const body = bodyText ? JSON.parse(bodyText) : null;
+
+  if (!response.ok) {
+    const detail = body && typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`;
+    throw new ApiError(detail, response.status);
+  }
+
+  return body as T;
+}
+
+export type DeviceStatus = {
+  status: string;
+  last_seen_at: string | null;
+  last_sync_at: string | null;
+};
+
+export type Device = {
+  id: string;
+  name: string;
+  platform: string;
+  os_version: string | null;
+  app_version: string | null;
+  linked_at: string;
+  status: DeviceStatus;
+};
+
+export type GrantedRole = {
+  role_code: string;
+  granted_at: string;
+};
+
+/** The web panel is the tutor's dashboard: granting TUTOR is a transparent step here, not a
+ * choice presented to the user (unlike Android, which is installed on both tutor and
+ * supervised devices). The backend grant is unconditional and idempotent either way.
+ */
+export function ensureTutorRole(accessToken: string): Promise<GrantedRole> {
+  return requestJson<GrantedRole>(
+    "/api/v1/users/me/roles",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role_code: "TUTOR" }),
+    },
+    accessToken
+  );
+}
+
+export function listDevices(accessToken: string): Promise<{ devices: Device[] }> {
+  return requestJson<{ devices: Device[] }>("/api/v1/devices", { method: "GET" }, accessToken);
+}
+
+export function renameDevice(accessToken: string, deviceId: string, name: string): Promise<Device> {
+  return requestJson<Device>(
+    `/api/v1/devices/${deviceId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    },
+    accessToken
+  );
+}
+
+export function unlinkDevice(
+  accessToken: string,
+  deviceId: string
+): Promise<{ device_id: string; unlinked_at: string }> {
+  return requestJson(`/api/v1/devices/${deviceId}/link`, { method: "DELETE" }, accessToken);
+}

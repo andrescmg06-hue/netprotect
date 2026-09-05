@@ -55,7 +55,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 - `docs/planning/plan-desarrollo.md` — el plan completo de 27 pasos, con qué instalar y cuándo.
 - `docs/planning/roadmap.md` — la lista de sprints y su incremento.
-- `docs/sprint-01.md` … `docs/sprint-05.md` (+ sus `-evidence.md`) — el historial real, sprint por
+- `docs/sprint-01.md` … `docs/sprint-06.md` (+ sus `-evidence.md`) — el historial real, sprint por
   sprint. Son la fuente de verdad de qué existe y por qué; no lo repitas de memoria, léelos.
 - `docs/security-baseline.md` — controles de seguridad aplicados y la matriz de permisos (quién
   puede hacer qué, y por qué se decidió así).
@@ -64,16 +64,26 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (04/09/2026)
+## Estado actual (05/09/2026)
 
-Sprints 1 a 5 completos y verificados en CI. Existe: arquitectura y Docker; base de datos con
+Sprints 1 a 6 completos. Backend verificado en CI (sprints 1-5); Sprint 6 verificado localmente en
+contenedor, Android y web (dos corridas verdes de la suite, `ruff`, `gradlew test assembleDebug
+assembleRelease`, `npm run lint && npm run build`) — falta confirmar el run de CI en GitHub Actions
+tras el push, ver `docs/sprint-06-evidence.md`. Existe: arquitectura y Docker; base de datos con
 migraciones; login con Google (backend + web + Android); roles y autorización por recurso
 (`require_tutor_of_device`, 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de
-6 dígitos con HMAC, límite de intentos y revocación.
+6 dígitos con HMAC, límite de intentos y revocación; listado/detalle/renombrado/desvinculación de
+dispositivos con estado calculado por heartbeat, en Android (app del tutor y del supervisado) y en
+el panel web. Android tiene un router real (`HomeScreen`: sesión → rol → modo Tutor/Supervisado);
+la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su chequeo de
+infraestructura vive ahora en la pantalla de sesión cerrada.
 
-**Siguiente: Sprint 6 — Gestión de dispositivos** (listado, detalle, renombrado, máquina de estados
-de conexión vía heartbeat). La web y Android todavía no tienen pantalla de vinculación ni de
-dispositivos — eso se construye en este sprint, consumiendo la API que ya existe.
+**Siguiente: Sprint 7 — Inventario de aplicaciones.** Antes de escribir código: repetir el
+procedimiento obligatorio de la Fase C (verificar API oficial, versión mínima, permisos,
+restricciones, políticas de Play, viabilidad y alternativa) y actualizar
+`docs/android/capability-matrix.md` **antes** de implementar. `PACKAGE_USAGE_STATS` es un permiso
+especial que se concede desde Ajustes, no un permiso runtime normal — no asumir que un simple
+`requestPermissions` alcanza.
 
 ## Entorno de trabajo
 
@@ -134,3 +144,18 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   El fixture compartido en `backend/tests/conftest.py` crea su propio motor por test; usarlo siempre.
 - Las pruebas que ejercitan rate limiting necesitan una IP/host único por test — los contadores viven
   15 minutos en Redis y se filtran entre pruebas si comparten dirección.
+- `compose.test.yaml` corre PostgreSQL sin volumen persistente a propósito. Reconstruir sólo
+  `backend` y volver a hacer `up` sin repetir `run --rm migrate` primero deja una base sin tablas
+  (falla con `relation "..." does not exist` en casi todas las pruebas, no sólo las nuevas). `migrate`
+  corre aparte, siempre, antes de cada `up` — nunca asumir que la corrida anterior lo dejó aplicado.
+- Un archivo Kotlin nuevo no está verificado hasta que `./gradlew compileDebugKotlin` (o más)
+  corre sobre él al menos una vez. Un import que falta (p. ej. `Modifier.width` sin
+  `androidx.compose.foundation.layout.width`) no lo marca ningún editor por sí solo; sólo el
+  compilador real. No declarar un archivo Android terminado sin haberlo compilado.
+- La regla de ESLint `react-hooks/set-state-in-effect` (la trae Next 16) rechaza que un `useEffect`
+  invoque, directa o indirectamente, cualquier función que llame a `setState` — incluso una función
+  `async` donde el `setState` ocurre después de un `await`. La forma que sí acepta: encadenar
+  `.then()/.catch()` directamente en el cuerpo del efecto (con una bandera `cancelled` si hace falta
+  cancelar), de modo que cada `setState` quede dentro de un callback de promesa ya resuelta, nunca de
+  forma síncrona ni delegado a un helper. Ver `frontend/src/app/page.tsx` (patrón ya existente desde
+  el Sprint 3) o `frontend/src/components/DevicesPanel.tsx` (Sprint 6) como referencia.
