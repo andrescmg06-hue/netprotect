@@ -14,7 +14,9 @@ data class MyDeviceInfo(
     val deviceId: String,
     val deviceName: String,
     val status: String,
-    val tutorLabel: String,
+    // Null means the device row exists but every tutor has since unlinked from it — that's
+    // not the same as being genuinely linked, even though /devices/me still returns 200.
+    val tutorLabel: String?,
 )
 
 class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
@@ -33,7 +35,7 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         val payload = getJson("/api/v1/devices/me", accessToken)
         val tutors = payload.getJSONArray("tutors")
         val tutorLabel = if (tutors.length() == 0) {
-            "Sin tutor activo"
+            null
         } else {
             (0 until tutors.length()).joinToString(", ") { index ->
                 val tutor = tutors.getJSONObject(index)

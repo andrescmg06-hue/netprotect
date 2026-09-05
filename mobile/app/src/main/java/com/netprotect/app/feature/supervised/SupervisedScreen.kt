@@ -74,9 +74,14 @@ fun SupervisedScreen(
         val cached = LinkedDeviceStore.read(context)
         state = try {
             val mine = deviceClient.getMyDevice(accessToken)
-            if (mine != null) {
-                LinkedDeviceStore.write(context, mine.deviceId, mine.tutorLabel)
-                SupervisedState.Linked(mine.tutorLabel)
+            val tutorLabel = mine?.tutorLabel
+            // The device row can outlive every tutor link (all of them unlinked): /devices/me
+            // still answers 200 in that case, with an empty tutor list. That is not "linked" —
+            // treat it the same as no device at all, so the user can redeem a new code instead
+            // of getting stuck on a "linked, but to no one" screen with no way out.
+            if (mine != null && tutorLabel != null) {
+                LinkedDeviceStore.write(context, mine.deviceId, tutorLabel)
+                SupervisedState.Linked(tutorLabel)
             } else {
                 LinkedDeviceStore.clear(context)
                 SupervisedState.EnteringCode()

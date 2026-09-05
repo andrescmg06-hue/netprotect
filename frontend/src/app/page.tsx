@@ -68,7 +68,7 @@ export default function Home() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">NETPROTECT · SPRINT 6</p>
+        <p className="eyebrow">NETPROTECT · SPRINT 7</p>
         <h1>Panel del tutor</h1>
         <p className="lead">
           Inicia sesión con Google, vincula dispositivos desde la app Android y gestiona su
