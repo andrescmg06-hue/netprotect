@@ -94,8 +94,9 @@ de forma síncrona en el cuerpo del efecto.
 
 ## CI en GitHub Actions
 
-Pendiente de confirmar tras el push de este sprint — se completa esta sección con el número de run y
-los tiempos de los 4 jobs en cuanto termine.
+Run [`33941379603`](https://github.com/andrescmg06-hue/netprotect/actions/runs/33941379603), commit
+`d86ba7e`, los 4 jobs en verde: `backend` (19s), `frontend` (31s), `integration` (50s), `android`
+(1m36s).
 
 ## No se marca como verificado
 

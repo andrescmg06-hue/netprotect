@@ -66,10 +66,8 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (05/09/2026)
 
-Sprints 1 a 6 completos. Backend verificado en CI (sprints 1-5); Sprint 6 verificado localmente en
-contenedor, Android y web (dos corridas verdes de la suite, `ruff`, `gradlew test assembleDebug
-assembleRelease`, `npm run lint && npm run build`) — falta confirmar el run de CI en GitHub Actions
-tras el push, ver `docs/sprint-06-evidence.md`. Existe: arquitectura y Docker; base de datos con
+Sprints 1 a 6 completos y verificados en CI (run `33941379603`, los 4 jobs en verde). Existe:
+arquitectura y Docker; base de datos con
 migraciones; login con Google (backend + web + Android); roles y autorización por recurso
 (`require_tutor_of_device`, 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de
 6 dígitos con HMAC, límite de intentos y revocación; listado/detalle/renombrado/desvinculación de
