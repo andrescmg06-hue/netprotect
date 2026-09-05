@@ -43,3 +43,12 @@ Thumbs.db
 # Runtime
 logs/
 *.log
+
+# Claude Code / Impeccable (skill de diseño)
+# Se versionan las definiciones de skills y agentes (texto, portables) pero no:
+#  - scripts/: binario compilado por plataforma (~16 MB), se reinstala con `npx impeccable install`
+#  - settings.local.json: configuración personal de cada máquina
+#  - *.lock: estado de sesión
+.claude/skills/impeccable/scripts/
+.claude/settings.local.json
+.claude/*.lock
