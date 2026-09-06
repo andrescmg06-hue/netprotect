@@ -170,3 +170,8 @@ probó, porque exige que una persona elija su cuenta en el selector del sistema.
 verificó en su lugar: cada criterio de aceptación del backend tiene prueba automatizada positiva y
 negativa contra PostgreSQL real, y la lógica de decisión (`RuleEvaluator`) tiene prueba unitaria real
 para los dos modos y sus casos límite.
+
+## CI en GitHub Actions
+
+Run [`34015293230`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34015293230), commit
+`98b9599`, los 4 jobs en verde: `backend`, `frontend`, `android`, `integration`.
