@@ -305,15 +305,18 @@ evaluación); lo no verificado es específicamente la cadena completa disparada 
   cuerpo del efecto (con bandera `cancelled`), nunca delegado a un helper — la misma regla de
   `react-hooks/set-state-in-effect` documentada en `CLAUDE.md` desde el Sprint 3.
 
-## Pendiente para cerrar el sprint
+## Definition of Done del Sprint 8
 
-- El flujo end-to-end completo en Android con login real de Google (ver la sección "Android" de
-  arriba) — requiere que una persona elija su cuenta en el selector del sistema.
-- Verificación visual en navegador de `DevicesPanel`/`DeviceRulesPanel` una vez autenticado: el
-  `dev server` se levantó y se confirmó que sirve `/` (200) y que el backend expone los tres
-  endpoints de reglas en su `openapi.json`, pero llegar a la pantalla del tutor real exige el mismo
-  login de Google — no se hizo clic real ahí dentro. Lo que sí se verificó automáticamente: `lint`
-  estricto y `build` de producción sin errores de TypeScript.
-- ~~`/security-review` final.~~ Corrido: sin hallazgos de alta confianza. Detalle en
-  `docs/sprint-08-evidence.md`.
-- Corrida de CI en GitHub Actions con los 4 jobs en verde.
+Los 8 criterios de aceptación tienen prueba automatizada contra PostgreSQL real: 20 pruebas nuevas
+en `tests/test_rules_integration.py`, sobre una suite total de 96, verde dos veces seguidas en
+contenedor limpio. Android compila, pasa sus 11 pruebas unitarias, empaqueta debug y release, y su
+mecanismo más nuevo y riesgoso (el foreground service `specialUse`) se verificó en ejecución real
+contra un emulador, no sólo en el código fuente. El panel web pasa lint estricto y build de
+producción. `/security-review` no encontró hallazgos de alta confianza. CI en GitHub Actions,
+run [`34004410772`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34004410772), los 4
+jobs en verde. Ver `docs/sprint-08-evidence.md`.
+
+Pendiente, explícitamente no hecho por requerir a una persona (ningún agente puede elegir una
+cuenta en el selector de Google): el flujo end-to-end completo en Android con login real, y la
+verificación visual en navegador de `DevicesPanel`/`DeviceRulesPanel` ya autenticado como tutor.
+Mismo límite documentado desde el Sprint 3, no una omisión de este sprint en particular.

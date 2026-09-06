@@ -176,3 +176,16 @@ El detalle está en `docs/sprint-06.md`.
 Inventario de aplicaciones: el dispositivo supervisado reporta qué apps tiene instaladas (sólo las que tienen ícono propio) y cuánto se usó cada una hoy, visible en la app del tutor y en el panel web. Requiere dos permisos de Android verificados contra fuentes oficiales antes de implementar (`QUERY_ALL_PACKAGES` y `PACKAGE_USAGE_STATS`, éste último concedido por el usuario en Ajustes, no por un diálogo runtime) — ver `docs/android/capability-matrix.md` para el detalle, incluida la aclaración de que las políticas de Google Play sobre estos permisos sólo aplican si la app se publica en la tienda, no al instalarla por sideload como en este proyecto. Una app que deja de reportarse se marca como desinstalada sin borrar su historial de uso.
 
 El detalle está en `docs/sprint-07.md`.
+
+## Alcance del Sprint 8
+
+Reglas de aplicaciones y bloqueo: el tutor define, por dispositivo y por app, una regla de
+bloquear, permitir, límite diario de minutos u horario; el propio dispositivo supervisado la
+descarga y la hace cumplir localmente, mostrando una pantalla de bloqueo propia y reportando cada
+bloqueo aplicado al backend. Sin device owner, detectar qué app está en primer plano exige sondear
+`UsageStatsManager` desde un foreground service (`specialUse`, verificado contra fuentes oficiales
+antes de implementar) — ver `docs/android/capability-matrix.md` para el mecanismo completo y sus
+límites explícitos (es reactivo, no preventivo, y el usuario puede revocarlo). Gestión de reglas e
+historial de bloqueos disponibles en el panel web.
+
+El detalle está en `docs/sprint-08.md`.

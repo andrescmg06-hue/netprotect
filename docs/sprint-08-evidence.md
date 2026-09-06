@@ -235,5 +235,13 @@ Verificado también explícitamente: las seis rutas nuevas reutilizan el mismo p
 consultas son SQLAlchemy parametrizado, y ningún componente Android nuevo (`RuleEnforcementService`,
 `BlockScreenActivity`) es invocable desde otra app.
 
-Tampoco hecho todavía, y por eso el sprint sigue abierto: la corrida de CI en GitHub Actions con
-los 4 jobs en verde.
+## CI en GitHub Actions
+
+Run [`34004410772`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34004410772), commit
+`356af34`, los 4 jobs en verde: `frontend` (28s), `android` (1m45s), `backend` (17s), `integration`
+(51s). Únicas anotaciones: warnings de GitHub sobre la deprecación de Node.js 20 en sus propios
+runners (no relacionado con el código de este proyecto).
+
+Con esto, el Sprint 8 queda cerrado según la regla de `CLAUDE.md`: backend, Android y web
+verificados con evidencia real, `/security-review` corrido sin hallazgos, y CI en verde en un
+runner limpio.

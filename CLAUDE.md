@@ -66,14 +66,17 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (05/09/2026)
 
-Sprints 1 a 7 completos y verificados en CI (Sprint 7: run `33972875905`, los 4 jobs en verde).
+Sprints 1 a 8 completos y verificados en CI (Sprint 8: run `34004410772`, los 4 jobs en verde).
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
 de intentos y revocación; listado/detalle/renombrado/desvinculación de dispositivos con estado
 calculado por heartbeat, en Android (app del tutor y del supervisado) y en el panel web; inventario
 de apps instaladas y tiempo de uso diario, reportado por el dispositivo supervisado y visible en la
-app del tutor y en el panel web. Android tiene un router real (`HomeScreen`: sesión → rol → modo
+app del tutor y en el panel web; reglas por app (bloquear/permitir/límite diario/horario) definidas
+por el tutor en el panel web y aplicadas localmente por el dispositivo supervisado mediante un
+foreground service que sondea `UsageStatsManager` y muestra una pantalla de bloqueo propia,
+reportando cada bloqueo aplicado. Android tiene un router real (`HomeScreen`: sesión → rol → modo
 Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su
 chequeo de infraestructura vive ahora en la pantalla de sesión cerrada.
 
@@ -86,12 +89,23 @@ Sí sigue aplicando siempre, publicado o no: el permiso mismo debe existir, decl
 y (si es especial) concederse por el mecanismo real de Android — sideload no exime de eso. Ver el
 detalle verificado en `docs/android/capability-matrix.md`.
 
-**Siguiente: Sprint 8 — Reglas de aplicaciones y bloqueo.** Antes de escribir código: repetir el
-procedimiento obligatorio de la Fase C para el mecanismo de bloqueo sin device owner (detección de
-app en primer plano + pantalla de bloqueo propia) y actualizar `docs/android/capability-matrix.md`
-**antes** de implementar. Documentar explícitamente los límites de ese mecanismo (qué puede evadirlo
-un usuario con conocimientos técnicos) en vez de prometer un bloqueo que Android no garantiza a una
-app sin privilegios de administrador de dispositivo.
+**Nota del Sprint 8, válida para cualquier sprint futuro que toque foreground services**: un
+foreground service que sondea en segundo plano exige notificación persistente por requisito del
+propio Android desde la API 26 — no es sólo la política anti-stalkerware de Play (que sigue
+aplicando sólo si se publica). Con `targetSdk` 34+ además hace falta declarar un
+`foregroundServiceType`; si el caso de uso no encaja en ninguno predefinido, `specialUse` es el
+único que sirve, con su propiedad `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` justificando el uso (revisada
+por Google sólo al publicar). Verificado también en ejecución real: Android 12+ rechaza arrancar
+un foreground service si la app no tiene antes una actividad visible — hay que arrancarlo siempre
+desde un efecto de una pantalla en primer plano, nunca desde un contexto de fondo.
+
+**Siguiente: Sprint 9 — Lista blanca y negra.** El modelo de listas por dispositivo y por tutor
+necesita una prioridad de reglas definida y probada explícitamente (lista negra > lista blanca >
+categoría > regla por defecto, o el orden que se justifique) — a diferencia del Sprint 8, donde sólo
+existía un alcance (una regla por app), aquí conviven varios alcances a la vez y hay que decidir cuál
+gana. De paso, este sprint es el primero en que la regla `ALLOW` del Sprint 8 deja de ser un
+no-efecto documentado (`app_rules`, ver su docstring) y empieza a servir para algo real: sobreescribir
+un bloqueo más amplio (lista o categoría) para una app puntual.
 
 ## Entorno de trabajo
 
