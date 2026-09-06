@@ -148,6 +148,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     <span className={`statusPill ${device.status.status.toLowerCase()}`}>
                       {device.status.status}
                     </span>
+                    {device.default_app_policy === "BLOCK" && (
+                      <span className="statusPill allowlist">SÓLO APPS APROBADAS</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -181,7 +184,12 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
                   )}
                   {expandedRulesId === device.id && (
-                    <DeviceRulesPanel accessToken={accessToken} deviceId={device.id} />
+                    <DeviceRulesPanel
+                      accessToken={accessToken}
+                      deviceId={device.id}
+                      defaultAppPolicy={device.default_app_policy}
+                      onPolicyChanged={reload}
+                    />
                   )}
                 </>
               )}

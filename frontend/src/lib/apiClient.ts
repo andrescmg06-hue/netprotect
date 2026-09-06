@@ -90,6 +90,11 @@ export type DeviceStatus = {
   last_sync_at: string | null;
 };
 
+/** What happens to an app with no rule: ALLOW is blocklist mode, BLOCK is allowlist mode
+ * (only apps the tutor approved run).
+ */
+export type DefaultAppPolicy = "ALLOW" | "BLOCK";
+
 export type Device = {
   id: string;
   name: string;
@@ -98,6 +103,7 @@ export type Device = {
   app_version: string | null;
   linked_at: string;
   status: DeviceStatus;
+  default_app_policy: DefaultAppPolicy;
 };
 
 export type GrantedRole = {
@@ -231,10 +237,31 @@ export function deleteAppRule(
   return requestJson(`/api/v1/devices/${deviceId}/rules/${ruleId}`, { method: "DELETE" }, accessToken);
 }
 
+export function updateDevicePolicy(
+  accessToken: string,
+  deviceId: string,
+  defaultAppPolicy: DefaultAppPolicy
+): Promise<{ device_id: string; default_app_policy: DefaultAppPolicy }> {
+  return requestJson(
+    `/api/v1/devices/${deviceId}/policy`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ default_app_policy: defaultAppPolicy }),
+    },
+    accessToken
+  );
+}
+
+/** DEFAULT_POLICY is not a rule type: the app had no rule and the device blocks by default.
+ * Kept separate so a tutor can tell it apart from an app they blocked deliberately.
+ */
+export type AppliedRuleType = RuleType | "DEFAULT_POLICY";
+
 export type AppRuleEvent = {
   id: string;
   package_name: string;
-  rule_type_applied: RuleType;
+  rule_type_applied: AppliedRuleType;
   occurred_at: string;
   received_at: string;
 };

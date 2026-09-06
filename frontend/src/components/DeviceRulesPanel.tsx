@@ -6,11 +6,14 @@ import {
   ApiError,
   type AppRule,
   type AppRuleEvent,
+  type AppliedRuleType,
+  type DefaultAppPolicy,
   type RuleType,
   type UpsertAppRuleInput,
   deleteAppRule,
   listAppRules,
   listRuleEvents,
+  updateDevicePolicy,
   upsertAppRule,
 } from "@/lib/apiClient";
 
@@ -50,10 +53,14 @@ function daysMaskToLabel(mask: number): string {
   return DAY_LABELS.filter((_, index) => (mask & (1 << index)) !== 0).join(" ");
 }
 
-function ruleTypeLabel(type: RuleType): string {
-  return { ALLOW: "Permitir", BLOCK: "Bloquear", DAILY_LIMIT: "Límite diario", SCHEDULE: "Horario" }[
-    type
-  ];
+function ruleTypeLabel(type: AppliedRuleType): string {
+  return {
+    ALLOW: "Permitir",
+    BLOCK: "Bloquear",
+    DAILY_LIMIT: "Límite diario",
+    SCHEDULE: "Horario",
+    DEFAULT_POLICY: "Sin aprobar",
+  }[type];
 }
 
 function describeRule(rule: AppRule): string {
@@ -61,9 +68,7 @@ function describeRule(rule: AppRule): string {
     case "BLOCK":
       return "Bloqueada siempre";
     case "ALLOW":
-      // No tiene efecto propio todavía: sólo sobreescribiría una regla de lista/categoría que
-      // este sprint (8) todavía no implementa — ver docs/sprint-08.md, decisiones de diseño.
-      return "Permitida (sin efecto propio todavía)";
+      return "Aprobada";
     case "DAILY_LIMIT":
       return `Máximo ${rule.daily_limit_minutes} min/día`;
     case "SCHEDULE":
@@ -76,9 +81,13 @@ function describeRule(rule: AppRule): string {
 export function DeviceRulesPanel({
   accessToken,
   deviceId,
+  defaultAppPolicy,
+  onPolicyChanged,
 }: {
   accessToken: string;
   deviceId: string;
+  defaultAppPolicy: DefaultAppPolicy;
+  onPolicyChanged: () => void;
 }) {
   const [rulesState, setRulesState] = useState<RulesState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
@@ -133,6 +142,13 @@ export function DeviceRulesPanel({
       .catch((error) =>
         setEventsState({ kind: "error", message: describeError(error, "No se pudo cargar el historial") })
       );
+  }
+
+  function handlePolicyChange(next: DefaultAppPolicy) {
+    setFormError(null);
+    updateDevicePolicy(accessToken, deviceId, next)
+      .then(() => onPolicyChanged())
+      .catch((error) => setFormError(describeError(error, "No se pudo cambiar el modo")));
   }
 
   function handleDelete(ruleId: string) {
@@ -194,8 +210,29 @@ export function DeviceRulesPanel({
       });
   }
 
+  const inAllowlistMode = defaultAppPolicy === "BLOCK";
+
   return (
     <div className="rulesPanel">
+      <div className="policyRow">
+        <div>
+          <div className="appLabel">
+            {inAllowlistMode ? "Sólo apps aprobadas" : "Todo permitido salvo lo bloqueado"}
+          </div>
+          <div className="appMeta">
+            {inAllowlistMode
+              ? "Una app sin regla queda bloqueada. La pantalla de inicio, el teléfono y Ajustes nunca se bloquean."
+              : "Una app sin regla funciona normalmente."}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => handlePolicyChange(inAllowlistMode ? "ALLOW" : "BLOCK")}
+        >
+          {inAllowlistMode ? "Permitir todo salvo lo bloqueado" : "Sólo permitir apps aprobadas"}
+        </button>
+      </div>
+
       <form className="ruleForm" onSubmit={handleSubmit}>
         <input
           value={packageName}

@@ -18,6 +18,7 @@ class DeviceResponse(BaseModel):
     app_version: str | None
     linked_at: datetime
     status: DeviceStatusResponse
+    default_app_policy: str
 
 
 class DeviceListResponse(BaseModel):

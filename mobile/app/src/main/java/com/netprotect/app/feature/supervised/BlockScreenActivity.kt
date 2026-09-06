@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.netprotect.app.core.rules.RuleType
+import com.netprotect.app.core.rules.BlockReason
 
 /** Full-screen cover shown over a blocked app. Launched by RuleEnforcementService with
  * FLAG_ACTIVITY_NEW_TASK from outside any activity context.
@@ -38,7 +38,7 @@ class BlockScreenActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_PACKAGE_NAME = "package_name"
-        const val EXTRA_RULE_TYPE = "rule_type"
+        const val EXTRA_REASON = "reason"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,15 +47,16 @@ class BlockScreenActivity : ComponentActivity() {
             finish()
             return
         }
-        val ruleType = intent.getStringExtra(EXTRA_RULE_TYPE)?.let(RuleType::fromWire)
-            ?: RuleType.BLOCK
+        val reason = intent.getStringExtra(EXTRA_REASON)
+            ?.let { wire -> BlockReason.entries.find { it.wireValue == wire } }
+            ?: BlockReason.BLOCK
         val appLabel = resolveAppLabel(packageName)
 
         setContent {
             MaterialTheme {
                 BlockScreenContent(
                     appLabel = appLabel,
-                    ruleType = ruleType,
+                    reason = reason,
                     onGoHome = {
                         startActivity(
                             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
@@ -73,15 +74,16 @@ class BlockScreenActivity : ComponentActivity() {
         }.getOrDefault(packageName)
 }
 
-private fun reasonText(ruleType: RuleType): String = when (ruleType) {
-    RuleType.BLOCK -> "Tu tutor bloqueó esta app."
-    RuleType.DAILY_LIMIT -> "Ya usaste el tiempo diario permitido para esta app."
-    RuleType.SCHEDULE -> "Esta app está bloqueada en este horario."
-    RuleType.ALLOW -> "" // never reached: ALLOW never triggers a block (see RuleEvaluator).
+private fun reasonText(reason: BlockReason): String = when (reason) {
+    BlockReason.BLOCK -> "Tu tutor bloqueó esta app."
+    BlockReason.DAILY_LIMIT -> "Ya usaste el tiempo diario permitido para esta app."
+    BlockReason.SCHEDULE -> "Esta app está bloqueada en este horario."
+    BlockReason.DEFAULT_POLICY ->
+        "Este dispositivo sólo permite las apps que tu tutor aprobó, y ésta no está aprobada."
 }
 
 @Composable
-private fun BlockScreenContent(appLabel: String, ruleType: RuleType, onGoHome: () -> Unit) {
+private fun BlockScreenContent(appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF090B10)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 48.dp),
@@ -101,7 +103,7 @@ private fun BlockScreenContent(appLabel: String, ruleType: RuleType, onGoHome: (
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(reasonText(ruleType), color = Color(0xFFABB5C4), fontSize = 16.sp, lineHeight = 22.sp)
+            Text(reasonText(reason), color = Color(0xFFABB5C4), fontSize = 16.sp, lineHeight = 22.sp)
 
             Spacer(modifier = Modifier.height(28.dp))
             Surface(color = Color(0xFF121722), shape = RoundedCornerShape(16.dp)) {

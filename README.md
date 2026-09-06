@@ -189,3 +189,16 @@ límites explícitos (es reactivo, no preventivo, y el usuario puede revocarlo).
 historial de bloqueos disponibles en el panel web.
 
 El detalle está en `docs/sprint-08.md`.
+
+## Alcance del Sprint 9
+
+Lista blanca y negra: cada dispositivo tiene una política por defecto que decide qué pasa con una app
+que no tiene regla propia. `ALLOW` (el valor por defecto, idéntico al comportamiento previo) permite
+todo salvo lo bloqueado; `BLOCK` invierte eso y sólo deja funcionar las apps que el tutor aprobó con
+una regla `ALLOW` — que hasta este sprint no tenía efecto propio. El launcher, la app de teléfono y
+Ajustes nunca se bloquean en ningún modo, resueltos en tiempo de ejecución (ver
+`docs/android/capability-matrix.md`), para no dejar el dispositivo inutilizable ni estorbar una
+llamada de emergencia. Un bloqueo por política se registra como `DEFAULT_POLICY`, distinto de un
+bloqueo que el tutor pidió explícitamente.
+
+El detalle está en `docs/sprint-09.md`.

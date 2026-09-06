@@ -3,35 +3,51 @@ package com.netprotect.app.core.rules
 import java.time.LocalDateTime
 
 /** Decides whether a foreground app should be blocked right now. Pure function, no I/O: the
- * caller is responsible for fetching rules and today's usage first (RuleEnforcementService).
+ * caller is responsible for fetching rules, the device policy and today's usage first
+ * (RuleEnforcementService).
  */
 object RuleEvaluator {
 
-    /** Returns the rule type that caused the block, or null if [packageName] isn't blocked.
-     * ALLOW and "no rule for this package" both return null — see AppRule.kt on why ALLOW has
-     * no distinct effect yet.
+    /** Returns why [packageName] is blocked, or null if it isn't.
      *
      * [todayUsageSeconds] is the same per-package total AppInventoryCollector already computes
      * for the Sprint 7 sync — DAILY_LIMIT is compared against it directly, not a new counter.
+     *
+     * [defaultPolicy] decides what happens to an app with no rule at all: under BLOCK
+     * (allowlist mode) it is blocked, under ALLOW it runs. A DAILY_LIMIT or SCHEDULE rule counts
+     * as approval while its condition isn't met — a tutor who set "one hour of this app a day"
+     * has approved that app for that hour, even in allowlist mode.
+     *
+     * Protected packages (launcher, phone, settings — see ProtectedPackages) are handled by the
+     * caller, and only against DEFAULT_POLICY: an explicit rule still applies to them. The
+     * protected set includes user-settable defaults, so exempting them from every rule would
+     * make "set this as my default phone app" a way to bypass any block.
      */
     fun evaluate(
         rules: List<AppRule>,
         packageName: String,
         todayUsageSeconds: Map<String, Int>,
         now: LocalDateTime,
-    ): RuleType? {
-        val rule = rules.find { it.packageName == packageName } ?: return null
+        defaultPolicy: DefaultAppPolicy,
+    ): BlockReason? {
+        val rule = rules.find { it.packageName == packageName }
+            ?: return defaultPolicyOutcome(defaultPolicy)
+
         return when (rule.ruleType) {
             RuleType.ALLOW -> null
-            RuleType.BLOCK -> RuleType.BLOCK
+            RuleType.BLOCK -> BlockReason.BLOCK
             RuleType.DAILY_LIMIT -> {
-                val limitMinutes = rule.dailyLimitMinutes ?: return null
+                val limitMinutes = rule.dailyLimitMinutes ?: return defaultPolicyOutcome(defaultPolicy)
                 val usedSeconds = todayUsageSeconds[packageName] ?: 0
-                if (usedSeconds >= limitMinutes * 60) RuleType.DAILY_LIMIT else null
+                if (usedSeconds >= limitMinutes * 60) BlockReason.DAILY_LIMIT else null
             }
-            RuleType.SCHEDULE -> if (isWithinSchedule(rule, now)) RuleType.SCHEDULE else null
+            RuleType.SCHEDULE ->
+                if (isWithinSchedule(rule, now)) BlockReason.SCHEDULE else null
         }
     }
+
+    private fun defaultPolicyOutcome(defaultPolicy: DefaultAppPolicy): BlockReason? =
+        if (defaultPolicy == DefaultAppPolicy.BLOCK) BlockReason.DEFAULT_POLICY else null
 
     private fun isWithinSchedule(rule: AppRule, now: LocalDateTime): Boolean {
         val start = rule.scheduleStartMinute ?: return false

@@ -13,12 +13,15 @@ from app.api.deps import (
 from app.db.session import get_db
 from app.models import AppRule, AppRuleEvent, Device, User
 from app.schemas.rule import (
+    ActiveRulesResponse,
     AppRuleEventListResponse,
     AppRuleEventResponse,
     AppRuleListResponse,
     AppRuleResponse,
     DeleteAppRuleResponse,
+    DevicePolicyResponse,
     ReportRuleEventRequest,
+    UpdateDevicePolicyRequest,
     UpsertAppRuleRequest,
 )
 from app.services.audit import record_audit_event
@@ -151,15 +154,17 @@ async def delete_app_rule(
     return DeleteAppRuleResponse(rule_id=rule_id, package_name=package_name, deleted_at=now)
 
 
-@router.get("/devices/{device_id}/rules/active", response_model=AppRuleListResponse)
+@router.get("/devices/{device_id}/rules/active", response_model=ActiveRulesResponse)
 async def list_active_app_rules_for_device(
     device_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_supervised_owner_of_device),
-) -> AppRuleListResponse:
+    device: Device = Depends(require_supervised_owner_of_device),
+) -> ActiveRulesResponse:
     """The supervised device pulls its own rule set to evaluate locally — no round-trip per
     app open. Every stored rule is "active" (no soft-delete/expiry concept exists for rules
-    yet), so this is the same query as the tutor's list, just gated by the other dependency.
+    yet), so the rule query is the same as the tutor's list, just gated by the other
+    dependency. The default policy rides along because an app with no rule still needs an
+    answer, and asking for it separately would let the two drift apart between calls.
     """
     rules = (
         await db.execute(
@@ -167,7 +172,49 @@ async def list_active_app_rules_for_device(
         )
     ).scalars().all()
 
-    return AppRuleListResponse(rules=[_to_rule_response(rule) for rule in rules])
+    return ActiveRulesResponse(
+        rules=[_to_rule_response(rule) for rule in rules],
+        default_app_policy=device.default_app_policy,
+    )
+
+
+@router.get("/devices/{device_id}/policy", response_model=DevicePolicyResponse)
+async def get_device_policy(
+    device_id: uuid.UUID,
+    device: Device = Depends(require_tutor_of_device),
+) -> DevicePolicyResponse:
+    return DevicePolicyResponse(
+        device_id=device_id, default_app_policy=device.default_app_policy
+    )
+
+
+@router.put("/devices/{device_id}/policy", response_model=DevicePolicyResponse)
+async def update_device_policy(
+    device_id: uuid.UUID,
+    payload: UpdateDevicePolicyRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    device: Device = Depends(require_tutor_of_device),
+) -> DevicePolicyResponse:
+    """Switching to BLOCK turns the device into allowlist mode: apps with no rule stop working.
+    Existing rules are untouched either way, so flipping back restores the previous behavior
+    exactly — and a tutor can pre-approve apps with ALLOW rules before flipping.
+    """
+    device.default_app_policy = payload.default_app_policy
+    await record_audit_event(
+        db,
+        actor_user_id=current_user.id,
+        action="DEVICE_POLICY_CHANGED",
+        resource_type="device",
+        resource_id=str(device_id),
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
+
+    return DevicePolicyResponse(
+        device_id=device_id, default_app_policy=device.default_app_policy
+    )
 
 
 @router.post("/devices/{device_id}/rule-events", response_model=AppRuleEventResponse)

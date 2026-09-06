@@ -91,6 +91,10 @@ class RuleEnforcementService : Service() {
         val detector = ForegroundAppDetector(applicationContext)
         val client = RuleEnforcementClient(baseUrl)
         var cachedRules: List<AppRule> = emptyList()
+        // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
+        // blocking everything on a network error.
+        var defaultPolicy = DefaultAppPolicy.ALLOW
+        var protectedPackages = ProtectedPackages.resolve(applicationContext)
         var lastRulesFetchAt = 0L
         // Tracks the last *other* app we evaluated, so returning to an app already handled
         // this "visit" doesn't spam the block screen. Reset to null whenever our own package
@@ -104,15 +108,37 @@ class RuleEnforcementService : Service() {
 
             if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS) {
                 runCatching { client.getActiveRules(accessToken, deviceId) }
-                    .onSuccess { cachedRules = it }
+                    .onSuccess {
+                        cachedRules = it.rules
+                        defaultPolicy = it.defaultPolicy
+                    }
+                // Refreshed on the same beat as the rules: the user can change their launcher
+                // or default phone app at any time, and the protected set must follow.
+                protectedPackages = ProtectedPackages.resolve(applicationContext)
                 lastRulesFetchAt = now
             }
 
             if (changedPackage == packageName) {
+                // Our own block screen coming to the front: reset the tracking so returning to
+                // a blocked app counts as a fresh visit. Never evaluated — blocking ourselves
+                // would loop.
                 lastHandledPackage = null
             } else if (changedPackage != null && changedPackage != lastHandledPackage) {
                 lastHandledPackage = changedPackage
-                evaluateAndMaybeBlock(changedPackage, cachedRules, client, accessToken, deviceId)
+                evaluateAndMaybeBlock(
+                    foregroundPackage = changedPackage,
+                    rules = cachedRules,
+                    defaultPolicy = defaultPolicy,
+                    // Protected apps are exempt from the *default policy* only, not from a
+                    // rule the tutor wrote on purpose. The protected set includes the user's
+                    // chosen dialer and launcher, which the supervised user can change in
+                    // Settings — exempting those from every rule would turn "set this app as
+                    // my default phone app" into a three-tap way to bypass any block.
+                    exemptFromDefaultPolicy = changedPackage in protectedPackages,
+                    client = client,
+                    accessToken = accessToken,
+                    deviceId = deviceId,
+                )
             }
 
             delay(POLL_INTERVAL_MS)
@@ -122,23 +148,27 @@ class RuleEnforcementService : Service() {
     private suspend fun evaluateAndMaybeBlock(
         foregroundPackage: String,
         rules: List<AppRule>,
+        defaultPolicy: DefaultAppPolicy,
+        exemptFromDefaultPolicy: Boolean,
         client: RuleEnforcementClient,
         accessToken: String,
         deviceId: String,
     ) {
         val todayUsage = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
-        val appliedRule = RuleEvaluator.evaluate(rules, foregroundPackage, todayUsage, LocalDateTime.now())
-            ?: return
+        val reason = RuleEvaluator.evaluate(
+            rules, foregroundPackage, todayUsage, LocalDateTime.now(), defaultPolicy
+        ) ?: return
+        if (exemptFromDefaultPolicy && reason == BlockReason.DEFAULT_POLICY) return
 
         startActivity(
             Intent(this, BlockScreenActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
-                .putExtra(BlockScreenActivity.EXTRA_RULE_TYPE, appliedRule.wireValue)
+                .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
         )
         runCatching {
-            client.reportRuleEvent(accessToken, deviceId, foregroundPackage, appliedRule, Instant.now())
+            client.reportRuleEvent(accessToken, deviceId, foregroundPackage, reason, Instant.now())
         }
     }
 

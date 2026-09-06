@@ -22,6 +22,15 @@ SCHEDULE = "SCHEDULE"
 RULE_TYPES = (ALLOW, BLOCK, DAILY_LIMIT, SCHEDULE)
 _RULE_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_TYPES)
 
+# Not a rule type: an app can be blocked without any rule of its own, because the device's
+# default policy is BLOCK (allowlist mode, Sprint 9). A tutor reading the history needs to tell
+# "I blocked this on purpose" apart from "this fell outside what I approved", so the event log
+# has to be able to say so.
+DEFAULT_POLICY = "DEFAULT_POLICY"
+
+RULE_EVENT_TYPES = (*RULE_TYPES, DEFAULT_POLICY)
+_RULE_EVENT_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_EVENT_TYPES)
+
 
 class AppRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """One rule per (device, package). Creating a rule for an app that already has one
@@ -30,11 +39,11 @@ class AppRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     (per-app vs. allow/block lists vs. categories) belongs to Sprint 9, which owns that as its
     own acceptance criterion.
 
-    ALLOW is accepted and stored like the other three types (Sprint 8 builds the full rule_type
-    set from plan-desarrollo.md), but has no observable effect yet: it only matters once a
-    broader-scope rule exists to override (an allow/block list or a category, from Sprints 9-10),
-    which doesn't exist today. The local evaluator treats ALLOW the same as "no rule" honestly,
-    rather than simulating behavior it can't have yet.
+    ALLOW had no observable effect in Sprint 8 (nothing broader existed for it to override). As
+    of Sprint 9 it does: when the device's default_app_policy is BLOCK (allowlist mode), an ALLOW
+    rule is what approves an app. Under the ALLOW policy it still behaves like "no rule", which
+    is correct rather than redundant — it lets a tutor pre-approve apps before flipping the
+    device into allowlist mode.
     """
 
     __tablename__ = "app_rules"
@@ -88,7 +97,8 @@ class AppRuleEvent(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "app_rule_events"
     __table_args__ = (
         CheckConstraint(
-            f"rule_type_applied IN ({_RULE_TYPE_LIST_SQL})", name="ck_app_rule_events_type_valid"
+            f"rule_type_applied IN ({_RULE_EVENT_TYPE_LIST_SQL})",
+            name="ck_app_rule_events_type_valid",
         ),
     )
 

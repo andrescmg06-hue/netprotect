@@ -284,6 +284,25 @@ h1 {
   white-space: nowrap;
 }
 
+.statusPill.allowlist {
+  color: var(--accent);
+  border-color: rgba(107, 227, 191, 0.4);
+}
+
+.policyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.policyRow button {
+  margin-top: 0;
+}
+
 .rulesPanel {
   margin-top: 12px;
   padding-top: 12px;

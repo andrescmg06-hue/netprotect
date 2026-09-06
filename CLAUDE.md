@@ -64,9 +64,9 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (05/09/2026)
+## Estado actual (06/09/2026)
 
-Sprints 1 a 8 completos y verificados en CI (Sprint 8: run `34004410772`, los 4 jobs en verde).
+Sprints 1 a 9 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -76,7 +76,9 @@ de apps instaladas y tiempo de uso diario, reportado por el dispositivo supervis
 app del tutor y en el panel web; reglas por app (bloquear/permitir/límite diario/horario) definidas
 por el tutor en el panel web y aplicadas localmente por el dispositivo supervisado mediante un
 foreground service que sondea `UsageStatsManager` y muestra una pantalla de bloqueo propia,
-reportando cada bloqueo aplicado. Android tiene un router real (`HomeScreen`: sesión → rol → modo
+reportando cada bloqueo aplicado; y una política por dispositivo que invierte el defecto
+(`ALLOW` = todo permitido salvo lo bloqueado, `BLOCK` = sólo apps aprobadas), con una lista de apps
+que nunca se bloquean. Android tiene un router real (`HomeScreen`: sesión → rol → modo
 Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su
 chequeo de infraestructura vive ahora en la pantalla de sesión cerrada.
 
@@ -99,13 +101,18 @@ por Google sólo al publicar). Verificado también en ejecución real: Android 1
 un foreground service si la app no tiene antes una actividad visible — hay que arrancarlo siempre
 desde un efecto de una pantalla en primer plano, nunca desde un contexto de fondo.
 
-**Siguiente: Sprint 9 — Lista blanca y negra.** El modelo de listas por dispositivo y por tutor
-necesita una prioridad de reglas definida y probada explícitamente (lista negra > lista blanca >
-categoría > regla por defecto, o el orden que se justifique) — a diferencia del Sprint 8, donde sólo
-existía un alcance (una regla por app), aquí conviven varios alcances a la vez y hay que decidir cuál
-gana. De paso, este sprint es el primero en que la regla `ALLOW` del Sprint 8 deja de ser un
-no-efecto documentado (`app_rules`, ver su docstring) y empieza a servir para algo real: sobreescribir
-un bloqueo más amplio (lista o categoría) para una app puntual.
+**Nota del Sprint 9, válida para cualquier sprint que amplíe el bloqueo**: existe una lista de apps
+que nunca se bloquean (`ProtectedPackages`: launcher, teléfono, Ajustes y la propia app), resuelta en
+tiempo de ejecución porque los nombres de paquete varían entre fabricantes. No es una preferencia del
+tutor, es una barrera de seguridad — bloquear el teléfono podría estorbar una llamada de emergencia y
+bloquear Ajustes dejaría al usuario sin forma de revocar el permiso. Cualquier mecanismo de bloqueo
+nuevo debe respetarla.
+
+**Siguiente: Sprint 10 — Categorías.** Catálogo de las 11 categorías del enunciado, clasificación de
+apps y reglas por categoría. Aquí sí aparece por primera vez una cadena de prioridad real entre
+alcances distintos (regla por app > categoría > política por defecto del dispositivo), que el Sprint 9
+todavía no necesitó: hoy sólo hay dos niveles (regla por app y política del dispositivo) y el orden
+entre ellos es evidente. Definirla y **probarla explícitamente** antes de escribir el motor.
 
 ## Entorno de trabajo
 

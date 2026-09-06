@@ -20,6 +20,16 @@ UNLINKED = "UNLINKED"
 DEVICE_STATUSES = (ONLINE, OFFLINE, SYNCING, ALERT, RESTRICTED, UNLINKED)
 _STATUS_LIST_SQL = ", ".join(f"'{value}'" for value in DEVICE_STATUSES)
 
+# Default app policy: what happens to an app with no rule of its own. ALLOW is the blocklist
+# model (everything runs unless a rule blocks it); BLOCK is the allowlist model (nothing runs
+# unless a rule allows it). ALLOW is the default so existing devices keep behaving exactly as
+# they did before this column existed.
+POLICY_ALLOW = "ALLOW"
+POLICY_BLOCK = "BLOCK"
+
+DEFAULT_APP_POLICIES = (POLICY_ALLOW, POLICY_BLOCK)
+_POLICY_LIST_SQL = ", ".join(f"'{value}'" for value in DEFAULT_APP_POLICIES)
+
 
 class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "devices"
@@ -33,6 +43,9 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             unique=True,
             postgresql_where=text("device_instance_id IS NOT NULL"),
         ),
+        CheckConstraint(
+            f"default_app_policy IN ({_POLICY_LIST_SQL})", name="ck_devices_default_policy_valid"
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(255))
@@ -42,6 +55,12 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Stable identifier generated once by the installed app, so re-pairing the same phone
     # (or pairing it to a second tutor) reuses this row instead of creating a duplicate.
     device_instance_id: Mapped[str | None] = mapped_column(String(64))
+    # Shared by every tutor of this device, like the rules themselves: a device can have more
+    # than one tutor, and "one says allowlist, the other says blocklist" has no good answer.
+    # Who changed it is in audit_logs.
+    default_app_policy: Mapped[str] = mapped_column(
+        String(16), default=POLICY_ALLOW, server_default=POLICY_ALLOW
+    )
     supervised_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )

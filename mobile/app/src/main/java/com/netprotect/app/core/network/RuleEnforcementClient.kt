@@ -1,9 +1,19 @@
 package com.netprotect.app.core.network
 
 import com.netprotect.app.core.rules.AppRule
+import com.netprotect.app.core.rules.BlockReason
+import com.netprotect.app.core.rules.DefaultAppPolicy
 import com.netprotect.app.core.rules.RuleType
 import java.time.Instant
 import org.json.JSONObject
+
+/** The rule set plus the fallback for apps that have none — the backend sends them together so
+ * the two can't drift apart between calls.
+ */
+data class ActiveRules(
+    val rules: List<AppRule>,
+    val defaultPolicy: DefaultAppPolicy,
+)
 
 /** Only what the supervised device itself needs: fetching the rules to evaluate locally, and
  * reporting a block once it enforces one. Tutor-side rule management (create/list/delete) is a
@@ -11,10 +21,10 @@ import org.json.JSONObject
  */
 class RuleEnforcementClient(baseUrl: String) : HttpJsonClient(baseUrl) {
 
-    suspend fun getActiveRules(accessToken: String, deviceId: String): List<AppRule> {
+    suspend fun getActiveRules(accessToken: String, deviceId: String): ActiveRules {
         val payload = getJson("/api/v1/devices/$deviceId/rules/active", accessToken)
         val rules = payload.getJSONArray("rules")
-        return (0 until rules.length()).mapNotNull { index ->
+        val parsed = (0 until rules.length()).mapNotNull { index ->
             val rule = rules.getJSONObject(index)
             val type = RuleType.fromWire(rule.getString("rule_type")) ?: return@mapNotNull null
             AppRule(
@@ -26,18 +36,24 @@ class RuleEnforcementClient(baseUrl: String) : HttpJsonClient(baseUrl) {
                 scheduleDaysMask = rule.intOrNull("schedule_days_mask"),
             )
         }
+        // An unrecognized policy falls back to ALLOW rather than BLOCK: if a future backend
+        // sends something this build doesn't know, the safe failure is to keep the device
+        // usable, not to lock the user out of every app.
+        val policy = DefaultAppPolicy.fromWire(payload.getString("default_app_policy"))
+            ?: DefaultAppPolicy.ALLOW
+        return ActiveRules(rules = parsed, defaultPolicy = policy)
     }
 
     suspend fun reportRuleEvent(
         accessToken: String,
         deviceId: String,
         packageName: String,
-        ruleTypeApplied: RuleType,
+        reason: BlockReason,
         occurredAt: Instant,
     ) {
         val body = JSONObject()
             .put("package_name", packageName)
-            .put("rule_type_applied", ruleTypeApplied.wireValue)
+            .put("rule_type_applied", reason.wireValue)
             .put("occurred_at", occurredAt.toString())
         sendJson("/api/v1/devices/$deviceId/rule-events", "POST", body, accessToken)
     }

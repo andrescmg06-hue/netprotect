@@ -1,6 +1,6 @@
 # Matriz preliminar de capacidades Android
 
-Fecha de revisión: 05/09/2026 (Sprint 8: mecanismo de bloqueo sin device owner, verificado contra fuentes oficiales actuales — ver sección dedicada más abajo. Sprint 7: enumeración de apps y estadísticas de uso). Revisión anterior: 30/08/2026. Esta matriz evita asumir capacidades que una aplicación Android convencional no posee.
+Fecha de revisión: 05/09/2026 (Sprint 9: identificar apps que nunca deben bloquearse en modo lista blanca. Sprint 8: mecanismo de bloqueo sin device owner. Sprint 7: enumeración de apps y estadísticas de uso). Todas verificadas contra fuentes oficiales actuales — ver secciones dedicadas más abajo. Revisión anterior: 30/08/2026. Esta matriz evita asumir capacidades que una aplicación Android convencional no posee.
 
 | Capacidad | API/mecanismo oficial | Requisito principal | Limitación relevante | Decisión |
 |---|---|---|---|---|
@@ -9,7 +9,8 @@ Fecha de revisión: 05/09/2026 (Sprint 8: mecanismo de bloqueo sin device owner,
 | Estadísticas de uso | `UsageStatsManager` | `PACKAGE_USAGE_STATS` + concesión del usuario en Ajustes (`Settings.ACTION_USAGE_ACCESS_SETTINGS`) para la mayoría de consultas | No equivale a control total de otras apps; posible degradación de puntualidad por App Standby Buckets (sin confirmar en fuente oficial) | Sprint 7 — ver detalle abajo |
 | App de supervisión visible (política anti-stalkerware) | N/A — política de **Google Play**, no del sistema Android | Sólo aplica si la app se **publica** en la tienda | Este proyecto se instala por sideload (Android Studio / `adb`) para el trabajo de la universidad, no se publica — la política no aplica hoy | Documentado y pospuesto, no bloqueante mientras no haya publicación — ver aclaración abajo |
 | Bloqueo de apps sin device owner | `UsageStatsManager.queryEvents()` sondeado periódicamente (eventos `MOVE_TO_FOREGROUND`/`ACTIVITY_RESUMED`) + pantalla de bloqueo propia (`Activity`/overlay) | `PACKAGE_USAGE_STATS` (mismo permiso ya concedido en Sprint 7); un foreground service para sondear de forma sostenida | No hay API de notificación push para "app pasó a primer plano": hay que sondear, así que existe una ventana entre que la app aparece y se detecta/bloquea; evadible revocando el permiso en Ajustes o deteniendo el servicio | Sprint 8 — ver detalle abajo |
-| Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 8/9 |
+| Identificar launcher, teléfono y Ajustes (para nunca bloquearlos) | `PackageManager.resolveActivity()` con `ACTION_MAIN`+`CATEGORY_HOME` y con `Settings.ACTION_SETTINGS`; `TelecomManager.getDefaultDialerPackage()` y `getSystemDialerPackage()` | Visibilidad de paquetes (ya cubierta por `QUERY_ALL_PACKAGES` del Sprint 7) | Todas pueden devolver `null`; si la resolución falla, esa app queda fuera de la lista protegida y podría bloquearse en modo lista blanca | Sprint 9 — ver detalle abajo |
+| Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
 | Geolocalización | Location Services | Permisos de ubicación según alcance | Restricciones de background y precisión | Sprint 13 |
 | Geocercas | Geofencing API | `ACCESS_FINE_LOCATION`; background location al aplicar según target/uso | Límite de geocercas y latencia en background | Sprint 14 |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
@@ -247,6 +248,66 @@ Fuentes: <https://developer.android.com/reference/android/app/usage/UsageStatsMa
 <https://developers.google.com/android/play-protect/client-protections> (bloqueo de sideload a apps
 con Accessibility Service, ya citadas en la sección del Sprint 7 de este mismo documento).
 
+## Sprint 9 — Apps que nunca deben bloquearse: verificación detallada (05/09/2026)
+
+Procedimiento obligatorio de la Fase C, aplicado antes de escribir código. Este sprint introduce el
+modo **lista blanca** (bloquear por defecto, permitir sólo lo aprobado). Sin una lista de apps
+protegidas, ese modo bloquearía también el launcher, la app de teléfono y Ajustes — dejando el
+dispositivo inutilizable y, peor, pudiendo estorbar una llamada de emergencia. Antes de implementar
+había que verificar cómo se identifican esas apps de forma fiable, sin hardcodear nombres de paquete
+que varían entre fabricantes.
+
+### Launcher (app de inicio)
+
+`PackageManager.resolveActivity()` con un `Intent(ACTION_MAIN)` + `CATEGORY_HOME` y la bandera
+`MATCH_DEFAULT_ONLY` devuelve el `ResolveInfo` de la app de inicio actual; el paquete sale de
+`resolveInfo.activityInfo.packageName`. `resolveActivity()` devuelve `null` si nada puede atender el
+intent, así que hay que tratarlo defensivamente. `MATCH_DEFAULT_ONLY` filtra a actividades con
+`CATEGORY_DEFAULT`, que es lo correcto para un intent implícito como éste.
+
+Sobre visibilidad de paquetes: desde Android 11 esta resolución estaría filtrada y podría devolver
+`null` aunque la app exista, salvo que se declare un elemento `<queries>` o se tenga
+`QUERY_ALL_PACKAGES`. **Este proyecto ya tiene `QUERY_ALL_PACKAGES` desde el Sprint 7**, así que no
+hace falta agregar `<queries>` — se anota explícitamente porque quien lea sólo esta sección podría
+concluir lo contrario.
+
+### Teléfono (dialer)
+
+Verificado directamente en el código fuente con javadoc de AOSP (`TelecomManager.java`), no en una
+página resumen:
+
+- `getDefaultDialerPackage()` — "package name for the default dialer package or null if no package
+  has been selected as the default dialer". Sin anotación `@RequiresPermission` en el método.
+- `getSystemDialerPackage()` — "Determines the package name of the system-provided default phone
+  app"; devuelve "package name for the system dialer package or null if no system dialer is
+  preloaded".
+
+Se usan **ambos**: el usuario puede haber elegido un dialer distinto del preinstalado, y en ese caso
+las dos apps son candidatas legítimas a protegerse. Las dos pueden devolver `null`.
+
+### Ajustes
+
+Misma técnica que el launcher, resolviendo `Settings.ACTION_SETTINGS`. Es la vía por la que el
+usuario supervisado puede revocar el acceso a uso; bloquearla sería, además de hostil, una forma de
+atrapar al usuario en un estado del que no puede salir — justo lo contrario de lo que este proyecto
+declara sobre no prometer bloqueos inevadibles.
+
+### Límite honesto de este mecanismo
+
+Si alguna de esas resoluciones devuelve `null` (fabricante atípico, ausencia de app de teléfono en
+una tablet, etc.), esa app simplemente no entra en la lista protegida y **podría bloquearse** en modo
+lista blanca. No se compensa con nombres de paquete hardcodeados (`com.android.settings` y
+compañía), porque varían entre fabricantes y darían una falsa sensación de cobertura. Mitigación
+real que sí existe: el bloqueo de este proyecto es reactivo y sólo superpone una pantalla — no
+impide que la app siga corriendo por debajo ni bloquea la bandeja de notificaciones ni los ajustes
+rápidos del sistema, así que no puede dejar a nadie sin salida de forma absoluta.
+
+Fuentes: <https://developer.android.com/reference/android/content/pm/PackageManager>,
+<https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/telecomm/java/android/telecom/TelecomManager.java>
+(javadoc real de `getDefaultDialerPackage()` y `getSystemDialerPackage()`),
+<https://developer.android.com/reference/android/provider/Settings#ACTION_SETTINGS>,
+<https://developer.android.com/training/package-visibility>.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -263,5 +324,7 @@ con Accessibility Service, ya citadas en la sección del Sprint 7 de este mismo 
 - Play Protect — categorías de Potentially Harmful Apps (Stalkerware/Commercial Spyware), Sprint 7 y 8.
 - Play Console Help — Prominent disclosure and consent, Sprint 7.
 - AOSP — código fuente con javadoc de `UsageStatsManager.java` (mirror en `android.googlesource.com`), Sprint 8.
+- Android Developers — `PackageManager.resolveActivity()`/`MATCH_DEFAULT_ONLY` y `Settings.ACTION_SETTINGS`, Sprint 9.
+- AOSP — código fuente con javadoc de `TelecomManager.java` (`getDefaultDialerPackage()`, `getSystemDialerPackage()`), Sprint 9.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

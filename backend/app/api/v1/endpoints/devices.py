@@ -53,6 +53,7 @@ def _to_response(device: Device, linked_at: datetime) -> DeviceResponse:
             last_seen_at=last_seen_at,
             last_sync_at=status_row.last_sync_at if status_row else None,
         ),
+        default_app_policy=device.default_app_policy,
     )
 
 
