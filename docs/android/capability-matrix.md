@@ -1,6 +1,6 @@
 # Matriz preliminar de capacidades Android
 
-Fecha de revisión: 05/09/2026 (Sprint 7: enumeración de apps y estadísticas de uso, verificado contra fuentes oficiales actuales — ver sección dedicada más abajo). Revisión anterior: 30/08/2026. Esta matriz evita asumir capacidades que una aplicación Android convencional no posee.
+Fecha de revisión: 05/09/2026 (Sprint 8: mecanismo de bloqueo sin device owner, verificado contra fuentes oficiales actuales — ver sección dedicada más abajo. Sprint 7: enumeración de apps y estadísticas de uso). Revisión anterior: 30/08/2026. Esta matriz evita asumir capacidades que una aplicación Android convencional no posee.
 
 | Capacidad | API/mecanismo oficial | Requisito principal | Limitación relevante | Decisión |
 |---|---|---|---|---|
@@ -8,7 +8,8 @@ Fecha de revisión: 05/09/2026 (Sprint 7: enumeración de apps y estadísticas d
 | Enumerar apps instaladas | `PackageManager` | `QUERY_ALL_PACKAGES` (permiso especial, sin diálogo runtime, sujeto a aprobación de Play) | Android 11+ filtra por defecto (`<queries>`); no cubre nuestro caso porque no sabemos de antemano qué apps tiene el supervisado | Sprint 7 — ver detalle abajo |
 | Estadísticas de uso | `UsageStatsManager` | `PACKAGE_USAGE_STATS` + concesión del usuario en Ajustes (`Settings.ACTION_USAGE_ACCESS_SETTINGS`) para la mayoría de consultas | No equivale a control total de otras apps; posible degradación de puntualidad por App Standby Buckets (sin confirmar en fuente oficial) | Sprint 7 — ver detalle abajo |
 | App de supervisión visible (política anti-stalkerware) | N/A — política de **Google Play**, no del sistema Android | Sólo aplica si la app se **publica** en la tienda | Este proyecto se instala por sideload (Android Studio / `adb`) para el trabajo de la universidad, no se publica — la política no aplica hoy | Documentado y pospuesto, no bloqueante mientras no haya publicación — ver aclaración abajo |
-| Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 8 |
+| Bloqueo de apps sin device owner | `UsageStatsManager.queryEvents()` sondeado periódicamente (eventos `MOVE_TO_FOREGROUND`/`ACTIVITY_RESUMED`) + pantalla de bloqueo propia (`Activity`/overlay) | `PACKAGE_USAGE_STATS` (mismo permiso ya concedido en Sprint 7); un foreground service para sondear de forma sostenida | No hay API de notificación push para "app pasó a primer plano": hay que sondear, así que existe una ventana entre que la app aparece y se detecta/bloquea; evadible revocando el permiso en Ajustes o deteniendo el servicio | Sprint 8 — ver detalle abajo |
+| Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 8/9 |
 | Geolocalización | Location Services | Permisos de ubicación según alcance | Restricciones de background y precisión | Sprint 13 |
 | Geocercas | Geofencing API | `ACCESS_FINE_LOCATION`; background location al aplicar según target/uso | Límite de geocercas y latencia en background | Sprint 14 |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
@@ -106,12 +107,152 @@ Fuentes: <https://developers.google.com/android/play-protect/phacategories>,
    página existe y no se encontró.
 3. El mecanismo y magnitud exactos con que los App Standby Buckets afectarían la puntualidad de
    `queryUsageStats()`.
-4. El diseño de la notificación persistente / foreground service para modo Supervisado, si el
-   proyecto llegara a publicarse — no diseñado todavía porque no es necesario hoy.
+4. ~~El diseño de la notificación persistente / foreground service para modo Supervisado, si el
+   proyecto llegara a publicarse — no diseñado todavía porque no es necesario hoy.~~ **Corregido en
+   el Sprint 8**: esto no era correcto tal como estaba escrito. La notificación persistente de un
+   foreground service es una obligación del propio sistema operativo Android para poder sondear en
+   segundo plano (no sólo una exigencia de la política anti-stalkerware de Play, que sigue aplicando
+   sólo si se publica) — se necesita ya, sideloaded o no, en cuanto el sondeo debe seguir corriendo
+   sin que la pantalla del tutor esté abierta. Ver la sección "Sprint 8" más abajo.
+
+## Sprint 8 — Bloqueo de apps sin device owner: verificación detallada (05/09/2026)
+
+Procedimiento obligatorio de la Fase C aplicado antes de escribir código, según lo exige
+`CLAUDE.md` para este sprint.
+
+### Cómo detectar qué app está en primer plano sin ser device owner
+
+`ActivityManager#getRunningTasks()` y `getRunningAppProcesses()` están deprecados/restringidos desde
+Android 5.0 (API 21): desde entonces sólo devuelven procesos de la propia app, no de terceros — no
+sirven para este caso. La única vía documentada y vigente para saber qué otra app tiene el usuario
+abierta, sin privilegios de administrador de dispositivo, es `UsageStatsManager.queryEvents()`
+filtrando eventos `UsageEvents.Event.MOVE_TO_FOREGROUND` / `MOVE_TO_BACKGROUND` (o los más granulares
+`ACTIVITY_RESUMED`/`ACTIVITY_PAUSED`, a nivel de `Activity` en vez de proceso). Usa el mismo permiso
+especial `PACKAGE_USAGE_STATS` que ya se obtuvo en el Sprint 7 (concedido por el usuario en Ajustes,
+no runtime) — no se necesita pedir nada nuevo.
+
+Verificado directamente en el código fuente con javadoc de AOSP (mirror del `UsageStatsManager.java`
+real, no una página resumen): desde Android R, si el usuario del dispositivo no está "unlocked"
+(`UserManager#isUserUnlocked()`), `queryEvents()` devuelve `null` — igual que `queryUsageStats()`, ya
+documentado en el Sprint 7. También confirmado: el sistema sólo conserva los eventos "por unos pocos
+días" (`Events are only kept by the system for a few days`), lo cual no es relevante para bloqueo en
+vivo pero sí importaría si se quisiera reconstruir historial pasado desde este mismo mecanismo.
+
+**No se encontró documentación oficial que fije una latencia o un intervalo de sondeo recomendado**
+para `queryEvents()` — no existe una API de tipo callback/push que avise "esta app acaba de pasar a
+primer plano"; hay que sondear (poll) el método periódicamente desde un servicio en ejecución. Esto
+es ausencia de evidencia, no confirmación de que no exista alguna guía: se declara pendiente en vez
+de inventar un número. Consecuencia práctica que sí se puede afirmar con certeza aunque no haya cifra
+oficial: **existe una ventana de tiempo real entre que la app supervisada aparece en primer plano y
+el momento en que nuestro mecanismo la detecta y muestra la pantalla de bloqueo** — no es bloqueo
+instantáneo ni preventivo, es reactivo.
+
+### Alternativa considerada y descartada para este sprint: `AccessibilityService`
+
+Un `AccessibilityService` recibe eventos (`TYPE_WINDOW_STATE_CHANGED`) de forma reactiva ante cambios
+de ventana en primer plano, en teoría con menor latencia que sondear `UsageStatsManager`. Se descarta
+para este sprint por lo ya verificado en el Sprint 7 y registrado en este mismo documento: Play
+Protect **bloquea automáticamente la instalación sideloaded** (vía "desde internet": navegador,
+mensajería, gestor de archivos) de cualquier app que declare un servicio de Accessibility, en ~185
+países — a diferencia de `PACKAGE_USAGE_STATS`, que no está en esa lista. Aunque hoy este proyecto se
+instala por cable desde Android Studio (vía distinta, no bloqueada), adoptar Accessibility ahora
+introduciría un riesgo real si en algún momento se prueba instalando un APK "desde internet" en un
+dispositivo de prueba, y además carga con el estigma de ser el mecanismo típico de apps
+stalkerware reales. Queda anotado como alternativa técnica válida, no como error, por si un sprint
+futuro necesita reconsiderarla con esa restricción explícita en mente.
+
+### Límites explícitos del mecanismo elegido (declarar siempre, no prometer bloqueo garantizado)
+
+- **No es preventivo, es reactivo**: la app objetivo puede quedar visible brevemente antes de que el
+  sondeo la detecte y se muestre la pantalla de bloqueo propia.
+- **El usuario supervisado puede revocar el permiso** en Ajustes (`Settings.ACTION_USAGE_ACCESS_
+  SETTINGS`) en cualquier momento y desactivar la detección sin que Android lo impida — es un permiso
+  especial revocable, no un candado del sistema.
+- **El servicio que sondea puede detenerse**: si el usuario fuerza el cierre de la app o del proceso
+  en segundo plano (o el sistema lo mata bajo presión de memoria/Doze sin que exista un mecanismo de
+  reinicio fuera de lo que el propio proyecto implemente), el sondeo se interrumpe y con él el
+  bloqueo, hasta que algo lo reinicie.
+- **Requiere que el usuario haya desbloqueado el dispositivo** al menos una vez tras el arranque
+  (`isUserUnlocked()`) para que `queryEvents()` devuelva datos; antes de eso, la detección no
+  funciona (afecta sobre todo al primer arranque tras reiniciar el dispositivo).
+- **No sustituye a un control de administrador de dispositivo real**: un usuario con conocimientos
+  técnicos puede desinstalar la app supervisada, revocar el permiso especial, o (si tiene acceso de
+  desarrollador) usar herramientas de depuración para inspeccionar o interferir con el proceso. Nada
+  de esto se puede impedir sin ser device owner, y el proyecto no lo es ni lo pretende para el MVP.
+
+### Requisito real: foreground service con notificación (no sólo política de Play)
+
+Corrige lo anotado como pendiente en el Sprint 7 (ver punto 4 más arriba, tachado): sondear
+`queryEvents()` mientras la pantalla del tutor o del supervisado no está abierta exige un
+**foreground service**, y Android **exige por sí mismo** que todo foreground service muestre una
+notificación mientras corre (`startForeground()` con un objeto `Notification`, prioridad `LOW` o
+mayor) — esto es un requisito del sistema operativo desde Android 8 (API 26), no la política
+anti-stalkerware de Play (que sigue aplicando sólo si se publica, y sigue sin aplicar hoy).
+
+Verificado además, específico de este proyecto (`compileSdk`/`targetSdk` 36, muy por encima del
+umbral): desde Android 14 (API 34) hay que declarar un `foregroundServiceType` en el manifiesto.
+Ningún tipo predefinido (`camera`, `location`, `mediaPlayback`, etc.) encaja en "vigilar qué app
+tiene el usuario en primer plano" — la propia documentación de Android confirma que para ese caso
+`specialUse` es la única opción, y exige declarar el permiso `FOREGROUND_SERVICE_SPECIAL_USE` además
+de `FOREGROUND_SERVICE`, más un elemento `<property android:name="android.app.PROPERTY_SPECIAL_USE_
+FGS_SUBTYPE" android:value="...">` con una justificación en texto — que Google sólo revisa si la app
+se publica (no aplica hoy, igual que el resto de políticas de Play ya documentadas).
+
+También verificado: `POST_NOTIFICATIONS` (permiso runtime de Android 13+) no es necesario para que el
+foreground service arranque — si el usuario lo niega, el servicio corre igual, sólo que la
+notificación no aparece en la bandeja (sigue visible en el "FGS Task Manager" del sistema). Se pide
+igual en este proyecto porque la notificación es deliberadamente visible, no algo que ocultar (ver
+decisión de no perseguir sigilo en `docs/sprint-08.md`), no porque sea obligatorio para que el
+bloqueo funcione.
+
+Fuentes: <https://developer.android.com/develop/background-work/services/fgs/launch>,
+<https://developer.android.com/about/versions/14/changes/fgs-types-required>,
+<https://developer.android.com/develop/background-work/services/fgs/service-types>,
+<https://developer.android.com/develop/ui/compose/notifications/notification-permission>.
+
+### Verificado en ejecución real (emulador Pixel_8, API 36, 05-06/09/2026)
+
+No basta con que compile: se instaló el APK y se arrancó `RuleEnforcementService` de verdad contra
+un emulador real. Dos hallazgos que sólo aparecen en ejecución, no en el código fuente:
+
+1. **Arrancar el foreground service "en frío" (por ejemplo, `adb shell am start-service` sin que la
+   app tenga antes una actividad visible) falla** con `Error: app is in background uid null` — la
+   restricción de Android 12+ a iniciar foreground services desde segundo plano. Sólo funcionó tras
+   traer `MainActivity` a primer plano primero. Esto **confirma que el diseño ya elegido es el
+   correcto y no opcional**: `RuleEnforcementService.start()` debe llamarse desde una `Activity` en
+   primer plano (como ya hace `SupervisedScreen` en su `DisposableEffect`), nunca desde un contexto
+   que Android considere "background".
+2. Con la app en primer plano, el servicio **sí entra en estado foreground real**, confirmado con
+   `dumpsys activity services`: `isForeground=true`, `types=0x40000000` (el valor numérico de
+   `specialUse`), notificación con `flags=ONGOING_EVENT|FOREGROUND_SERVICE` en el canal
+   `rule_enforcement` — sin ninguna `SecurityException` ni
+   `MissingForegroundServiceTypeException`. Sin excepciones en el proceso durante los ~40 segundos
+   que corrió sondeando contra un backend inalcanzable (credenciales falsas a propósito), lo que
+   también confirma que los fallos de red silenciosos (`runCatching`) no lo interrumpen.
+
+### Pendiente de confirmar
+
+1. Intervalo de sondeo óptimo (ni oficial ni de terceros confirmado) — se decidirá empíricamente al
+   implementar, documentando el valor elegido y su justificación (batería vs. latencia de bloqueo) en
+   `docs/sprint-08.md`, no en esta matriz.
+2. Comportamiento exacto de Doze/App Standby sobre un foreground service que sondea
+   `queryEvents()` de forma sostenida — mismo estado de "plausible pero no confirmado" ya anotado
+   para `queryUsageStats()` en el Sprint 7.
+
+Fuentes: <https://developer.android.com/reference/android/app/usage/UsageStatsManager>,
+<https://developer.android.com/reference/android/app/usage/UsageEvents.Event>,
+<https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/core/java/android/app/usage/UsageStatsManager.java>
+(javadoc real de `queryEvents()`, confirma el comportamiento con `isUserUnlocked()` y la retención de
+"a few days"), <https://developers.google.com/android/play-protect/phacategories> y
+<https://developers.google.com/android/play-protect/client-protections> (bloqueo de sideload a apps
+con Accessibility Service, ya citadas en la sección del Sprint 7 de este mismo documento).
 
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
+- Android Developers — `UsageEvents.Event`, Sprint 8.
+- Android Developers — foreground services: arranque, tipos de servicio y requisito de tipo desde
+  Android 14, permiso de notificaciones en tiempo de ejecución, Sprint 8.
 - Android Developers — `VpnService`.
 - Android Developers — Geofencing.
 - Android Developers — `NotificationListenerService`.
@@ -119,7 +260,8 @@ Fuentes: <https://developers.google.com/android/play-protect/phacategories>,
 - Android Developers — foreground service types y restricciones de background.
 - Android Developers — Package visibility (`<queries>` y `QUERY_ALL_PACKAGES`), Sprint 7.
 - Play Console Help — política de `QUERY_ALL_PACKAGES` y formulario de declaración de permisos, Sprint 7.
-- Play Protect — categorías de Potentially Harmful Apps (Stalkerware/Commercial Spyware), Sprint 7.
+- Play Protect — categorías de Potentially Harmful Apps (Stalkerware/Commercial Spyware), Sprint 7 y 8.
 - Play Console Help — Prominent disclosure and consent, Sprint 7.
+- AOSP — código fuente con javadoc de `UsageStatsManager.java` (mirror en `android.googlesource.com`), Sprint 8.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

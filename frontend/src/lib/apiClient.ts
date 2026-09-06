@@ -169,3 +169,83 @@ export function listDeviceApplications(
     accessToken
   );
 }
+
+export type RuleType = "ALLOW" | "BLOCK" | "DAILY_LIMIT" | "SCHEDULE";
+
+export type AppRule = {
+  id: string;
+  package_name: string;
+  rule_type: RuleType;
+  daily_limit_minutes: number | null;
+  schedule_start_minute: number | null;
+  schedule_end_minute: number | null;
+  schedule_days_mask: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UpsertAppRuleInput = {
+  package_name: string;
+  rule_type: RuleType;
+  daily_limit_minutes?: number;
+  schedule_start_minute?: number;
+  schedule_end_minute?: number;
+  schedule_days_mask?: number;
+};
+
+export function listAppRules(
+  accessToken: string,
+  deviceId: string
+): Promise<{ rules: AppRule[] }> {
+  return requestJson<{ rules: AppRule[] }>(
+    `/api/v1/devices/${deviceId}/rules`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+/** Creating a rule for a package that already has one replaces it — same upsert semantics as
+ * the backend (app/models/rule.py): only one active rule per (device, package) exists.
+ */
+export function upsertAppRule(
+  accessToken: string,
+  deviceId: string,
+  input: UpsertAppRuleInput
+): Promise<AppRule> {
+  return requestJson<AppRule>(
+    `/api/v1/devices/${deviceId}/rules`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    accessToken
+  );
+}
+
+export function deleteAppRule(
+  accessToken: string,
+  deviceId: string,
+  ruleId: string
+): Promise<{ rule_id: string; package_name: string; deleted_at: string }> {
+  return requestJson(`/api/v1/devices/${deviceId}/rules/${ruleId}`, { method: "DELETE" }, accessToken);
+}
+
+export type AppRuleEvent = {
+  id: string;
+  package_name: string;
+  rule_type_applied: RuleType;
+  occurred_at: string;
+  received_at: string;
+};
+
+export function listRuleEvents(
+  accessToken: string,
+  deviceId: string
+): Promise<{ events: AppRuleEvent[] }> {
+  return requestJson<{ events: AppRuleEvent[] }>(
+    `/api/v1/devices/${deviceId}/rule-events`,
+    { method: "GET" },
+    accessToken
+  );
+}

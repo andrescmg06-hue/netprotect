@@ -1,6 +1,9 @@
 package com.netprotect.app.feature.supervised
 
+import android.Manifest
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +40,7 @@ import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.permissions.UsageAccessPermission
+import com.netprotect.app.core.rules.RuleEnforcementService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -65,6 +70,19 @@ fun SupervisedScreen(
     var state by remember { mutableStateOf<SupervisedState>(SupervisedState.CheckingLink) }
     var codeInput by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
+
+    // Not required for the enforcement service to run (see RuleEnforcementService/
+    // capability-matrix.md) — asked anyway because the notification is deliberately visible,
+    // not something to hide. No-op callback: whether the user grants it or not, the flow
+    // continues the same way.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(state) {
+        if (state is SupervisedState.Linked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     // The local cache is only a UI shortcut. On every start we ask the server who this
     // account's device actually is: a different Google account signing into the same phone,
@@ -127,6 +145,20 @@ fun SupervisedScreen(
             }
             delay(APP_SYNC_INTERVAL_MS)
         }
+    }
+
+    // Unlike the two loops above, this one must keep running while this screen is NOT in the
+    // foreground — the whole point is catching when the supervised user opens some other app.
+    // A foreground service, not a LaunchedEffect, is what makes that possible; see
+    // RuleEnforcementService. Same hasUsageAccess gate as the sync above: foreground detection
+    // uses the same PACKAGE_USAGE_STATS-backed API.
+    DisposableEffect(state, hasUsageAccess) {
+        val linked = state as? SupervisedState.Linked
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId
+        if (linked != null && hasUsageAccess && deviceId != null) {
+            RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
+        }
+        onDispose { RuleEnforcementService.stop(context) }
     }
 
     Column(

@@ -44,6 +44,11 @@ Thumbs.db
 logs/
 *.log
 
+# Overrides locales de docker compose (p.ej. remapear un puerto que choca con software
+# instalado en la máquina de quien desarrolla) — nunca compartidos ni versionados.
+compose.override.yaml
+compose.override.yml
+
 # Claude Code / Impeccable (skill de diseño)
 # Se versionan las definiciones de skills y agentes (texto, portables) pero no:
 #  - scripts/: binario compilado por plataforma (~16 MB), se reinstala con `npx impeccable install`

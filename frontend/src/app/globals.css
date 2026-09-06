@@ -284,6 +284,64 @@ h1 {
   white-space: nowrap;
 }
 
+.rulesPanel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ruleForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ruleForm input,
+.ruleForm select {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.ruleForm button {
+  margin-top: 0;
+}
+
+.scheduleFields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dayPicker {
+  display: flex;
+  gap: 4px;
+}
+
+.dayButton {
+  margin-top: 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.dayButtonActive {
+  color: var(--accent);
+  border-color: rgba(107, 227, 191, 0.6);
+}
+
 .grid {
   margin-top: 24px;
   display: grid;

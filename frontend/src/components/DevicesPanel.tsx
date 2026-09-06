@@ -12,6 +12,7 @@ import {
 } from "@/lib/apiClient";
 
 import { DeviceApplicationsList } from "./DeviceApplicationsList";
+import { DeviceRulesPanel } from "./DeviceRulesPanel";
 
 type PanelState =
   | { kind: "loading" }
@@ -36,6 +37,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [renameValue, setRenameValue] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [expandedAppsId, setExpandedAppsId] = useState<string | null>(null);
+  const [expandedRulesId, setExpandedRulesId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -166,9 +168,20 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     >
                       {expandedAppsId === device.id ? "Ocultar apps" : "Ver apps"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedRulesId(expandedRulesId === device.id ? null : device.id)
+                      }
+                    >
+                      {expandedRulesId === device.id ? "Ocultar reglas" : "Gestionar reglas"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
+                  )}
+                  {expandedRulesId === device.id && (
+                    <DeviceRulesPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                 </>
               )}
