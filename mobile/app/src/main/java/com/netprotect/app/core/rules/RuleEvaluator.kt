@@ -37,6 +37,7 @@ object RuleEvaluator {
         weekUsageSeconds: Map<String, Int>,
         now: LocalDateTime,
         defaultPolicy: DefaultAppPolicy,
+        schoolMode: SchoolMode,
     ): BlockReason? {
         val usedSeconds = todayUsageSeconds[packageName] ?: 0
         val usedWeekSeconds = weekUsageSeconds[packageName] ?: 0
@@ -76,7 +77,7 @@ object RuleEvaluator {
             return if (blocked != null) BlockReason.CATEGORY else null
         }
 
-        return defaultPolicyOutcome(defaultPolicy)
+        return defaultPolicyOutcome(defaultPolicy, schoolMode, now)
     }
 
     /** The part of evaluation shared by AppRule and CategoryRule — same four rule types, same
@@ -120,8 +121,25 @@ object RuleEvaluator {
             }
     }
 
-    private fun defaultPolicyOutcome(defaultPolicy: DefaultAppPolicy): BlockReason? =
-        if (defaultPolicy == DefaultAppPolicy.BLOCK) BlockReason.DEFAULT_POLICY else null
+    /** BLOCK if either the device's own default policy is BLOCK, or school mode (Sprint 12) is
+     * currently in its window — whichever fires reports its own distinct reason, since a tutor
+     * reading the history needs to tell "this device is allowlist-only all day" apart from
+     * "school mode just kicked in". School mode is checked first only because it's the more
+     * specific, temporary condition; a device already in allowlist mode all the time would report
+     * DEFAULT_POLICY outside school hours regardless of ordering.
+     */
+    private fun defaultPolicyOutcome(
+        defaultPolicy: DefaultAppPolicy,
+        schoolMode: SchoolMode,
+        now: LocalDateTime,
+    ): BlockReason? {
+        if (schoolMode.enabled &&
+            isWithinSchedule(schoolMode.startMinute, schoolMode.endMinute, schoolMode.daysMask, now)
+        ) {
+            return BlockReason.SCHOOL_MODE
+        }
+        return if (defaultPolicy == DefaultAppPolicy.BLOCK) BlockReason.DEFAULT_POLICY else null
+    }
 
     private fun isWithinSchedule(
         startMinute: Int?,

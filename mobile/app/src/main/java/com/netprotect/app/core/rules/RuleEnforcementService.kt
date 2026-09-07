@@ -96,6 +96,9 @@ class RuleEnforcementService : Service() {
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
+        // Starts disabled for the same fail-safe reason: a device whose first fetch fails
+        // should not suddenly start blocking everything.
+        var schoolMode = SchoolMode(enabled = false, startMinute = null, endMinute = null, daysMask = null)
         var protectedPackages = ProtectedPackages.resolve(applicationContext)
         var lastRulesFetchAt = 0L
         // Tracks the last *other* app we evaluated, so returning to an app already handled
@@ -115,6 +118,7 @@ class RuleEnforcementService : Service() {
                         cachedCategoryAssignments = it.categoryAssignments
                         cachedCategoryRules = it.categoryRules
                         defaultPolicy = it.defaultPolicy
+                        schoolMode = it.schoolMode
                     }
                 // Refreshed on the same beat as the rules: the user can change their launcher
                 // or default phone app at any time, and the protected set must follow.
@@ -135,6 +139,7 @@ class RuleEnforcementService : Service() {
                     categoryAssignments = cachedCategoryAssignments,
                     categoryRules = cachedCategoryRules,
                     defaultPolicy = defaultPolicy,
+                    schoolMode = schoolMode,
                     // Protected apps are exempt from the *default policy* only, not from a
                     // rule the tutor wrote on purpose. The protected set includes the user's
                     // chosen dialer and launcher, which the supervised user can change in
@@ -157,6 +162,7 @@ class RuleEnforcementService : Service() {
         categoryAssignments: List<CategoryAssignment>,
         categoryRules: List<CategoryRule>,
         defaultPolicy: DefaultAppPolicy,
+        schoolMode: SchoolMode,
         exemptFromDefaultPolicy: Boolean,
         client: RuleEnforcementClient,
         accessToken: String,
@@ -175,8 +181,10 @@ class RuleEnforcementService : Service() {
             weekUsage,
             LocalDateTime.now(),
             defaultPolicy,
+            schoolMode,
         ) ?: return
-        if (exemptFromDefaultPolicy && reason == BlockReason.DEFAULT_POLICY) return
+        val exemptReasons = setOf(BlockReason.DEFAULT_POLICY, BlockReason.SCHOOL_MODE)
+        if (exemptFromDefaultPolicy && reason in exemptReasons) return
 
         startActivity(
             Intent(this, BlockScreenActivity::class.java)

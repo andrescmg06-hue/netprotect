@@ -7,18 +7,21 @@ import com.netprotect.app.core.rules.CategoryAssignment
 import com.netprotect.app.core.rules.CategoryRule
 import com.netprotect.app.core.rules.DefaultAppPolicy
 import com.netprotect.app.core.rules.RuleType
+import com.netprotect.app.core.rules.SchoolMode
 import java.time.Instant
 import org.json.JSONObject
 
 /** Everything the device needs to evaluate locally in one call: per-app rules, each app's
- * category assignment and each category's rule (Sprint 10), and the default-policy fallback —
- * bundled together so the pieces can't drift apart between two separate fetches.
+ * category assignment and each category's rule (Sprint 10), the default-policy fallback, and
+ * the school-mode window (Sprint 12) — bundled together so the pieces can't drift apart between
+ * two separate fetches.
  */
 data class ActiveRules(
     val rules: List<AppRule>,
     val categoryAssignments: List<CategoryAssignment>,
     val categoryRules: List<CategoryRule>,
     val defaultPolicy: DefaultAppPolicy,
+    val schoolMode: SchoolMode,
 )
 
 /** Only what the supervised device itself needs: fetching the rules to evaluate locally, and
@@ -72,11 +75,20 @@ class RuleEnforcementClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             )
         }
 
+        val schoolModeJson = payload.getJSONObject("school_mode")
+        val schoolMode = SchoolMode(
+            enabled = schoolModeJson.getBoolean("enabled"),
+            startMinute = schoolModeJson.intOrNull("start_minute"),
+            endMinute = schoolModeJson.intOrNull("end_minute"),
+            daysMask = schoolModeJson.intOrNull("days_mask"),
+        )
+
         return ActiveRules(
             rules = parsed,
             categoryAssignments = assignments,
             categoryRules = categoryRules,
             defaultPolicy = policy,
+            schoolMode = schoolMode,
         )
     }
 

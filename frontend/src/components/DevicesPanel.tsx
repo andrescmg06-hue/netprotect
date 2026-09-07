@@ -204,6 +204,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                       accessToken={accessToken}
                       deviceId={device.id}
                       defaultAppPolicy={device.default_app_policy}
+                      schoolMode={device.school_mode}
                       onPolicyChanged={reload}
                     />
                   )}

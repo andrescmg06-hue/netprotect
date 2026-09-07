@@ -223,3 +223,13 @@ visible junto a su estado en la app del tutor y en el panel web — salda la deu
 anotada desde el Sprint 7. "Modo escolar" queda para el Sprint 12.
 
 El detalle está en `docs/sprint-11.md`.
+
+## Alcance del Sprint 12
+
+Modo escolar: el tutor activa una franja horaria (07:00-14:00 por defecto, configurable) en la que
+el dispositivo bloquea automáticamente todo lo no aprobado, sin tocar ninguna regla existente — es
+una vigencia horaria sobre la política por defecto (Sprint 9), no un sistema de perfiles paralelo.
+Una regla de app o de categoría con `ALLOW` sigue aprobando esa app también en horario escolar.
+Interpretación del alcance documentada explícitamente, ver `docs/sprint-12.md`.
+
+El detalle está en `docs/sprint-12.md`.

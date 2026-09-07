@@ -13,6 +13,7 @@ from app.api.deps import (
 from app.db.session import get_db
 from app.models import AppCategoryAssignment, AppRule, AppRuleEvent, CategoryRule, Device, User
 from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
+from app.schemas.device import SchoolModeResponse, UpdateSchoolModeRequest
 from app.schemas.rule import (
     ActiveRulesResponse,
     AppRuleEventListResponse,
@@ -217,6 +218,12 @@ async def list_active_app_rules_for_device(
             for rule in category_rules
         ],
         default_app_policy=device.default_app_policy,
+        school_mode=SchoolModeResponse(
+            enabled=device.school_mode_enabled,
+            start_minute=device.school_mode_start_minute,
+            end_minute=device.school_mode_end_minute,
+            days_mask=device.school_mode_days_mask,
+        ),
     )
 
 
@@ -256,6 +263,41 @@ async def update_device_policy(
 
     return DevicePolicyResponse(
         device_id=device_id, default_app_policy=device.default_app_policy
+    )
+
+
+@router.put("/devices/{device_id}/school-mode", response_model=SchoolModeResponse)
+async def update_school_mode(
+    device_id: uuid.UUID,
+    payload: UpdateSchoolModeRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    device: Device = Depends(require_tutor_of_device),
+) -> SchoolModeResponse:
+    """A scheduled override of default_app_policy to BLOCK (Sprint 12) — doesn't touch
+    AppRule/CategoryRule at all, see docs/sprint-12.md for why. Disabling clears the window
+    fields too so a half-configured, disabled school mode never lingers ambiguously in the row.
+    """
+    device.school_mode_enabled = payload.enabled
+    device.school_mode_start_minute = payload.start_minute if payload.enabled else None
+    device.school_mode_end_minute = payload.end_minute if payload.enabled else None
+    device.school_mode_days_mask = payload.days_mask if payload.enabled else None
+    await record_audit_event(
+        db,
+        actor_user_id=current_user.id,
+        action="SCHOOL_MODE_CHANGED",
+        resource_type="device",
+        resource_id=str(device_id),
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
+
+    return SchoolModeResponse(
+        enabled=device.school_mode_enabled,
+        start_minute=device.school_mode_start_minute,
+        end_minute=device.school_mode_end_minute,
+        days_mask=device.school_mode_days_mask,
     )
 
 

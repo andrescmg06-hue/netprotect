@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (06/09/2026)
 
-Sprints 1 a 11 completos y verificados en CI.
+Sprints 1 a 12 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -124,12 +124,18 @@ de 7 días, coherente con `schedule_days_mask` (bit 0 = lunes). `devices.timezon
 en cada heartbeat) es sólo para que el tutor interprete lo que ve — la evaluación en Android ya
 usaba correctamente la hora local del dispositivo desde el Sprint 8, no hacía falta reescribirla.
 
-**Siguiente: Sprint 12 — Modo escolar.** Perfil de reglas con vigencia horaria (07:00-14:00 por
-defecto, configurable) y aplicación local sin conexión permanente al backend. Construye directamente
-sobre `SCHEDULE` (Sprint 8) y el catálogo de categorías (Sprint 10); revisar si conviene modelarlo
-como una bandera "modo escolar activo" en el dispositivo que el `RuleEvaluator` consulta antes que
-nada más, o como un conjunto de reglas que se activan/desactivan en bloque — definir esa decisión
-antes de escribir el motor, mismo criterio que se usó para categorías en el Sprint 10.
+**Nota del Sprint 12**: "modo escolar" se implementó como una vigencia horaria sobre la política por
+defecto (`devices.school_mode_*`), no como un sistema de perfiles de reglas paralelo — reutiliza
+`isWithinSchedule()` tal cual. Una `AppRule`/`CategoryRule` con `ALLOW` sigue aprobando esa app en
+horario escolar, exactamente igual que ya aprueba contra la política por defecto simple (Sprint 9).
+Decisión documentada como interpretación propia en `docs/sprint-12.md`, no como la única lectura
+posible del enunciado.
+
+**Siguiente: Sprint 13 — Ubicación.** Primer sprint de geolocalización — requiere su propia Fase C
+antes de escribir código: permisos de ubicación en primer/segundo plano varían fuerte entre
+versiones de Android (aproximada vs. precisa desde API 31, restricciones de acceso en segundo plano
+desde API 29-30) y no se ha verificado nada de esto todavía en este proyecto. Ver
+`docs/android/capability-matrix.md`, fila "Geolocalización", todavía sin su sección de detalle.
 
 ## Entorno de trabajo
 

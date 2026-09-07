@@ -9,11 +9,13 @@ import {
   type AppliedRuleType,
   type DefaultAppPolicy,
   type RuleType,
+  type SchoolMode,
   type UpsertAppRuleInput,
   deleteAppRule,
   listAppRules,
   listRuleEvents,
   updateDevicePolicy,
+  updateSchoolMode,
   upsertAppRule,
 } from "@/lib/apiClient";
 
@@ -61,6 +63,7 @@ function ruleTypeLabel(type: AppliedRuleType): string {
     WEEKLY_LIMIT: "Límite semanal",
     SCHEDULE: "Horario",
     CATEGORY: "Por categoría",
+    SCHOOL_MODE: "Horario escolar",
     DEFAULT_POLICY: "Sin aprobar",
   }[type];
 }
@@ -86,13 +89,47 @@ export function DeviceRulesPanel({
   accessToken,
   deviceId,
   defaultAppPolicy,
+  schoolMode,
   onPolicyChanged,
 }: {
   accessToken: string;
   deviceId: string;
   defaultAppPolicy: DefaultAppPolicy;
+  schoolMode: SchoolMode;
   onPolicyChanged: () => void;
 }) {
+  const [schoolModeError, setSchoolModeError] = useState<string | null>(null);
+  const [schoolModeStart, setSchoolModeStart] = useState(
+    schoolMode.start_minute !== null ? minutesToTimeString(schoolMode.start_minute) : "07:00"
+  );
+  const [schoolModeEnd, setSchoolModeEnd] = useState(
+    schoolMode.end_minute !== null ? minutesToTimeString(schoolMode.end_minute) : "14:00"
+  );
+  const [schoolModeDaysMask, setSchoolModeDaysMask] = useState(schoolMode.days_mask ?? ALL_DAYS_MASK);
+
+  function handleToggleSchoolMode() {
+    setSchoolModeError(null);
+    if (schoolMode.enabled) {
+      updateSchoolMode(accessToken, deviceId, { enabled: false })
+        .then(() => onPolicyChanged())
+        .catch((error) => setSchoolModeError(describeError(error, "No se pudo desactivar el horario escolar")));
+      return;
+    }
+    const start = timeStringToMinutes(schoolModeStart);
+    const end = timeStringToMinutes(schoolModeEnd);
+    if (start === null || end === null || schoolModeDaysMask === 0) {
+      setSchoolModeError("Indica una franja horaria válida con al menos un día.");
+      return;
+    }
+    updateSchoolMode(accessToken, deviceId, {
+      enabled: true,
+      start_minute: start,
+      end_minute: end,
+      days_mask: schoolModeDaysMask,
+    })
+      .then(() => onPolicyChanged())
+      .catch((error) => setSchoolModeError(describeError(error, "No se pudo activar el horario escolar")));
+  }
   const [rulesState, setRulesState] = useState<RulesState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
   const [eventsState, setEventsState] = useState<EventsState>({ kind: "idle" });
@@ -246,6 +283,59 @@ export function DeviceRulesPanel({
           {inAllowlistMode ? "Permitir todo salvo lo bloqueado" : "Sólo permitir apps aprobadas"}
         </button>
       </div>
+
+      <div className="policyRow">
+        <div>
+          <div className="appLabel">
+            {schoolMode.enabled
+              ? `Horario escolar activo (${minutesToTimeString(schoolMode.start_minute ?? 0)}–${minutesToTimeString(schoolMode.end_minute ?? 0)})`
+              : "Horario escolar desactivado"}
+          </div>
+          <div className="appMeta">
+            {schoolMode.enabled
+              ? "En esa franja, todo lo no aprobado queda bloqueado automáticamente."
+              : "Bloquea automáticamente lo no aprobado durante una franja horaria fija, sin tocar tus reglas."}
+          </div>
+          {!schoolMode.enabled && (
+            <div className="scheduleFields" style={{ marginTop: 8 }}>
+              <input
+                type="time"
+                value={schoolModeStart}
+                onChange={(event) => setSchoolModeStart(event.target.value)}
+                aria-label="Hora de inicio del horario escolar"
+              />
+              <span>a</span>
+              <input
+                type="time"
+                value={schoolModeEnd}
+                onChange={(event) => setSchoolModeEnd(event.target.value)}
+                aria-label="Hora de fin del horario escolar"
+              />
+              <div className="dayPicker">
+                {DAY_LABELS.map((label, index) => {
+                  const bit = 1 << index;
+                  const active = (schoolModeDaysMask & bit) !== 0;
+                  return (
+                    <button
+                      type="button"
+                      key={label + index}
+                      className={active ? "dayButton dayButtonActive" : "dayButton"}
+                      onClick={() => setSchoolModeDaysMask((current) => current ^ bit)}
+                      aria-pressed={active}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+        <button type="button" onClick={handleToggleSchoolMode}>
+          {schoolMode.enabled ? "Desactivar" : "Activar horario escolar"}
+        </button>
+      </div>
+      {schoolModeError && <p className="authError">{schoolModeError}</p>}
 
       <form className="ruleForm" onSubmit={handleSubmit}>
         <input

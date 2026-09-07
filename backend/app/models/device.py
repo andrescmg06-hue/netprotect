@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -46,6 +46,14 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint(
             f"default_app_policy IN ({_POLICY_LIST_SQL})", name="ck_devices_default_policy_valid"
         ),
+        CheckConstraint(
+            "(NOT school_mode_enabled) OR ("
+            "school_mode_start_minute IS NOT NULL AND school_mode_start_minute BETWEEN 0 AND 1439 "
+            "AND school_mode_end_minute IS NOT NULL AND school_mode_end_minute BETWEEN 0 AND 1439 "
+            "AND school_mode_days_mask IS NOT NULL AND school_mode_days_mask BETWEEN 1 AND 127"
+            ")",
+            name="ck_devices_school_mode_requires_window",
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(255))
@@ -67,6 +75,14 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     default_app_policy: Mapped[str] = mapped_column(
         String(16), default=POLICY_ALLOW, server_default=POLICY_ALLOW
     )
+    # School mode (Sprint 12): a scheduled override of default_app_policy to BLOCK, evaluated
+    # the same way SCHEDULE already is (minutes since local midnight, bit 0 = Monday). Doesn't
+    # touch AppRule/CategoryRule at all — an explicit ALLOW still approves an app during school
+    # hours, same as it already does against the plain default policy (Sprint 9).
+    school_mode_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
+    school_mode_start_minute: Mapped[int | None] = mapped_column(Integer)
+    school_mode_end_minute: Mapped[int | None] = mapped_column(Integer)
+    school_mode_days_mask: Mapped[int | None] = mapped_column(Integer)
     supervised_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )

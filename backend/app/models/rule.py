@@ -35,7 +35,13 @@ DEFAULT_POLICY = "DEFAULT_POLICY"
 # reviewing the history, even though neither has a row in app_rules to point to.
 CATEGORY = "CATEGORY"
 
-RULE_EVENT_TYPES = (*RULE_TYPES, DEFAULT_POLICY, CATEGORY)
+# Also not a rule type (Sprint 12): the app had no rule, and school mode was active at that
+# moment. Distinct from DEFAULT_POLICY for the same reason CATEGORY is — "blocked because I
+# turned on school mode" and "blocked because this device is allowlist-only all day" are
+# different facts for a tutor reading the history.
+SCHOOL_MODE = "SCHOOL_MODE"
+
+RULE_EVENT_TYPES = (*RULE_TYPES, DEFAULT_POLICY, CATEGORY, SCHOOL_MODE)
 _RULE_EVENT_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_EVENT_TYPES)
 
 

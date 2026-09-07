@@ -39,8 +39,22 @@ enum class BlockReason(val wireValue: String) {
     SCHEDULE("SCHEDULE"),
     // Sprint 10: the package had no rule of its own, but its assigned category did.
     CATEGORY("CATEGORY"),
+    // Sprint 12: no rule at all, but the device's scheduled school-mode window is active.
+    SCHOOL_MODE("SCHOOL_MODE"),
     DEFAULT_POLICY("DEFAULT_POLICY"),
 }
+
+/** A scheduled override of [DefaultAppPolicy] to BLOCK (Sprint 12) — same window shape as a
+ * SCHEDULE rule (minutes since local midnight, bit 0 = Monday), evaluated the same way.
+ * Doesn't touch AppRule/CategoryRule: an explicit rule still applies during school hours exactly
+ * as it already does against the plain default policy — see RuleEvaluator.
+ */
+data class SchoolMode(
+    val enabled: Boolean,
+    val startMinute: Int?,
+    val endMinute: Int?,
+    val daysMask: Int?,
+)
 
 /** The fixed 11-category catalog — see backend app/models/category.py for why it's a fixed set
  * of constants rather than a table with rows a tutor could delete out from under an assignment,

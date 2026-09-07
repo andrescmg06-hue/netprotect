@@ -95,6 +95,17 @@ export type DeviceStatus = {
  */
 export type DefaultAppPolicy = "ALLOW" | "BLOCK";
 
+/** A scheduled override of default_app_policy to BLOCK (Sprint 12) — same window shape as a
+ * SCHEDULE rule. Doesn't touch AppRule/CategoryRule: an explicit rule still applies during
+ * school hours exactly as it already does against the plain default policy.
+ */
+export type SchoolMode = {
+  enabled: boolean;
+  start_minute: number | null;
+  end_minute: number | null;
+  days_mask: number | null;
+};
+
 export type Device = {
   id: string;
   name: string;
@@ -105,6 +116,7 @@ export type Device = {
   linked_at: string;
   status: DeviceStatus;
   default_app_policy: DefaultAppPolicy;
+  school_mode: SchoolMode;
 };
 
 export type GrantedRole = {
@@ -256,11 +268,34 @@ export function updateDevicePolicy(
   );
 }
 
-/** DEFAULT_POLICY and CATEGORY are not rule types of their own: the app had no AppRule, and was
- * blocked either by its assigned category's rule or, failing that, by the device's default
- * policy. Kept separate so a tutor can tell these apart from an app they blocked deliberately.
+export type UpdateSchoolModeInput = {
+  enabled: boolean;
+  start_minute?: number;
+  end_minute?: number;
+  days_mask?: number;
+};
+
+export function updateSchoolMode(
+  accessToken: string,
+  deviceId: string,
+  input: UpdateSchoolModeInput
+): Promise<SchoolMode> {
+  return requestJson<SchoolMode>(
+    `/api/v1/devices/${deviceId}/school-mode`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    accessToken
+  );
+}
+
+/** DEFAULT_POLICY, CATEGORY and SCHOOL_MODE are not rule types of their own: the app had no
+ * AppRule, and was blocked by its category's rule, the device's default policy, or a scheduled
+ * school-mode window. Kept separate so a tutor can tell these apart from a deliberate rule.
  */
-export type AppliedRuleType = RuleType | "DEFAULT_POLICY" | "CATEGORY";
+export type AppliedRuleType = RuleType | "DEFAULT_POLICY" | "CATEGORY" | "SCHOOL_MODE";
 
 export type AppRuleEvent = {
   id: string;

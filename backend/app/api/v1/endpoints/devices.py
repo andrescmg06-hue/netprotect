@@ -24,6 +24,7 @@ from app.schemas.device import (
     HeartbeatResponse,
     MyDeviceResponse,
     RenameDeviceRequest,
+    SchoolModeResponse,
     SupervisingTutorResponse,
 )
 from app.services.audit import record_audit_event
@@ -55,6 +56,12 @@ def _to_response(device: Device, linked_at: datetime) -> DeviceResponse:
             last_sync_at=status_row.last_sync_at if status_row else None,
         ),
         default_app_policy=device.default_app_policy,
+        school_mode=SchoolModeResponse(
+            enabled=device.school_mode_enabled,
+            start_minute=device.school_mode_start_minute,
+            end_minute=device.school_mode_end_minute,
+            days_mask=device.school_mode_days_mask,
+        ),
     )
 
 

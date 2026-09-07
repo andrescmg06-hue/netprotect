@@ -80,6 +80,8 @@ private fun reasonText(reason: BlockReason): String = when (reason) {
     BlockReason.WEEKLY_LIMIT -> "Ya usaste el tiempo semanal permitido para esta app."
     BlockReason.SCHEDULE -> "Esta app está bloqueada en este horario."
     BlockReason.CATEGORY -> "Tu tutor bloqueó la categoría a la que pertenece esta app."
+    BlockReason.SCHOOL_MODE ->
+        "Es horario escolar y esta app no está aprobada para este momento."
     BlockReason.DEFAULT_POLICY ->
         "Este dispositivo sólo permite las apps que tu tutor aprobó, y ésta no está aprobada."
 }

@@ -27,6 +27,10 @@ private fun categoryDailyLimitRule(category: Category, minutes: Int) =
 // 2026-09-07 is a Monday, used as the fixed reference day for every SCHEDULE test below.
 private fun mondayAt(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 9, 7, hour, minute)
 
+private val SCHOOL_MODE_OFF = SchoolMode(enabled = false, startMinute = null, endMinute = null, daysMask = null)
+private fun schoolModeOn(start: Int = 7 * 60, end: Int = 14 * 60, daysMask: Int = ALL_DAYS) =
+    SchoolMode(enabled = true, startMinute = start, endMinute = end, daysMask = daysMask)
+
 private fun evaluate(
     rules: List<AppRule>,
     now: LocalDateTime = mondayAt(12),
@@ -36,8 +40,9 @@ private fun evaluate(
     packageName: String = PKG,
     categoryAssignments: List<CategoryAssignment> = emptyList(),
     categoryRules: List<CategoryRule> = emptyList(),
+    schoolMode: SchoolMode = SCHOOL_MODE_OFF,
 ) = RuleEvaluator.evaluate(
-    rules, categoryAssignments, categoryRules, packageName, usage, weekUsage, now, policy
+    rules, categoryAssignments, categoryRules, packageName, usage, weekUsage, now, policy, schoolMode
 )
 
 class RuleEvaluatorTest {
@@ -268,5 +273,78 @@ class RuleEvaluatorTest {
             policy = DefaultAppPolicy.BLOCK,
         )
         assertEquals(BlockReason.CATEGORY, result)
+    }
+
+    // -------------------------------------------------------------------------- school mode
+
+    @Test
+    fun `school mode blocks an unruled app inside its window`() {
+        val result = evaluate(
+            rules = emptyList(),
+            now = mondayAt(9),
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60),
+        )
+        assertEquals(BlockReason.SCHOOL_MODE, result)
+    }
+
+    @Test
+    fun `school mode does not block outside its window`() {
+        val result = evaluate(
+            rules = emptyList(),
+            now = mondayAt(20),
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60),
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `school mode does nothing while disabled`() {
+        val result = evaluate(rules = emptyList(), now = mondayAt(9), schoolMode = SCHOOL_MODE_OFF)
+        assertNull(result)
+    }
+
+    @Test
+    fun `an ALLOW app rule still approves an app during school mode`() {
+        val result = evaluate(
+            rules = listOf(allowRule()),
+            now = mondayAt(9),
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60),
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `a category rule still applies during school mode, reported as CATEGORY`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.EDUCATION)),
+            categoryRules = listOf(categoryAllowRule(Category.EDUCATION)),
+            now = mondayAt(9),
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60),
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `school mode only applies on days included in its mask`() {
+        val mondayOnly = 0b000_0001
+        val result = evaluate(
+            rules = emptyList(),
+            // 2026-09-08 is the Tuesday right after the fixed Monday reference above.
+            now = LocalDateTime.of(2026, 9, 8, 9, 0),
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60, daysMask = mondayOnly),
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `a device already in allowlist mode reports DEFAULT_POLICY outside school hours`() {
+        val result = evaluate(
+            rules = emptyList(),
+            now = mondayAt(20),
+            policy = DefaultAppPolicy.BLOCK,
+            schoolMode = schoolModeOn(start = 7 * 60, end = 14 * 60),
+        )
+        assertEquals(BlockReason.DEFAULT_POLICY, result)
     }
 }

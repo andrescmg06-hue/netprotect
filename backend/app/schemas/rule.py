@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
+from app.schemas.device import SchoolModeResponse
 
 RuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "WEEKLY_LIMIT", "SCHEDULE"]
 
@@ -16,7 +17,14 @@ DefaultAppPolicy = Literal["ALLOW", "BLOCK"]
 # blocked by its assigned category's rule, or by the device's default policy, without any AppRule
 # of its own. See AppRuleEvent in app/models/rule.py.
 AppliedRuleType = Literal[
-    "ALLOW", "BLOCK", "DAILY_LIMIT", "WEEKLY_LIMIT", "SCHEDULE", "DEFAULT_POLICY", "CATEGORY"
+    "ALLOW",
+    "BLOCK",
+    "DAILY_LIMIT",
+    "WEEKLY_LIMIT",
+    "SCHEDULE",
+    "DEFAULT_POLICY",
+    "CATEGORY",
+    "SCHOOL_MODE",
 ]
 
 
@@ -84,6 +92,7 @@ class ActiveRulesResponse(BaseModel):
     category_assignments: list[CategoryAssignmentResponse]
     category_rules: list[CategoryRuleResponse]
     default_app_policy: DefaultAppPolicy
+    school_mode: SchoolModeResponse
 
 
 class DeleteAppRuleResponse(BaseModel):

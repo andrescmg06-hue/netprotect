@@ -1,13 +1,20 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class DeviceStatusResponse(BaseModel):
     status: str
     last_seen_at: datetime | None
     last_sync_at: datetime | None
+
+
+class SchoolModeResponse(BaseModel):
+    enabled: bool
+    start_minute: int | None
+    end_minute: int | None
+    days_mask: int | None
 
 
 class DeviceResponse(BaseModel):
@@ -20,6 +27,7 @@ class DeviceResponse(BaseModel):
     linked_at: datetime
     status: DeviceStatusResponse
     default_app_policy: str
+    school_mode: SchoolModeResponse
 
 
 class DeviceListResponse(BaseModel):
@@ -46,6 +54,28 @@ class HeartbeatResponse(BaseModel):
 class SupervisingTutorResponse(BaseModel):
     display_name: str | None
     email: str
+
+
+class UpdateSchoolModeRequest(BaseModel):
+    """Same validation shape as a SCHEDULE rule (app/schemas/rule.py): minutes since local
+    midnight, bit 0 = Monday. Required together when enabling; irrelevant (and ignored) when
+    disabling — see Device.school_mode_enabled's CHECK constraint on the DB side.
+    """
+
+    enabled: bool
+    start_minute: int | None = Field(default=None, ge=0, le=1439)
+    end_minute: int | None = Field(default=None, ge=0, le=1439)
+    days_mask: int | None = Field(default=None, ge=1, le=127)
+
+    @model_validator(mode="after")
+    def _require_window_when_enabled(self) -> "UpdateSchoolModeRequest":
+        if self.enabled and (
+            self.start_minute is None or self.end_minute is None or self.days_mask is None
+        ):
+            raise ValueError(
+                "start_minute, end_minute and days_mask are all required when enabling school mode"
+            )
+        return self
 
 
 class MyDeviceResponse(BaseModel):
