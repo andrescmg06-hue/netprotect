@@ -253,10 +253,11 @@ export function updateDevicePolicy(
   );
 }
 
-/** DEFAULT_POLICY is not a rule type: the app had no rule and the device blocks by default.
- * Kept separate so a tutor can tell it apart from an app they blocked deliberately.
+/** DEFAULT_POLICY and CATEGORY are not rule types of their own: the app had no AppRule, and was
+ * blocked either by its assigned category's rule or, failing that, by the device's default
+ * policy. Kept separate so a tutor can tell these apart from an app they blocked deliberately.
  */
-export type AppliedRuleType = RuleType | "DEFAULT_POLICY";
+export type AppliedRuleType = RuleType | "DEFAULT_POLICY" | "CATEGORY";
 
 export type AppRuleEvent = {
   id: string;
@@ -273,6 +274,136 @@ export function listRuleEvents(
   return requestJson<{ events: AppRuleEvent[] }>(
     `/api/v1/devices/${deviceId}/rule-events`,
     { method: "GET" },
+    accessToken
+  );
+}
+
+/** Fixed 11-category catalog — see backend app/models/category.py and docs/sprint-10.md for why
+ * these specific 11 (the original spec's list isn't in this repo, this is a documented decision).
+ */
+export type Category =
+  | "SOCIAL_MEDIA"
+  | "GAMES"
+  | "STREAMING"
+  | "EDUCATION"
+  | "PRODUCTIVITY"
+  | "COMMUNICATION"
+  | "NEWS"
+  | "SHOPPING"
+  | "FINANCE"
+  | "UTILITIES"
+  | "ADULT_CONTENT";
+
+export type CategoryAssignment = {
+  id: string;
+  package_name: string;
+  category: Category;
+  created_at: string;
+  updated_at: string;
+};
+
+export function listAppCategories(
+  accessToken: string,
+  deviceId: string
+): Promise<{ assignments: CategoryAssignment[] }> {
+  return requestJson<{ assignments: CategoryAssignment[] }>(
+    `/api/v1/devices/${deviceId}/app-categories`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+/** Assigning a category to a package that already has one replaces it — an app has at most one
+ * category per device, same upsert semantics as an AppRule.
+ */
+export function upsertAppCategory(
+  accessToken: string,
+  deviceId: string,
+  packageName: string,
+  category: Category
+): Promise<CategoryAssignment> {
+  return requestJson<CategoryAssignment>(
+    `/api/v1/devices/${deviceId}/app-categories`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ package_name: packageName, category }),
+    },
+    accessToken
+  );
+}
+
+export function deleteAppCategory(
+  accessToken: string,
+  deviceId: string,
+  assignmentId: string
+): Promise<{ assignment_id: string; package_name: string; deleted_at: string }> {
+  return requestJson(
+    `/api/v1/devices/${deviceId}/app-categories/${assignmentId}`,
+    { method: "DELETE" },
+    accessToken
+  );
+}
+
+/** Same shape and validation as AppRule — a category rule only applies to a package that has no
+ * AppRule of its own (see docs/sprint-10.md for the priority chain).
+ */
+export type CategoryRule = {
+  id: string;
+  category: Category;
+  rule_type: RuleType;
+  daily_limit_minutes: number | null;
+  schedule_start_minute: number | null;
+  schedule_end_minute: number | null;
+  schedule_days_mask: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UpsertCategoryRuleInput = {
+  category: Category;
+  rule_type: RuleType;
+  daily_limit_minutes?: number;
+  schedule_start_minute?: number;
+  schedule_end_minute?: number;
+  schedule_days_mask?: number;
+};
+
+export function listCategoryRules(
+  accessToken: string,
+  deviceId: string
+): Promise<{ category_rules: CategoryRule[] }> {
+  return requestJson<{ category_rules: CategoryRule[] }>(
+    `/api/v1/devices/${deviceId}/category-rules`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+export function upsertCategoryRule(
+  accessToken: string,
+  deviceId: string,
+  input: UpsertCategoryRuleInput
+): Promise<CategoryRule> {
+  return requestJson<CategoryRule>(
+    `/api/v1/devices/${deviceId}/category-rules`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    accessToken
+  );
+}
+
+export function deleteCategoryRule(
+  accessToken: string,
+  deviceId: string,
+  categoryRuleId: string
+): Promise<{ category_rule_id: string; category: Category; deleted_at: string }> {
+  return requestJson(
+    `/api/v1/devices/${deviceId}/category-rules/${categoryRuleId}`,
+    { method: "DELETE" },
     accessToken
   );
 }

@@ -202,3 +202,15 @@ llamada de emergencia. Un bloqueo por política se registra como `DEFAULT_POLICY
 bloqueo que el tutor pidió explícitamente.
 
 El detalle está en `docs/sprint-09.md`.
+
+## Alcance del Sprint 10
+
+Categorías: el tutor asigna una de 11 categorías fijas (Redes sociales, Juegos, Streaming,
+Educación, Productividad, Comunicación, Noticias, Compras, Finanzas, Utilidades, Contenido para
+adultos) a una app en un dispositivo, y define una regla (bloquear/permitir/límite diario/horario)
+para toda la categoría a la vez. Prioridad probada explícitamente: una regla puesta directamente
+sobre una app siempre gana sobre la de su categoría, y una app sin categoría ni regla propia sigue
+la política por defecto del dispositivo (Sprint 9). El catálogo de categorías es una decisión
+propia del equipo, no una cita del enunciado original — ver `docs/sprint-10.md`.
+
+El detalle está en `docs/sprint-10.md`.

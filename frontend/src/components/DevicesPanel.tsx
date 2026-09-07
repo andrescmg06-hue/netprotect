@@ -12,6 +12,7 @@ import {
 } from "@/lib/apiClient";
 
 import { DeviceApplicationsList } from "./DeviceApplicationsList";
+import { DeviceCategoriesPanel } from "./DeviceCategoriesPanel";
 import { DeviceRulesPanel } from "./DeviceRulesPanel";
 
 type PanelState =
@@ -38,6 +39,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [expandedAppsId, setExpandedAppsId] = useState<string | null>(null);
   const [expandedRulesId, setExpandedRulesId] = useState<string | null>(null);
+  const [expandedCategoriesId, setExpandedCategoriesId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -179,6 +181,18 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     >
                       {expandedRulesId === device.id ? "Ocultar reglas" : "Gestionar reglas"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedCategoriesId(
+                          expandedCategoriesId === device.id ? null : device.id
+                        )
+                      }
+                    >
+                      {expandedCategoriesId === device.id
+                        ? "Ocultar categorías"
+                        : "Gestionar categorías"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
@@ -190,6 +204,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                       defaultAppPolicy={device.default_app_policy}
                       onPolicyChanged={reload}
                     />
+                  )}
+                  {expandedCategoriesId === device.id && (
+                    <DeviceCategoriesPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                 </>
               )}

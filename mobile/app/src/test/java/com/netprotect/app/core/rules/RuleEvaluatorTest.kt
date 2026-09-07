@@ -14,6 +14,13 @@ private fun dailyLimitRule(minutes: Int) = AppRule(PKG, RuleType.DAILY_LIMIT, mi
 private fun scheduleRule(start: Int, end: Int, daysMask: Int = ALL_DAYS) =
     AppRule(PKG, RuleType.SCHEDULE, null, start, end, daysMask)
 
+private fun categoryBlockRule(category: Category) =
+    CategoryRule(category, RuleType.BLOCK, null, null, null, null)
+private fun categoryAllowRule(category: Category) =
+    CategoryRule(category, RuleType.ALLOW, null, null, null, null)
+private fun categoryDailyLimitRule(category: Category, minutes: Int) =
+    CategoryRule(category, RuleType.DAILY_LIMIT, minutes, null, null, null)
+
 // 2026-09-07 is a Monday, used as the fixed reference day for every SCHEDULE test below.
 private fun mondayAt(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 9, 7, hour, minute)
 
@@ -23,7 +30,11 @@ private fun evaluate(
     usage: Map<String, Int> = emptyMap(),
     policy: DefaultAppPolicy = DefaultAppPolicy.ALLOW,
     packageName: String = PKG,
-) = RuleEvaluator.evaluate(rules, packageName, usage, now, policy)
+    categoryAssignments: List<CategoryAssignment> = emptyList(),
+    categoryRules: List<CategoryRule> = emptyList(),
+) = RuleEvaluator.evaluate(
+    rules, categoryAssignments, categoryRules, packageName, usage, now, policy
+)
 
 class RuleEvaluatorTest {
 
@@ -151,5 +162,82 @@ class RuleEvaluatorTest {
             BlockReason.DEFAULT_POLICY,
             evaluate(listOf(otherRule), policy = DefaultAppPolicy.BLOCK),
         )
+    }
+
+    // --------------------------------------------------------------------------- categories
+
+    @Test
+    fun `a category rule blocks a package with no app rule of its own`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.SOCIAL_MEDIA)),
+            categoryRules = listOf(categoryBlockRule(Category.SOCIAL_MEDIA)),
+        )
+        assertEquals(BlockReason.CATEGORY, result)
+    }
+
+    @Test
+    fun `an app rule wins over its category's rule`() {
+        val result = evaluate(
+            rules = listOf(allowRule()),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.SOCIAL_MEDIA)),
+            categoryRules = listOf(categoryBlockRule(Category.SOCIAL_MEDIA)),
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `no category assignment falls through to the default policy`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryRules = listOf(categoryBlockRule(Category.SOCIAL_MEDIA)),
+            policy = DefaultAppPolicy.BLOCK,
+        )
+        assertEquals(BlockReason.DEFAULT_POLICY, result)
+    }
+
+    @Test
+    fun `a category assignment with no rule for that category falls through to the default policy`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.SOCIAL_MEDIA)),
+            policy = DefaultAppPolicy.BLOCK,
+        )
+        assertEquals(BlockReason.DEFAULT_POLICY, result)
+    }
+
+    @Test
+    fun `a category ALLOW rule approves the package in allowlist mode`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.GAMES)),
+            categoryRules = listOf(categoryAllowRule(Category.GAMES)),
+            policy = DefaultAppPolicy.BLOCK,
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `a category DAILY_LIMIT under the limit approves the package in allowlist mode`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.GAMES)),
+            categoryRules = listOf(categoryDailyLimitRule(Category.GAMES, 60)),
+            usage = mapOf(PKG to 30 * 60),
+            policy = DefaultAppPolicy.BLOCK,
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `a category DAILY_LIMIT over the limit reports CATEGORY, not the default policy`() {
+        val result = evaluate(
+            rules = emptyList(),
+            categoryAssignments = listOf(CategoryAssignment(PKG, Category.GAMES)),
+            categoryRules = listOf(categoryDailyLimitRule(Category.GAMES, 60)),
+            usage = mapOf(PKG to 90 * 60),
+            policy = DefaultAppPolicy.BLOCK,
+        )
+        assertEquals(BlockReason.CATEGORY, result)
     }
 }

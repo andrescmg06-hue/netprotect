@@ -59,6 +59,7 @@ function ruleTypeLabel(type: AppliedRuleType): string {
     BLOCK: "Bloquear",
     DAILY_LIMIT: "Límite diario",
     SCHEDULE: "Horario",
+    CATEGORY: "Por categoría",
     DEFAULT_POLICY: "Sin aprobar",
   }[type];
 }

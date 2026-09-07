@@ -91,6 +91,8 @@ class RuleEnforcementService : Service() {
         val detector = ForegroundAppDetector(applicationContext)
         val client = RuleEnforcementClient(baseUrl)
         var cachedRules: List<AppRule> = emptyList()
+        var cachedCategoryAssignments: List<CategoryAssignment> = emptyList()
+        var cachedCategoryRules: List<CategoryRule> = emptyList()
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
@@ -110,6 +112,8 @@ class RuleEnforcementService : Service() {
                 runCatching { client.getActiveRules(accessToken, deviceId) }
                     .onSuccess {
                         cachedRules = it.rules
+                        cachedCategoryAssignments = it.categoryAssignments
+                        cachedCategoryRules = it.categoryRules
                         defaultPolicy = it.defaultPolicy
                     }
                 // Refreshed on the same beat as the rules: the user can change their launcher
@@ -128,6 +132,8 @@ class RuleEnforcementService : Service() {
                 evaluateAndMaybeBlock(
                     foregroundPackage = changedPackage,
                     rules = cachedRules,
+                    categoryAssignments = cachedCategoryAssignments,
+                    categoryRules = cachedCategoryRules,
                     defaultPolicy = defaultPolicy,
                     // Protected apps are exempt from the *default policy* only, not from a
                     // rule the tutor wrote on purpose. The protected set includes the user's
@@ -148,6 +154,8 @@ class RuleEnforcementService : Service() {
     private suspend fun evaluateAndMaybeBlock(
         foregroundPackage: String,
         rules: List<AppRule>,
+        categoryAssignments: List<CategoryAssignment>,
+        categoryRules: List<CategoryRule>,
         defaultPolicy: DefaultAppPolicy,
         exemptFromDefaultPolicy: Boolean,
         client: RuleEnforcementClient,
@@ -157,7 +165,13 @@ class RuleEnforcementService : Service() {
         val todayUsage = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
         val reason = RuleEvaluator.evaluate(
-            rules, foregroundPackage, todayUsage, LocalDateTime.now(), defaultPolicy
+            rules,
+            categoryAssignments,
+            categoryRules,
+            foregroundPackage,
+            todayUsage,
+            LocalDateTime.now(),
+            defaultPolicy,
         ) ?: return
         if (exemptFromDefaultPolicy && reason == BlockReason.DEFAULT_POLICY) return
 

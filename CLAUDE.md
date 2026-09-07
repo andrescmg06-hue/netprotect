@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (06/09/2026)
 
-Sprints 1 a 9 completos y verificados en CI.
+Sprints 1 a 10 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -78,9 +78,11 @@ por el tutor en el panel web y aplicadas localmente por el dispositivo supervisa
 foreground service que sondea `UsageStatsManager` y muestra una pantalla de bloqueo propia,
 reportando cada bloqueo aplicado; y una política por dispositivo que invierte el defecto
 (`ALLOW` = todo permitido salvo lo bloqueado, `BLOCK` = sólo apps aprobadas), con una lista de apps
-que nunca se bloquean. Android tiene un router real (`HomeScreen`: sesión → rol → modo
-Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1 (`SprintOneScreen`) ya no existe, su
-chequeo de infraestructura vive ahora en la pantalla de sesión cerrada.
+que nunca se bloquean; y categorías (11 fijas, decisión propia — ver Sprint 10) con regla por
+categoría, evaluada entre la regla por app y la política del dispositivo. Android tiene un router
+real (`HomeScreen`: sesión → rol → modo Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1
+(`SprintOneScreen`) ya no existe, su chequeo de infraestructura vive ahora en la pantalla de sesión
+cerrada.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -108,11 +110,18 @@ tutor, es una barrera de seguridad — bloquear el teléfono podría estorbar un
 bloquear Ajustes dejaría al usuario sin forma de revocar el permiso. Cualquier mecanismo de bloqueo
 nuevo debe respetarla.
 
-**Siguiente: Sprint 10 — Categorías.** Catálogo de las 11 categorías del enunciado, clasificación de
-apps y reglas por categoría. Aquí sí aparece por primera vez una cadena de prioridad real entre
-alcances distintos (regla por app > categoría > política por defecto del dispositivo), que el Sprint 9
-todavía no necesitó: hoy sólo hay dos niveles (regla por app y política del dispositivo) y el orden
-entre ellos es evidente. Definirla y **probarla explícitamente** antes de escribir el motor.
+**Nota del Sprint 10**: el "enunciado" con las 11 categorías originales no existe en este repo (el
+documento de 48 secciones queda fuera). El catálogo usado (`SOCIAL_MEDIA`, `GAMES`, `STREAMING`,
+`EDUCATION`, `PRODUCTIVITY`, `COMMUNICATION`, `NEWS`, `SHOPPING`, `FINANCE`, `UTILITIES`,
+`ADULT_CONTENT`) es una decisión propia confirmada con el dueño del proyecto, no una cita de la
+fuente original — ver `docs/sprint-10.md`. Cualquier sprint futuro que necesite el enunciado real
+debe pedírselo directamente, no asumir que ya está resuelto.
+
+**Siguiente: Sprint 11 — Tiempo.** Límite diario/semanal, por app y por categoría; ventanas
+horarias; zona horaria del dispositivo. Ya hay deuda pendiente esperando este sprint: `usage_date`
+(Sprint 7) y las franjas de `SCHEDULE` (Sprint 8) no están normalizadas contra la zona horaria real
+del dispositivo — se trataron como fecha/hora local sin más, documentado explícitamente como
+pospuesto hasta este sprint, que ya necesita resolverlo de todas formas.
 
 ## Entorno de trabajo
 

@@ -4,15 +4,20 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
+
 RuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE"]
 
 # What a device does with an app that has no rule: ALLOW = blocklist mode (Sprint 8 behavior),
 # BLOCK = allowlist mode (only approved apps run).
 DefaultAppPolicy = Literal["ALLOW", "BLOCK"]
 
-# Includes DEFAULT_POLICY, which is not a rule type: an app can be blocked by the device's
-# default policy without any rule of its own. See AppRuleEvent in app/models/rule.py.
-AppliedRuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE", "DEFAULT_POLICY"]
+# Includes DEFAULT_POLICY and CATEGORY, neither of which is a rule type of its own: an app can be
+# blocked by its assigned category's rule, or by the device's default policy, without any AppRule
+# of its own. See AppRuleEvent in app/models/rule.py.
+AppliedRuleType = Literal[
+    "ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE", "DEFAULT_POLICY", "CATEGORY"
+]
 
 
 class UpsertAppRuleRequest(BaseModel):
@@ -64,11 +69,16 @@ class AppRuleListResponse(BaseModel):
 
 
 class ActiveRulesResponse(BaseModel):
-    """What the supervised device needs to evaluate locally: the rules plus the fallback for
-    any app that has none.
+    """What the supervised device needs to evaluate locally in one call: per-app rules, the
+    category each app was assigned to and each category's rule (Sprint 10), and the fallback
+    policy for anything none of those cover. Bundled together so the pieces can't drift apart
+    between two separate fetches — same reasoning the Sprint 9 default_app_policy field already
+    established.
     """
 
     rules: list[AppRuleResponse]
+    category_assignments: list[CategoryAssignmentResponse]
+    category_rules: list[CategoryRuleResponse]
     default_app_policy: DefaultAppPolicy
 
 

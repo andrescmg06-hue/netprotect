@@ -28,7 +28,13 @@ _RULE_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_TYPES)
 # has to be able to say so.
 DEFAULT_POLICY = "DEFAULT_POLICY"
 
-RULE_EVENT_TYPES = (*RULE_TYPES, DEFAULT_POLICY)
+# Also not a rule type of its own (Sprint 10): the package had no AppRule, but its assigned
+# category did. Distinct from DEFAULT_POLICY for the same reason that one exists — "blocked by
+# its category" and "blocked because nothing approved it" are different facts for a tutor
+# reviewing the history, even though neither has a row in app_rules to point to.
+CATEGORY = "CATEGORY"
+
+RULE_EVENT_TYPES = (*RULE_TYPES, DEFAULT_POLICY, CATEGORY)
 _RULE_EVENT_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_EVENT_TYPES)
 
 

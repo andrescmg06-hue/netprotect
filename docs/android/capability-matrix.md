@@ -308,6 +308,15 @@ Fuentes: <https://developer.android.com/reference/android/content/pm/PackageMana
 <https://developer.android.com/reference/android/provider/Settings#ACTION_SETTINGS>,
 <https://developer.android.com/training/package-visibility>.
 
+## Sprint 10 — Categorías: sin verificación nueva de Android (05/09/2026)
+
+A diferencia de los Sprints 7-9, este sprint no toca ningún permiso ni mecanismo del sistema
+operativo que no estuviera ya verificado. Categorías es dato nuevo (a qué categoría pertenece una
+app, qué regla tiene esa categoría) que se evalúa con el mismo `RuleEvaluator` y el mismo
+`RuleEnforcementService` ya verificados en el Sprint 8 — sólo cambia qué tabla consulta antes de
+caer en la política por defecto del dispositivo (Sprint 9). No aplica el procedimiento de la Fase C
+porque no hay ninguna capacidad de Android nueva que verificar.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.

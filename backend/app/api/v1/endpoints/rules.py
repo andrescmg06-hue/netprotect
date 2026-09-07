@@ -11,7 +11,8 @@ from app.api.deps import (
     require_tutor_of_device,
 )
 from app.db.session import get_db
-from app.models import AppRule, AppRuleEvent, Device, User
+from app.models import AppCategoryAssignment, AppRule, AppRuleEvent, CategoryRule, Device, User
+from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
 from app.schemas.rule import (
     ActiveRulesResponse,
     AppRuleEventListResponse,
@@ -160,20 +161,57 @@ async def list_active_app_rules_for_device(
     db: AsyncSession = Depends(get_db),
     device: Device = Depends(require_supervised_owner_of_device),
 ) -> ActiveRulesResponse:
-    """The supervised device pulls its own rule set to evaluate locally — no round-trip per
-    app open. Every stored rule is "active" (no soft-delete/expiry concept exists for rules
-    yet), so the rule query is the same as the tutor's list, just gated by the other
-    dependency. The default policy rides along because an app with no rule still needs an
-    answer, and asking for it separately would let the two drift apart between calls.
+    """The supervised device pulls everything it needs to evaluate locally in one call — no
+    round-trip per app open, and nothing that can drift apart between two separate fetches: the
+    per-app rules, the category each app was assigned to and each category's rule (Sprint 10),
+    and the device's default policy (Sprint 9) for anything none of those cover.
     """
     rules = (
         await db.execute(
             select(AppRule).where(AppRule.device_id == device_id).order_by(AppRule.package_name)
         )
     ).scalars().all()
+    assignments = (
+        await db.execute(
+            select(AppCategoryAssignment)
+            .where(AppCategoryAssignment.device_id == device_id)
+            .order_by(AppCategoryAssignment.package_name)
+        )
+    ).scalars().all()
+    category_rules = (
+        await db.execute(
+            select(CategoryRule)
+            .where(CategoryRule.device_id == device_id)
+            .order_by(CategoryRule.category)
+        )
+    ).scalars().all()
 
     return ActiveRulesResponse(
         rules=[_to_rule_response(rule) for rule in rules],
+        category_assignments=[
+            CategoryAssignmentResponse(
+                id=assignment.id,
+                package_name=assignment.package_name,
+                category=assignment.category,
+                created_at=assignment.created_at,
+                updated_at=assignment.updated_at,
+            )
+            for assignment in assignments
+        ],
+        category_rules=[
+            CategoryRuleResponse(
+                id=rule.id,
+                category=rule.category,
+                rule_type=rule.rule_type,
+                daily_limit_minutes=rule.daily_limit_minutes,
+                schedule_start_minute=rule.schedule_start_minute,
+                schedule_end_minute=rule.schedule_end_minute,
+                schedule_days_mask=rule.schedule_days_mask,
+                created_at=rule.created_at,
+                updated_at=rule.updated_at,
+            )
+            for rule in category_rules
+        ],
         default_app_policy=device.default_app_policy,
     )
 

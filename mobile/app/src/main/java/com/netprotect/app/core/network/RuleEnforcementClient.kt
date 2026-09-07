@@ -2,16 +2,22 @@ package com.netprotect.app.core.network
 
 import com.netprotect.app.core.rules.AppRule
 import com.netprotect.app.core.rules.BlockReason
+import com.netprotect.app.core.rules.Category
+import com.netprotect.app.core.rules.CategoryAssignment
+import com.netprotect.app.core.rules.CategoryRule
 import com.netprotect.app.core.rules.DefaultAppPolicy
 import com.netprotect.app.core.rules.RuleType
 import java.time.Instant
 import org.json.JSONObject
 
-/** The rule set plus the fallback for apps that have none — the backend sends them together so
- * the two can't drift apart between calls.
+/** Everything the device needs to evaluate locally in one call: per-app rules, each app's
+ * category assignment and each category's rule (Sprint 10), and the default-policy fallback —
+ * bundled together so the pieces can't drift apart between two separate fetches.
  */
 data class ActiveRules(
     val rules: List<AppRule>,
+    val categoryAssignments: List<CategoryAssignment>,
+    val categoryRules: List<CategoryRule>,
     val defaultPolicy: DefaultAppPolicy,
 )
 
@@ -41,7 +47,35 @@ class RuleEnforcementClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         // usable, not to lock the user out of every app.
         val policy = DefaultAppPolicy.fromWire(payload.getString("default_app_policy"))
             ?: DefaultAppPolicy.ALLOW
-        return ActiveRules(rules = parsed, defaultPolicy = policy)
+
+        val assignmentsJson = payload.getJSONArray("category_assignments")
+        val assignments = (0 until assignmentsJson.length()).mapNotNull { index ->
+            val entry = assignmentsJson.getJSONObject(index)
+            val category = Category.fromWire(entry.getString("category")) ?: return@mapNotNull null
+            CategoryAssignment(packageName = entry.getString("package_name"), category = category)
+        }
+
+        val categoryRulesJson = payload.getJSONArray("category_rules")
+        val categoryRules = (0 until categoryRulesJson.length()).mapNotNull { index ->
+            val entry = categoryRulesJson.getJSONObject(index)
+            val category = Category.fromWire(entry.getString("category")) ?: return@mapNotNull null
+            val type = RuleType.fromWire(entry.getString("rule_type")) ?: return@mapNotNull null
+            CategoryRule(
+                category = category,
+                ruleType = type,
+                dailyLimitMinutes = entry.intOrNull("daily_limit_minutes"),
+                scheduleStartMinute = entry.intOrNull("schedule_start_minute"),
+                scheduleEndMinute = entry.intOrNull("schedule_end_minute"),
+                scheduleDaysMask = entry.intOrNull("schedule_days_mask"),
+            )
+        }
+
+        return ActiveRules(
+            rules = parsed,
+            categoryAssignments = assignments,
+            categoryRules = categoryRules,
+            defaultPolicy = policy,
+        )
     }
 
     suspend fun reportRuleEvent(
