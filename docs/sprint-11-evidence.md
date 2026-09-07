@@ -59,5 +59,6 @@ reportado en la práctica (con hardware real en otro huso horario) no se probó.
 
 ## CI en GitHub Actions
 
-Pendiente — se corre y se registra en un commit de cierre separado, mismo patrón que los sprints
-anteriores.
+Run [`34083767686`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34083767686), commit
+`38b1902`, los 4 jobs en verde: `backend` (24s), `android` (1m12s), `integration` (58s), `frontend`
+(29s). Con esto el Sprint 11 queda cerrado según la regla de `CLAUDE.md`.
