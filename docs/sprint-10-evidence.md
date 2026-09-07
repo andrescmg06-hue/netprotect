@@ -99,5 +99,6 @@ web compilando limpio).
 
 ## CI en GitHub Actions
 
-Pendiente — se corre y se registra en un commit de cierre separado, mismo patrón que los Sprints 8
-y 9.
+Run [`34081594125`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34081594125), commit
+`0abba8b`, los 4 jobs en verde: `integration` (51s), `frontend` (32s), `backend` (20s), `android`
+(1m40s). Con esto el Sprint 10 queda cerrado según la regla de `CLAUDE.md`.
