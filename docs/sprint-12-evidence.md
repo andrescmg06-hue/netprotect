@@ -64,5 +64,6 @@ automatizadas (backend) y unitarias (la lógica de evaluación en Android).
 
 ## CI en GitHub Actions
 
-Pendiente — se corre y se registra en un commit de cierre separado, mismo patrón que los sprints
-anteriores.
+Run [`34153288085`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34153288085), commit
+`d54ae4b`, los 4 jobs en verde: `android` (1m42s), `integration` (1m5s), `frontend` (30s), `backend`
+(17s). Con esto el Sprint 12 queda cerrado según la regla de `CLAUDE.md`.
