@@ -202,6 +202,32 @@ def test_the_supervised_device_can_send_its_own_heartbeat(client) -> None:
     assert detail.json()["app_version"] == "0.2.0"
 
 
+def test_a_heartbeat_can_report_the_device_timezone(client) -> None:
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    device_id = _link_a_device(client, tutor_token, supervised_token)
+
+    beat = client.post(
+        f"/api/v1/devices/{device_id}/heartbeat",
+        json={"timezone": "America/Bogota"},
+        headers=_auth(supervised_token),
+    )
+    assert beat.status_code == 200
+
+    detail = client.get(f"/api/v1/devices/{device_id}", headers=_auth(tutor_token))
+    assert detail.json()["timezone"] == "America/Bogota"
+
+
+def test_a_device_that_never_reported_has_a_null_timezone(client) -> None:
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    device_id = _link_a_device(client, tutor_token, supervised_token)
+
+    detail = client.get(f"/api/v1/devices/{device_id}", headers=_auth(tutor_token))
+
+    assert detail.json()["timezone"] is None
+
+
 def test_the_tutor_cannot_send_a_heartbeat_for_the_device(client) -> None:
     tutor_token, _ = _make_account(client, "TUTOR")
     supervised_token, _ = _make_account(client, "SUPERVISADO")

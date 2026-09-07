@@ -164,12 +164,15 @@ class RuleEnforcementService : Service() {
     ) {
         val todayUsage = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
+        val weekUsage = AppInventoryCollector.collectWeekUsage(applicationContext)
+            .associate { it.packageName to it.foregroundSeconds }
         val reason = RuleEvaluator.evaluate(
             rules,
             categoryAssignments,
             categoryRules,
             foregroundPackage,
             todayUsage,
+            weekUsage,
             LocalDateTime.now(),
             defaultPolicy,
         ) ?: return

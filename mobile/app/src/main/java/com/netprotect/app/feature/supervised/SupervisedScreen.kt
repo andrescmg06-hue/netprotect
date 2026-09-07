@@ -119,7 +119,13 @@ fun SupervisedScreen(
         val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
         while (true) {
             runCatching {
-                deviceClient.sendHeartbeat(accessToken, deviceId, Build.VERSION.RELEASE, BuildConfig.VERSION_NAME)
+                deviceClient.sendHeartbeat(
+                    accessToken,
+                    deviceId,
+                    Build.VERSION.RELEASE,
+                    BuildConfig.VERSION_NAME,
+                    java.util.TimeZone.getDefault().id,
+                )
             }
             delay(HEARTBEAT_INTERVAL_MS)
         }

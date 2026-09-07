@@ -52,6 +52,12 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     platform: Mapped[str] = mapped_column(String(32), default="ANDROID", server_default="ANDROID")
     os_version: Mapped[str | None] = mapped_column(String(64))
     app_version: Mapped[str | None] = mapped_column(String(32))
+    # IANA identifier (e.g. "America/Bogota"), reported by the device on each heartbeat just
+    # like app_version/os_version. Nullable: a device that hasn't sent a heartbeat since this
+    # column existed hasn't reported one yet. Not used to recompute usage_date or SCHEDULE
+    # windows retroactively (Sprint 11) — it's what lets a tutor correctly interpret what they
+    # already see, not a rewrite of how the device evaluates its own rules in its own local time.
+    timezone: Mapped[str | None] = mapped_column(String(64))
     # Stable identifier generated once by the installed app, so re-pairing the same phone
     # (or pairing it to a second tutor) reuses this row instead of creating a duplicate.
     device_instance_id: Mapped[str | None] = mapped_column(String(64))

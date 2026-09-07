@@ -77,6 +77,7 @@ class BlockScreenActivity : ComponentActivity() {
 private fun reasonText(reason: BlockReason): String = when (reason) {
     BlockReason.BLOCK -> "Tu tutor bloqueó esta app."
     BlockReason.DAILY_LIMIT -> "Ya usaste el tiempo diario permitido para esta app."
+    BlockReason.WEEKLY_LIMIT -> "Ya usaste el tiempo semanal permitido para esta app."
     BlockReason.SCHEDULE -> "Esta app está bloqueada en este horario."
     BlockReason.CATEGORY -> "Tu tutor bloqueó la categoría a la que pertenece esta app."
     BlockReason.DEFAULT_POLICY ->

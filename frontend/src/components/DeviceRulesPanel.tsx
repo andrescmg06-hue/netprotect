@@ -58,6 +58,7 @@ function ruleTypeLabel(type: AppliedRuleType): string {
     ALLOW: "Permitir",
     BLOCK: "Bloquear",
     DAILY_LIMIT: "Límite diario",
+    WEEKLY_LIMIT: "Límite semanal",
     SCHEDULE: "Horario",
     CATEGORY: "Por categoría",
     DEFAULT_POLICY: "Sin aprobar",
@@ -72,6 +73,8 @@ function describeRule(rule: AppRule): string {
       return "Aprobada";
     case "DAILY_LIMIT":
       return `Máximo ${rule.daily_limit_minutes} min/día`;
+    case "WEEKLY_LIMIT":
+      return `Máximo ${rule.weekly_limit_minutes} min/semana`;
     case "SCHEDULE":
       return `Bloqueada ${minutesToTimeString(rule.schedule_start_minute ?? 0)}–${minutesToTimeString(
         rule.schedule_end_minute ?? 0
@@ -99,6 +102,7 @@ export function DeviceRulesPanel({
   const [packageName, setPackageName] = useState("");
   const [ruleType, setRuleType] = useState<RuleType>("BLOCK");
   const [dailyLimitMinutes, setDailyLimitMinutes] = useState("30");
+  const [weeklyLimitMinutes, setWeeklyLimitMinutes] = useState("180");
   const [scheduleStart, setScheduleStart] = useState("22:00");
   const [scheduleEnd, setScheduleEnd] = useState("06:00");
   const [scheduleDaysMask, setScheduleDaysMask] = useState(ALL_DAYS_MASK);
@@ -182,6 +186,15 @@ export function DeviceRulesPanel({
       input.daily_limit_minutes = minutes;
     }
 
+    if (ruleType === "WEEKLY_LIMIT") {
+      const minutes = Number(weeklyLimitMinutes);
+      if (!Number.isInteger(minutes) || minutes <= 0) {
+        setFormError("El límite semanal debe ser un número de minutos mayor que 0.");
+        return;
+      }
+      input.weekly_limit_minutes = minutes;
+    }
+
     if (ruleType === "SCHEDULE") {
       const start = timeStringToMinutes(scheduleStart);
       const end = timeStringToMinutes(scheduleEnd);
@@ -246,6 +259,7 @@ export function DeviceRulesPanel({
           <option value="BLOCK">Bloquear</option>
           <option value="ALLOW">Permitir</option>
           <option value="DAILY_LIMIT">Límite diario</option>
+          <option value="WEEKLY_LIMIT">Límite semanal</option>
           <option value="SCHEDULE">Horario</option>
         </select>
 
@@ -256,6 +270,16 @@ export function DeviceRulesPanel({
             value={dailyLimitMinutes}
             onChange={(event) => setDailyLimitMinutes(event.target.value)}
             aria-label="Minutos por día"
+          />
+        )}
+
+        {ruleType === "WEEKLY_LIMIT" && (
+          <input
+            type="number"
+            min={1}
+            value={weeklyLimitMinutes}
+            onChange={(event) => setWeeklyLimitMinutes(event.target.value)}
+            aria-label="Minutos por semana"
           />
         )}
 

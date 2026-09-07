@@ -214,3 +214,12 @@ la política por defecto del dispositivo (Sprint 9). El catálogo de categorías
 propia del equipo, no una cita del enunciado original — ver `docs/sprint-10.md`.
 
 El detalle está en `docs/sprint-10.md`.
+
+## Alcance del Sprint 11
+
+Tiempo: el tutor pone un límite semanal de minutos a una app o a una categoría, además del diario
+que ya existía. El dispositivo supervisado reporta su zona horaria real (IANA) en cada heartbeat,
+visible junto a su estado en la app del tutor y en el panel web — salda la deuda de zona horaria
+anotada desde el Sprint 7. "Modo escolar" queda para el Sprint 12.
+
+El detalle está en `docs/sprint-11.md`.

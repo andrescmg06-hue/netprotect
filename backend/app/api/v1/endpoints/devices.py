@@ -47,6 +47,7 @@ def _to_response(device: Device, linked_at: datetime) -> DeviceResponse:
         platform=device.platform,
         os_version=device.os_version,
         app_version=device.app_version,
+        timezone=device.timezone,
         linked_at=linked_at,
         status=DeviceStatusResponse(
             status=compute_effective_status(stored_status, last_seen_at),
@@ -210,6 +211,8 @@ async def send_heartbeat(
         device.app_version = payload.app_version
     if payload.os_version:
         device.os_version = payload.os_version
+    if payload.timezone:
+        device.timezone = payload.timezone
 
     await db.commit()
 

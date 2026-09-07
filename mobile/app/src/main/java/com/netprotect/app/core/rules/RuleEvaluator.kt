@@ -34,20 +34,24 @@ object RuleEvaluator {
         categoryRules: List<CategoryRule>,
         packageName: String,
         todayUsageSeconds: Map<String, Int>,
+        weekUsageSeconds: Map<String, Int>,
         now: LocalDateTime,
         defaultPolicy: DefaultAppPolicy,
     ): BlockReason? {
         val usedSeconds = todayUsageSeconds[packageName] ?: 0
+        val usedWeekSeconds = weekUsageSeconds[packageName] ?: 0
 
         val appRule = rules.find { it.packageName == packageName }
         if (appRule != null) {
             return evaluateRuleFields(
                 appRule.ruleType,
                 appRule.dailyLimitMinutes,
+                appRule.weeklyLimitMinutes,
                 appRule.scheduleStartMinute,
                 appRule.scheduleEndMinute,
                 appRule.scheduleDaysMask,
                 usedSeconds,
+                usedWeekSeconds,
                 now,
             )
         }
@@ -58,10 +62,12 @@ object RuleEvaluator {
             val blocked = evaluateRuleFields(
                 categoryRule.ruleType,
                 categoryRule.dailyLimitMinutes,
+                categoryRule.weeklyLimitMinutes,
                 categoryRule.scheduleStartMinute,
                 categoryRule.scheduleEndMinute,
                 categoryRule.scheduleDaysMask,
                 usedSeconds,
+                usedWeekSeconds,
                 now,
             )
             // The category rule only ever reports back BLOCK/DAILY_LIMIT/SCHEDULE or null — it's
@@ -81,20 +87,30 @@ object RuleEvaluator {
     private fun evaluateRuleFields(
         ruleType: RuleType,
         dailyLimitMinutes: Int?,
+        weeklyLimitMinutes: Int?,
         scheduleStartMinute: Int?,
         scheduleEndMinute: Int?,
         scheduleDaysMask: Int?,
         usedSeconds: Int,
+        usedWeekSeconds: Int,
         now: LocalDateTime,
     ): BlockReason? = when (ruleType) {
         RuleType.ALLOW -> null
         RuleType.BLOCK -> BlockReason.BLOCK
         RuleType.DAILY_LIMIT -> {
-            // dailyLimitMinutes null here is unreachable in practice — the backend's CHECK
-            // constraint requires it whenever rule_type is DAILY_LIMIT — but null-safety still
-            // has to resolve to something: "not blocked" rather than crashing.
+            // dailyLimitMinutes/weeklyLimitMinutes null here is unreachable in practice — the
+            // backend's CHECK constraint requires them for their respective rule_type — but
+            // null-safety still has to resolve to something: "not blocked" rather than crashing.
             val limitMinutes = dailyLimitMinutes
             if (limitMinutes != null && usedSeconds >= limitMinutes * 60) BlockReason.DAILY_LIMIT else null
+        }
+        RuleType.WEEKLY_LIMIT -> {
+            val limitMinutes = weeklyLimitMinutes
+            if (limitMinutes != null && usedWeekSeconds >= limitMinutes * 60) {
+                BlockReason.WEEKLY_LIMIT
+            } else {
+                null
+            }
         }
         RuleType.SCHEDULE ->
             if (isWithinSchedule(scheduleStartMinute, scheduleEndMinute, scheduleDaysMask, now)) {

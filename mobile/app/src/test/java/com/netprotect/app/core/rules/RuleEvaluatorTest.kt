@@ -8,18 +8,21 @@ import org.junit.Test
 private const val PKG = "com.instagram.android"
 private const val ALL_DAYS = 0b111_1111 // bit 0 = Monday ... bit 6 = Sunday
 
-private fun blockRule() = AppRule(PKG, RuleType.BLOCK, null, null, null, null)
-private fun allowRule() = AppRule(PKG, RuleType.ALLOW, null, null, null, null)
-private fun dailyLimitRule(minutes: Int) = AppRule(PKG, RuleType.DAILY_LIMIT, minutes, null, null, null)
+private fun blockRule() = AppRule(PKG, RuleType.BLOCK, null, null, null, null, null)
+private fun allowRule() = AppRule(PKG, RuleType.ALLOW, null, null, null, null, null)
+private fun dailyLimitRule(minutes: Int) =
+    AppRule(PKG, RuleType.DAILY_LIMIT, minutes, null, null, null, null)
+private fun weeklyLimitRule(minutes: Int) =
+    AppRule(PKG, RuleType.WEEKLY_LIMIT, null, minutes, null, null, null)
 private fun scheduleRule(start: Int, end: Int, daysMask: Int = ALL_DAYS) =
-    AppRule(PKG, RuleType.SCHEDULE, null, start, end, daysMask)
+    AppRule(PKG, RuleType.SCHEDULE, null, null, start, end, daysMask)
 
 private fun categoryBlockRule(category: Category) =
-    CategoryRule(category, RuleType.BLOCK, null, null, null, null)
+    CategoryRule(category, RuleType.BLOCK, null, null, null, null, null)
 private fun categoryAllowRule(category: Category) =
-    CategoryRule(category, RuleType.ALLOW, null, null, null, null)
+    CategoryRule(category, RuleType.ALLOW, null, null, null, null, null)
 private fun categoryDailyLimitRule(category: Category, minutes: Int) =
-    CategoryRule(category, RuleType.DAILY_LIMIT, minutes, null, null, null)
+    CategoryRule(category, RuleType.DAILY_LIMIT, minutes, null, null, null, null)
 
 // 2026-09-07 is a Monday, used as the fixed reference day for every SCHEDULE test below.
 private fun mondayAt(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 9, 7, hour, minute)
@@ -28,12 +31,13 @@ private fun evaluate(
     rules: List<AppRule>,
     now: LocalDateTime = mondayAt(12),
     usage: Map<String, Int> = emptyMap(),
+    weekUsage: Map<String, Int> = emptyMap(),
     policy: DefaultAppPolicy = DefaultAppPolicy.ALLOW,
     packageName: String = PKG,
     categoryAssignments: List<CategoryAssignment> = emptyList(),
     categoryRules: List<CategoryRule> = emptyList(),
 ) = RuleEvaluator.evaluate(
-    rules, categoryAssignments, categoryRules, packageName, usage, now, policy
+    rules, categoryAssignments, categoryRules, packageName, usage, weekUsage, now, policy
 )
 
 class RuleEvaluatorTest {
@@ -76,6 +80,31 @@ class RuleEvaluatorTest {
     @Test
     fun `DAILY_LIMIT with no usage reported yet does not block`() {
         assertNull(evaluate(listOf(dailyLimitRule(60))))
+    }
+
+    @Test
+    fun `WEEKLY_LIMIT does not block while under the limit`() {
+        assertNull(evaluate(listOf(weeklyLimitRule(300)), weekUsage = mapOf(PKG to 299 * 60)))
+    }
+
+    @Test
+    fun `WEEKLY_LIMIT blocks once weekly usage reaches the limit exactly`() {
+        assertEquals(
+            BlockReason.WEEKLY_LIMIT,
+            evaluate(listOf(weeklyLimitRule(300)), weekUsage = mapOf(PKG to 300 * 60)),
+        )
+    }
+
+    @Test
+    fun `WEEKLY_LIMIT is independent of today's usage alone`() {
+        // Today's usage is high but the week total is still under the weekly limit.
+        assertNull(
+            evaluate(
+                listOf(weeklyLimitRule(300)),
+                usage = mapOf(PKG to 120 * 60),
+                weekUsage = mapOf(PKG to 200 * 60),
+            )
+        )
     }
 
     @Test

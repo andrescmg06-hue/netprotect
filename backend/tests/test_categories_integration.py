@@ -183,6 +183,25 @@ def test_a_daily_limit_category_rule_without_minutes_is_rejected(client) -> None
     assert response.status_code == 422
 
 
+def test_a_tutor_can_set_a_weekly_limit_rule_for_a_category(client) -> None:
+    tutor_token, _, device_id = _setup_linked_device(client)
+
+    response = _set_category_rule(
+        client, tutor_token, device_id, "GAMES", rule_type="WEEKLY_LIMIT", weekly_limit_minutes=300
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["weekly_limit_minutes"] == 300
+
+
+def test_a_weekly_limit_category_rule_without_minutes_is_rejected(client) -> None:
+    tutor_token, _, device_id = _setup_linked_device(client)
+
+    response = _set_category_rule(client, tutor_token, device_id, "GAMES", rule_type="WEEKLY_LIMIT")
+
+    assert response.status_code == 422
+
+
 def test_setting_a_rule_for_an_already_ruled_category_replaces_it(client) -> None:
     tutor_token, _, device_id = _setup_linked_device(client)
     _set_category_rule(client, tutor_token, device_id, "GAMES", rule_type="BLOCK")

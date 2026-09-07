@@ -143,7 +143,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                   <div>
                     <div className="deviceName">{device.name}</div>
                     <div className="deviceMeta">
-                      {device.platform} · Visto: {formatLastSeen(device.status.last_seen_at)}
+                      {device.platform}
+                      {device.timezone && ` · ${device.timezone}`} · Visto:{" "}
+                      {formatLastSeen(device.status.last_seen_at)}
                     </div>
                   </div>
                   <div className="deviceActions">

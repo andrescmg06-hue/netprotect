@@ -114,6 +114,35 @@ def test_a_tutor_can_create_a_daily_limit_rule(client) -> None:
     assert response.json()["daily_limit_minutes"] == 60
 
 
+def test_a_tutor_can_create_a_weekly_limit_rule(client) -> None:
+    tutor_token, _, device_id = _setup_linked_device(client)
+
+    response = client.post(
+        f"/api/v1/devices/{device_id}/rules",
+        json={
+            "package_name": "com.instagram.android",
+            "rule_type": "WEEKLY_LIMIT",
+            "weekly_limit_minutes": 300,
+        },
+        headers=_auth(tutor_token),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["weekly_limit_minutes"] == 300
+
+
+def test_weekly_limit_rule_without_minutes_is_rejected(client) -> None:
+    tutor_token, _, device_id = _setup_linked_device(client)
+
+    response = client.post(
+        f"/api/v1/devices/{device_id}/rules",
+        json={"package_name": "com.instagram.android", "rule_type": "WEEKLY_LIMIT"},
+        headers=_auth(tutor_token),
+    )
+
+    assert response.status_code == 422
+
+
 def test_a_tutor_can_create_an_overnight_schedule_rule(client) -> None:
     """22:00-06:00 is a valid overnight window: start > end, evaluated with wraparound on the
     device, not rejected by the API.

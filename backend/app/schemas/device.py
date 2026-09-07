@@ -16,6 +16,7 @@ class DeviceResponse(BaseModel):
     platform: str
     os_version: str | None
     app_version: str | None
+    timezone: str | None
     linked_at: datetime
     status: DeviceStatusResponse
     default_app_policy: str
@@ -32,6 +33,9 @@ class RenameDeviceRequest(BaseModel):
 class HeartbeatRequest(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     os_version: str | None = Field(default=None, max_length=64)
+    # IANA identifier (e.g. "America/Bogota"), reported by the device so the tutor can correctly
+    # interpret what they see (Sprint 11) — see Device.timezone in app/models/device.py.
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class HeartbeatResponse(BaseModel):

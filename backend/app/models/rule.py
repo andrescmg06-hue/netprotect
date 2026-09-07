@@ -17,9 +17,10 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 ALLOW = "ALLOW"
 BLOCK = "BLOCK"
 DAILY_LIMIT = "DAILY_LIMIT"
+WEEKLY_LIMIT = "WEEKLY_LIMIT"
 SCHEDULE = "SCHEDULE"
 
-RULE_TYPES = (ALLOW, BLOCK, DAILY_LIMIT, SCHEDULE)
+RULE_TYPES = (ALLOW, BLOCK, DAILY_LIMIT, WEEKLY_LIMIT, SCHEDULE)
 _RULE_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in RULE_TYPES)
 
 # Not a rule type: an app can be blocked without any rule of its own, because the device's
@@ -62,6 +63,11 @@ class AppRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="ck_app_rules_daily_limit_requires_minutes",
         ),
         CheckConstraint(
+            "(rule_type != 'WEEKLY_LIMIT') "
+            "OR (weekly_limit_minutes IS NOT NULL AND weekly_limit_minutes > 0)",
+            name="ck_app_rules_weekly_limit_requires_minutes",
+        ),
+        CheckConstraint(
             "(rule_type != 'SCHEDULE') OR ("
             "schedule_start_minute IS NOT NULL AND schedule_start_minute BETWEEN 0 AND 1439 "
             "AND schedule_end_minute IS NOT NULL AND schedule_end_minute BETWEEN 0 AND 1439 "
@@ -78,6 +84,10 @@ class AppRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     rule_type: Mapped[str] = mapped_column(String(16))
     # Only meaningful when rule_type == DAILY_LIMIT.
     daily_limit_minutes: Mapped[int | None] = mapped_column(Integer)
+    # Only meaningful when rule_type == WEEKLY_LIMIT. A dedicated column, not a reuse of
+    # daily_limit_minutes with a "period" flag — same pattern as SCHEDULE's own columns, and it
+    # avoids touching the Sprint 8-10 API surface and tests for a rename (Sprint 11).
+    weekly_limit_minutes: Mapped[int | None] = mapped_column(Integer)
     # Only meaningful when rule_type == SCHEDULE. Minutes since local midnight on the
     # device's own clock, not UTC — normalizing against the device's real timezone is
     # Sprint 11's job (same reasoning as device_application_usage.usage_date in Sprint 7).

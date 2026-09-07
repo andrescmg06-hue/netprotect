@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
 
-RuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE"]
+RuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "WEEKLY_LIMIT", "SCHEDULE"]
 
 # What a device does with an app that has no rule: ALLOW = blocklist mode (Sprint 8 behavior),
 # BLOCK = allowlist mode (only approved apps run).
@@ -16,7 +16,7 @@ DefaultAppPolicy = Literal["ALLOW", "BLOCK"]
 # blocked by its assigned category's rule, or by the device's default policy, without any AppRule
 # of its own. See AppRuleEvent in app/models/rule.py.
 AppliedRuleType = Literal[
-    "ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE", "DEFAULT_POLICY", "CATEGORY"
+    "ALLOW", "BLOCK", "DAILY_LIMIT", "WEEKLY_LIMIT", "SCHEDULE", "DEFAULT_POLICY", "CATEGORY"
 ]
 
 
@@ -28,6 +28,7 @@ class UpsertAppRuleRequest(BaseModel):
     package_name: str = Field(min_length=1, max_length=255)
     rule_type: RuleType
     daily_limit_minutes: int | None = Field(default=None, gt=0)
+    weekly_limit_minutes: int | None = Field(default=None, gt=0)
     # Minutes since local midnight on the device's own clock — see AppRule for why this isn't
     # normalized to UTC yet. start > end is a valid overnight window (e.g. 22:00-06:00).
     schedule_start_minute: int | None = Field(default=None, ge=0, le=1439)
@@ -40,6 +41,8 @@ class UpsertAppRuleRequest(BaseModel):
     def _require_fields_for_rule_type(self) -> "UpsertAppRuleRequest":
         if self.rule_type == "DAILY_LIMIT" and self.daily_limit_minutes is None:
             raise ValueError("daily_limit_minutes is required when rule_type is DAILY_LIMIT")
+        if self.rule_type == "WEEKLY_LIMIT" and self.weekly_limit_minutes is None:
+            raise ValueError("weekly_limit_minutes is required when rule_type is WEEKLY_LIMIT")
         if self.rule_type == "SCHEDULE" and (
             self.schedule_start_minute is None
             or self.schedule_end_minute is None
@@ -57,6 +60,7 @@ class AppRuleResponse(BaseModel):
     package_name: str
     rule_type: RuleType
     daily_limit_minutes: int | None
+    weekly_limit_minutes: int | None
     schedule_start_minute: int | None
     schedule_end_minute: int | None
     schedule_days_mask: int | None

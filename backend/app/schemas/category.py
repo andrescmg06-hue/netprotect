@@ -21,7 +21,7 @@ Category = Literal[
 # Deliberately not reusing app.schemas.rule.RuleType: category rules don't have ALLOW's Sprint-8
 # "no effect yet" history, but the wire values are identical, so a shared Literal alias keeps the
 # two from silently drifting apart while staying two distinct, independently-editable schemas.
-CategoryRuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "SCHEDULE"]
+CategoryRuleType = Literal["ALLOW", "BLOCK", "DAILY_LIMIT", "WEEKLY_LIMIT", "SCHEDULE"]
 
 
 class UpsertCategoryAssignmentRequest(BaseModel):
@@ -55,6 +55,7 @@ class UpsertCategoryRuleRequest(BaseModel):
     category: Category
     rule_type: CategoryRuleType
     daily_limit_minutes: int | None = Field(default=None, gt=0)
+    weekly_limit_minutes: int | None = Field(default=None, gt=0)
     schedule_start_minute: int | None = Field(default=None, ge=0, le=1439)
     schedule_end_minute: int | None = Field(default=None, ge=0, le=1439)
     schedule_days_mask: int | None = Field(default=None, ge=1, le=127)
@@ -63,6 +64,8 @@ class UpsertCategoryRuleRequest(BaseModel):
     def _require_fields_for_rule_type(self) -> "UpsertCategoryRuleRequest":
         if self.rule_type == "DAILY_LIMIT" and self.daily_limit_minutes is None:
             raise ValueError("daily_limit_minutes is required when rule_type is DAILY_LIMIT")
+        if self.rule_type == "WEEKLY_LIMIT" and self.weekly_limit_minutes is None:
+            raise ValueError("weekly_limit_minutes is required when rule_type is WEEKLY_LIMIT")
         if self.rule_type == "SCHEDULE" and (
             self.schedule_start_minute is None
             or self.schedule_end_minute is None
@@ -80,6 +83,7 @@ class CategoryRuleResponse(BaseModel):
     category: Category
     rule_type: CategoryRuleType
     daily_limit_minutes: int | None
+    weekly_limit_minutes: int | None
     schedule_start_minute: int | None
     schedule_end_minute: int | None
     schedule_days_mask: int | None

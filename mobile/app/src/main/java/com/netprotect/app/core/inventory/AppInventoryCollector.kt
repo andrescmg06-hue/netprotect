@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -50,15 +51,27 @@ object AppInventoryCollector {
     /** The device's current local calendar day, as the ISO date string the backend expects. */
     fun todayDateString(): String = LocalDate.now().toString()
 
-    fun collectTodayUsage(context: Context): List<AppUsageInfo> {
+    fun collectTodayUsage(context: Context): List<AppUsageInfo> =
+        collectUsageSince(context, LocalDate.now())
+
+    /** Same mechanism as [collectTodayUsage], just a wider window: Monday 00:00 local time
+     * through now, matching schedule_days_mask's bit 0 = Monday convention (Sprint 11) rather
+     * than a rolling 7-day window whose meaning would shift depending on when it's checked.
+     */
+    fun collectWeekUsage(context: Context): List<AppUsageInfo> {
+        val today = LocalDate.now()
+        val monday = today.minusDays((today.dayOfWeek.value - DayOfWeek.MONDAY.value).toLong())
+        return collectUsageSince(context, monday)
+    }
+
+    private fun collectUsageSince(context: Context, sinceDate: LocalDate): List<AppUsageInfo> {
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val startOfToday = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
-            .toInstant().toEpochMilli()
+        val startMillis = sinceDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val now = System.currentTimeMillis()
 
         val stats = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_BEST, startOfToday, now
+            UsageStatsManager.INTERVAL_BEST, startMillis, now
         ) ?: return emptyList()
 
         // queryUsageStats can return more than one bucket per package within a single range;

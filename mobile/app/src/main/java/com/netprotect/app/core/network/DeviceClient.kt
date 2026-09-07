@@ -8,6 +8,7 @@ data class DeviceSummary(
     val platform: String,
     val status: String,
     val lastSeenAt: String?,
+    val timezone: String?,
 )
 
 data class MyDeviceInfo(
@@ -67,10 +68,12 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         deviceId: String,
         osVersion: String?,
         appVersion: String?,
+        timezone: String?,
     ) {
         val body = JSONObject()
             .put("os_version", osVersion)
             .put("app_version", appVersion)
+            .put("timezone", timezone)
         sendJson("/api/v1/devices/$deviceId/heartbeat", "POST", body, accessToken)
     }
 
@@ -82,6 +85,7 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             platform = getString("platform"),
             status = status.getString("status"),
             lastSeenAt = status.optString("last_seen_at").takeIf { it.isNotBlank() },
+            timezone = optString("timezone").takeIf { it.isNotBlank() },
         )
     }
 }

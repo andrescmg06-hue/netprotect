@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (06/09/2026)
 
-Sprints 1 a 10 completos y verificados en CI.
+Sprints 1 a 11 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -117,11 +117,19 @@ documento de 48 secciones queda fuera). El catálogo usado (`SOCIAL_MEDIA`, `GAM
 fuente original — ver `docs/sprint-10.md`. Cualquier sprint futuro que necesite el enunciado real
 debe pedírselo directamente, no asumir que ya está resuelto.
 
-**Siguiente: Sprint 11 — Tiempo.** Límite diario/semanal, por app y por categoría; ventanas
-horarias; zona horaria del dispositivo. Ya hay deuda pendiente esperando este sprint: `usage_date`
-(Sprint 7) y las franjas de `SCHEDULE` (Sprint 8) no están normalizadas contra la zona horaria real
-del dispositivo — se trataron como fecha/hora local sin más, documentado explícitamente como
-pospuesto hasta este sprint, que ya necesita resolverlo de todas formas.
+**Nota del Sprint 11**: `weekly_limit_minutes` es columna propia (en `app_rules` y
+`category_rules`), no un rename de `daily_limit_minutes` — evita tocar la API y las suites de los
+Sprints 8-10 sin necesidad. La semana es calendario (lunes 00:00 hora local), no una ventana móvil
+de 7 días, coherente con `schedule_days_mask` (bit 0 = lunes). `devices.timezone` (IANA, reportado
+en cada heartbeat) es sólo para que el tutor interprete lo que ve — la evaluación en Android ya
+usaba correctamente la hora local del dispositivo desde el Sprint 8, no hacía falta reescribirla.
+
+**Siguiente: Sprint 12 — Modo escolar.** Perfil de reglas con vigencia horaria (07:00-14:00 por
+defecto, configurable) y aplicación local sin conexión permanente al backend. Construye directamente
+sobre `SCHEDULE` (Sprint 8) y el catálogo de categorías (Sprint 10); revisar si conviene modelarlo
+como una bandera "modo escolar activo" en el dispositivo que el `RuleEvaluator` consulta antes que
+nada más, o como un conjunto de reglas que se activan/desactivan en bloque — definir esa decisión
+antes de escribir el motor, mismo criterio que se usó para categorías en el Sprint 10.
 
 ## Entorno de trabajo
 

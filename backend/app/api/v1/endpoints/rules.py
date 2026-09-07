@@ -40,6 +40,7 @@ def _to_rule_response(rule: AppRule) -> AppRuleResponse:
         package_name=rule.package_name,
         rule_type=rule.rule_type,
         daily_limit_minutes=rule.daily_limit_minutes,
+        weekly_limit_minutes=rule.weekly_limit_minutes,
         schedule_start_minute=rule.schedule_start_minute,
         schedule_end_minute=rule.schedule_end_minute,
         schedule_days_mask=rule.schedule_days_mask,
@@ -75,6 +76,7 @@ async def upsert_app_rule(
             package_name=payload.package_name,
             rule_type=payload.rule_type,
             daily_limit_minutes=payload.daily_limit_minutes,
+            weekly_limit_minutes=payload.weekly_limit_minutes,
             schedule_start_minute=payload.schedule_start_minute,
             schedule_end_minute=payload.schedule_end_minute,
             schedule_days_mask=payload.schedule_days_mask,
@@ -85,6 +87,7 @@ async def upsert_app_rule(
         rule = existing
         rule.rule_type = payload.rule_type
         rule.daily_limit_minutes = payload.daily_limit_minutes
+        rule.weekly_limit_minutes = payload.weekly_limit_minutes
         rule.schedule_start_minute = payload.schedule_start_minute
         rule.schedule_end_minute = payload.schedule_end_minute
         rule.schedule_days_mask = payload.schedule_days_mask
@@ -204,6 +207,7 @@ async def list_active_app_rules_for_device(
                 category=rule.category,
                 rule_type=rule.rule_type,
                 daily_limit_minutes=rule.daily_limit_minutes,
+                weekly_limit_minutes=rule.weekly_limit_minutes,
                 schedule_start_minute=rule.schedule_start_minute,
                 schedule_end_minute=rule.schedule_end_minute,
                 schedule_days_mask=rule.schedule_days_mask,

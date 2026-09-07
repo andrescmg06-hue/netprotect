@@ -101,6 +101,7 @@ export type Device = {
   platform: string;
   os_version: string | null;
   app_version: string | null;
+  timezone: string | null;
   linked_at: string;
   status: DeviceStatus;
   default_app_policy: DefaultAppPolicy;
@@ -176,13 +177,14 @@ export function listDeviceApplications(
   );
 }
 
-export type RuleType = "ALLOW" | "BLOCK" | "DAILY_LIMIT" | "SCHEDULE";
+export type RuleType = "ALLOW" | "BLOCK" | "DAILY_LIMIT" | "WEEKLY_LIMIT" | "SCHEDULE";
 
 export type AppRule = {
   id: string;
   package_name: string;
   rule_type: RuleType;
   daily_limit_minutes: number | null;
+  weekly_limit_minutes: number | null;
   schedule_start_minute: number | null;
   schedule_end_minute: number | null;
   schedule_days_mask: number | null;
@@ -194,6 +196,7 @@ export type UpsertAppRuleInput = {
   package_name: string;
   rule_type: RuleType;
   daily_limit_minutes?: number;
+  weekly_limit_minutes?: number;
   schedule_start_minute?: number;
   schedule_end_minute?: number;
   schedule_days_mask?: number;
@@ -353,6 +356,7 @@ export type CategoryRule = {
   category: Category;
   rule_type: RuleType;
   daily_limit_minutes: number | null;
+  weekly_limit_minutes: number | null;
   schedule_start_minute: number | null;
   schedule_end_minute: number | null;
   schedule_days_mask: number | null;
@@ -364,6 +368,7 @@ export type UpsertCategoryRuleInput = {
   category: Category;
   rule_type: RuleType;
   daily_limit_minutes?: number;
+  weekly_limit_minutes?: number;
   schedule_start_minute?: number;
   schedule_end_minute?: number;
   schedule_days_mask?: number;

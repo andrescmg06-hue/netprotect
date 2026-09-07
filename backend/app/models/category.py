@@ -48,8 +48,9 @@ _CATEGORY_LIST_SQL = ", ".join(f"'{value}'" for value in CATEGORIES)
 ALLOW = "ALLOW"
 BLOCK = "BLOCK"
 DAILY_LIMIT = "DAILY_LIMIT"
+WEEKLY_LIMIT = "WEEKLY_LIMIT"
 SCHEDULE = "SCHEDULE"
-_CATEGORY_RULE_TYPES = (ALLOW, BLOCK, DAILY_LIMIT, SCHEDULE)
+_CATEGORY_RULE_TYPES = (ALLOW, BLOCK, DAILY_LIMIT, WEEKLY_LIMIT, SCHEDULE)
 _CATEGORY_RULE_TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in _CATEGORY_RULE_TYPES)
 
 
@@ -97,6 +98,11 @@ class CategoryRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="ck_category_rules_daily_limit_requires_minutes",
         ),
         CheckConstraint(
+            "(rule_type != 'WEEKLY_LIMIT') "
+            "OR (weekly_limit_minutes IS NOT NULL AND weekly_limit_minutes > 0)",
+            name="ck_category_rules_weekly_limit_requires_minutes",
+        ),
+        CheckConstraint(
             "(rule_type != 'SCHEDULE') OR ("
             "schedule_start_minute IS NOT NULL AND schedule_start_minute BETWEEN 0 AND 1439 "
             "AND schedule_end_minute IS NOT NULL AND schedule_end_minute BETWEEN 0 AND 1439 "
@@ -112,6 +118,7 @@ class CategoryRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(32))
     rule_type: Mapped[str] = mapped_column(String(16))
     daily_limit_minutes: Mapped[int | None] = mapped_column(Integer)
+    weekly_limit_minutes: Mapped[int | None] = mapped_column(Integer)
     schedule_start_minute: Mapped[int | None] = mapped_column(Integer)
     schedule_end_minute: Mapped[int | None] = mapped_column(Integer)
     schedule_days_mask: Mapped[int | None] = mapped_column(Integer)

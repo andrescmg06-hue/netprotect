@@ -7,6 +7,7 @@ enum class RuleType(val wireValue: String) {
     ALLOW("ALLOW"),
     BLOCK("BLOCK"),
     DAILY_LIMIT("DAILY_LIMIT"),
+    WEEKLY_LIMIT("WEEKLY_LIMIT"),
     SCHEDULE("SCHEDULE");
 
     companion object {
@@ -34,6 +35,7 @@ enum class DefaultAppPolicy(val wireValue: String) {
 enum class BlockReason(val wireValue: String) {
     BLOCK("BLOCK"),
     DAILY_LIMIT("DAILY_LIMIT"),
+    WEEKLY_LIMIT("WEEKLY_LIMIT"),
     SCHEDULE("SCHEDULE"),
     // Sprint 10: the package had no rule of its own, but its assigned category did.
     CATEGORY("CATEGORY"),
@@ -66,6 +68,9 @@ data class AppRule(
     val packageName: String,
     val ruleType: RuleType,
     val dailyLimitMinutes: Int?,
+    // Only meaningful when ruleType == WEEKLY_LIMIT. Own field, not a "period" flag on
+    // dailyLimitMinutes — mirrors the backend's dedicated column (Sprint 11).
+    val weeklyLimitMinutes: Int?,
     // Minutes since local midnight on this device's own clock — not normalized to a timezone
     // (see the backend model's docstring). start > end is a valid overnight window.
     val scheduleStartMinute: Int?,
@@ -84,6 +89,7 @@ data class CategoryRule(
     val category: Category,
     val ruleType: RuleType,
     val dailyLimitMinutes: Int?,
+    val weeklyLimitMinutes: Int?,
     val scheduleStartMinute: Int?,
     val scheduleEndMinute: Int?,
     val scheduleDaysMask: Int?,

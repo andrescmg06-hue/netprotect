@@ -273,7 +273,11 @@ private fun DeviceRow(
                 ) {
                     Column {
                         Text(device.name, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(device.platform, color = Color(0xFF7D899A), fontSize = 12.sp)
+                        Text(
+                            device.timezone?.let { "${device.platform} · $it" } ?: device.platform,
+                            color = Color(0xFF7D899A),
+                            fontSize = 12.sp,
+                        )
                     }
                     StatusPill(status = device.status)
                 }
