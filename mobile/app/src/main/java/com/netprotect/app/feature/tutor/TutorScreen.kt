@@ -47,6 +47,8 @@ import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.network.PairingCode
+import com.netprotect.app.core.network.DeviceStatistics
+import com.netprotect.app.core.network.StatisticsClient
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -91,6 +93,14 @@ private sealed interface HistoryState {
     data class Error(val message: String) : HistoryState
 }
 
+private sealed interface StatisticsState {
+    data object Loading : StatisticsState
+    // Read-only, same as HistoryState: aggregates the backend already computes (Sprint 16), one
+    // period ("today"/"7d"/"30d") at a time.
+    data class Loaded(val period: String, val stats: DeviceStatistics) : StatisticsState
+    data class Error(val message: String) : StatisticsState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -106,6 +116,7 @@ fun TutorScreen(
     val locationClient = remember { LocationClient(baseUrl) }
     val geofenceClient = remember { GeofenceClient(baseUrl) }
     val historyClient = remember { HistoryClient(baseUrl) }
+    val statisticsClient = remember { StatisticsClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -120,6 +131,9 @@ fun TutorScreen(
     val geofenceStateByDevice = remember { mutableStateMapOf<String, GeofenceState>() }
     var expandedHistoryDeviceId by remember { mutableStateOf<String?>(null) }
     val historyStateByDevice = remember { mutableStateMapOf<String, HistoryState>() }
+    var expandedStatisticsDeviceId by remember { mutableStateOf<String?>(null) }
+    val statisticsStateByDevice = remember { mutableStateMapOf<String, StatisticsState>() }
+    val statisticsPeriodByDevice = remember { mutableStateMapOf<String, String>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -194,6 +208,27 @@ fun TutorScreen(
                 HistoryState.Error(exception.message ?: "No se pudo cargar el historial")
             }
         }
+    }
+
+    fun loadStatistics(deviceId: String, period: String) {
+        statisticsPeriodByDevice[deviceId] = period
+        statisticsStateByDevice[deviceId] = StatisticsState.Loading
+        scope.launch {
+            statisticsStateByDevice[deviceId] = try {
+                StatisticsState.Loaded(period, statisticsClient.getStatistics(accessToken, deviceId, period))
+            } catch (exception: Exception) {
+                StatisticsState.Error(exception.message ?: "No se pudieron cargar las estadísticas")
+            }
+        }
+    }
+
+    fun toggleStatistics(deviceId: String) {
+        if (expandedStatisticsDeviceId == deviceId) {
+            expandedStatisticsDeviceId = null
+            return
+        }
+        expandedStatisticsDeviceId = deviceId
+        loadStatistics(deviceId, statisticsPeriodByDevice[deviceId] ?: "today")
     }
 
     LaunchedEffect(Unit) { reloadDevices() }
@@ -329,6 +364,12 @@ fun TutorScreen(
                                 isHistoryExpanded = expandedHistoryDeviceId == device.id,
                                 historyState = historyStateByDevice[device.id],
                                 onToggleHistory = { toggleHistory(device.id) },
+                                isStatisticsExpanded = expandedStatisticsDeviceId == device.id,
+                                statisticsState = statisticsStateByDevice[device.id],
+                                onToggleStatistics = { toggleStatistics(device.id) },
+                                onChangeStatisticsPeriod = { period ->
+                                    loadStatistics(device.id, period)
+                                },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -366,6 +407,10 @@ private fun DeviceRow(
     isHistoryExpanded: Boolean,
     historyState: HistoryState?,
     onToggleHistory: () -> Unit,
+    isStatisticsExpanded: Boolean,
+    statisticsState: StatisticsState?,
+    onToggleStatistics: () -> Unit,
+    onChangeStatisticsPeriod: (String) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -416,6 +461,9 @@ private fun DeviceRow(
                     TextButton(onClick = onToggleHistory) {
                         Text(if (isHistoryExpanded) "Ocultar historial" else "Ver historial")
                     }
+                    TextButton(onClick = onToggleStatistics) {
+                        Text(if (isStatisticsExpanded) "Ocultar estadísticas" else "Ver estadísticas")
+                    }
                 }
                 if (isAppsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -432,6 +480,10 @@ private fun DeviceRow(
                 if (isHistoryExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
                     HistorySection(historyState)
+                }
+                if (isStatisticsExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    StatisticsSection(statisticsState, onChangeStatisticsPeriod)
                 }
             }
         }
@@ -579,6 +631,95 @@ private fun HistoryEventRow(event: HistoryEvent) {
         }
         Text(label, color = Color.White, fontSize = 13.sp)
         Text(formatCapturedAt(event.occurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
+    }
+}
+
+private val STATISTICS_PERIODS = listOf("today" to "Hoy", "7d" to "7 días", "30d" to "30 días")
+
+private fun formatSeconds(totalSeconds: Int): String {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    return when {
+        hours > 0 -> "${hours} h ${minutes} min"
+        minutes > 0 -> "$minutes min"
+        else -> "< 1 min"
+    }
+}
+
+/** Sprint 16, read-only: renders the aggregates the backend already computes (apps más usadas,
+ * por categoría, bloqueos y cumplimiento de límites diarios) for whichever period is selected —
+ * same read-only split already established for geocercas/historial (creating rules stays
+ * web-only).
+ */
+@Composable
+private fun StatisticsSection(state: StatisticsState?, onChangePeriod: (String) -> Unit) {
+    Column {
+        Row {
+            STATISTICS_PERIODS.forEach { (value, label) ->
+                val isSelected = (state as? StatisticsState.Loaded)?.period == value
+                TextButton(onClick = { onChangePeriod(value) }, enabled = !isSelected) {
+                    Text(label)
+                }
+            }
+        }
+        when (state) {
+            null, StatisticsState.Loading ->
+                Text("Cargando estadísticas…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+            is StatisticsState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+            is StatisticsState.Loaded -> {
+                val stats = state.stats
+                Text("Apps más usadas", color = Color(0xFF7D899A), fontSize = 11.sp)
+                if (stats.topApps.isEmpty()) {
+                    Text("Sin datos de uso.", color = Color(0xFFABB5C4), fontSize = 13.sp)
+                } else {
+                    stats.topApps.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(entry.appLabel ?: entry.packageName, color = Color.White, fontSize = 13.sp)
+                            Text(formatSeconds(entry.totalSeconds), color = Color(0xFFABB5C4), fontSize = 12.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Bloqueos", color = Color(0xFF7D899A), fontSize = 11.sp)
+                if (stats.blocksByReason.isEmpty()) {
+                    Text("Ninguno en este periodo.", color = Color(0xFFABB5C4), fontSize = 13.sp)
+                } else {
+                    stats.blocksByReason.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(entry.ruleTypeApplied, color = Color.White, fontSize = 13.sp)
+                            Text("${entry.count}", color = Color(0xFFABB5C4), fontSize = 12.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Cumplimiento de límites diarios", color = Color(0xFF7D899A), fontSize = 11.sp)
+                if (stats.compliance.isEmpty()) {
+                    Text("Sin reglas de límite diario.", color = Color(0xFFABB5C4), fontSize = 13.sp)
+                } else {
+                    stats.compliance.forEach { entry ->
+                        val rate = entry.complianceRate
+                        val rateText = if (rate == null) "sin datos" else "${(rate * 100).toInt()}%"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(entry.packageName ?: entry.category ?: "?", color = Color.White, fontSize = 13.sp)
+                            Text(
+                                "$rateText (${entry.daysCompliant}/${entry.daysEvaluated} días)",
+                                color = Color(0xFFABB5C4),
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

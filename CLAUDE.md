@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 14 completos y verificados en CI.
+Sprints 1 a 16 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -92,7 +92,12 @@ tutor crea/edita/elimina zonas circulares (nombre, centro cifrado, radio) desde 
 backend detecta entradas/salidas comparando cada nuevo reporte de ubicación contra el anterior del
 mismo dispositivo (fórmula de Haversine, sin la Geofencing API de Android/GMS — ver nota del Sprint
 14 abajo), con historial consultable desde el panel web y, en modo sólo lectura, desde la app del
-tutor en Android.
+tutor en Android; historial unificado (Sprint 15): los dos registros de eventos que ya existían
+(bloqueos de reglas, entradas/salidas de geocercas) ganaron una retención uniforme de 90 días con
+purga al escribir, y una línea de tiempo combinada (`GET /devices/{id}/history`) en el panel web y
+en Android; y estadísticas (Sprint 16): agregaciones por hoy/7/30 días — apps más usadas,
+desglose por categoría, conteo de bloqueos y cumplimiento de límites diarios — calculadas al vuelo
+sobre datos ya existentes, sin tabla de agregación nueva, en el panel web y en Android.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -172,11 +177,27 @@ permiso, dependencia ni servicio nuevo se añadió a Android. Costo aceptado: la
 de ~15 minutos en vez de los 2-6 minutos que ofrecería la API real. Ver
 `docs/android/capability-matrix.md` (sección Sprint 14) para la verificación completa.
 
-**Siguiente: Sprint 15 — Historial.** Persistencia de eventos de apps, web, bloqueos, reglas,
-ubicación, geocercas y alertas, con política de retención por tipo de dato y purga automatizada —
-revisar qué de esto ya existe disperso (p. ej. `AppRuleEvent`, `DeviceLocationReport`,
-`GeofenceEvent` ya son insert-only con su propia retención o ausencia de ella) antes de asumir que
-hace falta una tabla nueva de "historial" genérica.
+**Nota del Sprint 15**: no se creó ninguna tabla de "historial" genérica — `AppRuleEvent` y
+`GeofenceEvent` ya eran insert-only, así que sólo ganaron retención (90 días, purga al escribir,
+mismo patrón que `DeviceLocationReport` desde el Sprint 13) y un endpoint que los lee y combina
+(`app/api/v1/endpoints/history.py`), sin persistir nada nuevo. Ubicación cruda queda fuera de la
+línea de tiempo unificada a propósito: ya tiene su propia vista (Sprint 13) y mezclar hasta 96
+puntos/día con eventos discretos enterraría la señal. Ver `docs/sprint-15.md`.
+
+**Nota del Sprint 16**: mismo criterio que el Sprint 15 — sin tabla de agregación nueva, todo se
+calcula al vuelo con `GROUP BY` en Python sobre `DeviceApplicationUsage`/`AppCategoryAssignment`/
+`AppRuleEvent`/`AppRule`/`CategoryRule`, que ya existían. Los periodos (hoy/7d/30d) son fechas UTC
+del servidor, no del huso horario del dispositivo — mismo criterio ya aceptado para `usage_date`
+desde el Sprint 7 (etiqueta opaca que el servidor no recalcula). El cumplimiento de límites sólo
+aplica a reglas `DAILY_LIMIT` (de app o de categoría); `WEEKLY_LIMIT` y `SCHEDULE` no tienen un
+"día cumplido/incumplido" que calcular. Un día sin uso reportado no cuenta ni a favor ni en contra.
+Ver `docs/sprint-16.md`.
+
+**Siguiente: Sprint 17 — Alertas.** Catálogo `INFO/WARNING/HIGH/CRITICAL` con reglas de
+generación, bandeja para el tutor, deduplicación y silenciado — revisar primero si algo de la
+lógica de detección ya vive dispersa (p. ej. los propios `AppRuleEvent`/`GeofenceEvent` podrían ser
+la fuente de eventos que disparan una alerta, no una fuente de datos paralela) antes de asumir que
+hace falta un pipeline de detección nuevo desde cero.
 
 ## Entorno de trabajo
 

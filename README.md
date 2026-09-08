@@ -268,3 +268,15 @@ la app del tutor en Android. No se crea una tabla "historial" genérica ni se im
 navegación web (nunca existió en este proyecto) ni alertas (Sprint 17).
 
 El detalle está en `docs/sprint-15.md`.
+
+## Alcance del Sprint 16
+
+Estadísticas: agregaciones por hoy/7 días/30 días calculadas al vuelo sobre datos que ya existían
+(uso diario por app, categoría asignada, bloqueos aplicados, límites configurados) — sin tabla de
+agregación nueva, sin scheduler. `GET /devices/{id}/statistics?period=...` devuelve las apps más
+usadas, el desglose por categoría, el conteo de bloqueos por motivo y, para las reglas
+`DAILY_LIMIT` (de app o de categoría), el cumplimiento diario del periodo, disponible en el panel
+web y en la app del tutor en Android. Sin librería de gráficos nueva: se mantiene la misma estética
+de listas de texto que el resto de paneles.
+
+El detalle está en `docs/sprint-16.md`.

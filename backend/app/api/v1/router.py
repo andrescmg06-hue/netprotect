@@ -11,6 +11,7 @@ from app.api.v1.endpoints.location import router as location_router
 from app.api.v1.endpoints.pairing import router as pairing_router
 from app.api.v1.endpoints.roles import router as roles_router
 from app.api.v1.endpoints.rules import router as rules_router
+from app.api.v1.endpoints.statistics import router as statistics_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -24,3 +25,4 @@ api_router.include_router(categories_router)
 api_router.include_router(location_router)
 api_router.include_router(geofences_router)
 api_router.include_router(history_router)
+api_router.include_router(statistics_router)

@@ -611,3 +611,60 @@ export function listDeviceHistory(
     accessToken
   );
 }
+
+export type StatisticsPeriod = "today" | "7d" | "30d";
+
+export type TopAppEntry = {
+  package_name: string;
+  app_label: string | null;
+  total_seconds: number;
+};
+
+export type CategoryTotalEntry = {
+  category: Category | null;
+  total_seconds: number;
+};
+
+export type BlockCountEntry = {
+  rule_type_applied: AppliedRuleType;
+  count: number;
+};
+
+export type ComplianceScope = "APP" | "CATEGORY";
+
+/** One DAILY_LIMIT rule's track record over the period (Sprint 16). WEEKLY_LIMIT and SCHEDULE
+ * rules never appear here — mirrors backend/app/schemas/statistics.py's ComplianceEntry.
+ * days_evaluated only counts days the device actually reported usage; a day with no reported
+ * usage is neither a violation nor a compliance.
+ */
+export type ComplianceEntry = {
+  scope: ComplianceScope;
+  package_name: string | null;
+  category: Category | null;
+  daily_limit_minutes: number;
+  days_evaluated: number;
+  days_compliant: number;
+  compliance_rate: number | null;
+};
+
+export type DeviceStatisticsResponse = {
+  period: StatisticsPeriod;
+  range_start: string;
+  range_end: string;
+  top_apps: TopAppEntry[];
+  categories: CategoryTotalEntry[];
+  blocks_by_reason: BlockCountEntry[];
+  compliance: ComplianceEntry[];
+};
+
+export function getDeviceStatistics(
+  accessToken: string,
+  deviceId: string,
+  period: StatisticsPeriod
+): Promise<DeviceStatisticsResponse> {
+  return requestJson<DeviceStatisticsResponse>(
+    `/api/v1/devices/${deviceId}/statistics?period=${period}`,
+    { method: "GET" },
+    accessToken
+  );
+}
