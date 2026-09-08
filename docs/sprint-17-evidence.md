@@ -99,5 +99,18 @@ reutiliza `require_tutor_of_device` sin modificarlo; las cinco rutas filtran sie
 está validado (`gt=0`) por Pydantic; no hay SQL crudo ni interpolación de strings en ninguna
 consulta nueva.
 
-`CLAUDE.md` y `README.md` actualizados. Falta el push y la verificación de CI (ver más abajo, se
-añade tras confirmarlo).
+`CLAUDE.md` y `README.md` actualizados.
+
+## CI en GitHub Actions
+
+Commit `287c840` ("feat: add sprint 17 alerts"), corrida
+[34258036138](https://github.com/andrescmg06-hue/netprotect/actions/runs/34258036138):
+
+```
+✓ android      in 2m21s
+✓ integration  in 1m10s
+✓ frontend     in 40s
+✓ backend      in 36s
+```
+
+Los 4 jobs en verde en un runner limpio de GitHub Actions. Sprint 17 cerrado.
