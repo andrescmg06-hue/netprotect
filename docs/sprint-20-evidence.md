@@ -164,7 +164,25 @@ con `res/xml/device_admin.xml`: un error en cualquiera de los dos (recurso inexi
 sin definir, atributo mal escrito) habría roto `processDebugManifest`/`mergeDebugResources`, no
 sólo la compilación de Kotlin.
 
-## 8. Lo que NO se verificó
+## 8. CI en GitHub Actions (runner limpio)
+
+```
+$ git push
+   b176e7e..54e62c1  main -> main
+
+$ gh run watch 34281653772 --exit-status
+Run ci (34281653772) has already completed with 'success'
+
+$ gh run view 34281653772 --json jobs -q '.jobs[] | "\(.name): \(.conclusion)"'
+integration: success
+android: success
+frontend: success
+backend: success
+```
+
+Los 4 jobs en verde sobre un runner limpio, no sólo en esta máquina.
+
+## 9. Lo que NO se verificó
 
 - **Login real de Google**: exige que una persona elija su cuenta en el selector. Igual que en
   todos los sprints anteriores.
