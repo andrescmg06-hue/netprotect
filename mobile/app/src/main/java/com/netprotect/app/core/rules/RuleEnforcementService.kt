@@ -7,9 +7,13 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.RuleEnforcementClient
+import com.netprotect.app.core.storage.NetProtectDatabase
+import com.netprotect.app.core.storage.PendingRuleEventStore
+import com.netprotect.app.core.storage.RulesCacheStore
 import com.netprotect.app.feature.supervised.BlockScreenActivity
 import java.time.Instant
 import java.time.LocalDateTime
@@ -33,9 +37,17 @@ import kotlinx.coroutines.launch
  * the foreground"; that type is Android's own designated catch-all for such cases.
  *
  * No restart-on-death, no boot receiver: if the user swipes the app away or the system kills the
- * process, enforcement stops until the supervised device reopens NetProtect. That is a real,
- * documented limit of this mechanism (see BlockScreenActivity and the capability matrix), not an
- * oversight — building a durable background scheduler is out of scope for this sprint.
+ * process, *enforcement itself* stops until the supervised device reopens NetProtect. That is a
+ * real, documented limit of this mechanism (see BlockScreenActivity and the capability matrix),
+ * unchanged by Sprint 19 — SyncWorker (core/sync/SyncWorker.kt) runs independently of this
+ * service's process and keeps heartbeat/usage-sync/pending-event delivery going even then, but it
+ * cannot itself watch the foreground app or block anything.
+ *
+ * Sprint 19 (offline): this service now primes its rule cache from Room (RulesCacheStore) on
+ * start instead of only the ALLOW/no-school-mode fail-safe defaults, persists every successful
+ * fetch back to Room, and queues (PendingRuleEventStore) any `reportRuleEvent` call that fails
+ * instead of dropping it — see those classes' docstrings for the "server always wins, no local
+ * merge" conflict strategy and the accepted at-least-once delivery limitation.
  */
 class RuleEnforcementService : Service() {
 
@@ -52,6 +64,10 @@ class RuleEnforcementService : Service() {
         // for a foreground service that runs continuously.
         private const val POLL_INTERVAL_MS = 3_000L
         private const val RULES_REFRESH_INTERVAL_MS = 60_000L
+        // Comfortably under access_token_ttl_minutes (15 on the backend): this service can run
+        // for hours between app opens, so it has to renew its own token instead of 401ing
+        // silently forever after the first 15 minutes of any session (Sprint 19).
+        private const val TOKEN_REFRESH_INTERVAL_MS = 10 * 60_000L
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             val intent = Intent(context, RuleEnforcementService::class.java)
@@ -91,20 +107,39 @@ class RuleEnforcementService : Service() {
         super.onDestroy()
     }
 
-    private suspend fun runPollingLoop(baseUrl: String, accessToken: String, deviceId: String) {
+    private suspend fun runPollingLoop(baseUrl: String, initialAccessToken: String, deviceId: String) {
         val detector = ForegroundAppDetector(applicationContext)
         val client = RuleEnforcementClient(baseUrl)
-        var cachedRules: List<AppRule> = emptyList()
-        var cachedCategoryAssignments: List<CategoryAssignment> = emptyList()
-        var cachedCategoryRules: List<CategoryRule> = emptyList()
+        val database = NetProtectDatabase.getInstance(applicationContext)
+        val rulesCacheStore = RulesCacheStore(database)
+        val pendingEventStore = PendingRuleEventStore(database)
+        var accessToken = initialAccessToken
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
         // Starts disabled for the same fail-safe reason: a device whose first fetch fails
         // should not suddenly start blocking everything.
         var schoolMode = SchoolMode(enabled = false, startMinute = null, endMinute = null, daysMask = null)
+        var cachedRules: List<AppRule> = emptyList()
+        var cachedCategoryAssignments: List<CategoryAssignment> = emptyList()
+        var cachedCategoryRules: List<CategoryRule> = emptyList()
+
+        // Sprint 19: prime the enforcement loop from the last known-good rule set (Room) before
+        // the first network fetch, instead of the fail-safe ALLOW/no-school-mode defaults above.
+        // Those defaults still apply on a genuinely first-ever launch (nothing cached yet) — see
+        // RulesCacheStore.loadCached's docstring for why that returns null rather than an empty
+        // ActiveRules in that case.
+        runCatching { rulesCacheStore.loadCached(deviceId) }.getOrNull()?.let { cached ->
+            cachedRules = cached.rules
+            cachedCategoryAssignments = cached.categoryAssignments
+            cachedCategoryRules = cached.categoryRules
+            defaultPolicy = cached.defaultPolicy
+            schoolMode = cached.schoolMode
+        }
+
         var protectedPackages = ProtectedPackages.resolve(applicationContext)
         var lastRulesFetchAt = 0L
+        var lastTokenRefreshAt = System.currentTimeMillis()
         // Set from the WebSocket listener's onMessage callback, which runs on OkHttp's own
         // thread, not this coroutine — an AtomicBoolean, not a plain var, so that write is
         // guaranteed visible to the polling loop below without adding a lock for something
@@ -122,19 +157,29 @@ class RuleEnforcementService : Service() {
             val changedPackage = detector.pollForegroundChange()
             val now = System.currentTimeMillis()
 
+            if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
+                BackgroundTokenRefresher.refresh(applicationContext, baseUrl)?.let { accessToken = it }
+                lastTokenRefreshAt = now
+            }
+
             if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)) {
                 runCatching { client.getActiveRules(accessToken, deviceId) }
-                    .onSuccess {
-                        cachedRules = it.rules
-                        cachedCategoryAssignments = it.categoryAssignments
-                        cachedCategoryRules = it.categoryRules
-                        defaultPolicy = it.defaultPolicy
-                        schoolMode = it.schoolMode
+                    .onSuccess { active ->
+                        cachedRules = active.rules
+                        cachedCategoryAssignments = active.categoryAssignments
+                        cachedCategoryRules = active.categoryRules
+                        defaultPolicy = active.defaultPolicy
+                        schoolMode = active.schoolMode
+                        runCatching { rulesCacheStore.replaceAll(deviceId, active) }
                     }
                 // Refreshed on the same beat as the rules: the user can change their launcher
                 // or default phone app at any time, and the protected set must follow.
                 protectedPackages = ProtectedPackages.resolve(applicationContext)
                 lastRulesFetchAt = now
+                // Opportunistic retry of anything evaluateAndMaybeBlock couldn't report earlier
+                // — connectivity just came back is exactly when a successful fetch above is
+                // likely, so piggyback on the same beat rather than adding a third timer.
+                runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
             }
 
             if (changedPackage == packageName) {
@@ -160,6 +205,7 @@ class RuleEnforcementService : Service() {
                     client = client,
                     accessToken = accessToken,
                     deviceId = deviceId,
+                    pendingEventStore = pendingEventStore,
                 )
             }
 
@@ -178,6 +224,7 @@ class RuleEnforcementService : Service() {
         client: RuleEnforcementClient,
         accessToken: String,
         deviceId: String,
+        pendingEventStore: PendingRuleEventStore,
     ) {
         val todayUsage = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
@@ -203,8 +250,14 @@ class RuleEnforcementService : Service() {
                 .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
                 .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
         )
-        runCatching {
-            client.reportRuleEvent(accessToken, deviceId, foregroundPackage, reason, Instant.now())
+        val occurredAt = Instant.now()
+        val reported = runCatching {
+            client.reportRuleEvent(accessToken, deviceId, foregroundPackage, reason, occurredAt)
+        }.isSuccess
+        // Sprint 19: a block that already happened is real regardless of whether the tutor can
+        // see it right now — queued instead of dropped, see PendingRuleEventEntity's docstring.
+        if (!reported) {
+            runCatching { pendingEventStore.enqueue(deviceId, foregroundPackage, reason, occurredAt) }
         }
     }
 

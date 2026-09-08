@@ -56,6 +56,10 @@ Reglas de diseño:
     en su lugar, el servidor exige `{"token": ...}` como primer frame, con el mismo criterio
     404-para-ambos-casos que el resto de la API para quien no tiene acceso a ese dispositivo. Ver
     `docs/sprint-18.md`.
+21. **Renovación de token en segundo plano sin nuevo almacenamiento de secretos (Sprint 19).**
+    `RuleEnforcementService`/`SyncWorker` renuevan su propio *access token* reutilizando el mismo
+    `refresh_token` ya cifrado en el Android Keystore (`TokenStore`, Sprint 3) — ningún componente
+    nuevo guarda un secreto por su cuenta. Ver `docs/sprint-19.md`.
 
 ## Controles diferidos conscientemente
 

@@ -309,3 +309,21 @@ refresco de reglas en vez de esperar su sondeo periódico habitual; en el panel 
 `DeviceRulesPanel` recarga en vivo mientras está abierto.
 
 El detalle está en `docs/sprint-18.md`.
+
+## Alcance del Sprint 19
+
+Funcionamiento offline: Room como caché local, en el dispositivo supervisado, de las reglas por
+app, las categorías y sus reglas, la política por defecto y el horario escolar — reemplazada por
+completo (nunca fusionada) en cada `GET /rules/active` exitoso, así que la estrategia de conflicto
+es simplemente "gana el último fetch que respondió". Un arranque en frío sin conectividad evalúa
+contra ese caché en vez de contra "todo permitido"; un bloqueo que no se pudo reportar
+(`POST /rule-events`) queda en una cola (`pending_rule_events`) hasta que un fetch exitoso o
+`SyncWorker` lo vacíen, en vez de perderse. `SyncWorker` (WorkManager, cada 15 minutos —el piso de
+la plataforma—, sólo con conectividad) envía *heartbeat* y sincroniza uso de apps aunque la app no
+esté en primer plano, complementando (no reemplazando) los sondeos ya existentes de
+`SupervisedScreen`. Tanto `RuleEnforcementService` como `SyncWorker` renuevan su propio token de
+acceso contra el `refresh_token` cifrado ya almacenado (Sprint 3) en vez de depender de un token
+fijo que expira a los 15 minutos. Room se integró vía KSP, no `kapt`: el backend `kapt` de
+`room-compiler` no soporta el formato de metadatos que emite el Kotlin 2.3.21 de este proyecto.
+
+El detalle está en `docs/sprint-19.md`.

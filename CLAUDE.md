@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 18 completos y verificados en CI.
+Sprints 1 a 19 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -112,7 +112,15 @@ token FCM registrado, el backend intenta despertarlo vía la API HTTP v1 de Fire
 Messaging (sin proyecto Firebase real en este repo todavía — pendiente de un humano, ver más
 abajo); en Android, `RuleEnforcementService` usa el aviso para adelantar su refresco de reglas en
 vez de esperar su sondeo periódico; en el panel web, `DeviceRulesPanel` recarga en vivo mientras
-está abierto.
+está abierto; y funcionamiento offline (Sprint 19): Room cachea en el dispositivo supervisado las
+reglas/categorías/política/horario escolar (reemplazo total en cada fetch exitoso, sin fusión —
+el servidor es la única fuente de verdad y el dispositivo nunca edita una regla localmente), un
+arranque en frío sin red evalúa contra ese caché en vez de "todo permitido", un bloqueo que no se
+pudo reportar queda en cola (`pending_rule_events`) hasta que un fetch exitoso o `SyncWorker` lo
+vacíen, y `SyncWorker` (WorkManager, cada 15 min, sólo con conectividad) manda *heartbeat* y
+sincroniza uso de apps aunque la app no esté en primer plano; tanto `RuleEnforcementService` como
+`SyncWorker` renuevan su propio *access token* contra el `refresh_token` cifrado ya existente en
+vez de depender de uno fijo que expira a los 15 minutos.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -238,11 +246,35 @@ necesitaría Redis pub/sub el día que corra en más de una réplica. En Android
 WebSocket en absoluto y `java.net.http.WebSocket` sólo llegó a Android en la API 34, por encima del
 `minSdk 26` de este proyecto. Ver `docs/sprint-18.md`.
 
-**Siguiente: Sprint 19 — Funcionamiento offline.** Room como fuente local de reglas, horarios,
-límites, listas y cola de eventos pendientes, con estrategia de conflicto y versión de política —
-revisar primero cómo encaja con el canal en tiempo real recién agregado: un dispositivo que
-recupera conectividad después de estar offline debería reconectar el WebSocket del Sprint 18 y
-vaciar su cola pendiente, no dos mecanismos de sincronización que no se hablan entre sí.
+**Nota del Sprint 19, válida para cualquier sprint futuro que toque Room o WorkManager en
+Android**: Room se integra vía KSP (`com.google.devtools.ksp`, versión `2.3.11`, independiente de
+la del compilador desde que KSP dejó el esquema `<kotlin>-<ksp>`), **no** vía `kapt` — se intentó
+primero y falló: el backend `javac` de `room-compiler:2.7.1` empaqueta su propio
+`kotlin-metadata-jvm` fijo, que sólo entiende metadatos hasta el formato 2.2, y el compilador
+Kotlin 2.3.21 de este proyecto emite formato 2.3. Ver `docs/sprint-19.md`. La estrategia de
+conflicto elegida es la más simple posible: el dispositivo supervisado nunca edita una regla
+localmente, así que cada fetch exitoso de `/rules/active` reemplaza el caché de Room por completo
+(`RulesCacheStore.replaceAll`), sin fusión ni número de versión — no hay nada real con lo que
+fusionar. La cola de eventos pendientes (`pending_rule_events`) se limitó a los bloqueos de reglas
+(`AppRuleEvent`): es la única señal del dispositivo cuya pérdida no queda reemplazada después por
+la siguiente lectura (a diferencia de heartbeat/ubicación/uso). `SyncWorker` complementa los
+sondeos en primer plano de `SupervisedScreen` (no los reemplaza — el piso de WorkManager, 15
+minutos, es más lento que ellos) y es, además, la única vía que sigue entregando *heartbeat*/uso/
+cola pendiente si el proceso de `RuleEnforcementService` muere; el bloqueo de apps en sí sigue sin
+reiniciarse solo (límite aceptado desde el Sprint 8, sin cambios). Se agregó
+`BackgroundTokenRefresher` porque ambos componentes corren mucho más de los 15 minutos de vida de
+un *access token*: sin renovarlo habrían empezado a fallar en silencio con 401 en cualquier sesión
+medianamente larga, no sólo durante un corte de red real — reutiliza el mismo `refresh_token`
+cifrado del Keystore que ya usa `AuthRepository` (Sprint 3), sin tocar el modelo de sesión de la
+UI en primer plano (que tiene el mismo problema de fondo, sin resolver, fuera del alcance de este
+sprint — anotado en `docs/sprint-19.md`).
+
+**Siguiente: Sprint 20 — Detección de manipulación.** Sólo señales legítimas: pérdida de permisos,
+desactivación del servicio, revocación de la VPN, silencio anómalo del heartbeat, cambio de hora e
+intento de desinstalación detectable por la API oficial — revisar primero si `DeviceStatus.ALERT`
+(reservado desde antes de que existiera un generador propio) y los niveles `HIGH`/`CRITICAL` de
+alertas (reservados desde el Sprint 17) son el lugar natural para estas señales, en vez de un
+sistema de notificación paralelo.
 
 ## Entorno de trabajo
 

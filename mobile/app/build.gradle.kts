@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    // Sprint 19: Room's annotation processor, via KSP. kapt was tried first and rejected: Room
+    // 2.7.1's kapt (javac) backend bundles its own pinned `kotlin-metadata-jvm`, which only
+    // understands metadata up to Kotlin's format version 2.2 — this project's Kotlin 2.3.21
+    // compiler emits 2.3, so kapt's Room processor fails immediately
+    // ("Provided Metadata instance has version 2.3.0, while maximum supported version is
+    // 2.2.0"). KSP's processing backend reads Kotlin symbols through the compiler plugin API
+    // directly instead of that standalone library, so it doesn't hit the same ceiling.
+    alias(libs.plugins.ksp)
 }
 
 val localProperties = Properties().apply {
@@ -95,6 +103,14 @@ dependencies {
     // java.net.http.WebSocket only reached Android at API 34 — above this project's minSdk 26.
     // Not a reversal of "no networking library" for REST, which java.net already covers.
     implementation(libs.okhttp)
+
+    // Sprint 19: local cache of rules/policy + pending-event queue for offline resilience.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    // Sprint 19: background heartbeat/usage-sync/pending-event-flush while this app isn't in
+    // the foreground — see SupervisedScreen.kt's original comment on why this was deferred here.
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

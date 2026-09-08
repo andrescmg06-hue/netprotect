@@ -43,6 +43,7 @@ import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.RuleEnforcementService
+import com.netprotect.app.core.sync.SyncWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -123,8 +124,9 @@ fun SupervisedScreen(
     }
 
     // Sends a heartbeat immediately once linked, then every HEARTBEAT_INTERVAL_MS while this
-    // screen stays composed. Only while the app is in the foreground: a real background
-    // schedule (WorkManager) is Sprint 19's job (offline support), not this one's.
+    // screen stays composed — a tighter cadence than SyncWorker's 15-minute background floor
+    // (below) can offer, so this keeps running whenever the app happens to be in the foreground
+    // instead of stepping aside for it.
     LaunchedEffect(state) {
         val linked = state as? SupervisedState.Linked ?: return@LaunchedEffect
         val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
@@ -190,6 +192,20 @@ fun SupervisedScreen(
             LocationReportingService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
         }
         onDispose { LocationReportingService.stop(context) }
+    }
+
+    // Sprint 19: the background counterpart to the heartbeat/app-sync loops above — same data,
+    // sent by SyncWorker instead, on WorkManager's own schedule (15-minute floor, requires
+    // connectivity) so it keeps happening while this screen isn't composed. No permission gate:
+    // SyncWorker checks usage-access itself before syncing applications, and a heartbeat needs
+    // none at all.
+    DisposableEffect(state) {
+        val linked = state as? SupervisedState.Linked
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId
+        if (linked != null && deviceId != null) {
+            SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
+        }
+        onDispose { SyncWorker.cancel(context) }
     }
 
     Column(
