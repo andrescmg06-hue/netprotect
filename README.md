@@ -292,3 +292,20 @@ silenciado por tipo de alerta (no por alerta suelta), disponible en el panel web
 marcar leída/silenciar) y, en modo sólo lectura, en la app del tutor en Android.
 
 El detalle está en `docs/sprint-17.md`.
+
+## Alcance del Sprint 18
+
+Tiempo real: un canal WebSocket por dispositivo (`WS /devices/{id}/ws`), autenticado con un primer
+frame `{"token": ...}` en vez de una cabecera (un navegador no puede fijar cabeceras en el
+*handshake*), al que se conectan tanto el tutor activo como el dispositivo supervisado dueño de
+ese dispositivo. Cada cambio de regla (app, categoría, política por defecto, horario escolar)
+difunde `{"event": "rules_changed"}` a quien esté escuchando — probado de extremo a extremo contra
+el backend real. Si el dispositivo no tiene el canal abierto, y tiene un token FCM registrado
+(`POST /devices/{id}/push-token`), el backend intenta una notificación de despertar vía la API HTTP
+v1 de Firebase Cloud Messaging; sin proyecto Firebase real en este repo (pendiente de que un humano
+lo cree, igual que `GOOGLE_WEB_CLIENT_ID` en su momento), ese envío se omite hoy sin fallar el
+cambio de regla que lo disparó. En Android, `RuleEnforcementService` usa el aviso para adelantar su
+refresco de reglas en vez de esperar su sondeo periódico habitual; en el panel web,
+`DeviceRulesPanel` recarga en vivo mientras está abierto.
+
+El detalle está en `docs/sprint-18.md`.

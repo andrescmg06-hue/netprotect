@@ -82,6 +82,27 @@ class Settings(BaseSettings):
     # no scheduler" way (app/services/alerts.py).
     alert_retention_days: int = 90
 
+    # How long a WebSocket handshake (app/api/v1/endpoints/realtime.py) waits for its required
+    # first frame — {"token": "..."} — before closing. Without a deadline, a client that connects
+    # and never authenticates would hold a socket (and a spot in the in-memory connection
+    # registry) open forever.
+    ws_auth_timeout_seconds: int = 10
+
+    # Firebase Cloud Messaging (Sprint 18): a wake-up nudge for a device that isn't holding an
+    # open WebSocket when a rule changes, sent via FCM's HTTP v1 API. Both settings are
+    # deliberately blank by default: FCM requires a real Firebase project
+    # (console.firebase.google.com, see docs/planning/plan-desarrollo.md Paso 17) and a
+    # service-account key, neither of which exists in this repo or in CI — same "pending a
+    # human with a cloud account" situation as
+    # google_web_client_id started in Sprint 3. app/services/push.py treats a blank
+    # fcm_project_id as "push disabled" and skips the send instead of failing the request that
+    # triggered it: a tutor's rule change must succeed whether or not the wake-up nudge can be
+    # delivered.
+    fcm_project_id: str = ""
+    # Path to a service-account JSON key file (never its contents — this is a filesystem path,
+    # so the real secret stays out of the environment and out of `docker inspect`/process listings).
+    fcm_service_account_file: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

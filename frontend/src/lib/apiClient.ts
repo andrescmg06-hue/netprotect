@@ -754,3 +754,14 @@ export function deleteAlertSilence(
     accessToken
   );
 }
+
+// Sprint 18 — real-time channel. The WebSocket handshake itself carries no credentials (a
+// browser cannot set custom headers on it): the caller must send { token: accessToken } as
+// the first frame once the socket is open, then listen for { event: "rules_changed" } and
+// re-fetch whatever it renders (rules, policy, alerts) in response — see
+// app/services/realtime.py's notify_rules_changed docstring for why the message doesn't carry
+// the change itself.
+export function deviceRealtimeWebSocketUrl(deviceId: string): string {
+  const wsBase = API_BASE_URL.replace(/^http/, "ws");
+  return `${wsBase}/api/v1/devices/${deviceId}/ws`;
+}

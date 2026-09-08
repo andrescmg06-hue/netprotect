@@ -12,6 +12,7 @@ import {
   type SchoolMode,
   type UpsertAppRuleInput,
   deleteAppRule,
+  deviceRealtimeWebSocketUrl,
   listAppRules,
   listRuleEvents,
   updateDevicePolicy,
@@ -172,6 +173,43 @@ export function DeviceRulesPanel({
     setRulesState({ kind: "loading" });
     setReloadToken((current) => current + 1);
   }, []);
+
+  // Sprint 18: while this panel is open, stay live instead of only reflecting what was true
+  // at the moment it was expanded — another tutor session, or the device itself reporting a
+  // rule enforcement, can change this device's rules at any time. The socket only ever
+  // triggers a re-fetch (loadRules/onPolicyChanged); it never carries the changed data itself
+  // — see deviceRealtimeWebSocketUrl's comment in apiClient.ts for why. setState only happens
+  // inside the "message" event listener, a real async browser callback, not synchronously in
+  // the effect body, so this doesn't run into the set-state-in-effect rule the project's other
+  // effects work around.
+  useEffect(() => {
+    let cancelled = false;
+    const socket = new WebSocket(deviceRealtimeWebSocketUrl(deviceId));
+
+    socket.addEventListener("open", () => {
+      if (!cancelled) {
+        socket.send(JSON.stringify({ token: accessToken }));
+      }
+    });
+
+    socket.addEventListener("message", (event) => {
+      if (cancelled) return;
+      try {
+        const payload = JSON.parse(event.data as string);
+        if (payload?.event === "rules_changed") {
+          loadRules();
+          onPolicyChanged();
+        }
+      } catch {
+        // Not a frame this panel understands — ignore rather than crash the socket.
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      socket.close();
+    };
+  }, [accessToken, deviceId, loadRules, onPolicyChanged]);
 
   function toggleEvents() {
     if (eventsState.kind === "loaded" || eventsState.kind === "loading") {

@@ -29,6 +29,7 @@ from app.schemas.rule import (
 )
 from app.services.alerts import record_alert_for_rule_event
 from app.services.audit import record_audit_event
+from app.services.realtime import notify_rules_changed
 from app.services.retention import purge_expired_rows
 
 router = APIRouter(tags=["rules"])
@@ -60,7 +61,7 @@ async def upsert_app_rule(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> AppRuleResponse:
     """Creating a rule for a package that already has one replaces it (upsert), not a new row
     — see AppRule's docstring for why only one rule per (device, package) exists in this
@@ -108,6 +109,7 @@ async def upsert_app_rule(
     )
     await db.commit()
     await db.refresh(rule)
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return _to_rule_response(rule)
 
@@ -134,7 +136,7 @@ async def delete_app_rule(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> DeleteAppRuleResponse:
     rule = (
         await db.execute(
@@ -158,6 +160,7 @@ async def delete_app_rule(
         ip_address=_client_ip(request),
     )
     await db.commit()
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return DeleteAppRuleResponse(rule_id=rule_id, package_name=package_name, deleted_at=now)
 
@@ -263,6 +266,7 @@ async def update_device_policy(
         ip_address=_client_ip(request),
     )
     await db.commit()
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return DevicePolicyResponse(
         device_id=device_id, default_app_policy=device.default_app_policy
@@ -295,6 +299,7 @@ async def update_school_mode(
         ip_address=_client_ip(request),
     )
     await db.commit()
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return SchoolModeResponse(
         enabled=device.school_mode_enabled,

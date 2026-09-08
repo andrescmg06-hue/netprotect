@@ -8,10 +8,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.inventory.AppInventoryCollector
+import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.feature.supervised.BlockScreenActivity
 import java.time.Instant
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -67,6 +69,7 @@ class RuleEnforcementService : Service() {
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var pollingJob: Job? = null
+    private var realtimeClient: RealtimeClient? = null
 
     override fun onBind(intent: Intent?) = null
 
@@ -83,6 +86,7 @@ class RuleEnforcementService : Service() {
     }
 
     override fun onDestroy() {
+        realtimeClient?.disconnect()
         serviceJob.cancel()
         super.onDestroy()
     }
@@ -101,6 +105,13 @@ class RuleEnforcementService : Service() {
         var schoolMode = SchoolMode(enabled = false, startMinute = null, endMinute = null, daysMask = null)
         var protectedPackages = ProtectedPackages.resolve(applicationContext)
         var lastRulesFetchAt = 0L
+        // Set from the WebSocket listener's onMessage callback, which runs on OkHttp's own
+        // thread, not this coroutine — an AtomicBoolean, not a plain var, so that write is
+        // guaranteed visible to the polling loop below without adding a lock for something
+        // this simple.
+        val forceRulesRefresh = AtomicBoolean(false)
+        RealtimeClient(baseUrl).also { realtimeClient = it }
+            .connect(deviceId, accessToken) { forceRulesRefresh.set(true) }
         // Tracks the last *other* app we evaluated, so returning to an app already handled
         // this "visit" doesn't spam the block screen. Reset to null whenever our own package
         // (including the block screen itself) comes to the foreground, so leaving and coming
@@ -111,7 +122,7 @@ class RuleEnforcementService : Service() {
             val changedPackage = detector.pollForegroundChange()
             val now = System.currentTimeMillis()
 
-            if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS) {
+            if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)) {
                 runCatching { client.getActiveRules(accessToken, deviceId) }
                     .onSuccess {
                         cachedRules = it.rules

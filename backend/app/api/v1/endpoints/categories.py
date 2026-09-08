@@ -19,6 +19,7 @@ from app.schemas.category import (
     UpsertCategoryRuleRequest,
 )
 from app.services.audit import record_audit_event
+from app.services.realtime import notify_rules_changed
 
 router = APIRouter(tags=["categories"])
 
@@ -64,7 +65,7 @@ async def upsert_app_category(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> CategoryAssignmentResponse:
     """Assigning a category to a package that already has one replaces it (upsert) — same
     reasoning as AppRule: an app has at most one category per device.
@@ -100,6 +101,7 @@ async def upsert_app_category(
     )
     await db.commit()
     await db.refresh(assignment)
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return _to_assignment_response(assignment)
 
@@ -135,7 +137,7 @@ async def delete_app_category(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> DeleteCategoryAssignmentResponse:
     assignment = (
         await db.execute(
@@ -160,6 +162,7 @@ async def delete_app_category(
         ip_address=_client_ip(request),
     )
     await db.commit()
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return DeleteCategoryAssignmentResponse(
         assignment_id=assignment_id, package_name=package_name, deleted_at=now
@@ -176,7 +179,7 @@ async def upsert_category_rule(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> CategoryRuleResponse:
     existing = (
         await db.execute(
@@ -220,6 +223,7 @@ async def upsert_category_rule(
     )
     await db.commit()
     await db.refresh(rule)
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return _to_category_rule_response(rule)
 
@@ -253,7 +257,7 @@ async def delete_category_rule(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _device: Device = Depends(require_tutor_of_device),
+    device: Device = Depends(require_tutor_of_device),
 ) -> DeleteCategoryRuleResponse:
     rule = (
         await db.execute(
@@ -277,6 +281,7 @@ async def delete_category_rule(
         ip_address=_client_ip(request),
     )
     await db.commit()
+    await notify_rules_changed(device_id, device.fcm_token)
 
     return DeleteCategoryRuleResponse(
         category_rule_id=category_rule_id, category=category, deleted_at=now

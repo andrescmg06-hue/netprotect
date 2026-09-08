@@ -86,6 +86,15 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     supervised_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
+    # Firebase Cloud Messaging registration token (Sprint 18), reported by the supervised
+    # install itself — same ownership as the heartbeat, so require_supervised_owner_of_device
+    # guards it too. Used only as a wake-up nudge when a rule change couldn't reach the device
+    # over an already-open WebSocket (app/services/push.py); never a source of truth for rules.
+    # Nullable: most rows won't have one until a real Firebase project exists (see
+    # docs/sprint-18.md) — the endpoint that would populate it works today, but no Android build
+    # in this repo can obtain a real token without that project.
+    fcm_token: Mapped[str | None] = mapped_column(String(255))
+    fcm_token_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     supervised_user: Mapped["User"] = relationship(back_populates="supervised_devices")
     status: Mapped["DeviceStatus"] = relationship(

@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 17 completos y verificados en CI.
+Sprints 1 a 18 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -102,7 +102,17 @@ sobre datos ya existentes, sin tabla de agregación nueva, en el panel web y en 
 reglas, entradas/salidas de geocercas), con niveles INFO/WARNING/HIGH/CRITICAL (los dos últimos
 reservados aún sin generador propio), deduplicación mientras la alerta siga sin leer y silenciado
 por tipo, en el panel web (con acciones de marcar leída/silenciar) y en modo sólo lectura en
-Android.
+Android; y tiempo real (Sprint 18): un canal WebSocket por dispositivo
+(`WS /devices/{id}/ws`, autenticado con un primer frame `{"token": ...}` en vez de una cabecera,
+porque un navegador no puede fijar cabeceras en el *handshake*), al que se conectan el tutor activo
+y el dispositivo supervisado dueño de ese dispositivo; cada cambio de regla (app, categoría,
+política por defecto, horario escolar) difunde `rules_changed` a quien esté escuchando, verificado
+de extremo a extremo contra el backend real; si el dispositivo no tiene el canal abierto y tiene un
+token FCM registrado, el backend intenta despertarlo vía la API HTTP v1 de Firebase Cloud
+Messaging (sin proyecto Firebase real en este repo todavía — pendiente de un humano, ver más
+abajo); en Android, `RuleEnforcementService` usa el aviso para adelantar su refresco de reglas en
+vez de esperar su sondeo periódico; en el panel web, `DeviceRulesPanel` recarga en vivo mientras
+está abierto.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -210,10 +220,29 @@ futura de esa geocerca, no sólo la fila que se estaba viendo. `HIGH`/`CRITICAL`
 catálogo (con su propio `CHECK` constraint) sin generador propio todavía — igual que
 `DeviceStatus.ALERT`, esperan las señales de manipulación del Sprint 20. Ver `docs/sprint-17.md`.
 
-**Siguiente: Sprint 18 — Tiempo real.** WebSockets autenticados (canal por dispositivo) y Firebase
-Cloud Messaging para despertar al dispositivo — revisar antes si conviene que la bandeja de alertas
-del Sprint 17 sea lo que empuje esos eventos en vivo, en vez de diseñar un canal de eventos
-paralelo.
+**Nota del Sprint 18, válida para cualquier sprint futuro que toque el canal en tiempo real o
+FCM**: `google-services.json`/el SDK de Firebase Messaging **no** se agregaron a Android — el
+plugin de Gradle `com.google.gms.google-services` rompe la compilación completa si ese archivo no
+existe, y no hay proyecto Firebase real en este repo (pendiente de un humano con cuenta de Google
+Cloud, igual que `GOOGLE_WEB_CLIENT_ID` en su momento — ver `docs/planning/plan-desarrollo.md`,
+fila "Paso 17"). Lo que sí existe y funciona sin esa credencial: `devices.fcm_token`, el endpoint
+para registrarlo, y `app/services/push.py`, que con `FCM_PROJECT_ID` vacío (el valor por defecto)
+omite el envío con un log en vez de fallar el cambio de regla que lo disparó — la llamada real a
+Google está aislada en una función (`_post_fcm_message`) para poder simularla con
+`unittest.mock.patch`, mismo patrón que la verificación de ID tokens de Google desde el Sprint 3.
+El registro de conexiones WebSocket vive en memoria del proceso backend, no en Redis: correcto hoy
+porque el backend corre como un único *worker* de uvicorn (`backend/Dockerfile`, sin `--workers`);
+necesitaría Redis pub/sub el día que corra en más de una réplica. En Android se agregó OkHttp
+(`RealtimeClient.kt`) sólo para el WebSocket — el resto de los clientes de red sigue en
+`java.net.HttpURLConnection` (ver `HttpJsonClient.kt`), porque `java.net` no tiene cliente de
+WebSocket en absoluto y `java.net.http.WebSocket` sólo llegó a Android en la API 34, por encima del
+`minSdk 26` de este proyecto. Ver `docs/sprint-18.md`.
+
+**Siguiente: Sprint 19 — Funcionamiento offline.** Room como fuente local de reglas, horarios,
+límites, listas y cola de eventos pendientes, con estrategia de conflicto y versión de política —
+revisar primero cómo encaja con el canal en tiempo real recién agregado: un dispositivo que
+recupera conectividad después de estar offline debería reconectar el WebSocket del Sprint 18 y
+vaciar su cola pendiente, no dos mecanismos de sincronización que no se hablan entre sí.
 
 ## Entorno de trabajo
 

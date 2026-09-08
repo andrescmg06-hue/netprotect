@@ -90,6 +90,11 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.kotlinx.coroutines.android)
+    // Sprint 18 real-time channel only: plain java.net (used everywhere else in this project,
+    // see HttpJsonClient's docstring) has no WebSocket client at all, and
+    // java.net.http.WebSocket only reached Android at API 34 — above this project's minSdk 26.
+    // Not a reversal of "no networking library" for REST, which java.net already covers.
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

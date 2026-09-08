@@ -10,6 +10,7 @@ from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.history import router as history_router
 from app.api.v1.endpoints.location import router as location_router
 from app.api.v1.endpoints.pairing import router as pairing_router
+from app.api.v1.endpoints.realtime import router as realtime_router
 from app.api.v1.endpoints.roles import router as roles_router
 from app.api.v1.endpoints.rules import router as rules_router
 from app.api.v1.endpoints.statistics import router as statistics_router
@@ -28,3 +29,4 @@ api_router.include_router(location_router)
 api_router.include_router(geofences_router)
 api_router.include_router(history_router)
 api_router.include_router(statistics_router)
+api_router.include_router(realtime_router)

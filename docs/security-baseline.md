@@ -51,6 +51,11 @@ Reglas de diseño:
     todo lo que apunte a un dispositivo concreto.
 19. **Cifrado del refresh token en Android (Sprint 3).** AES-256-GCM con una clave del Android
     Keystore, no `EncryptedSharedPreferences` (deprecado).
+20. **Canal WebSocket autenticado por primer mensaje, no por query string (Sprint 18).** Un
+    token en la URL del *handshake* quedaría expuesto en logs de acceso y proxies intermedios;
+    en su lugar, el servidor exige `{"token": ...}` como primer frame, con el mismo criterio
+    404-para-ambos-casos que el resto de la API para quien no tiene acceso a ese dispositivo. Ver
+    `docs/sprint-18.md`.
 
 ## Controles diferidos conscientemente
 
@@ -62,7 +67,9 @@ Se implementarán en los sprints correspondientes:
 - Auditoría persistente con consulta y exportación para el tutor (Sprint 22; hoy se escribe pero no
   se expone).
 - Cifrado de campos sensibles adicionales (ubicación, contenido de eventos).
-- FCM/WebSockets.
+- FCM: la estructura (registro de token, envío vía API HTTP v1) existe desde el Sprint 18, pero
+  sin proyecto Firebase real todavía — pendiente de un humano con cuenta de Google Cloud, ver
+  `docs/sprint-18.md`. WebSockets ya no está diferido (Sprint 18).
 - Protección criptográfica y anti-fuerza-bruta del código de vinculación.
 - Políticas de retención y minimización por tipo de dato.
 - SAST/DAST y análisis móvil completos.
