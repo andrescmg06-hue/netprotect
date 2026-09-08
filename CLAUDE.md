@@ -273,6 +273,11 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   cancelar), de modo que cada `setState` quede dentro de un callback de promesa ya resuelta, nunca de
   forma síncrona ni delegado a un helper. Ver `frontend/src/app/page.tsx` (patrón ya existente desde
   el Sprint 3) o `frontend/src/components/DevicesPanel.tsx` (Sprint 6) como referencia.
+- `README.md` (raíz del repo) tiene su propia sección `## Alcance del Sprint N` por cada sprint —
+  un changelog aparte de `docs/sprint-NN.md`, no mencionado en "Dónde está cada cosa" arriba. Se
+  quedó sin actualizar en el Sprint 13 y sólo se notó al cerrar el Sprint 14 (el dueño del proyecto
+  lo vio en GitHub, parado en el Sprint 12). Actualizarlo en cada cierre de sprint, junto con
+  `sprint-NN.md`/`sprint-NN-evidence.md`.
 - `compose.yaml` (el stack de desarrollo persistente) tiene `backend`, `web` y `migrate` como
   servicios con imágenes independientes aunque `backend` y `migrate` compartan el mismo
   `Dockerfile` de `backend/`. Reconstruir `backend`/`web` con `docker compose build` no reconstruye

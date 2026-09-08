@@ -233,3 +233,27 @@ Una regla de app o de categoría con `ALLOW` sigue aprobando esa app también en
 Interpretación del alcance documentada explícitamente, ver `docs/sprint-12.md`.
 
 El detalle está en `docs/sprint-12.md`.
+
+## Alcance del Sprint 13
+
+Ubicación aproximada: el dispositivo supervisado reporta su posición cada ~15 minutos mediante un
+foreground service (`LocationReportingService`, sólo `ACCESS_COARSE_LOCATION`, sin permiso de
+segundo plano — un foreground service tipo `location` ya cuenta como "en primer plano" para el
+sistema de permisos de ubicación de Android), cifrada en la base de datos (Fernet) con retención de
+7 días y purga inline al reportar. El tutor ve la última ubicación conocida en el panel web (mapa
+embebido si hay clave de Google Maps configurada, texto si no) y en Android (texto + botón que abre
+un mapa externo vía intent, sin SDK nativo de Maps).
+
+El detalle está en `docs/sprint-13.md`.
+
+## Alcance del Sprint 14
+
+Geocercas: el tutor crea, edita y elimina zonas circulares (nombre, centro cifrado, radio) por
+dispositivo desde el panel web; el backend detecta automáticamente las entradas y salidas
+comparando cada nuevo reporte de ubicación contra el anterior del mismo dispositivo, sin usar la
+Geofencing API de Android/GMS — esa API exige `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`
+y la dependencia `play-services-location`, revirtiendo tres decisiones de minimización de permisos
+ya tomadas en el Sprint 13 (ver `docs/android/capability-matrix.md`). Historial de entradas/salidas
+consultable en el panel web y, en modo sólo lectura, en la app del tutor en Android.
+
+El detalle está en `docs/sprint-14.md`.
