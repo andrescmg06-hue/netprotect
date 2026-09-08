@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     # reasoning as device_offline_threshold_seconds above).
     location_retention_days: int = 7
 
+    # Own decision (Sprint 14), not an Android/GMS Geofencing API limit (this project doesn't use
+    # that API — see docs/sprint-14.md): a sanity cap so a device's location report doesn't have
+    # to evaluate an unbounded number of geofences on every write. 20 comfortably covers a
+    # minor's real places (home, school, a couple of relatives) with room to spare.
+    max_geofences_per_device: int = 20
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

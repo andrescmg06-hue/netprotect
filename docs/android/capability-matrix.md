@@ -1,6 +1,11 @@
 # Matriz preliminar de capacidades Android
 
-Fecha de revisión: 05/09/2026 (Sprint 9: identificar apps que nunca deben bloquearse en modo lista blanca. Sprint 8: mecanismo de bloqueo sin device owner. Sprint 7: enumeración de apps y estadísticas de uso). Todas verificadas contra fuentes oficiales actuales — ver secciones dedicadas más abajo. Revisión anterior: 30/08/2026. Esta matriz evita asumir capacidades que una aplicación Android convencional no posee.
+Fecha de revisión: 07/09/2026 (Sprint 14: geocercas — por qué este proyecto decide NO usar la
+Geofencing API de Android/GMS. Sprint 13: geolocalización aproximada. Sprint 9: identificar apps
+que nunca deben bloquearse en modo lista blanca. Sprint 8: mecanismo de bloqueo sin device owner.
+Sprint 7: enumeración de apps y estadísticas de uso). Todas verificadas contra fuentes oficiales
+actuales — ver secciones dedicadas más abajo. Revisión anterior: 05/09/2026. Esta matriz evita
+asumir capacidades que una aplicación Android convencional no posee.
 
 | Capacidad | API/mecanismo oficial | Requisito principal | Limitación relevante | Decisión |
 |---|---|---|---|---|
@@ -12,7 +17,7 @@ Fecha de revisión: 05/09/2026 (Sprint 9: identificar apps que nunca deben bloqu
 | Identificar launcher, teléfono y Ajustes (para nunca bloquearlos) | `PackageManager.resolveActivity()` con `ACTION_MAIN`+`CATEGORY_HOME` y con `Settings.ACTION_SETTINGS`; `TelecomManager.getDefaultDialerPackage()` y `getSystemDialerPackage()` | Visibilidad de paquetes (ya cubierta por `QUERY_ALL_PACKAGES` del Sprint 7) | Todas pueden devolver `null`; si la resolución falla, esa app queda fuera de la lista protegida y podría bloquearse en modo lista blanca | Sprint 9 — ver detalle abajo |
 | Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
 | Geolocalización | `LocationManager` (`NETWORK_PROVIDER`) | `ACCESS_COARSE_LOCATION` (runtime) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre | Sprint 13 — ver detalle abajo. Decisión: sólo aproximada, sin permiso de segundo plano |
-| Geocercas | Geofencing API | `ACCESS_FINE_LOCATION`; background location al aplicar según target/uso | Límite de geocercas y latencia en background | Sprint 14 |
+| Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza `ACCESS_COARSE_LOCATION` ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
 | Captura de pantalla | `MediaProjection` | Consentimiento del usuario y foreground service `mediaProjection` | En Android moderno el consentimiento no puede reutilizarse indefinidamente; cada sesión debe respetar las reglas vigentes | Evaluar Sprint 23 |
 | Cámara remota | Camera + foreground service cuando aplique | `CAMERA` y estado/flujo permitido | Permisos while-in-use y restricciones para iniciar desde background | V2/Futuro |
@@ -474,6 +479,76 @@ Fuentes citadas en esta sección: <https://developer.android.com/training/locati
 <https://support.google.com/googleplay/android-developer/answer/11150561>,
 <https://support.google.com/googleplay/android-developer/answer/9799150>.
 
+## Sprint 14 — Geocercas: verificación detallada (07/09/2026)
+
+Procedimiento obligatorio de la Fase C, aplicado antes de escribir código — con un matiz respecto a
+sprints anteriores: aquí la verificación termina en la decisión de **no** adoptar la API que el
+plan de desarrollo asumía, precisamente porque se verificó primero. Fuente oficial consultada
+directamente: <https://developer.android.com/develop/sensors-and-location/location/geofencing>.
+
+### Qué exige realmente la Geofencing API de Android (`GeofencingClient`)
+
+Verificado explícitamente porque `CLAUDE.md` lo pedía ("revisar de nuevo... antes de asumir que no
+hace falta una nueva Fase C"): la Geofencing API real de Android —la que crea el plan de
+desarrollo (`docs/planning/plan-desarrollo.md`, Paso 13)— **no** es una extensión de
+`LocationManager` puro (lo que este proyecto usa desde el Sprint 13). Es parte de
+**Google Play Services** (`com.google.android.gms.location.GeofencingClient`,
+`LocationServices.getGeofencingClient()`) y exige, sin excepción documentada:
+
+1. **`ACCESS_FINE_LOCATION`** — siempre, no sólo `ACCESS_COARSE_LOCATION`.
+2. **`ACCESS_BACKGROUND_LOCATION`** (apps con `targetSdk` ≥ 29, que es el caso de este proyecto)
+   para que los eventos ENTER/EXIT lleguen mientras la app **no** está en primer plano — que es
+   justamente el caso de uso real: detectar que el supervisado cruzó una zona sin tener NetProtect
+   abierto en ese momento.
+3. La dependencia **`play-services-location`**, que este proyecto evita a propósito desde el
+   Sprint 13 (usa `LocationManager` puro, sin Google Play services de ubicación).
+
+A cambio, ofrece: hasta 100 geocercas por app/usuario, arquitectura sin foreground service propio
+(un `PendingIntent`/`BroadcastReceiver` que Play Services invoca), y latencia de detección de
+"usualmente menos de 2 minutos" (hasta 2-3 minutos con los límites de ubicación en segundo plano de
+Android 8+, hasta 6 minutos con el dispositivo estacionario) — gestionada íntegramente por el
+sistema, sin que la app tenga que sondear nada.
+
+### Por qué este sprint decide NO usarla
+
+Adoptarla exigiría revertir, no extender, tres decisiones de diseño ya tomadas y documentadas en
+el Sprint 13 (`docs/sprint-13.md`, sección "Frecuencia y precisión"):
+
+- Pasar de `ACCESS_COARSE_LOCATION` a `ACCESS_FINE_LOCATION` — más precisión de la que el caso de
+  uso ("¿en qué zona está?") necesita, violando minimización de datos sin un beneficio real para
+  este proyecto.
+- Pedir `ACCESS_BACKGROUND_LOCATION` — exactamente el permiso que el Sprint 13 evitó a propósito
+  explotando que un foreground service `location`-typed ya cuenta como "en primer plano" para el
+  sistema de permisos. La Geofencing API no participa de esa excepción: sus callbacks llegan desde
+  un proceso de Play Services, no desde nuestro propio foreground service, así que necesita el
+  permiso de segundo plano de verdad.
+- Añadir `play-services-location` — la única dependencia grande que este proyecto ha evitado dos
+  veces ya (Sprint 13: ubicación con `LocationManager` puro; también evitó el Maps SDK for
+  Android).
+
+Esta decisión se confirmó con el dueño del proyecto antes de escribir código (mismo patrón que las
+categorías del Sprint 10): ver `docs/sprint-14.md` para las dos alternativas planteadas y la
+elegida.
+
+### La alternativa elegida no toca Android en absoluto
+
+Al evaluar transiciones ENTER/EXIT en el backend comparando reportes de ubicación consecutivos
+contra cada geocerca (ver `docs/sprint-14.md` y `backend/app/services/geofencing.py`), Android no
+necesita ningún permiso, dependencia, servicio ni cambio de manifiesto nuevo — `LocationReportingService`
+(Sprint 13) sigue exactamente igual. Consecuencia aceptada y documentada: la latencia de detección
+queda atada al intervalo de reporte (~15 minutos) en vez de los 2-6 minutos que ofrecería la
+Geofencing API real — un costo directo de mantener la superficie de permisos mínima ya establecida,
+no un descuido.
+
+### Límite de geocercas: decisión propia, no un límite de la plataforma
+
+Como este proyecto no usa la Geofencing API de Android, el límite real de esa API (100 por
+app/usuario) no aplica. `settings.max_geofences_per_device = 20` (`backend/app/core/config.py`) es
+una decisión propia — una salvaguarda de rendimiento (cuántas geocercas evalúa cada reporte de
+ubicación), no un límite impuesto por el sistema operativo.
+
+Fuente: <https://developer.android.com/develop/sensors-and-location/location/geofencing>.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -497,5 +572,6 @@ Fuentes citadas en esta sección: <https://developer.android.com/training/locati
 - Android Developers — foreground service type `location` y sus requisitos, Sprint 13.
 - Android Developers — `shouldShowRequestPermissionRationale()` y UI educativa, Sprint 13.
 - Play Console Help — "Prominent disclosure and consent" y permisos de ubicación en segundo plano, Sprint 13.
+- Android Developers — Geofencing API (`GeofencingClient`, permisos, límite de 100 geocercas, latencia de detección), Sprint 14.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

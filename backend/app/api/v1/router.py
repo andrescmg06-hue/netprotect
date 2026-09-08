@@ -4,6 +4,7 @@ from app.api.v1.endpoints.applications import router as applications_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.categories import router as categories_router
 from app.api.v1.endpoints.devices import router as devices_router
+from app.api.v1.endpoints.geofences import router as geofences_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.location import router as location_router
 from app.api.v1.endpoints.pairing import router as pairing_router
@@ -20,3 +21,4 @@ api_router.include_router(applications_router)
 api_router.include_router(rules_router)
 api_router.include_router(categories_router)
 api_router.include_router(location_router)
+api_router.include_router(geofences_router)

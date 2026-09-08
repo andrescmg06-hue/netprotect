@@ -3,6 +3,7 @@ from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.category import AppCategoryAssignment, CategoryRule
 from app.models.device import Device, DeviceStatus, TutorDevice
+from app.models.geofence import Geofence, GeofenceEvent
 from app.models.location import DeviceLocationReport
 from app.models.pairing import PairingCode
 from app.models.role import Role, UserRole
@@ -22,6 +23,8 @@ __all__ = [
     "DeviceApplicationUsage",
     "DeviceLocationReport",
     "DeviceStatus",
+    "Geofence",
+    "GeofenceEvent",
     "PairingCode",
     "Role",
     "TutorDevice",

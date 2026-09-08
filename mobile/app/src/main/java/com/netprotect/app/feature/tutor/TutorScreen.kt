@@ -38,6 +38,9 @@ import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.DeviceSummary
+import com.netprotect.app.core.network.Geofence
+import com.netprotect.app.core.network.GeofenceClient
+import com.netprotect.app.core.network.GeofenceEvent
 import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.network.PairingClient
@@ -69,6 +72,15 @@ private sealed interface LocationState {
     data class Error(val message: String) : LocationState
 }
 
+private sealed interface GeofenceState {
+    data object Loading : GeofenceState
+    // Read-only here — creating/editing a geofence is web-only (Sprint 14), same split already
+    // established for reglas/categorías (Sprint 8-10): this screen only shows what the tutor
+    // already configured on the web panel, plus the ENTER/EXIT history detected server-side.
+    data class Loaded(val geofences: List<Geofence>, val events: List<GeofenceEvent>) : GeofenceState
+    data class Error(val message: String) : GeofenceState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -82,6 +94,7 @@ fun TutorScreen(
     val deviceClient = remember { DeviceClient(baseUrl) }
     val applicationsClient = remember { ApplicationsClient(baseUrl) }
     val locationClient = remember { LocationClient(baseUrl) }
+    val geofenceClient = remember { GeofenceClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -92,6 +105,8 @@ fun TutorScreen(
     val appsStateByDevice = remember { mutableStateMapOf<String, AppsState>() }
     var expandedLocationDeviceId by remember { mutableStateOf<String?>(null) }
     val locationStateByDevice = remember { mutableStateMapOf<String, LocationState>() }
+    var expandedGeofenceDeviceId by remember { mutableStateOf<String?>(null) }
+    val geofenceStateByDevice = remember { mutableStateMapOf<String, GeofenceState>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -129,6 +144,25 @@ fun TutorScreen(
                 LocationState.Loaded(locationClient.getLatestLocation(accessToken, deviceId))
             } catch (exception: Exception) {
                 LocationState.Error(exception.message ?: "No se pudo cargar la ubicación")
+            }
+        }
+    }
+
+    fun toggleGeofences(deviceId: String) {
+        if (expandedGeofenceDeviceId == deviceId) {
+            expandedGeofenceDeviceId = null
+            return
+        }
+        expandedGeofenceDeviceId = deviceId
+        geofenceStateByDevice[deviceId] = GeofenceState.Loading
+        scope.launch {
+            geofenceStateByDevice[deviceId] = try {
+                GeofenceState.Loaded(
+                    geofences = geofenceClient.listGeofences(accessToken, deviceId),
+                    events = geofenceClient.listGeofenceEvents(accessToken, deviceId),
+                )
+            } catch (exception: Exception) {
+                GeofenceState.Error(exception.message ?: "No se pudieron cargar las geocercas")
             }
         }
     }
@@ -260,6 +294,9 @@ fun TutorScreen(
                                 isLocationExpanded = expandedLocationDeviceId == device.id,
                                 locationState = locationStateByDevice[device.id],
                                 onToggleLocation = { toggleLocation(device.id) },
+                                isGeofenceExpanded = expandedGeofenceDeviceId == device.id,
+                                geofenceState = geofenceStateByDevice[device.id],
+                                onToggleGeofences = { toggleGeofences(device.id) },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -291,6 +328,9 @@ private fun DeviceRow(
     isLocationExpanded: Boolean,
     locationState: LocationState?,
     onToggleLocation: () -> Unit,
+    isGeofenceExpanded: Boolean,
+    geofenceState: GeofenceState?,
+    onToggleGeofences: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -335,6 +375,9 @@ private fun DeviceRow(
                     TextButton(onClick = onToggleLocation) {
                         Text(if (isLocationExpanded) "Ocultar ubicación" else "Ver ubicación")
                     }
+                    TextButton(onClick = onToggleGeofences) {
+                        Text(if (isGeofenceExpanded) "Ocultar geocercas" else "Ver geocercas")
+                    }
                 }
                 if (isAppsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -343,6 +386,10 @@ private fun DeviceRow(
                 if (isLocationExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
                     LocationSection(locationState)
+                }
+                if (isGeofenceExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    GeofenceSection(geofenceState)
                 }
             }
         }
@@ -394,6 +441,60 @@ private fun LocationSection(state: LocationState?) {
                 }
             }
         }
+    }
+}
+
+/** Read-only, same reasoning as the file-level GeofenceState docstring: creating/editing a
+ * geofence happens on the web panel only. Shows the zones the tutor already configured there,
+ * plus the ENTER/EXIT history the backend detected from consecutive location reports.
+ */
+@Composable
+private fun GeofenceSection(state: GeofenceState?) {
+    when (state) {
+        null, GeofenceState.Loading -> Text("Cargando geocercas…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is GeofenceState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is GeofenceState.Loaded -> {
+            Column {
+                if (state.geofences.isEmpty()) {
+                    Text(
+                        "Todavía no hay geocercas. Créalas desde el panel web.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                    )
+                } else {
+                    state.geofences.forEach { geofence ->
+                        Text(
+                            "${geofence.name} · radio ${geofence.radiusMeters.toInt()} m",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Historial de entradas/salidas", color = Color(0xFF7D899A), fontSize = 11.sp)
+                if (state.events.isEmpty()) {
+                    Text(
+                        "Todavía no se detectó ninguna entrada o salida.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                    )
+                } else {
+                    state.events.forEach { event -> GeofenceEventRow(event) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GeofenceEventRow(event: GeofenceEvent) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        val verb = if (event.eventType == "ENTER") "Entró a" else "Salió de"
+        Text("$verb ${event.geofenceName}", color = Color.White, fontSize = 13.sp)
+        Text(formatCapturedAt(event.occurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
     }
 }
 

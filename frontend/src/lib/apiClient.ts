@@ -474,3 +474,109 @@ export function getLatestLocation(
     accessToken
   );
 }
+
+/** Sprint 14. No Android/GMS Geofencing API involved — the backend detects ENTER/EXIT by
+ * comparing consecutive location reports against each geofence's centre and radius (see
+ * docs/sprint-14.md). Centre coordinates arrive already decrypted, same as LocationReport.
+ */
+export type Geofence = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UpsertGeofenceInput = {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+};
+
+export function listGeofences(
+  accessToken: string,
+  deviceId: string
+): Promise<{ geofences: Geofence[] }> {
+  return requestJson<{ geofences: Geofence[] }>(
+    `/api/v1/devices/${deviceId}/geofences`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+/** Always creates a new zone — unlike an AppRule, a geofence has no natural per-device unique
+ * key to upsert against, so editing an existing one is a separate call (updateGeofence).
+ */
+export function createGeofence(
+  accessToken: string,
+  deviceId: string,
+  input: UpsertGeofenceInput
+): Promise<Geofence> {
+  return requestJson<Geofence>(
+    `/api/v1/devices/${deviceId}/geofences`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    accessToken
+  );
+}
+
+export function updateGeofence(
+  accessToken: string,
+  deviceId: string,
+  geofenceId: string,
+  input: UpsertGeofenceInput
+): Promise<Geofence> {
+  return requestJson<Geofence>(
+    `/api/v1/devices/${deviceId}/geofences/${geofenceId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    accessToken
+  );
+}
+
+export function deleteGeofence(
+  accessToken: string,
+  deviceId: string,
+  geofenceId: string
+): Promise<{ geofence_id: string; name: string; deleted_at: string }> {
+  return requestJson(
+    `/api/v1/devices/${deviceId}/geofences/${geofenceId}`,
+    { method: "DELETE" },
+    accessToken
+  );
+}
+
+export type GeofenceEventType = "ENTER" | "EXIT";
+
+/** geofence_name is a snapshot taken at detection time, not a live join — it still reads
+ * correctly even after the geofence itself is renamed or deleted (see backend/app/models/
+ * geofence.py).
+ */
+export type GeofenceEvent = {
+  id: string;
+  geofence_id: string;
+  geofence_name: string;
+  event_type: GeofenceEventType;
+  occurred_at: string;
+  received_at: string;
+};
+
+export function listGeofenceEvents(
+  accessToken: string,
+  deviceId: string
+): Promise<{ events: GeofenceEvent[] }> {
+  return requestJson<{ events: GeofenceEvent[] }>(
+    `/api/v1/devices/${deviceId}/geofences/events`,
+    { method: "GET" },
+    accessToken
+  );
+}

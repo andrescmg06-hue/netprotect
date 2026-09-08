@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 13 completos y verificados en CI.
+Sprints 1 a 14 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -87,7 +87,12 @@ cerrada; y ubicación aproximada (Sprint 13): el dispositivo supervisado reporta
 `ACCESS_COARSE_LOCATION`, sin permiso de segundo plano), cifrada en la base de datos (Fernet) con
 retención de 7 días y purga inline al reportar; el tutor ve la última ubicación conocida en el
 panel web (mapa embebido si hay clave de Google Maps configurada, texto si no) y en Android (texto
-+ botón que abre un mapa externo vía intent, sin SDK nativo de Maps).
++ botón que abre un mapa externo vía intent, sin SDK nativo de Maps); y geocercas (Sprint 14): el
+tutor crea/edita/elimina zonas circulares (nombre, centro cifrado, radio) desde el panel web, y el
+backend detecta entradas/salidas comparando cada nuevo reporte de ubicación contra el anterior del
+mismo dispositivo (fórmula de Haversine, sin la Geofencing API de Android/GMS — ver nota del Sprint
+14 abajo), con historial consultable desde el panel web y, en modo sólo lectura, desde la app del
+tutor en Android.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -110,7 +115,7 @@ desde un efecto de una pantalla en primer plano, nunca desde un contexto de fond
 
 **Nota del Sprint 9, válida para cualquier sprint que amplíe el bloqueo**: existe una lista de apps
 que nunca se bloquean (`ProtectedPackages`: launcher, teléfono, Ajustes y la propia app), resuelta en
-tiempo de ejecución porque los nombres de paquete varían entre fabricantes. No es una preferencia del
+tiempo de ejecución porque los nombre s de paquete varían entre fabricantes. No es una preferencia del
 tutor, es una barrera de seguridad — bloquear el teléfono podría estorbar una llamada de emergencia y
 bloquear Ajustes dejaría al usuario sin forma de revocar el permiso. Cualquier mecanismo de bloqueo
 nuevo debe respetarla.
@@ -151,11 +156,27 @@ de que un humano con cuenta de Google Cloud la genere y la restrinja por referer
 que `GOOGLE_WEB_CLIENT_ID`, ver `docs/sprint-13.md`); sin ella, el panel muestra coordenadas en
 texto y un enlace a Google Maps.
 
-**Siguiente: Sprint 14 — Geocercas.** Reutiliza los permisos de ubicación ya verificados en el
-Sprint 13, pero revisar de nuevo si la Geofencing API exige algo adicional (por ejemplo, si generar
-alertas de entrada/salida con el dispositivo en segundo plano sí obliga a pedir
-`ACCESS_BACKGROUND_LOCATION`, a diferencia del simple reporte periódico del Sprint 13) antes de
-asumir que no hace falta una nueva Fase C.
+**Nota del Sprint 14, válida para cualquier sprint futuro que toque la Geofencing API de Android o
+considere añadir `play-services-location`**: se verificó la Geofencing API real de Android
+(`GeofencingClient`, Google Play Services) contra la documentación oficial antes de escribir código
+— exige `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION` (para que los eventos ENTER/EXIT
+lleguen con la app en segundo plano — el truco del Sprint 13 de que un foreground service
+`location`-typed cuenta como "en primer plano" **no aplica** a los callbacks de geofencing, que
+llegan desde un proceso de Play Services, no desde nuestro propio servicio) y la dependencia
+`play-services-location`, que este proyecto evita a propósito desde el Sprint 13. Se decidió, con
+el dueño del proyecto, **no** adoptarla: en su lugar, el backend detecta ENTER/EXIT comparando
+cada nuevo reporte de ubicación (ya enviado por `LocationReportingService` cada ~15 minutos) contra
+el anterior del mismo dispositivo, para cada geocerca (`backend/app/services/geofencing.py`, sin
+scheduler, mismo patrón "evaluar al escribir" que la purga de retención del Sprint 13). Ningún
+permiso, dependencia ni servicio nuevo se añadió a Android. Costo aceptado: latencia de detección
+de ~15 minutos en vez de los 2-6 minutos que ofrecería la API real. Ver
+`docs/android/capability-matrix.md` (sección Sprint 14) para la verificación completa.
+
+**Siguiente: Sprint 15 — Historial.** Persistencia de eventos de apps, web, bloqueos, reglas,
+ubicación, geocercas y alertas, con política de retención por tipo de dato y purga automatizada —
+revisar qué de esto ya existe disperso (p. ej. `AppRuleEvent`, `DeviceLocationReport`,
+`GeofenceEvent` ya son insert-only con su propia retención o ausencia de ella) antes de asumir que
+hace falta una tabla nueva de "historial" genérica.
 
 ## Entorno de trabajo
 

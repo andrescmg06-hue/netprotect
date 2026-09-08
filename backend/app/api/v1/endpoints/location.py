@@ -17,6 +17,7 @@ from app.schemas.location import (
     LocationReportResponse,
     ReportLocationRequest,
 )
+from app.services.geofencing import evaluate_geofence_transitions
 
 router = APIRouter(tags=["location"])
 
@@ -46,6 +47,11 @@ async def report_location(
     first deletes this device's own rows older than location_retention_days, then inserts the
     new one. Scoped to this device_id only, never a global sweep — a supervised device reporting
     its own location must not be able to trigger cleanup work for anyone else's rows.
+
+    Also evaluates geofence transitions (Sprint 14) by comparing this device's previous known
+    point (fetched here, before the new one is inserted) against the new one — see
+    app/services/geofencing.py for why this needs no Android Geofencing API, permission or
+    dependency of its own.
     """
     cutoff = datetime.now(UTC) - timedelta(days=settings.location_retention_days)
     await db.execute(
@@ -55,6 +61,15 @@ async def report_location(
         )
     )
 
+    previous_report = (
+        await db.execute(
+            select(DeviceLocationReport)
+            .where(DeviceLocationReport.device_id == device_id)
+            .order_by(DeviceLocationReport.captured_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
     report = DeviceLocationReport(
         device_id=device_id,
         latitude_ciphertext=encrypt_coordinate(payload.latitude),
@@ -63,6 +78,14 @@ async def report_location(
         captured_at=payload.captured_at,
     )
     db.add(report)
+    await evaluate_geofence_transitions(
+        db,
+        device_id,
+        previous_report,
+        payload.latitude,
+        payload.longitude,
+        payload.captured_at,
+    )
     await db.commit()
     await db.refresh(report)
 
