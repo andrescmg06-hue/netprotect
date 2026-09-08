@@ -107,8 +107,17 @@ Sin errores de tipos ni de lint en `apiClient.ts`, `HistoryPanel.tsx` ni `Device
 
 ## CI en GitHub Actions (runner limpio)
 
-Pendiente: se completa en un commit posterior tras el push, una vez confirmado el run en verde
-(mismo patrón que "docs: record green CI run" de los Sprints 13 y 14).
+```
+$ git push
+$ gh run watch 34230298354 --exit-status
+✓ main ci · 34230298354
+  ✓ backend
+  ✓ frontend
+  ✓ android
+  ✓ integration
+```
+
+Los 4 jobs en verde en un runner limpio (no esta máquina), commit `31ba66c`.
 
 ## No se marca como verificado
 
