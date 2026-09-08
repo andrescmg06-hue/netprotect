@@ -77,5 +77,28 @@
             android:name=".core.location.LocationReportingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Sprint 20 (detección de manipulación): registro como Device Administrator, NO como
+             device owner. El usuario lo concede desde la pantalla del sistema
+             (ACTION_ADD_DEVICE_ADMIN) y puede quitarlo cuando quiera; mientras esté activo,
+             Android exige desactivarlo antes de desinstalar la app, y esa desactivación dispara
+             onDisableRequested() — la única forma oficial de detectar un intento de
+             desinstalación sin ser device owner. No aplica ninguna política (device_admin.xml
+             tiene <uses-policies> vacío). android:permission="BIND_DEVICE_ADMIN" es obligatorio:
+             restringe la invocación del receiver al propio sistema. exported="true" porque quien
+             lo invoca es el sistema, no esta app. -->
+        <receiver
+            android:name=".core.tamper.NetProtectDeviceAdminReceiver"
+            android:exported="true"
+            android:description="@string/device_admin_description"
+            android:label="@string/device_admin_label"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

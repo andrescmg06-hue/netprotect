@@ -18,10 +18,6 @@ INFO = "INFO"
 WARNING = "WARNING"
 HIGH = "HIGH"
 CRITICAL = "CRITICAL"
-# HIGH/CRITICAL have no generator yet in this sprint — reserved for the manipulation-detection
-# signals of Sprint 20, same reservation already made for DeviceStatus.ALERT
-# (app/models/device.py). Kept in the catalog now so that sprint only needs a new alert_type, not
-# a level migration.
 ALERT_LEVELS = (INFO, WARNING, HIGH, CRITICAL)
 _LEVEL_LIST_SQL = ", ".join(f"'{value}'" for value in ALERT_LEVELS)
 
@@ -29,7 +25,27 @@ APP_BLOCKED = "APP_BLOCKED"
 APP_LIMIT_REACHED = "APP_LIMIT_REACHED"
 GEOFENCE_ENTER = "GEOFENCE_ENTER"
 GEOFENCE_EXIT = "GEOFENCE_EXIT"
-ALERT_TYPES = (APP_BLOCKED, APP_LIMIT_REACHED, GEOFENCE_ENTER, GEOFENCE_EXIT)
+# Manipulation-detection signals (Sprint 20, app/services/tamper.py) — the first generators for
+# the HIGH/CRITICAL levels reserved above since Sprint 17. Unlike the four alert types above,
+# these have no package_name/geofence_id of their own: one device can only be in one tamper state
+# of each kind at a time, so dedup_key is just the alert_type itself — see
+# record_alert_for_tamper_signal (app/services/alerts.py).
+PERMISSION_REVOKED = "PERMISSION_REVOKED"
+SERVICE_INACTIVE = "SERVICE_INACTIVE"
+HEARTBEAT_SILENCE = "HEARTBEAT_SILENCE"
+CLOCK_TAMPERING = "CLOCK_TAMPERING"
+UNINSTALL_ATTEMPT = "UNINSTALL_ATTEMPT"
+ALERT_TYPES = (
+    APP_BLOCKED,
+    APP_LIMIT_REACHED,
+    GEOFENCE_ENTER,
+    GEOFENCE_EXIT,
+    PERMISSION_REVOKED,
+    SERVICE_INACTIVE,
+    HEARTBEAT_SILENCE,
+    CLOCK_TAMPERING,
+    UNINSTALL_ATTEMPT,
+)
 _TYPE_LIST_SQL = ", ".join(f"'{value}'" for value in ALERT_TYPES)
 
 

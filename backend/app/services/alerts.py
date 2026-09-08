@@ -60,6 +60,28 @@ async def record_alert_for_geofence_event(
     )
 
 
+async def record_alert_for_tamper_signal(
+    db: AsyncSession,
+    device_id: uuid.UUID,
+    signal_type: str,
+    level: str,
+    occurred_at: datetime,
+) -> None:
+    """Manipulation-detection signals (Sprint 20, app/services/tamper.py) — same dedup/silence
+    machinery as the rest of this module, keyed on the signal type alone: a device can only be in
+    one PERMISSION_REVOKED (or SERVICE_INACTIVE, ...) state at a time, so there is no
+    package/geofence discriminator to add to the dedup_key.
+    """
+    await _record_alert(
+        db,
+        device_id=device_id,
+        level=level,
+        alert_type=signal_type,
+        dedup_key=signal_type,
+        occurred_at=occurred_at,
+    )
+
+
 async def _record_alert(
     db: AsyncSession,
     *,

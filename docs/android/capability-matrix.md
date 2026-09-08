@@ -18,6 +18,8 @@ asumir capacidades que una aplicación Android convencional no posee.
 | Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
 | Geolocalización | `LocationManager` (`NETWORK_PROVIDER`) | `ACCESS_COARSE_LOCATION` (runtime) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre | Sprint 13 — ver detalle abajo. Decisión: sólo aproximada, sin permiso de segundo plano |
 | Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza `ACCESS_COARSE_LOCATION` ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
+| Detectar intento de desinstalación | Registro como Device Administrator (`DeviceAdminReceiver.onDisableRequested()`) — no existe ninguna API para detectar la desinstalación en sí | Activación por el usuario vía `ACTION_ADD_DEVICE_ADMIN` (pantalla del sistema); `BIND_DEVICE_ADMIN` en el receiver | No impide desinstalar: sólo obliga a desactivar el administrador primero, y eso avisa. El usuario puede retirarlo cuando quiera; el *callback* no tiene veto | Sprint 20 — ver detalle abajo |
+| Saber si un servicio propio sigue vivo desde otro proceso | Ninguna API soportada (`getRunningServices()` obsoleto y limitado al propio proceso) — marca de tiempo cooperativa (`EnforcementLiveness`) | Ninguno | Cooperativa por diseño: detecta paradas ordinarias, no a un adversario técnico decidido | Sprint 20 — ver detalle abajo |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
 | Captura de pantalla | `MediaProjection` | Consentimiento del usuario y foreground service `mediaProjection` | En Android moderno el consentimiento no puede reutilizarse indefinidamente; cada sesión debe respetar las reglas vigentes | Evaluar Sprint 23 |
 | Cámara remota | Camera + foreground service cuando aplique | `CAMERA` y estado/flujo permitido | Permisos while-in-use y restricciones para iniciar desde background | V2/Futuro |
@@ -549,6 +551,72 @@ ubicación), no un límite impuesto por el sistema operativo.
 
 Fuente: <https://developer.android.com/develop/sensors-and-location/location/geofencing>.
 
+## Sprint 20 — Detección de manipulación: verificación detallada (08/09/2026)
+
+Mismo procedimiento que los sprints anteriores: las fuentes oficiales se consultaron antes de
+escribir código, y se marca explícitamente lo que no se pudo confirmar.
+
+### Detectar un intento de desinstalación sin ser device owner
+
+Punto de partida verificado: una app **no puede** enterarse de su propia desinstalación. Sus
+`BroadcastReceiver` desaparecen junto con el paquete, y `ACTION_PACKAGE_REMOVED` nunca se entrega
+a la app que se está eliminando. No existe ninguna API para "el usuario abrió el diálogo de
+desinstalar esta app".
+
+Lo que sí existe, y es lo que el enunciado del Paso 19 llama "la API oficial", es el registro como
+**Device Administrator** (`android.app.admin.DeviceAdminReceiver`):
+
+- Mientras un administrador está activo, **Android impide desinstalar la app**: el usuario debe
+  desactivarlo primero ("To uninstall an existing device admin app, users need to first unregister
+  the app as an administrator").
+- Esa desactivación dispara `onDisableRequested(Context, Intent)`, que devuelve un `CharSequence`
+  que el propio sistema muestra como advertencia en su diálogo de confirmación. Después, si el
+  usuario confirma, se llama a `onDisabled()`.
+- **No hay veto**: el *callback* no puede cancelar ni retrasar la desactivación. Sólo advierte y
+  se entera. La documentación tampoco garantiza `onDisableRequested()` en *todos* los caminos
+  posibles (p. ej. flujos administrativos que eliminan el perfil completo); para el flujo normal
+  por Ajustes sí se llama.
+- Se activa con `ACTION_ADD_DEVICE_ADMIN` + `EXTRA_DEVICE_ADMIN` (y `EXTRA_ADD_EXPLANATION`), que
+  abre una pantalla de confirmación del sistema. **Esto no es device owner ni aprovisionamiento
+  MDM**: es un permiso corriente que el usuario concede y puede retirar cuando quiera. La fila
+  "Administración empresarial profunda" de la tabla de arriba (que este proyecto sigue descartando)
+  se refiere a device/profile *owner*, que exige aprovisionamiento en la configuración inicial del
+  dispositivo; el administrador básico no.
+- Manifiesto obligatorio: `<receiver android:permission="android.permission.BIND_DEVICE_ADMIN">`
+  (restringe la invocación al sistema), `<meta-data android:name="android.app.device_admin">`
+  apuntando a un XML con `<uses-policies>`, e `<intent-filter>` con
+  `android.app.action.DEVICE_ADMIN_ENABLED`.
+- `<uses-policies>` declara qué políticas aplicará el administrador. Este proyecto lo deja
+  **vacío**: no cambia contraseñas, no fuerza bloqueo, no borra datos, no desactiva la cámara. El
+  registro existe únicamente por el *callback* de desactivación.
+- `onDisableRequested()` corre en el hilo principal y debe devolver rápido: nada de red ahí. La
+  guía oficial de trabajo en segundo plano señala WorkManager como la vía para pasar trabajo
+  garantizado desde un *broadcast receiver*, que es lo que hace `TamperReportWorker`.
+
+Consecuencia aceptada y documentada en `docs/sprint-20.md`: esto **no vuelve la app
+indesinstalable**, y no se pretende. Añade un paso previo y, sobre todo, un punto de detección.
+
+Fuentes: <https://developer.android.com/reference/android/app/admin/DeviceAdminReceiver> y
+<https://developer.android.com/work/device-admin>.
+
+### Saber si un servicio propio sigue vivo desde otro proceso
+
+No hay forma soportada. `ActivityManager.getRunningServices()` está obsoleto desde Android 8 y,
+desde Android 5.0, sólo devuelve información del proceso que pregunta — el mismo límite ya
+documentado en el Sprint 8 para `getRunningTasks()`/`getRunningAppProcesses()`. De ahí que
+`EnforcementLiveness` sea una marca de tiempo cooperativa en `SharedPreferences` (sellada por
+`RuleEnforcementService`, leída por `SyncWorker` y por el bucle de *heartbeat*) y no una consulta
+al sistema. Detecta paradas ordinarias (deslizar la app fuera de Recientes, forzar detención,
+muerte por presión de memoria); no pretende resistir a un adversario técnico decidido, exactamente
+igual que el resto del mecanismo de bloqueo desde el Sprint 8.
+
+### VPN: sigue sin aplicar
+
+El Paso 19 menciona "revocación de la VPN". `VpnService` sigue siendo una capacidad **evaluada y
+no adoptada** (fila "Filtrado de tráfico local" de la tabla, pospuesta en el Sprint 9 y nunca
+retomada). Sin componente VPN no hay revocación que detectar; ver `docs/sprint-20.md` para la
+decisión completa.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -573,5 +641,7 @@ Fuente: <https://developer.android.com/develop/sensors-and-location/location/geo
 - Android Developers — `shouldShowRequestPermissionRationale()` y UI educativa, Sprint 13.
 - Play Console Help — "Prominent disclosure and consent" y permisos de ubicación en segundo plano, Sprint 13.
 - Android Developers — Geofencing API (`GeofencingClient`, permisos, límite de 100 geocercas, latencia de detección), Sprint 14.
+- Android Developers — `DeviceAdminReceiver` (`onDisableRequested()`/`onDisabled()`), Sprint 20.
+- Android Developers — Device administration overview (`ACTION_ADD_DEVICE_ADMIN`, `BIND_DEVICE_ADMIN`, `<uses-policies>`, desinstalación bloqueada mientras el administrador está activo), Sprint 20.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

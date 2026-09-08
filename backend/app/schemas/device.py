@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -44,6 +45,14 @@ class HeartbeatRequest(BaseModel):
     # IANA identifier (e.g. "America/Bogota"), reported by the device so the tutor can correctly
     # interpret what they see (Sprint 11) — see Device.timezone in app/models/device.py.
     timezone: str | None = Field(default=None, max_length=64)
+    # Manipulation detection (Sprint 20, app/services/tamper.py). All three optional and `None`
+    # by default: an older installed build simply won't send them, and "no information" must
+    # never be read as "tampered". None of the three is stored raw on Device/DeviceStatus — only
+    # the alert/status they produce is persisted, same as every other derived-not-stored value in
+    # this project (e.g. compute_effective_status).
+    usage_access_granted: bool | None = Field(default=None)
+    service_active: bool | None = Field(default=None)
+    device_time: datetime | None = Field(default=None)
 
 
 class HeartbeatResponse(BaseModel):
@@ -76,6 +85,17 @@ class UpdateSchoolModeRequest(BaseModel):
                 "start_minute, end_minute and days_mask are all required when enabling school mode"
             )
         return self
+
+
+class ReportTamperEventRequest(BaseModel):
+    """POST /devices/{id}/tamper-events (Sprint 20) — see app/services/tamper.py for why this is
+    the one manipulation signal with its own endpoint instead of a heartbeat field: it's a
+    discrete event (a user tried to deactivate Device Administrator, the required first step
+    before uninstalling), not a per-beat condition.
+    """
+
+    event_type: Literal["UNINSTALL_ATTEMPT"]
+    occurred_at: datetime
 
 
 class MyDeviceResponse(BaseModel):

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NetProtect</string>
+    <!-- Sprint 20: textos que muestra la pantalla del sistema al activar/desactivar la
+         administración del dispositivo. -->
+    <string name="device_admin_label">Protección contra desinstalación</string>
+    <string name="device_admin_description">Avisa a tu tutor si alguien intenta desinstalar NetProtect. No permite borrar el dispositivo ni cambiar tu contraseña.</string>
 </resources>

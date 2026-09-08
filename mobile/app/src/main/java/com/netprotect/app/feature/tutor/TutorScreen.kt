@@ -770,6 +770,13 @@ private fun alertLabel(alert: DeviceAlert): String = when (alert.alertType) {
     "APP_LIMIT_REACHED" -> "Se alcanzó el límite de tiempo de ${alert.packageName}"
     "GEOFENCE_EXIT" -> "Salió de ${alert.geofenceName}"
     "GEOFENCE_ENTER" -> "Entró a ${alert.geofenceName}"
+    // Sprint 20 — señales de manipulación: describen el estado del dispositivo, no una app ni
+    // una zona, así que no usan packageName/geofenceName.
+    "PERMISSION_REVOKED" -> "Sin permiso de acceso a uso: no puede aplicar reglas"
+    "SERVICE_INACTIVE" -> "El servicio de control de apps no está en ejecución"
+    "HEARTBEAT_SILENCE" -> "Dejó de reportarse durante un periodo anormalmente largo"
+    "CLOCK_TAMPERING" -> "La hora del dispositivo no coincide con la del servidor"
+    "UNINSTALL_ATTEMPT" -> "Se intentó desactivar la protección contra desinstalación"
     else -> alert.alertType
 }
 

@@ -250,6 +250,15 @@ h1 {
   border-color: rgba(255, 123, 131, 0.4);
 }
 
+/* Sprint 20: ALERT es el único estado que el backend escribe por detección de manipulación
+   (app/services/tamper.py). Se distingue de OFFLINE con fondo propio: "no se reporta" y
+   "se detectó manipulación" no deben leerse igual de un vistazo. */
+.statusPill.alert {
+  color: var(--danger);
+  border-color: rgba(255, 123, 131, 0.8);
+  background: rgba(255, 123, 131, 0.14);
+}
+
 .appList {
   list-style: none;
   margin: 12px 0 0;

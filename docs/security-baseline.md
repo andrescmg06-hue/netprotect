@@ -9,6 +9,8 @@
 | `GET/POST /users/me/roles` | Sí | Sí | No — 401 |
 | Leer/administrar un dispositivo (a partir del Sprint 6) | Sólo si existe un `tutor_devices` activo entre ese tutor y ese dispositivo | No | No |
 | Ser el operador supervisado de un dispositivo | N/A | Sólo el dispositivo donde `devices.supervised_user_id` es su propio id | No |
+| Reportar telemetría del dispositivo (`/heartbeat`, `/rule-events`, `/location`, y desde el Sprint 20 `/tamper-events`) | No — 404 | Sólo el suyo (`require_supervised_owner_of_device`) | No |
+| Leer alertas, incluidas las de manipulación (Sprint 20) | Sólo del dispositivo que supervisa | No | No |
 
 Reglas de diseño:
 
@@ -60,6 +62,15 @@ Reglas de diseño:
     `RuleEnforcementService`/`SyncWorker` renuevan su propio *access token* reutilizando el mismo
     `refresh_token` ya cifrado en el Android Keystore (`TokenStore`, Sprint 3) — ningún componente
     nuevo guarda un secreto por su cuenta. Ver `docs/sprint-19.md`.
+
+22. **Detección de manipulación sin ocultamiento ni evasión (Sprint 20).** Cinco señales
+    legítimas (permiso de uso revocado, servicio de reglas detenido, reloj desfasado, silencio
+    anómalo del *heartbeat*, intento de desinstalación) que **registran y alertan, nunca impiden**.
+    El registro como Device Administrator es opcional, con `<uses-policies>` vacío (ninguna
+    política aplicada: ni borrado, ni contraseña, ni cámara), revocable por el usuario, y su
+    pantalla de solicitud dice explícitamente qué hace y qué no. Ningún dato nuevo se almacena:
+    los tres campos del *heartbeat* se evalúan y se descartan; sólo persiste la alerta resultante.
+    Ver `docs/sprint-20.md`.
 
 ## Controles diferidos conscientemente
 

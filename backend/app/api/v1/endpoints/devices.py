@@ -14,7 +14,7 @@ from app.api.deps import (
 )
 from app.db.session import get_db
 from app.models import Device, DeviceStatus, TutorDevice, User
-from app.models.device import ONLINE, UNLINKED
+from app.models.device import ALERT, ONLINE, UNLINKED
 from app.models.role import SUPERVISADO, TUTOR
 from app.schemas.device import (
     DeviceListResponse,
@@ -24,11 +24,13 @@ from app.schemas.device import (
     HeartbeatResponse,
     MyDeviceResponse,
     RenameDeviceRequest,
+    ReportTamperEventRequest,
     SchoolModeResponse,
     SupervisingTutorResponse,
 )
 from app.services.audit import record_audit_event
 from app.services.device_status import compute_effective_status
+from app.services.tamper import evaluate_heartbeat_tamper_signals, record_tamper_event
 
 router = APIRouter(tags=["devices"])
 
@@ -195,6 +197,15 @@ async def send_heartbeat(
     """No audit entry here on purpose: this fires every few minutes for as long as the app
     is open, and the audit trail is for actions someone would want to review, not a liveness
     ping. last_seen_at itself is that history.
+
+    Sprint 20: also the write path for three manipulation-detection conditions (permission loss,
+    enforcement service inactive, clock skew) — see app/services/tamper.py. Evaluated against the
+    *previous* status_row.last_seen_at, before it's overwritten below, since one of those checks
+    (anomalous heartbeat silence) is precisely about the gap between that old value and `now`.
+    Deliberately re-derived fresh on every beat, exactly like ONLINE/OFFLINE always has been
+    (compute_effective_status): a heartbeat with no active tamper condition clears ALERT the same
+    way it already clears OFFLINE, and the durable record of what happened lives in the alerts
+    bandeja (Alert.occurrence_count/first_occurred_at), not in a "stuck" device status.
     """
     now = datetime.now(UTC)
 
@@ -211,8 +222,20 @@ async def send_heartbeat(
         status_row = DeviceStatus(device_id=device_id)
         db.add(status_row)
 
+    tamper_signals = await evaluate_heartbeat_tamper_signals(
+        db,
+        status_row,
+        usage_access_granted=payload.usage_access_granted,
+        service_active=payload.service_active,
+        device_time=payload.device_time,
+        now=now,
+    )
+
     status_row.last_seen_at = now
-    status_row.status = ONLINE if has_active_tutor else UNLINKED
+    if tamper_signals:
+        status_row.status = ALERT
+    else:
+        status_row.status = ONLINE if has_active_tutor else UNLINKED
 
     if payload.app_version:
         device.app_version = payload.app_version
@@ -224,3 +247,33 @@ async def send_heartbeat(
     await db.commit()
 
     return HeartbeatResponse(status=status_row.status, last_seen_at=now)
+
+
+@router.post(
+    "/devices/{device_id}/tamper-events", status_code=status.HTTP_204_NO_CONTENT
+)
+async def report_tamper_event(
+    device_id: uuid.UUID,
+    payload: ReportTamperEventRequest,
+    db: AsyncSession = Depends(get_db),
+    _device: Device = Depends(require_supervised_owner_of_device),
+) -> None:
+    """The one manipulation signal that isn't a per-heartbeat condition (Sprint 20): the
+    supervised device reporting that someone just tried to deactivate its Device Administrator
+    registration — Android's required first step before the app can be uninstalled, and the only
+    officially supported way for a non-device-owner app to notice an uninstall attempt at all
+    (docs/android/capability-matrix.md, Sprint 20).
+
+    Not audited, same reasoning as the rule-event and location reports: this is the device's own
+    telemetry, not a tutor action. No body in the response — the record it produces is the alert
+    itself, readable through GET /devices/{id}/alerts like every other alert.
+    """
+    await record_tamper_event(db, device_id, payload.event_type, payload.occurred_at)
+
+    status_row = await db.get(DeviceStatus, device_id)
+    if status_row is None:
+        status_row = DeviceStatus(device_id=device_id)
+        db.add(status_row)
+    status_row.status = ALERT
+
+    await db.commit()

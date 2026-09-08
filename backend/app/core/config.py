@@ -103,6 +103,20 @@ class Settings(BaseSettings):
     # so the real secret stays out of the environment and out of `docker inspect`/process listings).
     fcm_service_account_file: str = ""
 
+    # Manipulation detection (Sprint 20). A device that keeps heartbeating normally can still go
+    # quiet for a few minutes on flaky connectivity — device_offline_threshold_seconds already
+    # tolerates that. A much longer silence is a different signal: the device was ONLINE (i.e.
+    # actively enforcing rules) and then simply stopped reporting, without the account being
+    # unlinked. Detected reactively — compared against the *previous* last_seen_at the moment a
+    # new heartbeat finally arrives (app/services/tamper.py) — not by a background sweep, same
+    # "no scheduler yet" reasoning as every other threshold here.
+    device_heartbeat_silence_alert_seconds: int = 21600
+    # Tolerance for comparing the device's self-reported clock (HeartbeatRequest.device_time)
+    # against server time. Wide enough to absorb normal request latency and minor clock drift,
+    # narrow enough that someone deliberately turning the clock back to dodge a SCHEDULE/school-
+    # mode window (both evaluated in local time on-device, Sprint 8/12) still gets flagged.
+    device_clock_skew_alert_seconds: int = 300
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

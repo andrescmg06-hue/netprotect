@@ -5,7 +5,17 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 AlertLevel = Literal["INFO", "WARNING", "HIGH", "CRITICAL"]
-AlertType = Literal["APP_BLOCKED", "APP_LIMIT_REACHED", "GEOFENCE_ENTER", "GEOFENCE_EXIT"]
+AlertType = Literal[
+    "APP_BLOCKED",
+    "APP_LIMIT_REACHED",
+    "GEOFENCE_ENTER",
+    "GEOFENCE_EXIT",
+    "PERMISSION_REVOKED",
+    "SERVICE_INACTIVE",
+    "HEARTBEAT_SILENCE",
+    "CLOCK_TAMPERING",
+    "UNINSTALL_ATTEMPT",
+]
 
 # Response-size cap, same reasoning as MAX_HISTORY_EVENTS/MAX_GEOFENCE_EVENTS.
 MAX_ALERTS = 200

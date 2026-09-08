@@ -670,7 +670,17 @@ export function getDeviceStatistics(
 }
 
 export type AlertLevel = "INFO" | "WARNING" | "HIGH" | "CRITICAL";
-export type AlertType = "APP_BLOCKED" | "APP_LIMIT_REACHED" | "GEOFENCE_ENTER" | "GEOFENCE_EXIT";
+export type AlertType =
+  | "APP_BLOCKED"
+  | "APP_LIMIT_REACHED"
+  | "GEOFENCE_ENTER"
+  | "GEOFENCE_EXIT"
+  // Sprint 20 — señales de manipulación (HIGH/CRITICAL), sin package_name ni geofence asociados.
+  | "PERMISSION_REVOKED"
+  | "SERVICE_INACTIVE"
+  | "HEARTBEAT_SILENCE"
+  | "CLOCK_TAMPERING"
+  | "UNINSTALL_ATTEMPT";
 
 /** A tutor-facing notification generated from signals that already existed (AppRuleEvent,
  * GeofenceEvent) — Sprint 17. Deduplicated while unread: occurrence_count/last_occurred_at track

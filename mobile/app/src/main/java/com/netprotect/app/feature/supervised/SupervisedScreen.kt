@@ -40,10 +40,13 @@ import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.PairingClient
+import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
+import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.rules.RuleEnforcementService
 import com.netprotect.app.core.sync.SyncWorker
+import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -74,6 +77,14 @@ fun SupervisedScreen(
     var codeInput by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
     var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
+    var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
+
+    // Sprint 20: la administración del dispositivo se concede en una pantalla del sistema, igual
+    // que el acceso a uso — pero aquí sí existe un intent con resultado, así que no hace falta el
+    // botón de "ya lo activé, verificar de nuevo" que necesita UsageAccessPermission.
+    val deviceAdminLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { hasDeviceAdmin = DeviceAdminPermission.isActive(context) }
 
     // ACCESS_COARSE_LOCATION is an ordinary runtime permission (unlike PACKAGE_USAGE_STATS
     // above): the system dialog itself grants or denies it, no trip to Settings needed. Shown
@@ -138,6 +149,11 @@ fun SupervisedScreen(
                     Build.VERSION.RELEASE,
                     BuildConfig.VERSION_NAME,
                     java.util.TimeZone.getDefault().id,
+                    // Sprint 20: read fresh on every beat, never cached — the whole point is
+                    // noticing the moment one of them changes (see app/services/tamper.py).
+                    usageAccessGranted = UsageAccessPermission.isGranted(context),
+                    serviceActive = EnforcementLiveness.isRecentlyActive(context),
+                    deviceTime = Instant.now(),
                 )
             }
             delay(HEARTBEAT_INTERVAL_MS)
@@ -360,6 +376,42 @@ fun SupervisedScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
                     ) {
                         Text("Permitir ubicación aproximada")
+                    }
+                }
+            }
+        }
+
+        if (state is SupervisedState.Linked && !hasDeviceAdmin) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF121722),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Protección contra desinstalación",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Si lo activas, Android pedirá desactivar esta protección antes de " +
+                            "desinstalar NetProtect, y tu tutor recibirá un aviso cuando eso " +
+                            "ocurra. No permite borrar el dispositivo ni cambiar tu contraseña, " +
+                            "y puedes quitarlo cuando quieras.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context))
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
+                    ) {
+                        Text("Activar protección")
                     }
                 }
             }

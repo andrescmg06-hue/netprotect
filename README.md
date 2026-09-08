@@ -327,3 +327,23 @@ fijo que expira a los 15 minutos. Room se integró vía KSP, no `kapt`: el backe
 `room-compiler` no soporta el formato de metadatos que emite el Kotlin 2.3.21 de este proyecto.
 
 El detalle está en `docs/sprint-19.md`.
+
+## Alcance del Sprint 20
+
+Detección de manipulación, sólo con señales legítimas y sin ocultar nada: se registra el evento y
+se alerta al tutor, nunca se impide la acción. Cuatro señales viajan como campos opcionales del
+*heartbeat* que ya existía (`usage_access_granted`, `service_active`, `device_time`) y producen
+alertas `HIGH` — pérdida del permiso de acceso a uso, servicio de reglas detenido, hora del
+dispositivo desfasada respecto del servidor, y silencio anómalo del *heartbeat* (medido contra el
+`last_seen_at` anterior cuando el dispositivo vuelve a reportarse, sin *scheduler*, igual que las
+transiciones de geocerca del Sprint 14). La quinta es un evento discreto con endpoint propio
+(`POST /devices/{id}/tamper-events`) y nivel `CRITICAL`: el intento de desinstalación, detectado
+registrando la app como **Device Administrator** — no device owner —, porque Android exige
+desactivar ese registro antes de poder desinstalar y esa desactivación dispara
+`onDisableRequested()`. Cualquier señal deja el dispositivo en estado `ALERT`, que se recalcula en
+cada latido (un latido sano lo devuelve a `ONLINE`; el registro duradero es la alerta en la
+bandeja del Sprint 17, con su deduplicación y silenciado). "Revocación de la VPN", que menciona el
+enunciado, queda explícitamente fuera: este proyecto no tiene componente VPN. Ninguna tabla nueva;
+la migración toca un único `CHECK`, el de `alert_type`.
+
+El detalle está en `docs/sprint-20.md`.

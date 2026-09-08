@@ -17,8 +17,10 @@ import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.core.permissions.UsageAccessPermission
+import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
+import java.time.Instant
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
@@ -48,6 +50,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
             ?: return Result.success()
 
+        // Sprint 20: this is the heartbeat that matters most for manipulation detection — it
+        // keeps running when SupervisedScreen isn't composed, which is exactly when the
+        // enforcement service is most likely to have been stopped without anyone noticing.
         runCatching {
             DeviceClient(baseUrl).sendHeartbeat(
                 accessToken,
@@ -55,6 +60,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 Build.VERSION.RELEASE,
                 BuildConfig.VERSION_NAME,
                 TimeZone.getDefault().id,
+                usageAccessGranted = UsageAccessPermission.isGranted(applicationContext),
+                serviceActive = EnforcementLiveness.isRecentlyActive(applicationContext),
+                deviceTime = Instant.now(),
             )
         }
 

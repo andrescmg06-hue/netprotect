@@ -70,6 +70,12 @@ class RuleEnforcementService : Service() {
         private const val TOKEN_REFRESH_INTERVAL_MS = 10 * 60_000L
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
+            // Sprint 20: stamped here, synchronously, and not only from the poll loop below.
+            // startForegroundService() is asynchronous, and SupervisedScreen's heartbeat loop
+            // starts in the same composition — without this, the session's first heartbeat could
+            // read a marker the service hadn't stamped yet and report a SERVICE_INACTIVE that
+            // never happened.
+            EnforcementLiveness.markActive(context)
             val intent = Intent(context, RuleEnforcementService::class.java)
                 .putExtra(EXTRA_BASE_URL, baseUrl)
                 .putExtra(EXTRA_ACCESS_TOKEN, accessToken)
@@ -78,6 +84,12 @@ class RuleEnforcementService : Service() {
         }
 
         fun stop(context: Context) {
+            // A deliberate stop (screen disposed, signed out, usage access withdrawn) is not
+            // tampering: clearing the marker makes the next heartbeat report "no information"
+            // instead of "the service was disabled". Being killed — swiped away, force-stopped,
+            // reclaimed under memory pressure — never runs this, which is exactly the case the
+            // SERVICE_INACTIVE signal is meant to catch.
+            EnforcementLiveness.clear(context)
             context.stopService(Intent(context, RuleEnforcementService::class.java))
         }
     }
@@ -156,6 +168,11 @@ class RuleEnforcementService : Service() {
         while (serviceScope.isActive) {
             val changedPackage = detector.pollForegroundChange()
             val now = System.currentTimeMillis()
+
+            // Sprint 20: the only thing that proves this service is still alive to anything
+            // outside its process (SyncWorker, SupervisedScreen's heartbeat loop). Stamped every
+            // cycle so a stale marker means the service really stopped — see EnforcementLiveness.
+            EnforcementLiveness.markActive(applicationContext)
 
             if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
                 BackgroundTokenRefresher.refresh(applicationContext, baseUrl)?.let { accessToken = it }

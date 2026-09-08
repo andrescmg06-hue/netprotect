@@ -32,6 +32,18 @@ function alertLabel(alert: Alert): string {
       return `Salió de ${alert.geofence_name}`;
     case "GEOFENCE_ENTER":
       return `Entró a ${alert.geofence_name}`;
+    // Sprint 20 — señales de manipulación. Sin package_name ni geofence_name: describen el
+    // estado del dispositivo, no una app ni una zona concreta.
+    case "PERMISSION_REVOKED":
+      return "El permiso de acceso a uso de apps no está activo: el dispositivo no puede aplicar reglas";
+    case "SERVICE_INACTIVE":
+      return "El servicio de control de apps no está en ejecución en el dispositivo";
+    case "HEARTBEAT_SILENCE":
+      return "El dispositivo dejó de reportarse durante un periodo anormalmente largo";
+    case "CLOCK_TAMPERING":
+      return "La hora del dispositivo no coincide con la del servidor";
+    case "UNINSTALL_ATTEMPT":
+      return "Se intentó desactivar la protección contra desinstalación";
   }
 }
 

@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 19 completos y verificados en CI.
+Sprints 1 a 20 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -120,7 +120,14 @@ pudo reportar queda en cola (`pending_rule_events`) hasta que un fetch exitoso o
 vacíen, y `SyncWorker` (WorkManager, cada 15 min, sólo con conectividad) manda *heartbeat* y
 sincroniza uso de apps aunque la app no esté en primer plano; tanto `RuleEnforcementService` como
 `SyncWorker` renuevan su propio *access token* contra el `refresh_token` cifrado ya existente en
-vez de depender de uno fijo que expira a los 15 minutos.
+vez de depender de uno fijo que expira a los 15 minutos; y detección de manipulación (Sprint 20):
+cinco señales legítimas —permiso de acceso a uso revocado, servicio de reglas detenido, hora del
+dispositivo desfasada respecto del servidor, silencio anómalo del *heartbeat* e intento de
+desinstalación (detectado registrando la app como Device Administrator, **no** device owner)— que
+generan alertas `HIGH`/`CRITICAL` en la bandeja ya existente del Sprint 17 y dejan el dispositivo
+en estado `ALERT`, sin impedir ninguna de esas acciones: se registra y se alerta, no se bloquea.
+Las cuatro primeras viajan como campos opcionales del *heartbeat*; la quinta tiene endpoint propio
+(`POST /devices/{id}/tamper-events`). Ninguna tabla nueva.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -269,12 +276,43 @@ cifrado del Keystore que ya usa `AuthRepository` (Sprint 3), sin tocar el modelo
 UI en primer plano (que tiene el mismo problema de fondo, sin resolver, fuera del alcance de este
 sprint — anotado en `docs/sprint-19.md`).
 
-**Siguiente: Sprint 20 — Detección de manipulación.** Sólo señales legítimas: pérdida de permisos,
-desactivación del servicio, revocación de la VPN, silencio anómalo del heartbeat, cambio de hora e
-intento de desinstalación detectable por la API oficial — revisar primero si `DeviceStatus.ALERT`
-(reservado desde antes de que existiera un generador propio) y los niveles `HIGH`/`CRITICAL` de
-alertas (reservados desde el Sprint 17) son el lugar natural para estas señales, en vez de un
-sistema de notificación paralelo.
+**Nota del Sprint 20, válida para cualquier sprint futuro que toque detección de manipulación,
+Device Administrator o el estado `ALERT`**: sí, `DeviceStatus.ALERT` y los niveles
+`HIGH`/`CRITICAL` eran el lugar natural — no se creó ningún sistema de notificación paralelo ni
+tabla de eventos propia (la `Alert` generada ya guarda `first_occurred_at`/`occurrence_count`/
+`read_at`, suficiente historial dentro de `alert_retention_days`). Cuatro de las cinco señales son
+**condiciones** que viajan como campos opcionales del *heartbeat* (`usage_access_granted`,
+`service_active`, `device_time`): pérdida de permiso, servicio detenido, desfase de reloj y
+silencio anómalo — este último medido contra el `last_seen_at` anterior en el momento en que el
+dispositivo vuelve a reportarse, mismo patrón "comparar contra el reporte previo, sin scheduler"
+del Sprint 14; consecuencia aceptada: un dispositivo que se calla **para siempre** no genera esa
+alerta (el tutor sigue viendo `OFFLINE`, como desde el Sprint 6). La quinta es un **evento**
+discreto con endpoint propio (`POST /devices/{id}/tamper-events`, `CRITICAL`): el intento de
+desinstalación. `null` en cualquiera de los tres campos significa "sin información", nunca
+"manipulado" — importa para una APK vieja y para `SyncWorker` antes de que
+`RuleEnforcementService` haya sellado nunca su marca de vida. `ALERT` se **recalcula en cada
+latido** (un latido sano devuelve a `ONLINE`), así que no hay ni hace falta un endpoint para que
+el tutor lo limpie; lo que el docstring de `compute_effective_status` prohíbe —y sigue
+prohibido— es que la *antigüedad* de un latido degrade `ALERT` a `OFFLINE`, no que un latido
+nuevo con datos frescos lo reevalúe. Dos decisiones más, documentadas en `docs/sprint-20.md`:
+**la "revocación de la VPN" del enunciado no se implementó** porque este proyecto no tiene
+componente VPN (`VpnService` sigue pospuesto desde el Sprint 9) y no se iba a construir la
+vulnerabilidad para poder venderle la alarma; y el intento de desinstalación se detecta
+registrando la app como **Device Administrator** (no device owner, no MDM: un permiso que el
+usuario concede desde una pantalla del sistema y puede retirar), con `<uses-policies>` **vacío**
+en `res/xml/device_admin.xml` porque el registro existe sólo por el *callback*
+`onDisableRequested()` — que no puede vetar nada, sólo avisar y reportar (vía WorkManager, nunca
+red en el hilo principal del receiver). `EnforcementLiveness` es una marca cooperativa en
+`SharedPreferences` porque desde Android 5.0 no hay forma soportada de preguntarle al sistema si
+un servicio propio sigue vivo desde otro proceso; se sella también en
+`RuleEnforcementService.start()` (síncrono) para que el primer latido de cada sesión no reporte un
+`SERVICE_INACTIVE` falso, y se borra en `stop()` porque una parada deliberada no es manipulación.
+
+**Siguiente: Sprint 21 — Seguridad integral.** Repaso de OWASP Top 10 y OWASP API Top 10 sobre lo
+construido, con OWASP ASVS como lista de comprobación; rate limiting global, validación estricta,
+cabeceras, CORS mínimo, gestión de secretos y TLS obligatorio; escaneo con OWASP ZAP contra el
+entorno propio y MobSF sobre el APK. Empezar leyendo `docs/security-baseline.md`, que ya lleva la
+matriz de permisos y los controles aplicados hasta hoy.
 
 ## Entorno de trabajo
 

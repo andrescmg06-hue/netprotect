@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sprint 20: <uses-policies> deliberately vacío. Esta app no aplica ninguna política de
+     administrador (no cambia contraseñas, no bloquea la pantalla, no borra el dispositivo, no
+     desactiva la cámara). El registro como administrador existe sólo porque Android exige
+     desactivarlo antes de poder desinstalar la app, y esa desactivación dispara
+     onDisableRequested() en NetProtectDeviceAdminReceiver — la única forma oficial de que una app
+     que no es device owner detecte un intento de desinstalación. Pedir políticas que nunca se
+     usan sería pedirle al usuario más poder del necesario.
+     Ver docs/android/capability-matrix.md (Sprint 20). -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies />
+</device-admin>
