@@ -90,6 +90,22 @@ BUILD SUCCESSFUL in 4m 20s
 Compila con la nueva dependencia `com.squareup.okhttp3:okhttp:4.12.0` (agregada sólo para
 `RealtimeClient.kt`, ver `docs/sprint-18.md`) y con `RuleEnforcementService.kt` usándola.
 
+## CI en GitHub Actions
+
+```
+$ gh run view 34262134630
+✓ main ci · 34262134630
+Triggered via push about 3 minutes ago
+
+JOBS
+✓ integration in 1m2s
+✓ backend in 20s
+✓ frontend in 33s
+✓ android in 2m45s
+```
+
+Los 4 jobs en verde en un runner limpio: https://github.com/andrescmg06-hue/netprotect/actions/runs/34262134630
+
 ## No se marca como verificado
 
 - Login real de Google (límite recurrente de todos los sprints).
