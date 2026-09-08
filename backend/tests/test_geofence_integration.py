@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.main import app
+from app.models import GeofenceEvent
 from app.services.google_auth import GoogleIdentity
 
 pytestmark = [
@@ -363,3 +365,47 @@ def test_a_stranger_tutor_cannot_read_geofence_events(client) -> None:
     )
 
     assert response.status_code == 404
+
+
+# --------------------------------------------------------------------------------- retention
+
+
+async def test_reporting_location_purges_geofence_events_older_than_the_retention_window(
+    client, db_session
+) -> None:
+    """Seeds an aged-out GeofenceEvent directly via the DB session rather than through a real
+    old location report: DeviceLocationReport's own 7-day retention (Sprint 13) would purge that
+    report as "old" on the very next POST regardless of geofence_event_retention_days, which
+    would delete the baseline needed to observe a transition before this test ever gets to
+    assert anything about the 90-day geofence-event window specifically.
+    """
+    assert settings.geofence_event_retention_days == 90
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+    geofence_id = _create_geofence(client, tutor_token, device_id).json()["id"]
+
+    old_event = GeofenceEvent(
+        device_id=uuid.UUID(device_id),
+        geofence_id=uuid.UUID(geofence_id),
+        geofence_name="Casa",
+        event_type="ENTER",
+        occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    db_session.add(old_event)
+    await db_session.commit()
+
+    before_purge = client.get(
+        f"/api/v1/devices/{device_id}/geofences/events", headers=_auth(tutor_token)
+    )
+    assert len(before_purge.json()["events"]) == 1
+
+    # A fresh location report triggers the write endpoint's inline purge (app/api/v1/endpoints/
+    # location.py) before evaluating a new transition, deleting the old ENTER above.
+    fresh_report = _report_location(
+        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+    )
+    assert fresh_report.status_code == 200, fresh_report.text
+
+    after_purge = client.get(
+        f"/api/v1/devices/{device_id}/geofences/events", headers=_auth(tutor_token)
+    )
+    assert after_purge.json()["events"] == []

@@ -10,6 +10,7 @@ from app.api.deps import (
     require_supervised_owner_of_device,
     require_tutor_of_device,
 )
+from app.core.config import settings
 from app.db.session import get_db
 from app.models import AppCategoryAssignment, AppRule, AppRuleEvent, CategoryRule, Device, User
 from app.schemas.category import CategoryAssignmentResponse, CategoryRuleResponse
@@ -27,6 +28,7 @@ from app.schemas.rule import (
     UpsertAppRuleRequest,
 )
 from app.services.audit import record_audit_event
+from app.services.retention import purge_expired_rows
 
 router = APIRouter(tags=["rules"])
 
@@ -311,7 +313,19 @@ async def report_rule_event(
     """Insert-only: the device reports that it just enforced a rule. No audit entry — this is
     evidence of enforcement for the tutor to review, not an action to review after the fact
     (same reasoning as the Sprint 7 usage sync).
+
+    Retention is enforced here (Sprint 15), same "purge at write time, no scheduler" pattern
+    DeviceLocationReport already uses: every report first deletes this device's own rows older
+    than app_rule_event_retention_days, then inserts the new one. Scoped to this device_id only.
     """
+    await purge_expired_rows(
+        db,
+        AppRuleEvent,
+        AppRuleEvent.occurred_at,
+        device_id,
+        settings.app_rule_event_retention_days,
+    )
+
     event = AppRuleEvent(
         device_id=device_id,
         package_name=payload.package_name,

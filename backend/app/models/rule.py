@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -114,10 +115,17 @@ class AppRuleEvent(UUIDPrimaryKeyMixin, Base):
     Not foreign-keyed to AppRule: a rule can be edited or deleted after the fact, but the record
     that it fired at a given moment must survive that, the same way usage history survives an
     app being uninstalled.
+
+    Retention (Sprint 15): the write endpoint purges each device's own rows older than
+    settings.app_rule_event_retention_days before inserting the new one, same "purge at write
+    time, no scheduler" pattern DeviceLocationReport established in Sprint 13. The
+    (device_id, occurred_at) index backs both that purge and the ordered reads it and the
+    unified history endpoint (app/api/v1/endpoints/history.py) do.
     """
 
     __tablename__ = "app_rule_events"
     __table_args__ = (
+        Index("ix_app_rule_events_device_occurred", "device_id", "occurred_at"),
         CheckConstraint(
             f"rule_type_applied IN ({_RULE_EVENT_TYPE_LIST_SQL})",
             name="ck_app_rule_events_type_valid",

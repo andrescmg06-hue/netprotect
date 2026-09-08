@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.main import app
 from app.models import AuditLog
 from app.services.google_auth import GoogleIdentity
@@ -387,6 +388,73 @@ def test_the_tutor_cannot_report_a_rule_event(client) -> None:
     )
 
     assert response.status_code == 404
+
+
+# ------------------------------------------------------------------------ rule event retention
+
+
+def _report_rule_event(
+    client: TestClient, token: str, device_id: str, *, occurred_at: str, package: str = "com.a"
+):
+    return client.post(
+        f"/api/v1/devices/{device_id}/rule-events",
+        json={
+            "package_name": package,
+            "rule_type_applied": "BLOCK",
+            "occurred_at": occurred_at,
+        },
+        headers=_auth(token),
+    )
+
+
+def test_reporting_a_rule_event_purges_rows_older_than_the_retention_window(client) -> None:
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+    assert settings.app_rule_event_retention_days == 90
+
+    old_event = _report_rule_event(
+        client, supervised_token, device_id, occurred_at="2026-01-01T00:00:00Z"
+    )
+    assert old_event.status_code == 200, old_event.text
+
+    before_purge = client.get(
+        f"/api/v1/devices/{device_id}/rule-events", headers=_auth(tutor_token)
+    )
+    assert len(before_purge.json()["events"]) == 1
+
+    # A fresh report triggers the write endpoint's inline purge (app/api/v1/endpoints/rules.py)
+    # before inserting itself, deleting the row above.
+    fresh_event = _report_rule_event(
+        client, supervised_token, device_id, occurred_at="2026-09-05T21:00:00Z"
+    )
+    assert fresh_event.status_code == 200, fresh_event.text
+
+    after_purge = client.get(
+        f"/api/v1/devices/{device_id}/rule-events", headers=_auth(tutor_token)
+    )
+    events = after_purge.json()["events"]
+    assert len(events) == 1
+    assert events[0]["occurred_at"].startswith("2026-09-05")
+
+
+def test_rule_event_purge_never_touches_another_devices_rows(client) -> None:
+    _, supervised_token, device_id = _setup_linked_device(client)
+    other_tutor_token, other_supervised_token, other_device_id = _setup_linked_device(client)
+
+    old_on_other_device = _report_rule_event(
+        client, other_supervised_token, other_device_id, occurred_at="2026-01-01T00:00:00Z"
+    )
+    assert old_on_other_device.status_code == 200, old_on_other_device.text
+
+    fresh_on_this_device = _report_rule_event(
+        client, supervised_token, device_id, occurred_at="2026-09-05T21:00:00Z"
+    )
+    assert fresh_on_this_device.status_code == 200, fresh_on_this_device.text
+
+    other_events = client.get(
+        f"/api/v1/devices/{other_device_id}/rule-events", headers=_auth(other_tutor_token)
+    )
+    assert other_events.status_code == 200, other_events.text
+    assert len(other_events.json()["events"]) == 1
 
 
 # ---------------------------------------------------------------------------------- audit

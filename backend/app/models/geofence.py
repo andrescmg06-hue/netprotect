@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -50,10 +50,17 @@ class GeofenceEvent(UUIDPrimaryKeyMixin, Base):
     location reports against each active geofence — see docs/sprint-14.md for why the very first
     report against a given geofence never fires an event (no prior point to compare against
     means no transition can be established, only a baseline).
+
+    Retention (Sprint 15): POST /devices/{id}/location purges each device's own rows older than
+    settings.geofence_event_retention_days on every call, alongside its existing
+    DeviceLocationReport purge — same "purge at write time, no scheduler" pattern. The
+    (device_id, occurred_at) index backs both that purge and the unified history endpoint
+    (app/api/v1/endpoints/history.py).
     """
 
     __tablename__ = "geofence_events"
     __table_args__ = (
+        Index("ix_geofence_events_device_occurred", "device_id", "occurred_at"),
         CheckConstraint(
             f"event_type IN ({_EVENT_TYPE_LIST_SQL})", name="ck_geofence_events_type_valid"
         ),

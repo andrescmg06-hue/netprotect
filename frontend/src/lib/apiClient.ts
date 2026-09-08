@@ -580,3 +580,34 @@ export function listGeofenceEvents(
     accessToken
   );
 }
+
+export type HistoryEventType = "APP_RULE" | "GEOFENCE";
+
+/** One entry in the tutor's unified timeline (Sprint 15), merging AppRuleEvent and
+ * GeofenceEvent — a flat shape with the fields the other type doesn't use left null, mirroring
+ * backend/app/schemas/history.py. Raw location fixes aren't merged in here on purpose: they
+ * already have their own view (DeviceLocationPanel), and interleaving up to 96 fixes/day would
+ * bury these discrete events in noise.
+ */
+export type HistoryEvent = {
+  id: string;
+  event_type: HistoryEventType;
+  occurred_at: string;
+  received_at: string;
+  package_name: string | null;
+  rule_type_applied: AppliedRuleType | null;
+  geofence_id: string | null;
+  geofence_name: string | null;
+  geofence_event_type: GeofenceEventType | null;
+};
+
+export function listDeviceHistory(
+  accessToken: string,
+  deviceId: string
+): Promise<{ events: HistoryEvent[] }> {
+  return requestJson<{ events: HistoryEvent[] }>(
+    `/api/v1/devices/${deviceId}/history`,
+    { method: "GET" },
+    accessToken
+  );
+}

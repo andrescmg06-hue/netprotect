@@ -1,15 +1,14 @@
 import uuid
-from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_supervised_owner_of_device, require_tutor_of_device
 from app.core.config import settings
 from app.core.crypto import decrypt_coordinate, encrypt_coordinate
 from app.db.session import get_db
-from app.models import Device, DeviceLocationReport
+from app.models import Device, DeviceLocationReport, GeofenceEvent
 from app.schemas.location import (
     MAX_HISTORY_REPORTS,
     LatestLocationResponse,
@@ -18,6 +17,7 @@ from app.schemas.location import (
     ReportLocationRequest,
 )
 from app.services.geofencing import evaluate_geofence_transitions
+from app.services.retention import purge_expired_rows
 
 router = APIRouter(tags=["location"])
 
@@ -52,13 +52,25 @@ async def report_location(
     point (fetched here, before the new one is inserted) against the new one — see
     app/services/geofencing.py for why this needs no Android Geofencing API, permission or
     dependency of its own.
+
+    Also purges this device's own aged-out GeofenceEvent rows (Sprint 15), same reasoning as the
+    DeviceLocationReport purge below — a device only reports its own location here, so this is
+    the natural write path to keep both tables bounded, whether or not this particular call ends
+    up producing a new transition event.
     """
-    cutoff = datetime.now(UTC) - timedelta(days=settings.location_retention_days)
-    await db.execute(
-        delete(DeviceLocationReport).where(
-            DeviceLocationReport.device_id == device_id,
-            DeviceLocationReport.captured_at < cutoff,
-        )
+    await purge_expired_rows(
+        db,
+        DeviceLocationReport,
+        DeviceLocationReport.captured_at,
+        device_id,
+        settings.location_retention_days,
+    )
+    await purge_expired_rows(
+        db,
+        GeofenceEvent,
+        GeofenceEvent.occurred_at,
+        device_id,
+        settings.geofence_event_retention_days,
     )
 
     previous_report = (

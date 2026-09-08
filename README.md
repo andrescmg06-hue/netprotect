@@ -257,3 +257,14 @@ ya tomadas en el Sprint 13 (ver `docs/android/capability-matrix.md`). Historial 
 consultable en el panel web y, en modo sólo lectura, en la app del tutor en Android.
 
 El detalle está en `docs/sprint-14.md`.
+
+## Alcance del Sprint 15
+
+Historial: los dos registros de eventos que ya existían (bloqueos de reglas, entradas/salidas de
+geocercas) ganan una política de retención uniforme (90 días) con purga automática al escribir,
+igual que la ubicación ya tenía desde el Sprint 13, y una línea de tiempo unificada
+(`GET /devices/{id}/history`) que los combina ordenados por fecha, disponible en el panel web y en
+la app del tutor en Android. No se crea una tabla "historial" genérica ni se implementa captura de
+navegación web (nunca existió en este proyecto) ni alertas (Sprint 17).
+
+El detalle está en `docs/sprint-15.md`.

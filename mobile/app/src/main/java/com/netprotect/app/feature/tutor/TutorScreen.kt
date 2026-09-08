@@ -41,6 +41,8 @@ import com.netprotect.app.core.network.DeviceSummary
 import com.netprotect.app.core.network.Geofence
 import com.netprotect.app.core.network.GeofenceClient
 import com.netprotect.app.core.network.GeofenceEvent
+import com.netprotect.app.core.network.HistoryClient
+import com.netprotect.app.core.network.HistoryEvent
 import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.network.PairingClient
@@ -81,6 +83,14 @@ private sealed interface GeofenceState {
     data class Error(val message: String) : GeofenceState
 }
 
+private sealed interface HistoryState {
+    data object Loading : HistoryState
+    // Read-only, same as GeofenceState: this screen only displays the unified timeline the
+    // backend already merges (bloqueos + entradas/salidas de geocercas, Sprint 15).
+    data class Loaded(val events: List<HistoryEvent>) : HistoryState
+    data class Error(val message: String) : HistoryState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -95,6 +105,7 @@ fun TutorScreen(
     val applicationsClient = remember { ApplicationsClient(baseUrl) }
     val locationClient = remember { LocationClient(baseUrl) }
     val geofenceClient = remember { GeofenceClient(baseUrl) }
+    val historyClient = remember { HistoryClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -107,6 +118,8 @@ fun TutorScreen(
     val locationStateByDevice = remember { mutableStateMapOf<String, LocationState>() }
     var expandedGeofenceDeviceId by remember { mutableStateOf<String?>(null) }
     val geofenceStateByDevice = remember { mutableStateMapOf<String, GeofenceState>() }
+    var expandedHistoryDeviceId by remember { mutableStateOf<String?>(null) }
+    val historyStateByDevice = remember { mutableStateMapOf<String, HistoryState>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -163,6 +176,22 @@ fun TutorScreen(
                 )
             } catch (exception: Exception) {
                 GeofenceState.Error(exception.message ?: "No se pudieron cargar las geocercas")
+            }
+        }
+    }
+
+    fun toggleHistory(deviceId: String) {
+        if (expandedHistoryDeviceId == deviceId) {
+            expandedHistoryDeviceId = null
+            return
+        }
+        expandedHistoryDeviceId = deviceId
+        historyStateByDevice[deviceId] = HistoryState.Loading
+        scope.launch {
+            historyStateByDevice[deviceId] = try {
+                HistoryState.Loaded(historyClient.listHistory(accessToken, deviceId))
+            } catch (exception: Exception) {
+                HistoryState.Error(exception.message ?: "No se pudo cargar el historial")
             }
         }
     }
@@ -297,6 +326,9 @@ fun TutorScreen(
                                 isGeofenceExpanded = expandedGeofenceDeviceId == device.id,
                                 geofenceState = geofenceStateByDevice[device.id],
                                 onToggleGeofences = { toggleGeofences(device.id) },
+                                isHistoryExpanded = expandedHistoryDeviceId == device.id,
+                                historyState = historyStateByDevice[device.id],
+                                onToggleHistory = { toggleHistory(device.id) },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -331,6 +363,9 @@ private fun DeviceRow(
     isGeofenceExpanded: Boolean,
     geofenceState: GeofenceState?,
     onToggleGeofences: () -> Unit,
+    isHistoryExpanded: Boolean,
+    historyState: HistoryState?,
+    onToggleHistory: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -378,6 +413,9 @@ private fun DeviceRow(
                     TextButton(onClick = onToggleGeofences) {
                         Text(if (isGeofenceExpanded) "Ocultar geocercas" else "Ver geocercas")
                     }
+                    TextButton(onClick = onToggleHistory) {
+                        Text(if (isHistoryExpanded) "Ocultar historial" else "Ver historial")
+                    }
                 }
                 if (isAppsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -390,6 +428,10 @@ private fun DeviceRow(
                 if (isGeofenceExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
                     GeofenceSection(geofenceState)
+                }
+                if (isHistoryExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HistorySection(historyState)
                 }
             }
         }
@@ -494,6 +536,48 @@ private fun GeofenceEventRow(event: GeofenceEvent) {
     ) {
         val verb = if (event.eventType == "ENTER") "Entró a" else "Salió de"
         Text("$verb ${event.geofenceName}", color = Color.White, fontSize = 13.sp)
+        Text(formatCapturedAt(event.occurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
+    }
+}
+
+/** Sprint 15, read-only: a single chronological list merging what were already two separate
+ * event logs (bloqueos de reglas, entradas/salidas de geocercas) — the backend already sorts
+ * and merges them (GET /devices/{id}/history), so this just renders what it returns.
+ */
+@Composable
+private fun HistorySection(state: HistoryState?) {
+    when (state) {
+        null, HistoryState.Loading -> Text("Cargando historial…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is HistoryState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is HistoryState.Loaded -> {
+            if (state.events.isEmpty()) {
+                Text(
+                    "Todavía no hay eventos registrados para este dispositivo.",
+                    color = Color(0xFFABB5C4),
+                    fontSize = 13.sp,
+                )
+            } else {
+                Column {
+                    state.events.forEach { event -> HistoryEventRow(event) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryEventRow(event: HistoryEvent) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        val label = if (event.eventType == "APP_RULE") {
+            "Bloqueo (${event.ruleTypeApplied}) de ${event.packageName}"
+        } else {
+            val verb = if (event.geofenceEventType == "ENTER") "Entró a" else "Salió de"
+            "$verb ${event.geofenceName}"
+        }
+        Text(label, color = Color.White, fontSize = 13.sp)
         Text(formatCapturedAt(event.occurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
     }
 }

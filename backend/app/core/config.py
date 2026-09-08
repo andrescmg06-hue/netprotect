@@ -66,6 +66,16 @@ class Settings(BaseSettings):
     # minor's real places (home, school, a couple of relatives) with room to spare.
     max_geofences_per_device: int = 20
 
+    # Retention for the two remaining unbounded event logs (Sprint 15) — AppRuleEvent and
+    # GeofenceEvent grew without limit since the sprints that introduced them (8 and 14). Unlike
+    # location_retention_days, neither row type carries raw coordinates (a GeofenceEvent's
+    # geofence_name is a label the tutor chose, not a coordinate pair), so the privacy pressure
+    # that justified 7 days for location doesn't apply here — a longer window keeps a useful audit
+    # trail (did my rules actually fire, did the device cross zones as expected) across roughly a
+    # school term. Purged the same "no scheduler yet" way, inline on each write.
+    app_rule_event_retention_days: int = 90
+    geofence_event_retention_days: int = 90
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

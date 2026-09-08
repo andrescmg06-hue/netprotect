@@ -16,6 +16,7 @@ import { DeviceCategoriesPanel } from "./DeviceCategoriesPanel";
 import { DeviceLocationPanel } from "./DeviceLocationPanel";
 import { DeviceRulesPanel } from "./DeviceRulesPanel";
 import { GeofencePanel } from "./GeofencePanel";
+import { HistoryPanel } from "./HistoryPanel";
 
 type PanelState =
   | { kind: "loading" }
@@ -44,6 +45,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [expandedCategoriesId, setExpandedCategoriesId] = useState<string | null>(null);
   const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
   const [expandedGeofenceId, setExpandedGeofenceId] = useState<string | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -215,6 +217,14 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     >
                       {expandedGeofenceId === device.id ? "Ocultar geocercas" : "Gestionar geocercas"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedHistoryId(expandedHistoryId === device.id ? null : device.id)
+                      }
+                    >
+                      {expandedHistoryId === device.id ? "Ocultar historial" : "Ver historial"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
@@ -224,6 +234,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                   )}
                   {expandedGeofenceId === device.id && (
                     <GeofencePanel accessToken={accessToken} deviceId={device.id} />
+                  )}
+                  {expandedHistoryId === device.id && (
+                    <HistoryPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                   {expandedRulesId === device.id && (
                     <DeviceRulesPanel
