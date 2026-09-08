@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     app_rule_event_retention_days: int = 90
     geofence_event_retention_days: int = 90
 
+    # Alerts (Sprint 17) carry even less sensitive data than the events they're generated from
+    # (a level, a type, a package name or a geofence's tutor-chosen name) — same 90-day window as
+    # app_rule_event_retention_days/geofence_event_retention_days, purged the same "at write time,
+    # no scheduler" way (app/services/alerts.py).
+    alert_retention_days: int = 90
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

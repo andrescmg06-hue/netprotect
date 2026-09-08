@@ -280,3 +280,15 @@ web y en la app del tutor en Android. Sin librería de gráficos nueva: se manti
 de listas de texto que el resto de paneles.
 
 El detalle está en `docs/sprint-16.md`.
+
+## Alcance del Sprint 17
+
+Alertas: una bandeja para el tutor generada a partir de señales que ya existían (bloqueos de
+reglas, entradas/salidas de geocercas), sin pipeline de detección nuevo. Un límite de tiempo
+agotado genera nivel `WARNING`; un bloqueo o una salida de geocerca, según el caso, `INFO` o
+`WARNING`; `HIGH`/`CRITICAL` quedan en el catálogo reservados para la detección de manipulación
+del Sprint 20. Deduplicación mientras la alerta siga sin leer (sin ventana de tiempo arbitraria) y
+silenciado por tipo de alerta (no por alerta suelta), disponible en el panel web (con acciones de
+marcar leída/silenciar) y, en modo sólo lectura, en la app del tutor en Android.
+
+El detalle está en `docs/sprint-17.md`.

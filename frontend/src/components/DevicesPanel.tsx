@@ -11,6 +11,7 @@ import {
   unlinkDevice,
 } from "@/lib/apiClient";
 
+import { AlertsPanel } from "./AlertsPanel";
 import { DeviceApplicationsList } from "./DeviceApplicationsList";
 import { DeviceCategoriesPanel } from "./DeviceCategoriesPanel";
 import { DeviceLocationPanel } from "./DeviceLocationPanel";
@@ -48,6 +49,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [expandedGeofenceId, setExpandedGeofenceId] = useState<string | null>(null);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [expandedStatisticsId, setExpandedStatisticsId] = useState<string | null>(null);
+  const [expandedAlertsId, setExpandedAlertsId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -239,6 +241,14 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                         ? "Ocultar estadísticas"
                         : "Ver estadísticas"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedAlertsId(expandedAlertsId === device.id ? null : device.id)
+                      }
+                    >
+                      {expandedAlertsId === device.id ? "Ocultar alertas" : "Ver alertas"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
@@ -254,6 +264,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                   )}
                   {expandedStatisticsId === device.id && (
                     <StatisticsPanel accessToken={accessToken} deviceId={device.id} />
+                  )}
+                  {expandedAlertsId === device.id && (
+                    <AlertsPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                   {expandedRulesId === device.id && (
                     <DeviceRulesPanel

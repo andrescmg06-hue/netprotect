@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (08/09/2026)
 
-Sprints 1 a 16 completos y verificados en CI.
+Sprints 1 a 17 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -97,7 +97,12 @@ tutor en Android; historial unificado (Sprint 15): los dos registros de eventos 
 purga al escribir, y una línea de tiempo combinada (`GET /devices/{id}/history`) en el panel web y
 en Android; y estadísticas (Sprint 16): agregaciones por hoy/7/30 días — apps más usadas,
 desglose por categoría, conteo de bloqueos y cumplimiento de límites diarios — calculadas al vuelo
-sobre datos ya existentes, sin tabla de agregación nueva, en el panel web y en Android.
+sobre datos ya existentes, sin tabla de agregación nueva, en el panel web y en Android; y alertas
+(Sprint 17): una bandeja para el tutor generada a partir de señales que ya existían (bloqueos de
+reglas, entradas/salidas de geocercas), con niveles INFO/WARNING/HIGH/CRITICAL (los dos últimos
+reservados aún sin generador propio), deduplicación mientras la alerta siga sin leer y silenciado
+por tipo, en el panel web (con acciones de marcar leída/silenciar) y en modo sólo lectura en
+Android.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -193,11 +198,22 @@ aplica a reglas `DAILY_LIMIT` (de app o de categoría); `WEEKLY_LIMIT` y `SCHEDU
 "día cumplido/incumplido" que calcular. Un día sin uso reportado no cuenta ni a favor ni en contra.
 Ver `docs/sprint-16.md`.
 
-**Siguiente: Sprint 17 — Alertas.** Catálogo `INFO/WARNING/HIGH/CRITICAL` con reglas de
-generación, bandeja para el tutor, deduplicación y silenciado — revisar primero si algo de la
-lógica de detección ya vive dispersa (p. ej. los propios `AppRuleEvent`/`GeofenceEvent` podrían ser
-la fuente de eventos que disparan una alerta, no una fuente de datos paralela) antes de asumir que
-hace falta un pipeline de detección nuevo desde cero.
+**Nota del Sprint 17**: sin pipeline de detección nuevo — la alerta se genera inline en los dos
+puntos de escritura que ya existían (`POST /rule-events`, `POST /location`, justo después de
+`evaluate_geofence_transitions()`), mismo patrón "evaluar/purgar al escribir, sin scheduler" del
+resto del proyecto. Deduplicación sin ventana de tiempo arbitraria: mientras una alerta con la
+misma `dedup_key` siga sin leer, una repetición sólo le suma `occurrence_count`; marcarla leída
+abre la puerta a que la siguiente ocurrencia sea una alerta nueva — evita inventar un umbral de
+minutos/horas sin base en ningún enunciado. El silenciado se guarda por `(device_id, dedup_key)`,
+no por alerta suelta: silenciar detiene *todo* bloqueo futuro de esa app o *toda* entrada/salida
+futura de esa geocerca, no sólo la fila que se estaba viendo. `HIGH`/`CRITICAL` quedan en el
+catálogo (con su propio `CHECK` constraint) sin generador propio todavía — igual que
+`DeviceStatus.ALERT`, esperan las señales de manipulación del Sprint 20. Ver `docs/sprint-17.md`.
+
+**Siguiente: Sprint 18 — Tiempo real.** WebSockets autenticados (canal por dispositivo) y Firebase
+Cloud Messaging para despertar al dispositivo — revisar antes si conviene que la bandeja de alertas
+del Sprint 17 sea lo que empuje esos eventos en vivo, en vez de diseñar un canal de eventos
+paralelo.
 
 ## Entorno de trabajo
 

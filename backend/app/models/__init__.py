@@ -1,3 +1,4 @@
+from app.models.alert import Alert, AlertSilence
 from app.models.application import DeviceApplication, DeviceApplicationUsage
 from app.models.audit_log import AuditLog
 from app.models.base import Base
@@ -12,6 +13,8 @@ from app.models.session import UserSession
 from app.models.user import User
 
 __all__ = [
+    "Alert",
+    "AlertSilence",
     "AppCategoryAssignment",
     "AppRule",
     "AppRuleEvent",

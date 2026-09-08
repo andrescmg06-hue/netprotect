@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceClient
+import com.netprotect.app.core.network.AlertsClient
+import com.netprotect.app.core.network.DeviceAlert
 import com.netprotect.app.core.network.DeviceSummary
 import com.netprotect.app.core.network.Geofence
 import com.netprotect.app.core.network.GeofenceClient
@@ -101,6 +103,14 @@ private sealed interface StatisticsState {
     data class Error(val message: String) : StatisticsState
 }
 
+private sealed interface AlertsState {
+    data object Loading : AlertsState
+    // Read-only, same as HistoryState/StatisticsState: the inbox the backend already generates
+    // and deduplicates (Sprint 17). Marcar leída/silenciar son sólo del panel web.
+    data class Loaded(val alerts: List<DeviceAlert>) : AlertsState
+    data class Error(val message: String) : AlertsState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -117,6 +127,7 @@ fun TutorScreen(
     val geofenceClient = remember { GeofenceClient(baseUrl) }
     val historyClient = remember { HistoryClient(baseUrl) }
     val statisticsClient = remember { StatisticsClient(baseUrl) }
+    val alertsClient = remember { AlertsClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -134,6 +145,8 @@ fun TutorScreen(
     var expandedStatisticsDeviceId by remember { mutableStateOf<String?>(null) }
     val statisticsStateByDevice = remember { mutableStateMapOf<String, StatisticsState>() }
     val statisticsPeriodByDevice = remember { mutableStateMapOf<String, String>() }
+    var expandedAlertsDeviceId by remember { mutableStateOf<String?>(null) }
+    val alertsStateByDevice = remember { mutableStateMapOf<String, AlertsState>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -229,6 +242,22 @@ fun TutorScreen(
         }
         expandedStatisticsDeviceId = deviceId
         loadStatistics(deviceId, statisticsPeriodByDevice[deviceId] ?: "today")
+    }
+
+    fun toggleAlerts(deviceId: String) {
+        if (expandedAlertsDeviceId == deviceId) {
+            expandedAlertsDeviceId = null
+            return
+        }
+        expandedAlertsDeviceId = deviceId
+        alertsStateByDevice[deviceId] = AlertsState.Loading
+        scope.launch {
+            alertsStateByDevice[deviceId] = try {
+                AlertsState.Loaded(alertsClient.listAlerts(accessToken, deviceId))
+            } catch (exception: Exception) {
+                AlertsState.Error(exception.message ?: "No se pudieron cargar las alertas")
+            }
+        }
     }
 
     LaunchedEffect(Unit) { reloadDevices() }
@@ -370,6 +399,9 @@ fun TutorScreen(
                                 onChangeStatisticsPeriod = { period ->
                                     loadStatistics(device.id, period)
                                 },
+                                isAlertsExpanded = expandedAlertsDeviceId == device.id,
+                                alertsState = alertsStateByDevice[device.id],
+                                onToggleAlerts = { toggleAlerts(device.id) },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -411,6 +443,9 @@ private fun DeviceRow(
     statisticsState: StatisticsState?,
     onToggleStatistics: () -> Unit,
     onChangeStatisticsPeriod: (String) -> Unit,
+    isAlertsExpanded: Boolean,
+    alertsState: AlertsState?,
+    onToggleAlerts: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -464,6 +499,9 @@ private fun DeviceRow(
                     TextButton(onClick = onToggleStatistics) {
                         Text(if (isStatisticsExpanded) "Ocultar estadísticas" else "Ver estadísticas")
                     }
+                    TextButton(onClick = onToggleAlerts) {
+                        Text(if (isAlertsExpanded) "Ocultar alertas" else "Ver alertas")
+                    }
                 }
                 if (isAppsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -484,6 +522,10 @@ private fun DeviceRow(
                 if (isStatisticsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
                     StatisticsSection(statisticsState, onChangeStatisticsPeriod)
+                }
+                if (isAlertsExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AlertsSection(alertsState)
                 }
             }
         }
@@ -715,6 +757,48 @@ private fun StatisticsSection(state: StatisticsState?, onChangePeriod: (String) 
                                 color = Color(0xFFABB5C4),
                                 fontSize = 12.sp,
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun alertLabel(alert: DeviceAlert): String = when (alert.alertType) {
+    "APP_BLOCKED" -> "Se bloqueó ${alert.packageName}"
+    "APP_LIMIT_REACHED" -> "Se alcanzó el límite de tiempo de ${alert.packageName}"
+    "GEOFENCE_EXIT" -> "Salió de ${alert.geofenceName}"
+    "GEOFENCE_ENTER" -> "Entró a ${alert.geofenceName}"
+    else -> alert.alertType
+}
+
+/** Sprint 17, read-only: shows the tutor inbox the backend already generates and deduplicates
+ * from bloqueos de reglas y entradas/salidas de geocercas. Marcar leída/silenciar quedan sólo en
+ * el panel web, mismo criterio de sólo-lectura ya usado para historial/estadísticas/geocercas.
+ */
+@Composable
+private fun AlertsSection(state: AlertsState?) {
+    when (state) {
+        null, AlertsState.Loading -> Text("Cargando alertas…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is AlertsState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is AlertsState.Loaded -> {
+            if (state.alerts.isEmpty()) {
+                Text("Sin alertas para este dispositivo.", color = Color(0xFFABB5C4), fontSize = 13.sp)
+            } else {
+                Column {
+                    state.alerts.forEach { alert ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            val suffix = if (alert.occurrenceCount > 1) " (x${alert.occurrenceCount})" else ""
+                            Text(
+                                "[${alert.level}] ${alertLabel(alert)}$suffix",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                            )
+                            Text(formatCapturedAt(alert.lastOccurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
                         }
                     }
                 }

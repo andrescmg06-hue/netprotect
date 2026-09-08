@@ -668,3 +668,89 @@ export function getDeviceStatistics(
     accessToken
   );
 }
+
+export type AlertLevel = "INFO" | "WARNING" | "HIGH" | "CRITICAL";
+export type AlertType = "APP_BLOCKED" | "APP_LIMIT_REACHED" | "GEOFENCE_ENTER" | "GEOFENCE_EXIT";
+
+/** A tutor-facing notification generated from signals that already existed (AppRuleEvent,
+ * GeofenceEvent) — Sprint 17. Deduplicated while unread: occurrence_count/last_occurred_at track
+ * repeats of the same dedup_key instead of new rows, mirroring backend/app/schemas/alert.py.
+ */
+export type Alert = {
+  id: string;
+  level: AlertLevel;
+  alert_type: AlertType;
+  dedup_key: string;
+  package_name: string | null;
+  geofence_id: string | null;
+  geofence_name: string | null;
+  occurrence_count: number;
+  first_occurred_at: string;
+  last_occurred_at: string;
+  read_at: string | null;
+};
+
+export type AlertSilence = {
+  id: string;
+  dedup_key: string;
+  silenced_until: string | null;
+};
+
+export function listDeviceAlerts(
+  accessToken: string,
+  deviceId: string
+): Promise<{ alerts: Alert[] }> {
+  return requestJson<{ alerts: Alert[] }>(
+    `/api/v1/devices/${deviceId}/alerts`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+export function markAlertRead(
+  accessToken: string,
+  deviceId: string,
+  alertId: string
+): Promise<Alert> {
+  return requestJson<Alert>(
+    `/api/v1/devices/${deviceId}/alerts/${alertId}/read`,
+    { method: "POST" },
+    accessToken
+  );
+}
+
+export function silenceAlert(
+  accessToken: string,
+  deviceId: string,
+  alertId: string,
+  days: number | null
+): Promise<AlertSilence> {
+  return requestJson<AlertSilence>(
+    `/api/v1/devices/${deviceId}/alerts/${alertId}/silence`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days }) },
+    accessToken
+  );
+}
+
+export function listAlertSilences(
+  accessToken: string,
+  deviceId: string
+): Promise<{ silences: AlertSilence[] }> {
+  return requestJson<{ silences: AlertSilence[] }>(
+    `/api/v1/devices/${deviceId}/alert-silences`,
+    { method: "GET" },
+    accessToken
+  );
+}
+
+export function deleteAlertSilence(
+  accessToken: string,
+  deviceId: string,
+  silenceId: string
+): Promise<void> {
+  return requestJson<void>(
+    `/api/v1/devices/${deviceId}/alert-silences/${silenceId}`,
+    { method: "DELETE" },
+    accessToken
+  );
+}

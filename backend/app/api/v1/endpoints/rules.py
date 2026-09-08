@@ -27,6 +27,7 @@ from app.schemas.rule import (
     UpdateDevicePolicyRequest,
     UpsertAppRuleRequest,
 )
+from app.services.alerts import record_alert_for_rule_event
 from app.services.audit import record_audit_event
 from app.services.retention import purge_expired_rows
 
@@ -333,6 +334,9 @@ async def report_rule_event(
         occurred_at=payload.occurred_at,
     )
     db.add(event)
+    await record_alert_for_rule_event(
+        db, device_id, payload.package_name, payload.rule_type_applied, payload.occurred_at
+    )
     await db.commit()
     await db.refresh(event)
 

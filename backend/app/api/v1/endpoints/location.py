@@ -16,6 +16,7 @@ from app.schemas.location import (
     LocationReportResponse,
     ReportLocationRequest,
 )
+from app.services.alerts import record_alert_for_geofence_event
 from app.services.geofencing import evaluate_geofence_transitions
 from app.services.retention import purge_expired_rows
 
@@ -90,7 +91,7 @@ async def report_location(
         captured_at=payload.captured_at,
     )
     db.add(report)
-    await evaluate_geofence_transitions(
+    geofence_events = await evaluate_geofence_transitions(
         db,
         device_id,
         previous_report,
@@ -98,6 +99,15 @@ async def report_location(
         payload.longitude,
         payload.captured_at,
     )
+    for geofence_event in geofence_events:
+        await record_alert_for_geofence_event(
+            db,
+            device_id,
+            geofence_event.geofence_id,
+            geofence_event.geofence_name,
+            geofence_event.event_type,
+            geofence_event.occurred_at,
+        )
     await db.commit()
     await db.refresh(report)
 
