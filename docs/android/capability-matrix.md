@@ -11,7 +11,7 @@ Fecha de revisión: 05/09/2026 (Sprint 9: identificar apps que nunca deben bloqu
 | Bloqueo de apps sin device owner | `UsageStatsManager.queryEvents()` sondeado periódicamente (eventos `MOVE_TO_FOREGROUND`/`ACTIVITY_RESUMED`) + pantalla de bloqueo propia (`Activity`/overlay) | `PACKAGE_USAGE_STATS` (mismo permiso ya concedido en Sprint 7); un foreground service para sondear de forma sostenida | No hay API de notificación push para "app pasó a primer plano": hay que sondear, así que existe una ventana entre que la app aparece y se detecta/bloquea; evadible revocando el permiso en Ajustes o deteniendo el servicio | Sprint 8 — ver detalle abajo |
 | Identificar launcher, teléfono y Ajustes (para nunca bloquearlos) | `PackageManager.resolveActivity()` con `ACTION_MAIN`+`CATEGORY_HOME` y con `Settings.ACTION_SETTINGS`; `TelecomManager.getDefaultDialerPackage()` y `getSystemDialerPackage()` | Visibilidad de paquetes (ya cubierta por `QUERY_ALL_PACKAGES` del Sprint 7) | Todas pueden devolver `null`; si la resolución falla, esa app queda fuera de la lista protegida y podría bloquearse en modo lista blanca | Sprint 9 — ver detalle abajo |
 | Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
-| Geolocalización | Location Services | Permisos de ubicación según alcance | Restricciones de background y precisión | Sprint 13 |
+| Geolocalización | `LocationManager` (`NETWORK_PROVIDER`) | `ACCESS_COARSE_LOCATION` (runtime) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre | Sprint 13 — ver detalle abajo. Decisión: sólo aproximada, sin permiso de segundo plano |
 | Geocercas | Geofencing API | `ACCESS_FINE_LOCATION`; background location al aplicar según target/uso | Límite de geocercas y latencia en background | Sprint 14 |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
 | Captura de pantalla | `MediaProjection` | Consentimiento del usuario y foreground service `mediaProjection` | En Android moderno el consentimiento no puede reutilizarse indefinidamente; cada sesión debe respetar las reglas vigentes | Evaluar Sprint 23 |
@@ -317,6 +317,163 @@ app, qué regla tiene esa categoría) que se evalúa con el mismo `RuleEvaluator
 caer en la política por defecto del dispositivo (Sprint 9). No aplica el procedimiento de la Fase C
 porque no hay ninguna capacidad de Android nueva que verificar.
 
+## Sprint 13 — Geolocalización: verificación detallada (07/09/2026)
+
+Procedimiento obligatorio de la Fase C, aplicado antes de escribir código Android. Primer sprint
+que toca permisos de ubicación en este proyecto — nada de esto estaba verificado todavía. Fuentes
+oficiales consultadas directamente (developer.android.com), no memoria de entrenamiento.
+
+### Niveles de acceso: aproximada vs. precisa (Android 12 / API 31+)
+
+Desde Android 12, el usuario elige entre dos niveles de precisión al conceder el permiso, y esa
+elección determina qué exactitud recibe la app **independientemente de qué permiso declare**:
+
+- `ACCESS_COARSE_LOCATION` (declarado sin `ACCESS_FINE_LOCATION`): sólo acceso **aproximado**
+  ("accurate to within about 3 square kilometers"). No dispara el selector de Android 12+ (ese
+  selector sólo aparece cuando la app pide ambos permisos a la vez).
+- `ACCESS_FINE_LOCATION`: acceso **preciso** ("usually within about 50 meters"), salvo que el
+  usuario elija explícitamente "aproximada" en el selector — en ese caso, "regardless of which
+  location permissions your app declares", el resultado es aproximado igual.
+
+**Decisión de este sprint**: declarar únicamente `ACCESS_COARSE_LOCATION`. La frecuencia elegida
+(~15 minutos, ver `docs/sprint-13.md`) es para saber en qué zona está el dispositivo supervisado,
+no para rastrear su posición exacta en tiempo real — pedir precisión que el caso de uso no
+necesita viola minimización de datos (el mismo principio ya aplicado al resto del proyecto) y
+evita además tener que programar el selector aproximada/aproximada-vs-precisa de Android 12+, que
+sólo se activa cuando se piden ambos permisos juntos.
+
+Fuente: <https://developer.android.com/training/location/permissions>.
+
+### `ACCESS_BACKGROUND_LOCATION`: por qué este sprint decide NO pedirlo
+
+Verificado en <https://developer.android.com/develop/sensors-and-location/location/permissions/background>
+y <https://developer.android.com/about/versions/10/privacy/changes>:
+
+- Desde Android 10 (API 29), acceder a la ubicación **mientras la app está en segundo plano**
+  exige declarar `ACCESS_BACKGROUND_LOCATION` en el manifiesto y concederlo aparte en tiempo de
+  ejecución.
+- Desde Android 11 (API 30), el diálogo del sistema **ya no ofrece "Permitir todo el tiempo"**:
+  pedirlo junto con el permiso en primer plano no funciona (el sistema ignora ese intento); hay
+  que dirigir al usuario a Ajustes con `getBackgroundPermissionOptionLabel()` para obtener el
+  texto localizado exacto del botón, con una UI educativa propia antes (mismo patrón ya usado en
+  este proyecto para `PACKAGE_USAGE_STATS`, Sprint 7).
+- **Hallazgo clave que cambia la decisión de diseño**: la propia documentación de Android define
+  cuándo una app cuenta como "en segundo plano" a efectos de este permiso — *"An app is considered
+  to be accessing location in the background unless ... the app is running a foreground service
+  that has declared a foreground service type of `location`"*. Es decir: **un foreground service
+  con `foregroundServiceType="location"` ya cuenta como "en primer plano" para el sistema de
+  permisos de ubicación**, sin necesitar `ACCESS_BACKGROUND_LOCATION`, mientras ese servicio siga
+  vivo.
+
+Este proyecto ya tiene el patrón exacto que hace falta para explotar esa excepción:
+`RuleEnforcementService` (Sprint 8) se arranca sólo desde una `Activity` en primer plano
+(`SupervisedScreen`) y sigue corriendo con una notificación persistente mientras el usuario usa
+otras apps. Un `LocationReportingService` construido igual — arrancado desde
+`SupervisedScreen.DisposableEffect`, con `foregroundServiceType="location"` — puede seguir
+reportando ubicación aunque el usuario abra otra app, sin pedir nunca el permiso de segundo plano.
+
+**Consecuencia práctica de esta decisión, declarada explícitamente en vez de prometer más de lo
+que se puede sostener**: si el usuario supervisado cierra la app de un swipe en Recientes o el
+sistema mata el proceso, el foreground service muere con él (mismo límite ya documentado para
+`RuleEnforcementService` en el Sprint 8) y el reporte de ubicación se detiene hasta que la app se
+vuelva a abrir. No hay reinicio automático (`BOOT_COMPLETED`, `WorkManager` persistente) en este
+sprint — evaluar si hace falta queda para un sprint futuro si el caso de uso lo exige.
+
+Ventaja adicional de esta decisión, verificada más abajo: al no declarar
+`ACCESS_BACKGROUND_LOCATION`, la política de Play sobre "Prominent Disclosure" de ubicación en
+segundo plano (ver siguiente sección) **no aplica en absoluto** a este proyecto — ni siquiera bajo
+el razonamiento habitual de "sólo aplica al publicar", porque el permiso que la dispara nunca se
+declara.
+
+### Foreground service de tipo `location`
+
+Verificado en <https://developer.android.com/develop/background-work/services/fgs/service-types>:
+
+- Requiere declarar `android:foregroundServiceType="location"` en el `<service>` del manifiesto
+  (obligatorio desde Android 14/API 34 para todo foreground service, ya aplicado en este proyecto
+  al `specialUse` de `RuleEnforcementService` — mismo requisito, Sprint 8).
+- Requiere los permisos `FOREGROUND_SERVICE` (ya declarado) y `FOREGROUND_SERVICE_LOCATION`
+  (nuevo), más al menos uno de `ACCESS_COARSE_LOCATION`/`ACCESS_FINE_LOCATION` concedido en tiempo
+  de ejecución antes de llamar a `startForeground()`.
+- **Misma restricción ya verificada en ejecución real en el Sprint 8**: *"you cannot create a
+  `location` foreground service while your app is in the background, unless you've been granted
+  the `ACCESS_BACKGROUND_LOCATION` runtime permission"*. Como este proyecto no pide ese permiso
+  (ver arriba), `LocationReportingService.start()` debe llamarse siempre desde una `Activity` en
+  primer plano — exactamente el mismo patrón que `RuleEnforcementService.start()` en
+  `SupervisedScreen`, nunca desde un contexto de fondo. No se repite la verificación empírica en
+  emulador hecha en el Sprint 8 para este servicio nuevo porque el mecanismo de arranque (mismo
+  `DisposableEffect`, mismo `startForegroundService()`) es idéntico al ya probado; si Android
+  rechazara el arranque se manifestaría igual que en el Sprint 8 (`Error: app is in background uid
+  null`), y la compilación/ejecución real de este sprint (ver `docs/sprint-13-evidence.md`) es lo
+  que confirma que no ocurrió.
+
+Fuentes: <https://developer.android.com/develop/background-work/services/fgs/service-types>,
+<https://developer.android.com/about/versions/14/changes/fgs-types-required> (ya citada en Sprint 8).
+
+### Educación antes del diálogo del sistema
+
+`shouldShowRequestPermissionRationale()` sigue siendo el mecanismo estándar (sin cambios respecto
+a permisos runtime "normales" ya usados en Android desde hace años) para decidir cuándo mostrar
+una explicación propia antes de disparar el diálogo del sistema. Este proyecto ya tiene el patrón
+exacto en `SupervisedScreen` para `POST_NOTIFICATIONS` (Sprint 8) y una tarjeta explicativa previa
+para `PACKAGE_USAGE_STATS` (Sprint 7); Sprint 13 reutiliza la misma forma (tarjeta con texto +
+botón) en vez de introducir un componente nuevo.
+
+Fuente: <https://developer.android.com/training/permissions/requesting>.
+
+### Política de Google Play sobre ubicación en segundo plano — verificado, no aplica hoy
+
+Mismo razonamiento ya aplicado a `QUERY_ALL_PACKAGES` y Accessibility (Sprints 7-8), verificado de
+nuevo para este permiso en concreto porque el enunciado pedía no copiarlo sin más:
+
+- Play exige **Prominent Disclosure**: una divulgación dentro de la propia app (no sólo en la
+  política de privacidad), visible sin que el usuario tenga que navegar a un menú, explicando qué
+  dato se accede y para qué, **específicamente para apps que declaran
+  `ACCESS_BACKGROUND_LOCATION`**.
+- Play también exige un formulario de declaración de permisos con un video de demostración para
+  cualquier app que pida ubicación en segundo plano, evaluado sólo al publicar en la tienda —
+  igual que el formulario de `QUERY_ALL_PACKAGES` del Sprint 7.
+- **Este proyecto no declara `ACCESS_BACKGROUND_LOCATION`** (ver decisión de diseño arriba), así
+  que esta política no aplica ni siquiera bajo el razonamiento de "sólo al publicar": el permiso
+  que la activa no existe en el manifiesto. Se documenta de todas formas para que quede registrado
+  qué se verificó y por qué no aplica, no para dejarlo asumido.
+
+Fuentes: <https://support.google.com/googleplay/android-developer/answer/11150561> (mejores
+prácticas de "prominent disclosure and consent"),
+<https://support.google.com/googleplay/android-developer/answer/9799150> (entendiendo los permisos
+de ubicación en segundo plano).
+
+### Decisión de no usar el SDK nativo de Google Maps en Android
+
+`GOOGLE_MAPS_ANDROID_API_KEY` no se añadió a las variables de entorno de este sprint (a pesar de
+que el encargo lo contemplaba como opción) porque se decidió no integrar el Maps SDK for Android
+en absoluto: la pantalla del tutor muestra coordenadas/hora en texto y un botón "Abrir en mapa" que
+lanza un `Intent(ACTION_VIEW, Uri.parse("geo:lat,lng?q=lat,lng"))` — Android resuelve ese intent con
+cualquier app de mapas ya instalada (Google Maps en el emulador/dispositivo de prueba), sin
+necesitar clave de API, restricción por SHA-1/paquete, ni la dependencia adicional del SDK. El
+panel web sí necesita su propia clave (Maps Embed API, restringida por referer HTTP) porque un
+navegador no tiene una "app de mapas" a la que delegar — ver `docs/sprint-13.md`.
+
+### Pendiente de confirmar
+
+1. Comportamiento exacto de Doze/App Standby sobre un foreground service de tipo `location` que
+   reporta cada ~15 minutos — mismo estado "plausible pero no confirmado" ya anotado para
+   `UsageStatsManager` en los Sprints 7-8; no se encontró una página oficial que fije una cifra.
+2. Verificación en dispositivo físico real (no sólo emulador) del comportamiento de
+   `NETWORK_PROVIDER` sin Google Play services de ubicación (`FusedLocationProviderClient`) — este
+   proyecto usa `LocationManager` puro (sin añadir la dependencia `play-services-location`, igual
+   que el resto de la app evita dependencias grandes) y no se ha comparado su precisión/latencia
+   real contra el SDK de Google en un dispositivo con Play Services. Ver `docs/sprint-13-evidence.md`
+   para lo que sí se verificó (emulador).
+
+Fuentes citadas en esta sección: <https://developer.android.com/training/location/permissions>,
+<https://developer.android.com/develop/sensors-and-location/location/permissions/background>,
+<https://developer.android.com/about/versions/10/privacy/changes>,
+<https://developer.android.com/develop/background-work/services/fgs/service-types>,
+<https://developer.android.com/training/permissions/requesting>,
+<https://support.google.com/googleplay/android-developer/answer/11150561>,
+<https://support.google.com/googleplay/android-developer/answer/9799150>.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -335,5 +492,10 @@ porque no hay ninguna capacidad de Android nueva que verificar.
 - AOSP — código fuente con javadoc de `UsageStatsManager.java` (mirror en `android.googlesource.com`), Sprint 8.
 - Android Developers — `PackageManager.resolveActivity()`/`MATCH_DEFAULT_ONLY` y `Settings.ACTION_SETTINGS`, Sprint 9.
 - AOSP — código fuente con javadoc de `TelecomManager.java` (`getDefaultDialerPackage()`, `getSystemDialerPackage()`), Sprint 9.
+- Android Developers — permisos de ubicación (`ACCESS_COARSE_LOCATION`/`ACCESS_FINE_LOCATION`, aproximada vs. precisa Android 12+), Sprint 13.
+- Android Developers — `ACCESS_BACKGROUND_LOCATION` y cambios de privacidad de Android 10, Sprint 13.
+- Android Developers — foreground service type `location` y sus requisitos, Sprint 13.
+- Android Developers — `shouldShowRequestPermissionRationale()` y UI educativa, Sprint 13.
+- Play Console Help — "Prominent disclosure and consent" y permisos de ubicación en segundo plano, Sprint 13.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

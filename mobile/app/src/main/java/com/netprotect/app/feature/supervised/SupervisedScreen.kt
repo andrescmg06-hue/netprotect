@@ -36,9 +36,11 @@ import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.DeviceIdentity
 import com.netprotect.app.core.auth.LinkedDeviceStore
 import com.netprotect.app.core.inventory.AppInventoryCollector
+import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.PairingClient
+import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.RuleEnforcementService
 import kotlinx.coroutines.delay
@@ -70,6 +72,15 @@ fun SupervisedScreen(
     var state by remember { mutableStateOf<SupervisedState>(SupervisedState.CheckingLink) }
     var codeInput by remember { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
+    var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
+
+    // ACCESS_COARSE_LOCATION is an ordinary runtime permission (unlike PACKAGE_USAGE_STATS
+    // above): the system dialog itself grants or denies it, no trip to Settings needed. Shown
+    // only after the rationale card below — never fired automatically — following the
+    // educational-UI pattern from docs/android/capability-matrix.md (Sprint 13).
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasLocationPermission = granted }
 
     // Not required for the enforcement service to run (see RuleEnforcementService/
     // capability-matrix.md) — asked anyway because the notification is deliberately visible,
@@ -165,6 +176,20 @@ fun SupervisedScreen(
             RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
         }
         onDispose { RuleEnforcementService.stop(context) }
+    }
+
+    // Independent gate from the rule-enforcement service above: reporting location doesn't need
+    // usage access, and enforcing rules doesn't need location — each foreground service is
+    // started/stopped only by the permission it actually depends on. Same foreground-start
+    // requirement applies here (see LocationReportingService's own doc comment): this effect
+    // only ever fires while SupervisedScreen itself is composed, i.e. the app in the foreground.
+    DisposableEffect(state, hasLocationPermission) {
+        val linked = state as? SupervisedState.Linked
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId
+        if (linked != null && hasLocationPermission && deviceId != null) {
+            LocationReportingService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
+        }
+        onDispose { LocationReportingService.stop(context) }
     }
 
     Column(
@@ -284,6 +309,41 @@ fun SupervisedScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = { hasUsageAccess = UsageAccessPermission.isGranted(context) }) {
                         Text("Ya lo activé, verificar de nuevo", color = Color(0xFFABB5C4))
+                    }
+                }
+            }
+        }
+
+        if (state is SupervisedState.Linked && !hasLocationPermission) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF121722),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Ubicación aproximada",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Para que tu tutor vea en qué zona está este dispositivo, permite el " +
+                            "acceso a la ubicación aproximada. No se usa la ubicación precisa, y " +
+                            "sólo se comparte mientras esta app siga activa en segundo plano.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
+                    ) {
+                        Text("Permitir ubicación aproximada")
                     }
                 }
             }

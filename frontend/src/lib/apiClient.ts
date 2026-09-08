@@ -447,3 +447,30 @@ export function deleteCategoryRule(
     accessToken
   );
 }
+
+/** Sprint 13. latitude/longitude arrive already decrypted (app/core/crypto.py decrypts
+ * server-side before the response is built) — the web panel never handles ciphertext.
+ */
+export type LocationReport = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  accuracy_meters: number;
+  captured_at: string;
+  received_at: string;
+};
+
+/** null means the device has never reported a location, or every report has aged out of the
+ * backend's retention window (location_retention_days) — both are shown the same way, there is
+ * no way (and no need) for a tutor to tell them apart.
+ */
+export function getLatestLocation(
+  accessToken: string,
+  deviceId: string
+): Promise<{ report: LocationReport | null }> {
+  return requestJson<{ report: LocationReport | null }>(
+    `/api/v1/devices/${deviceId}/location/latest`,
+    { method: "GET" },
+    accessToken
+  );
+}

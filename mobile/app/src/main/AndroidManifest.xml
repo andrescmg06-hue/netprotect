@@ -28,6 +28,14 @@
          notificación es deliberadamente visible, no algo que ocultar. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Sprint 13 (ubicación): sólo aproximada a propósito — ver docs/android/capability-matrix.md.
+         Deliberadamente sin ACCESS_FINE_LOCATION y sin ACCESS_BACKGROUND_LOCATION: un foreground
+         service foregroundServiceType="location" ya cuenta como "en primer plano" para el sistema
+         de permisos de ubicación mientras corre, así que no hace falta pedir el permiso de
+         segundo plano (y con él, la política de "Prominent Disclosure" de Play). -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
     <application
         android:allowBackup="false"
         android:label="@string/app_name"
@@ -61,5 +69,13 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Control parental: verifica qué app supervisada está en primer plano para aplicar reglas de bloqueo definidas por el tutor." />
         </service>
+
+        <!-- Sprint 13: foregroundServiceType="location" es el tipo predefinido correcto aquí
+             (a diferencia de RuleEnforcementService, este servicio sí encaja en un tipo
+             estándar) — ver docs/android/capability-matrix.md. -->
+        <service
+            android:name=".core.location.LocationReportingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 </manifest>

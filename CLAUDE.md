@@ -64,9 +64,9 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (06/09/2026)
+## Estado actual (08/09/2026)
 
-Sprints 1 a 12 completos y verificados en CI.
+Sprints 1 a 13 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -82,7 +82,12 @@ que nunca se bloquean; y categorías (11 fijas, decisión propia — ver Sprint 
 categoría, evaluada entre la regla por app y la política del dispositivo. Android tiene un router
 real (`HomeScreen`: sesión → rol → modo Tutor/Supervisado); la pantalla de diagnóstico del Sprint 1
 (`SprintOneScreen`) ya no existe, su chequeo de infraestructura vive ahora en la pantalla de sesión
-cerrada.
+cerrada; y ubicación aproximada (Sprint 13): el dispositivo supervisado reporta su posición cada
+~15 minutos mediante un foreground service (`LocationReportingService`, sólo
+`ACCESS_COARSE_LOCATION`, sin permiso de segundo plano), cifrada en la base de datos (Fernet) con
+retención de 7 días y purga inline al reportar; el tutor ve la última ubicación conocida en el
+panel web (mapa embebido si hay clave de Google Maps configurada, texto si no) y en Android (texto
++ botón que abre un mapa externo vía intent, sin SDK nativo de Maps).
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -131,11 +136,26 @@ horario escolar, exactamente igual que ya aprueba contra la política por defect
 Decisión documentada como interpretación propia en `docs/sprint-12.md`, no como la única lectura
 posible del enunciado.
 
-**Siguiente: Sprint 13 — Ubicación.** Primer sprint de geolocalización — requiere su propia Fase C
-antes de escribir código: permisos de ubicación en primer/segundo plano varían fuerte entre
-versiones de Android (aproximada vs. precisa desde API 31, restricciones de acceso en segundo plano
-desde API 29-30) y no se ha verificado nada de esto todavía en este proyecto. Ver
-`docs/android/capability-matrix.md`, fila "Geolocalización", todavía sin su sección de detalle.
+**Nota del Sprint 13**: un foreground service con `foregroundServiceType="location"` cuenta como
+"en primer plano" para el sistema de permisos de ubicación de Android mientras corre (verificado en
+fuente oficial, ver `docs/android/capability-matrix.md`) — este proyecto explota eso a propósito
+para reportar ubicación en segundo plano **sin pedir nunca `ACCESS_BACKGROUND_LOCATION`**, con el
+mismo patrón de arranque-sólo-desde-Activity-en-primer-plano ya usado por `RuleEnforcementService`
+desde el Sprint 8. Consecuencia aceptada: si el proceso muere (swipe en Recientes, sistema bajo
+presión de memoria), el reporte se detiene hasta reabrir la app — no hay reinicio automático.
+Decisión de diseño separada, también documentada: Android **no** integra el SDK nativo de Google
+Maps — la pantalla del tutor delega a la app de mapas ya instalada vía un intent `geo:`, así que
+`GOOGLE_MAPS_ANDROID_API_KEY` no existe como variable de este proyecto. El panel web sí necesita su
+propia clave (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, Maps Embed API) para el mapa embebido — pendiente
+de que un humano con cuenta de Google Cloud la genere y la restrinja por referer HTTP (mismo caso
+que `GOOGLE_WEB_CLIENT_ID`, ver `docs/sprint-13.md`); sin ella, el panel muestra coordenadas en
+texto y un enlace a Google Maps.
+
+**Siguiente: Sprint 14 — Geocercas.** Reutiliza los permisos de ubicación ya verificados en el
+Sprint 13, pero revisar de nuevo si la Geofencing API exige algo adicional (por ejemplo, si generar
+alertas de entrada/salida con el dispositivo en segundo plano sí obliga a pedir
+`ACCESS_BACKGROUND_LOCATION`, a diferencia del simple reporte periódico del Sprint 13) antes de
+asumir que no hace falta una nueva Fase C.
 
 ## Entorno de trabajo
 

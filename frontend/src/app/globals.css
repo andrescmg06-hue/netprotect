@@ -334,6 +334,17 @@ h1 {
   margin-top: 0;
 }
 
+.locationDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.locationMap {
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
 .scheduleFields {
   display: flex;
   align-items: center;

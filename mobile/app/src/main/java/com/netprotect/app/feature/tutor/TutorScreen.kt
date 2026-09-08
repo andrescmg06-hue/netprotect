@@ -1,5 +1,7 @@
 package com.netprotect.app.feature.tutor
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,8 +38,14 @@ import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.DeviceSummary
+import com.netprotect.app.core.network.LocationClient
+import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.network.PairingCode
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
 private sealed interface DevicesState {
@@ -51,6 +60,15 @@ private sealed interface AppsState {
     data class Error(val message: String) : AppsState
 }
 
+private sealed interface LocationState {
+    data object Loading : LocationState
+    // report == null means the device has never reported a location, or every report has aged
+    // out of the backend's retention window (backend/app/schemas/location.py) — both look the
+    // same to a tutor and are shown with the same "sin ubicación reciente" message.
+    data class Loaded(val report: LocationReport?) : LocationState
+    data class Error(val message: String) : LocationState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -58,10 +76,12 @@ fun TutorScreen(
     onSignOut: suspend () -> Unit,
     onSwitchMode: () -> Unit,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pairingClient = remember { PairingClient(baseUrl) }
     val deviceClient = remember { DeviceClient(baseUrl) }
     val applicationsClient = remember { ApplicationsClient(baseUrl) }
+    val locationClient = remember { LocationClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -70,6 +90,8 @@ fun TutorScreen(
     var renameText by remember { mutableStateOf("") }
     var expandedAppsDeviceId by remember { mutableStateOf<String?>(null) }
     val appsStateByDevice = remember { mutableStateMapOf<String, AppsState>() }
+    var expandedLocationDeviceId by remember { mutableStateOf<String?>(null) }
+    val locationStateByDevice = remember { mutableStateMapOf<String, LocationState>() }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -91,6 +113,22 @@ fun TutorScreen(
                 AppsState.Loaded(applicationsClient.getApplications(accessToken, deviceId))
             } catch (exception: Exception) {
                 AppsState.Error(exception.message ?: "No se pudo cargar la lista de apps")
+            }
+        }
+    }
+
+    fun toggleLocation(deviceId: String) {
+        if (expandedLocationDeviceId == deviceId) {
+            expandedLocationDeviceId = null
+            return
+        }
+        expandedLocationDeviceId = deviceId
+        locationStateByDevice[deviceId] = LocationState.Loading
+        scope.launch {
+            locationStateByDevice[deviceId] = try {
+                LocationState.Loaded(locationClient.getLatestLocation(accessToken, deviceId))
+            } catch (exception: Exception) {
+                LocationState.Error(exception.message ?: "No se pudo cargar la ubicación")
             }
         }
     }
@@ -219,6 +257,9 @@ fun TutorScreen(
                                 isAppsExpanded = expandedAppsDeviceId == device.id,
                                 appsState = appsStateByDevice[device.id],
                                 onToggleApps = { toggleApps(device.id) },
+                                isLocationExpanded = expandedLocationDeviceId == device.id,
+                                locationState = locationStateByDevice[device.id],
+                                onToggleLocation = { toggleLocation(device.id) },
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                         }
@@ -247,6 +288,9 @@ private fun DeviceRow(
     isAppsExpanded: Boolean,
     appsState: AppsState?,
     onToggleApps: () -> Unit,
+    isLocationExpanded: Boolean,
+    locationState: LocationState?,
+    onToggleLocation: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -288,15 +332,76 @@ private fun DeviceRow(
                     TextButton(onClick = onToggleApps) {
                         Text(if (isAppsExpanded) "Ocultar apps" else "Ver apps")
                     }
+                    TextButton(onClick = onToggleLocation) {
+                        Text(if (isLocationExpanded) "Ocultar ubicación" else "Ver ubicación")
+                    }
                 }
                 if (isAppsExpanded) {
                     Spacer(modifier = Modifier.height(10.dp))
                     AppsList(appsState)
                 }
+                if (isLocationExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LocationSection(locationState)
+                }
             }
         }
     }
 }
+
+/** Text-only by design: this project's Android client never embeds a map view (no Maps SDK
+ * dependency, no GOOGLE_MAPS_ANDROID_API_KEY) — see docs/sprint-13.md. "Abrir en mapa" hands the
+ * coordinates to whatever map app is already installed via a plain geo: intent, which needs no
+ * API key of its own. The web panel is the one that renders an embedded map, since a browser has
+ * no equivalent app to delegate to.
+ */
+@Composable
+private fun LocationSection(state: LocationState?) {
+    val context = LocalContext.current
+    when (state) {
+        null, LocationState.Loading -> Text("Cargando ubicación…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is LocationState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is LocationState.Loaded -> {
+            val report = state.report
+            if (report == null) {
+                Text(
+                    "Todavía no hay ubicación reciente de este dispositivo.",
+                    color = Color(0xFFABB5C4),
+                    fontSize = 13.sp,
+                )
+            } else {
+                Column {
+                    Text(
+                        "Lat ${"%.5f".format(report.latitude)}, Lng ${"%.5f".format(report.longitude)}" +
+                            " (±${report.accuracyMeters.toInt()} m)",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                    )
+                    Text(
+                        "Capturada: ${formatCapturedAt(report.capturedAt)}",
+                        color = Color(0xFF7D899A),
+                        fontSize = 11.sp,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            val uri = Uri.parse("geo:${report.latitude},${report.longitude}?q=${report.latitude},${report.longitude}")
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                        },
+                    ) {
+                        Text("Abrir en mapa")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatCapturedAt(isoInstant: String): String = runCatching {
+    Instant.parse(isoInstant)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM))
+}.getOrDefault(isoInstant)
 
 @Composable
 private fun AppsList(state: AppsState?) {

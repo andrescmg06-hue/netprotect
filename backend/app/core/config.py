@@ -43,6 +43,23 @@ class Settings(BaseSettings):
     # background sweep, since no scheduler exists yet in this project.
     device_offline_threshold_seconds: int = 300
 
+    # Fernet symmetric key for encrypting latitude/longitude at rest (Sprint 13). Deliberately
+    # NOT generated with secrets.token_urlsafe(48) like the project's other secrets: Fernet
+    # requires an exact format (32 raw bytes, url-safe base64-encoded), so this dev-only default
+    # is a real, validly-formatted key (generated the equivalent way Fernet.generate_key() would)
+    # rather than an arbitrary string — an invalid format would crash the first encrypt/decrypt
+    # call, not just look like a placeholder. Its own name, never shared with jwt_secret or
+    # pairing_code_pepper — leaking one secret must not leak location data too.
+    location_encryption_key: str = "_is8T-L3jDCCJY6nqQvQk6Dlt1v9-pUa5IGiZMsLbVE="  # noqa: S105
+
+    # How long a device's location history is kept before the write endpoint purges it (Sprint
+    # 13) — see docs/sprint-13.md for why 7 days: this is the most sensitive data category the
+    # project stores (a minor's whereabouts), captured automatically every ~15 minutes, so a
+    # short window bounds both the privacy exposure and the row count without needing a
+    # scheduled job (the purge runs inline on each write, same "no background scheduler yet"
+    # reasoning as device_offline_threshold_seconds above).
+    location_retention_days: int = 7
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

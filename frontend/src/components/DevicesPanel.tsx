@@ -13,6 +13,7 @@ import {
 
 import { DeviceApplicationsList } from "./DeviceApplicationsList";
 import { DeviceCategoriesPanel } from "./DeviceCategoriesPanel";
+import { DeviceLocationPanel } from "./DeviceLocationPanel";
 import { DeviceRulesPanel } from "./DeviceRulesPanel";
 
 type PanelState =
@@ -40,6 +41,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [expandedAppsId, setExpandedAppsId] = useState<string | null>(null);
   const [expandedRulesId, setExpandedRulesId] = useState<string | null>(null);
   const [expandedCategoriesId, setExpandedCategoriesId] = useState<string | null>(null);
+  const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -195,9 +197,20 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                         ? "Ocultar categorías"
                         : "Gestionar categorías"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedLocationId(expandedLocationId === device.id ? null : device.id)
+                      }
+                    >
+                      {expandedLocationId === device.id ? "Ocultar ubicación" : "Ver ubicación"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
+                  )}
+                  {expandedLocationId === device.id && (
+                    <DeviceLocationPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                   {expandedRulesId === device.id && (
                     <DeviceRulesPanel

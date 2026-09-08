@@ -68,6 +68,7 @@ services:
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:?falta GOOGLE_WEB_CLIENT_ID en .env}
       JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET en .env}
       PAIRING_CODE_PEPPER: ${PAIRING_CODE_PEPPER:?falta PAIRING_CODE_PEPPER en .env}
+      LOCATION_ENCRYPTION_KEY: ${LOCATION_ENCRYPTION_KEY:?falta LOCATION_ENCRYPTION_KEY en .env}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
@@ -93,11 +94,13 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
         NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:?falta NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID en .env}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
       NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:?falta NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID en .env}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
     depends_on:
       backend:
         condition: service_healthy
