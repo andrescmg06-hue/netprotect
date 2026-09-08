@@ -97,6 +97,20 @@ $ npm run build
 
 Sin errores de tipos ni de lint en `apiClient.ts`, `GeofencePanel.tsx` ni `DevicesPanel.tsx`.
 
+## CI en GitHub Actions (runner limpio)
+
+```
+$ git push
+$ gh run watch 34224346745 --exit-status
+✓ main ci · 34224346745
+  ✓ integration in 1m11s
+  ✓ android in 1m39s
+  ✓ frontend in 29s
+  ✓ backend in 21s
+```
+
+Los 4 jobs en verde en un runner limpio (no esta máquina), commit `3e88125`.
+
 ## No se marca como verificado
 
 Ver la sección homónima en `docs/sprint-14.md`: verificación en dispositivo/emulador real de un
