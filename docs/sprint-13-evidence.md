@@ -175,5 +175,6 @@ es una inconsistencia nueva de este sprint; las coordenadas interpoladas en el i
 
 ## CI en GitHub Actions
 
-Pendiente de push — se actualiza esta sección (o se agrega un commit `docs: record green CI run
-for sprint 13`) tras confirmar los 4 jobs en verde con `gh run view`.
+Run [`34177539194`](https://github.com/andrescmg06-hue/netprotect/actions/runs/34177539194),
+commit `ba14bc7`, los 4 jobs en verde: `frontend` (26s), `android` (1m47s), `integration` (58s),
+`backend` (22s). Con esto el Sprint 13 queda cerrado según la regla de `CLAUDE.md`.
