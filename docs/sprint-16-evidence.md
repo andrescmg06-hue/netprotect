@@ -85,8 +85,24 @@ BUILD SUCCESSFUL in 19s
 
 Compila `StatisticsClient.kt` y los cambios en `TutorScreen.kt` sin errores.
 
-## Pendiente antes de cerrar el sprint
+## Revisión de seguridad
 
-- `/security-review` sobre el diff completo.
-- Push y verificación de los 4 jobs de CI en GitHub Actions en verde.
-- Actualizar `CLAUDE.md` ("Estado actual" y "Siguiente sprint").
+`/security-review` sobre el diff completo: sin hallazgos. El endpoint nuevo reutiliza
+`require_tutor_of_device` sin modificarlo, filtra las cuatro consultas por `device_id`
+parametrizado (sin SQL crudo), `period` está tipado como `Literal["today","7d","30d"]` (FastAPI
+rechaza cualquier otro valor con 422) y la respuesta no expone datos distintos a los que
+`applications`/`rules`/`categories` ya exponían.
+
+## CI en GitHub Actions
+
+Commit `bc8a3b1` ("feat: add sprint 16 statistics"), corrida
+[34235527926](https://github.com/andrescmg06-hue/netprotect/actions/runs/34235527926):
+
+```
+✓ integration in 1m21s
+✓ android    in 1m37s
+✓ frontend   in 33s
+✓ backend    in 18s
+```
+
+Los 4 jobs en verde en un runner limpio de GitHub Actions. Sprint 16 cerrado.
