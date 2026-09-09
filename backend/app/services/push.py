@@ -48,23 +48,27 @@ def _post_fcm_message(access_token: str, payload: dict) -> None:
     response.raise_for_status()
 
 
-async def send_rule_change_wake(device_id: uuid.UUID, fcm_token: str) -> None:
-    """Best-effort: a tutor's rule change must succeed whether or not this nudge is delivered
+async def send_fcm_wake(device_id: uuid.UUID, fcm_token: str, event: str) -> None:
+    """Best-effort: whatever triggered this nudge must succeed whether or not it is delivered
     (see notify_rules_changed's docstring), so every failure here is logged and swallowed
     rather than propagated into the request that triggered it.
 
     A pure data message (no `notification` block) — this only needs to wake the app so it
-    reconnects its WebSocket and re-fetches its rules; there is nothing here a human should
-    see as a system notification.
+    reconnects its WebSocket and finds out what happened; there is nothing here a human should
+    see as a system notification. Sprint 23 generalised the original rule-change-only version by
+    taking `event` as a parameter rather than adding a near-identical second function: the wake-up
+    itself is the same HTTP call either way, and only the event label differs.
     """
     if not is_push_configured():
-        logger.info("fcm_push_skipped device_id=%s reason=not_configured", device_id)
+        logger.info(
+            "fcm_push_skipped device_id=%s event=%s reason=not_configured", device_id, event
+        )
         return
 
     payload = {
         "message": {
             "token": fcm_token,
-            "data": {"event": "rules_changed", "device_id": str(device_id)},
+            "data": {"event": event, "device_id": str(device_id)},
             "android": {"priority": "high"},
         }
     }
@@ -73,4 +77,6 @@ async def send_rule_change_wake(device_id: uuid.UUID, fcm_token: str) -> None:
         access_token = _get_access_token()
         _post_fcm_message(access_token, payload)
     except (GoogleAuthError, RequestException, OSError, ValueError) as exc:
-        logger.warning("fcm_push_failed device_id=%s error=%s", device_id, exc)
+        logger.warning(
+            "fcm_push_failed device_id=%s event=%s error=%s", device_id, event, exc
+        )

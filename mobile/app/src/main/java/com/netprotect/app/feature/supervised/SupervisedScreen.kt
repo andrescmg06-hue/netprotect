@@ -40,15 +40,19 @@ import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.PairingClient
+import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.rules.RuleEnforcementService
+import com.netprotect.app.core.screenshare.ScreenCapture
+import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.sync.SyncWorker
 import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 private const val HEARTBEAT_INTERVAL_MS = 60_000L
 private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
@@ -78,6 +82,32 @@ fun SupervisedScreen(
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
     var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
+    // Sprint 23: set from the signalling socket's callback (OkHttp's thread) and read by the
+    // composition — a Compose state, so the recomposition happens on its own.
+    var screenShareRequested by remember { mutableStateOf(false) }
+    var screenShareSignaling by remember { mutableStateOf<RealtimeClient?>(null) }
+
+    // Android's own screen-capture consent dialog. Deliberately launched only from the card
+    // below, never automatically: the tutor's request is what makes the card appear, and the
+    // supervised person is the one who decides. Each session needs this dialog again — the
+    // resulting permission is good for exactly one capture (verified in
+    // docs/android/capability-matrix.md, Sprint 23), so there is nothing here to reuse silently.
+    val screenCaptureLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        screenShareRequested = false
+        val data = result.data
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId
+        if (result.resultCode == android.app.Activity.RESULT_OK && data != null && deviceId != null) {
+            ScreenShareService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId, data)
+        } else {
+            // The system dialog was dismissed. The tutor is still waiting on a "yes" that will
+            // now never produce a stream, so say so rather than leaving them watching a spinner.
+            screenShareSignaling?.send(
+                JSONObject().put("type", "screen_share_stop").put("reason", "projection_cancelled")
+            )
+        }
+    }
 
     // Sprint 20: la administración del dispositivo se concede en una pantalla del sistema, igual
     // que el acceso a uso — pero aquí sí existe un intent con resultado, así que no hace falta el
@@ -210,6 +240,32 @@ fun SupervisedScreen(
         onDispose { LocationReportingService.stop(context) }
     }
 
+    // Sprint 23: a second, short-lived WebSocket, open only while this screen is composed, whose
+    // single job is hearing the tutor ask to see the screen. It is separate from
+    // RuleEnforcementService's connection on purpose: that one is gated on usage-access
+    // permission, which has nothing to do with screen sharing, and a request that arrives while
+    // the app is closed cannot be answered anyway — the supervised person has to be here to tap
+    // through Android's own capture dialog. Once they accept, ScreenShareService opens its own
+    // connection for the session itself, so backgrounding this screen no longer matters.
+    DisposableEffect(state) {
+        val linked = state as? SupervisedState.Linked
+        val deviceId = LinkedDeviceStore.read(context)?.deviceId
+        if (linked == null || deviceId == null) return@DisposableEffect onDispose { }
+
+        val client = RealtimeClient(BuildConfig.API_BASE_URL)
+        screenShareSignaling = client
+        client.connect(deviceId, accessToken) { event, _ ->
+            when (event) {
+                "screen_share_request" -> screenShareRequested = true
+                "screen_share_stop" -> screenShareRequested = false
+            }
+        }
+        onDispose {
+            client.disconnect()
+            screenShareSignaling = null
+        }
+    }
+
     // Sprint 19: the background counterpart to the heartbeat/app-sync loops above — same data,
     // sent by SyncWorker instead, on WorkManager's own schedule (15-minute floor, requires
     // connectivity) so it keeps happening while this screen isn't composed. No permission gate:
@@ -304,6 +360,63 @@ fun SupervisedScreen(
                             color = Color(0xFF7D899A),
                             fontSize = 12.sp,
                         )
+                    }
+                }
+            }
+        }
+
+        // Sprint 23. Shown only while a request is actually pending, and always above the
+        // permission cards: it is the one card that is answering a person waiting on the other
+        // end, not a setting to get around to. Declining is a first-class button, not a way out
+        // of a dialog — the tutor is told either way.
+        if (state is SupervisedState.Linked && screenShareRequested) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF1D2436),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Tu tutor quiere ver esta pantalla",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Si aceptas, Android te pedirá confirmarlo otra vez y verás un aviso " +
+                            "permanente mientras dure la transmisión. Puedes detenerla en " +
+                            "cualquier momento desde ese aviso.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            screenShareSignaling?.send(
+                                JSONObject()
+                                    .put("type", "screen_share_consent")
+                                    .put("granted", true)
+                            )
+                            screenCaptureLauncher.launch(ScreenCapture.consentIntent(context))
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
+                    ) {
+                        Text("Aceptar")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            screenShareRequested = false
+                            screenShareSignaling?.send(
+                                JSONObject()
+                                    .put("type", "screen_share_consent")
+                                    .put("granted", false)
+                            )
+                        }
+                    ) {
+                        Text("Ahora no", color = Color(0xFFABB5C4))
                     }
                 }
             }

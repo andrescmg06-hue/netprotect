@@ -158,7 +158,9 @@ class RuleEnforcementService : Service() {
         // this simple.
         val forceRulesRefresh = AtomicBoolean(false)
         RealtimeClient(baseUrl).also { realtimeClient = it }
-            .connect(deviceId, accessToken) { forceRulesRefresh.set(true) }
+            .connect(deviceId, accessToken) { event, _ ->
+                if (event == "rules_changed") forceRulesRefresh.set(true)
+            }
         // Tracks the last *other* app we evaluated, so returning to an app already handled
         // this "visit" doesn't spam the block screen. Reset to null whenever our own package
         // (including the block screen itself) comes to the foreground, so leaving and coming

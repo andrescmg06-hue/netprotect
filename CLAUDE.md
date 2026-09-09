@@ -66,7 +66,9 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (09/09/2026)
 
-Sprints 1 a 22 completos y verificados en CI.
+Sprints 1 a 22 completos y verificados en CI; Sprint 23 implementado y verde localmente (backend en
+Docker, `assembleDebug` de Android, lint/build del panel web), pendiente de la corrida de CI y de
+la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -364,8 +366,44 @@ exportación auditan su propia lectura (mismo criterio ya usado por `list_alerts
 panel web (filtros + paginación + export); Android es sólo lectura, sin filtros, y es la primera
 sección de `TutorScreen` que es de cuenta en vez de por dispositivo. Ver `docs/sprint-22.md`.
 
-**Siguiente: Sprint 23 — Supervisión remota viable.** Ver `docs/planning/roadmap.md` y
-`docs/planning/plan-desarrollo.md` (Paso 22) para el alcance detallado antes de empezar.
+**Nota del Sprint 23, válida para cualquier sprint futuro que toque captura de pantalla, WebRTC o
+el canal en tiempo real**: el consentimiento de `MediaProjection` es **por sesión y no
+reutilizable** — verificado en fuente oficial: un `MediaProjection` sirve para una sola
+`createVirtualDisplay()`, y reutilizar el `Intent` de `createScreenCaptureIntent()` lanza
+`SecurityException` desde Android 14; además, sin registrar un `MediaProjection.Callback` la
+captura ni siquiera arranca (`IllegalStateException`). No existe forma soportada de guardar un
+permiso de captura para usarlo luego en silencio, así que la tarjeta de consentimiento reaparece
+en cada solicitud por obligación de la plataforma, no sólo por decisión de producto. Android 15
+QPR1+ corta la proyección al bloquearse la pantalla y da al usuario un chip del sistema para
+detenerla; no se intenta evitar ninguna de las dos cosas. El visor va **sólo en el panel web**
+(mismo precedente del Sprint 22): el dispositivo es el *offerer* y el navegador el *answerer*, lo
+que deja la dependencia `io.getstream:stream-webrtc-android` únicamente en Android — Google ya no
+publica un AAR propio de WebRTC, y aquí sí se aceptó una dependencia pesada porque, a diferencia
+de `play-services-location` (Sprints 13/14), la plataforma **no ofrece alternativa**. La
+señalización reutiliza el WebSocket del Sprint 18: hasta ahora era sólo servidor→cliente y todo lo
+entrante se descartaba, así que lo entrante pasó a ser entrada no confiable — conjunto cerrado de
+tipos, tope de longitud por campo y **dirección permitida por rol** (`_SIGNAL_SENDER_ROLES`),
+tomando el rol del que se fijó al autenticar y nunca del cuerpo del mensaje. `relay_to_peer()`
+envía sólo al rol contrario, no hace broadcast. Se añadió un frame `{"event": "connected"}` tras
+autenticar: sin él, una solicitud relevada antes de que el otro socket terminara de registrarse se
+perdía en silencio (se manifestó como un cuelgue real de la suite, ver
+`docs/sprint-23-evidence.md`). Sin tabla nueva y sin estado de sesión en el backend: el corte lo
+detecta el propio estado ICE o un `screen_share_stop`. Se auditan cuatro momentos (solicitud,
+consentimiento otorgado/negado, inicio real, fin) — **excepción deliberada** a la norma de no
+auditar eventos originados por el dispositivo, porque el consentimiento es por definición una
+acción del supervisado; el "inicio real" se registra al llegar la oferta, la aproximación más fiel
+que el backend tiene, porque no puede observar el diálogo del sistema. Límite declarado: sólo STUN
+público (`WEBRTC_STUN_URLS`), sin TURN — detrás del NAT de una operadora normalmente no conectará;
+coturn queda para el Paso 25. Cámara y micrófono siguen siendo V2. Dos cosas más que
+`/security-review` encontró y que ya están corregidas y cubiertas por pruebas: una sesión está
+**anclada a la conexión del tutor que la pidió** (un dispositivo puede tener varios tutores activos
+con el canal abierto a la vez, y difundir la oferta al *rol* entero dejaba que otro respondiera
+primero y se llevara el video, con la auditoría nombrando a quien lo pidió); y el frame que abre
+una sesión **revalida el permiso contra la base de datos**, porque un WebSocket sobrevive al token
+que lo abrió y nada lo cierra al desvincular a un tutor. Ver `docs/sprint-23.md`.
+
+**Siguiente: Sprint 24 — Panel web completo.** Ver `docs/planning/roadmap.md` y
+`docs/planning/plan-desarrollo.md` (Paso 23) para el alcance detallado antes de empezar.
 
 ## Entorno de trabajo
 
@@ -462,6 +500,13 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   cancelar), de modo que cada `setState` quede dentro de un callback de promesa ya resuelta, nunca de
   forma síncrona ni delegado a un helper. Ver `frontend/src/app/page.tsx` (patrón ya existente desde
   el Sprint 3) o `frontend/src/components/DevicesPanel.tsx` (Sprint 6) como referencia.
+- Una excepción dentro de la tarea de un **WebSocket** no se ve: no aparece traza en la salida de
+  pytest ni se cierra el socket. Se manifiesta como una prueba **colgada para siempre**, no como
+  una prueba en rojo (en el Sprint 23 dejó un contenedor ocho horas en `[ 55%]`). Si una prueba de
+  WebSocket se cuelga, sospechar de una excepción silenciosa en el handler antes que de la lógica
+  del test — se localiza instrumentando con `print(..., flush=True)`. Caso concreto ya sufrido:
+  tras `db.expire_all()`, leer cualquier atributo de un objeto ORM cargado antes (incluido su
+  `id`) dispara una recarga perezosa que muere así; por eso la conexión guarda sólo el `user_id`.
 - `README.md` (raíz del repo) tiene su propia sección `## Alcance del Sprint N` por cada sprint —
   un changelog aparte de `docs/sprint-NN.md`, no mencionado en "Dónde está cada cosa" arriba. Se
   quedó sin actualizar en el Sprint 13 y sólo se notó al cerrar el Sprint 14 (el dueño del proyecto

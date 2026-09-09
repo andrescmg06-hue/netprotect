@@ -24,13 +24,19 @@ class RealtimeClient(private val baseUrl: String) {
     private val client = OkHttpClient()
     private var socket: WebSocket? = null
 
-    /** Fire-and-forget: reconnection on failure is intentionally not handled here. The one
-     * caller today (RuleEnforcementService) already polls `/rules/active` every
+    /** Fire-and-forget: reconnection on failure is intentionally not handled here. The original
+     * caller (RuleEnforcementService) already polls `/rules/active` every
      * RULES_REFRESH_INTERVAL_MS regardless of this channel — losing the socket only means
      * falling back to that existing interval instead of reacting instantly, never losing
-     * enforcement itself.
+     * enforcement itself. The Sprint 23 callers accept the same terms: a dropped socket ends a
+     * screen-sharing session rather than silently continuing one nobody is watching.
+     *
+     * [onEvent] receives the frame's name and its whole body. Server-initiated notifications name
+     * themselves in `event` (`rules_changed`, Sprint 18); WebRTC signalling frames relayed from
+     * the other peer name themselves in `type` (Sprint 23) — both are handed over here under one
+     * name so a caller can ignore what isn't theirs.
      */
-    fun connect(deviceId: String, accessToken: String, onRulesChanged: () -> Unit) {
+    fun connect(deviceId: String, accessToken: String, onEvent: (String, JSONObject) -> Unit) {
         val wsUrl = "${baseUrl.trimEnd('/').replaceFirst(Regex("^http"), "ws")}" +
             "/api/v1/devices/$deviceId/ws"
         val request = Request.Builder().url(wsUrl).build()
@@ -42,13 +48,20 @@ class RealtimeClient(private val baseUrl: String) {
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val event = runCatching { JSONObject(text).optString("event") }.getOrNull()
-                    if (event == "rules_changed") {
-                        onRulesChanged()
-                    }
+                    val body = runCatching { JSONObject(text) }.getOrNull() ?: return
+                    val name = body.optString("event").ifEmpty { body.optString("type") }
+                    if (name.isNotEmpty()) onEvent(name, body)
                 }
             },
         )
+    }
+
+    /** Sends a frame to the backend, which relays it to the other peer on this device's channel.
+     * Silently does nothing if the socket isn't open — signalling is best-effort by nature, and
+     * the session's own failure handling (ICE state, or the user stopping it) is what recovers.
+     */
+    fun send(message: JSONObject) {
+        socket?.send(message.toString())
     }
 
     fun disconnect() {

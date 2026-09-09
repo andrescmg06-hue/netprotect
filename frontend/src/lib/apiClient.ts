@@ -838,3 +838,20 @@ export function deviceRealtimeWebSocketUrl(deviceId: string): string {
   const wsBase = API_BASE_URL.replace(/^http/, "ws");
   return `${wsBase}/api/v1/devices/${deviceId}/ws`;
 }
+
+// Sprint 23 — remote screen viewing. The same socket above also carries the WebRTC signalling
+// between this browser and the supervised device; these are the ICE servers both ends must use.
+export type WebRtcConfig = {
+  ice_servers: string[];
+};
+
+export function fetchWebRtcConfig(
+  accessToken: string,
+  deviceId: string
+): Promise<WebRtcConfig> {
+  return requestJson<WebRtcConfig>(
+    `/api/v1/devices/${deviceId}/webrtc-config`,
+    { method: "GET" },
+    accessToken
+  );
+}

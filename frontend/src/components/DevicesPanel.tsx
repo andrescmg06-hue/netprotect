@@ -18,6 +18,7 @@ import { DeviceLocationPanel } from "./DeviceLocationPanel";
 import { DeviceRulesPanel } from "./DeviceRulesPanel";
 import { GeofencePanel } from "./GeofencePanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { RemoteViewPanel } from "./RemoteViewPanel";
 import { StatisticsPanel } from "./StatisticsPanel";
 
 type PanelState =
@@ -50,6 +51,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [expandedStatisticsId, setExpandedStatisticsId] = useState<string | null>(null);
   const [expandedAlertsId, setExpandedAlertsId] = useState<string | null>(null);
+  const [expandedRemoteViewId, setExpandedRemoteViewId] = useState<string | null>(null);
 
   // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
   // Every state update happens inside a .then/.catch callback rather than synchronously in
@@ -249,6 +251,16 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     >
                       {expandedAlertsId === device.id ? "Ocultar alertas" : "Ver alertas"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedRemoteViewId(
+                          expandedRemoteViewId === device.id ? null : device.id
+                        )
+                      }
+                    >
+                      {expandedRemoteViewId === device.id ? "Ocultar pantalla" : "Ver pantalla"}
+                    </button>
                   </div>
                   {expandedAppsId === device.id && (
                     <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
@@ -267,6 +279,9 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                   )}
                   {expandedAlertsId === device.id && (
                     <AlertsPanel accessToken={accessToken} deviceId={device.id} />
+                  )}
+                  {expandedRemoteViewId === device.id && (
+                    <RemoteViewPanel accessToken={accessToken} deviceId={device.id} />
                   )}
                   {expandedRulesId === device.id && (
                     <DeviceRulesPanel

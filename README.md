@@ -383,3 +383,25 @@ llama "registro inmutable". Disponible con filtros, paginación y exportación a
 web; en modo sólo lectura y sin filtros en la app del tutor en Android.
 
 El detalle está en `docs/sprint-22.md` y la evidencia en `docs/sprint-22-evidence.md`.
+
+## Alcance del Sprint 23
+
+Supervisión remota: el tutor puede ver **en vivo** la pantalla del dispositivo supervisado desde el
+panel web, por WebRTC. El dispositivo captura con `MediaProjection` y ofrece el stream; el
+navegador sólo responde y lo muestra, así que la dependencia de WebRTC queda únicamente en Android
+(`io.getstream:stream-webrtc-android`). La señalización viaja por el mismo WebSocket por
+dispositivo del Sprint 18, que hasta ahora sólo iba del servidor al cliente y ahora releva frames
+tipados y validados entre los dos extremos, cada uno limitado a los mensajes de su propio rol.
+
+Nada empieza sin dos aceptaciones de la persona supervisada —una en la app y otra en el diálogo del
+propio Android, que **no se puede reutilizar entre sesiones**— y mientras transmite hay una
+notificación permanente con un botón para cortarla. La solicitud, el consentimiento (otorgado o
+negado), el inicio real y el fin quedan en `audit_logs`. No se graba el video ni se crea ninguna
+tabla nueva.
+
+Límite declarado, no descubierto después: sólo hay STUN público configurado
+(`WEBRTC_STUN_URLS`), sin servidor TURN, así que la conexión sólo se establece cuando ambos
+extremos se alcanzan directamente (misma red local o NAT permisivo) — detrás del NAT de una
+operadora móvil normalmente no conectará. Cámara y micrófono remotos quedan como V2 explícito.
+
+El detalle está en `docs/sprint-23.md` y la evidencia en `docs/sprint-23-evidence.md`.

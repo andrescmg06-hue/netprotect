@@ -36,6 +36,14 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- Sprint 23 (supervisión remota): la captura de pantalla se autoriza con el diálogo del
+         sistema (MediaProjectionManager.createScreenCaptureIntent()), no con este permiso — éste
+         sólo habilita el foreground service de tipo mediaProjection que Android exige mientras
+         dure la captura. El consentimiento es POR SESIÓN: verificado en la documentación oficial,
+         un MediaProjection sirve para una sola llamada a createVirtualDisplay() y reutilizar el
+         Intent lanza SecurityException. Ver docs/android/capability-matrix.md. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <application
         android:allowBackup="false"
         android:label="@string/app_name"
@@ -78,6 +86,14 @@
             android:name=".core.location.LocationReportingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Sprint 23: tipo predefinido mediaProjection, obligatorio para poder capturar la
+             pantalla. La notificación persistente que Android exige aquí no es un extra: mientras
+             se comparte, el supervisado debe poder verlo y cortarlo. -->
+        <service
+            android:name=".core.screenshare.ScreenShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!-- Sprint 20 (detección de manipulación): registro como Device Administrator, NO como
              device owner. El usuario lo concede desde la pantalla del sistema

@@ -135,6 +135,19 @@ class Settings(BaseSettings):
     # mode window (both evaluated in local time on-device, Sprint 8/12) still gets flagged.
     device_clock_skew_alert_seconds: int = 300
 
+    # Remote screen viewing (Sprint 23). WebRTC needs at least one STUN server to discover each
+    # peer's public address before it can try a direct connection. Served to both clients from
+    # GET /devices/{id}/webrtc-config instead of being hardcoded in Kotlin and TypeScript
+    # separately, so the day a TURN server exists it is added here only. Not a secret: STUN URLs
+    # are public infrastructure addresses, which is why this is a plain default rather than a
+    # change_me_* placeholder.
+    #
+    # No TURN server is configured, and that is a documented limitation, not an oversight: STUN
+    # alone only works when the two peers can reach each other directly (same LAN, or NATs
+    # permissive enough to hole-punch). Behind most mobile/carrier-grade NAT this simply will not
+    # connect — see docs/sprint-23.md.
+    webrtc_stun_urls: str = "stun:stun.l.google.com:19302"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -149,6 +162,10 @@ class Settings(BaseSettings):
     @property
     def allowed_hosts_list(self) -> list[str]:
         return [item.strip() for item in self.allowed_hosts.split(",") if item.strip()]
+
+    @property
+    def webrtc_stun_urls_list(self) -> list[str]:
+        return [item.strip() for item in self.webrtc_stun_urls.split(",") if item.strip()]
 
     @model_validator(mode="after")
     def _reject_dev_secrets_in_production(self) -> "Settings":

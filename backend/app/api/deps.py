@@ -93,3 +93,34 @@ async def require_supervised_owner_of_device(
     if device is None or device.supervised_user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
     return device
+
+
+async def require_device_participant(
+    device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Device:
+    """Either side of a device's channel — its active tutor or the supervised user themselves.
+
+    Introduced in Sprint 23 for the one endpoint both peers legitimately need before they can
+    talk to each other (GET /devices/{id}/webrtc-config): the device is one WebRTC peer and the
+    tutor's browser is the other, so gating it to a single role would break the half that isn't
+    chosen. Every other device endpoint stays on the narrower of the two checks above; this is
+    not a general-purpose relaxation. Same 404-for-both anti-IDOR reasoning as its neighbours.
+    """
+    device = await db.get(Device, device_id)
+    if device is not None and device.supervised_user_id == current_user.id:
+        return device
+
+    is_tutor = (
+        await db.execute(
+            select(TutorDevice.id).where(
+                TutorDevice.device_id == device_id,
+                TutorDevice.tutor_user_id == current_user.id,
+                TutorDevice.unlinked_at.is_(None),
+            )
+        )
+    ).first() is not None
+    if device is None or not is_tutor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
+    return device

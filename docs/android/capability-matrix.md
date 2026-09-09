@@ -21,7 +21,7 @@ asumir capacidades que una aplicación Android convencional no posee.
 | Detectar intento de desinstalación | Registro como Device Administrator (`DeviceAdminReceiver.onDisableRequested()`) — no existe ninguna API para detectar la desinstalación en sí | Activación por el usuario vía `ACTION_ADD_DEVICE_ADMIN` (pantalla del sistema); `BIND_DEVICE_ADMIN` en el receiver | No impide desinstalar: sólo obliga a desactivar el administrador primero, y eso avisa. El usuario puede retirarlo cuando quiera; el *callback* no tiene veto | Sprint 20 — ver detalle abajo |
 | Saber si un servicio propio sigue vivo desde otro proceso | Ninguna API soportada (`getRunningServices()` obsoleto y limitado al propio proceso) — marca de tiempo cooperativa (`EnforcementLiveness`) | Ninguno | Cooperativa por diseño: detecta paradas ordinarias, no a un adversario técnico decidido | Sprint 20 — ver detalle abajo |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
-| Captura de pantalla | `MediaProjection` | Consentimiento del usuario y foreground service `mediaProjection` | En Android moderno el consentimiento no puede reutilizarse indefinidamente; cada sesión debe respetar las reglas vigentes | Evaluar Sprint 23 |
+| Captura de pantalla | `MediaProjection` + `ScreenCapturerAndroid` (WebRTC) | Diálogo del sistema (`createScreenCaptureIntent()`) **por sesión** + foreground service `mediaProjection` + `FOREGROUND_SERVICE_MEDIA_PROJECTION` | Un `MediaProjection` sirve para **una sola** `createVirtualDisplay()`; reutilizar el `Intent` lanza `SecurityException`. Android 15 QPR1+ la corta al bloquear la pantalla y ofrece un chip del sistema para detenerla | Sprint 23 — ver detalle abajo |
 | Cámara remota | Camera + foreground service cuando aplique | `CAMERA` y estado/flujo permitido | Permisos while-in-use y restricciones para iniciar desde background | V2/Futuro |
 | Micrófono remoto | AudioRecord/MediaRecorder + FGS cuando aplique | `RECORD_AUDIO` | Restricciones while-in-use/background | V2/Futuro |
 | Administración empresarial profunda | Device Policy APIs / DPC | Aprovisionamiento como device/profile owner cuando corresponda | No debe asumirse para una instalación parental convencional de Play Store | Fuera del MVP salvo caso justificado |
@@ -617,6 +617,100 @@ no adoptada** (fila "Filtrado de tráfico local" de la tabla, pospuesta en el Sp
 retomada). Sin componente VPN no hay revocación que detectar; ver `docs/sprint-20.md` para la
 decisión completa.
 
+## Sprint 23 — Captura de pantalla y WebRTC: verificación detallada (09/09/2026)
+
+Procedimiento obligatorio de la Fase C aplicado antes de escribir código, como en los sprints
+anteriores. Fuentes oficiales consultadas directamente; lo que no se pudo confirmar se declara.
+
+### `MediaProjection`: el consentimiento es por sesión, y eso no es configurable
+
+Verificado literalmente en la documentación oficial: *"Your app must request user consent before
+each media projection session. A session is a single call to `createVirtualDisplay()`. A
+`MediaProjection` token must be used only once to make the call."* Desde Android 14 (API 34),
+`createVirtualDisplay()` lanza **`SecurityException`** si la app guarda el `Intent` devuelto por
+`createScreenCaptureIntent()` y lo pasa más de una vez a `getMediaProjection()`, o si llama a
+`createVirtualDisplay()` dos veces sobre la misma instancia.
+
+**Consecuencia de diseño, no limitación a sortear**: no existe forma soportada de que este
+proyecto obtenga un permiso de captura "permanente" que luego use en silencio. Cada vez que el
+tutor pide ver la pantalla, la persona supervisada tiene que confirmarlo en una pantalla del
+sistema operativo. Eso es exactamente lo que este sprint quería, así que no se buscó ninguna
+alternativa: la API impone el mismo límite que la ética del producto.
+
+### `MediaProjection.Callback` es obligatorio (no opcional)
+
+*"If your app doesn't register this callback, `MediaProjection#createVirtualDisplay` throws an
+`IllegalStateException` when your app invokes it."* Registrarlo no es una buena práctica opcional:
+sin él la captura ni siquiera arranca. `ScreenCapturerAndroid` (librería WebRTC) recibe ese
+callback en su constructor, que es donde este proyecto lo pasa (`ScreenShareService.startCapture`).
+
+Además es la única vía por la que la app se entera de que el sistema terminó la proyección por su
+cuenta. Android 15 QPR1+ enumera esos casos: el usuario la detiene desde la UI de la app o desde
+el **chip del sistema en la barra de estado**, *"the screen is being locked"*, arranca otra sesión
+de proyección, o muere el proceso. Es decir: **el bloqueo de pantalla corta la transmisión**, y el
+usuario supervisado siempre tiene un botón del propio sistema operativo para cortarla — ninguna de
+las dos cosas se puede impedir, y este proyecto no lo intenta (coherente con la decisión de no
+perseguir sigilo desde el Sprint 8).
+
+### Foreground service de tipo `mediaProjection`
+
+Requiere `FOREGROUND_SERVICE` (ya declarado desde el Sprint 8) y **`FOREGROUND_SERVICE_MEDIA_PROJECTION`**
+(nuevo), más `android:foregroundServiceType="mediaProjection"` en el `<service>`. Es un tipo
+predefinido: a diferencia de `RuleEnforcementService` (Sprint 8) no necesita
+`PROPERTY_SPECIAL_USE_FGS_SUBTYPE`. Si el tipo no se declara, el sistema lanza
+`MissingForegroundServiceTypeException`.
+
+### Compartir una sola ventana en vez de toda la pantalla (Android 14+)
+
+*"Android 14 (API level 34) introduces app screen sharing, which enables users to share a single
+app window instead of the entire device screen"*, y está **activo por defecto**: en cada sesión el
+usuario elige entre una app concreta o la pantalla completa. Se puede optar por salir con
+`MediaProjectionConfig.createConfigForDefaultDisplay()`, pero **este proyecto no lo hace a
+propósito**: forzar "pantalla completa" sería quitarle a la persona supervisada la única
+graduación que el sistema le ofrece sobre cuánto muestra. Se documenta como decisión, no como
+descuido.
+
+### WebRTC en Android: no hay artefacto oficial de Google
+
+Google dejó de publicar su AAR precompilado (`org.webrtc:google-webrtc`, última versión de la
+época de JCenter) y no lo reemplazó por otro en Maven Central. Las opciones reales eran compilar
+libwebrtc desde el código fuente (inviable como dependencia de este proyecto) o usar un fork
+mantenido. Se eligió **`io.getstream:stream-webrtc-android` 1.3.10** (verificado en Maven Central),
+que conserva el mismo paquete y API `org.webrtc.*`, incluida `ScreenCapturerAndroid`, la clase que
+convierte una `MediaProjection` en una pista de video WebRTC.
+
+Es, con diferencia, la dependencia más pesada de la app (incluye bibliotecas nativas —
+`libjingle_peerconnection_so.so`, visible en la salida real de `assembleDebug`). Se acepta porque,
+a diferencia de los casos anteriores en que este proyecto evitó dependencias grandes
+(`play-services-location` en los Sprints 13/14, el Maps SDK), aquí **no existe una alternativa en
+la plataforma**: Android no trae ninguna pila WebRTC ni ningún transporte de video peer-to-peer
+propio.
+
+### STUN/TURN: por qué esto es "viable" y no "funciona en cualquier red"
+
+WebRTC necesita servidores ICE para atravesar NAT. Este proyecto configura **sólo STUN público**
+(`settings.webrtc_stun_urls`) y **no tiene TURN**. STUN sólo permite conectar cuando los dos
+extremos pueden alcanzarse directamente (misma red local, o NAT lo bastante permisivo para
+*hole punching*). **Detrás del NAT de una operadora móvil, esto normalmente no conectará.** No se
+disimula en la interfaz: el panel del tutor muestra ese caso con un mensaje propio. Levantar un
+TURN (por ejemplo coturn) queda para el Paso 25, junto con el dominio y los certificados reales.
+
+### Cámara y micrófono remotos: se mantienen como V2
+
+El Paso 22 del plan permite decidirlos "con el mismo criterio". La decisión de este sprint es
+**no** implementarlos: son superficies de permiso nuevas (`CAMERA`, `RECORD_AUDIO`) y, a
+diferencia de la pantalla —que el propio sistema muestra que se está compartiendo y el usuario
+puede cortar—, no aportan nada al caso de uso de control parental que la pantalla no cubra ya.
+Las filas correspondientes de la tabla siguen marcadas como V2/Futuro.
+
+### Pendiente de confirmar
+
+1. Comportamiento real de la captura y del rendimiento de codificación en un **dispositivo físico**
+   (no sólo emulador), incluida la latencia extremo a extremo. Ver `docs/sprint-23-evidence.md`
+   para lo que sí se verificó.
+2. Si el emulador de Android expone el chip de la barra de estado de Android 15 QPR1+ tal como lo
+   describe la documentación — no se pudo comprobar en esta máquina.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -643,5 +737,8 @@ decisión completa.
 - Android Developers — Geofencing API (`GeofencingClient`, permisos, límite de 100 geocercas, latencia de detección), Sprint 14.
 - Android Developers — `DeviceAdminReceiver` (`onDisableRequested()`/`onDisabled()`), Sprint 20.
 - Android Developers — Device administration overview (`ACTION_ADD_DEVICE_ADMIN`, `BIND_DEVICE_ADMIN`, `<uses-policies>`, desinstalación bloqueada mientras el administrador está activo), Sprint 20.
+- Android Developers — `MediaProjection`: consentimiento por sesión, `MediaProjection.Callback` obligatorio, foreground service `mediaProjection`, app screen sharing de Android 14 y auto-detención de Android 15 QPR1+, Sprint 23.
+- Android Developers — Cambios de comportamiento de Android 14 (`SecurityException` al reutilizar el token de proyección, `IllegalStateException` sin callback registrado), Sprint 23.
+- Maven Central — `io.getstream:stream-webrtc-android` (fork mantenido de libwebrtc, API `org.webrtc.*`), Sprint 23.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.

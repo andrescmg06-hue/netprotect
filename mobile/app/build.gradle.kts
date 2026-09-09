@@ -112,6 +112,16 @@ dependencies {
     // the foreground — see SupervisedScreen.kt's original comment on why this was deferred here.
     implementation(libs.androidx.work.runtime.ktx)
 
+    // Sprint 23: WebRTC (screen sharing). Google stopped publishing its own prebuilt
+    // `org.webrtc:google-webrtc` AAR years ago (last release 1.0.32006, JCenter-era), so there is
+    // no first-party artifact to depend on; GetStream's fork tracks upstream libwebrtc and keeps
+    // the same `org.webrtc.*` API, including ScreenCapturerAndroid, which is what turns a
+    // MediaProjection into a WebRTC video track. Building libwebrtc from source was the only
+    // other option and is not a reasonable dependency for this project. Unlike okhttp/Room, this
+    // one ships native .so libraries — it is the largest dependency in the app by far, accepted
+    // because peer-to-peer video has no java.net-shaped alternative at all.
+    implementation(libs.stream.webrtc.android)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
