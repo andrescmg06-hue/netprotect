@@ -64,9 +64,9 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (08/09/2026)
+## Estado actual (09/09/2026)
 
-Sprints 1 a 20 completos y verificados en CI.
+Sprints 1 a 21 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -127,7 +127,16 @@ desinstalación (detectado registrando la app como Device Administrator, **no** 
 generan alertas `HIGH`/`CRITICAL` en la bandeja ya existente del Sprint 17 y dejan el dispositivo
 en estado `ALERT`, sin impedir ninguna de esas acciones: se registra y se alerta, no se bloquea.
 Las cuatro primeras viajan como campos opcionales del *heartbeat*; la quinta tiene endpoint propio
-(`POST /devices/{id}/tamper-events`). Ninguna tabla nueva.
+(`POST /devices/{id}/tamper-events`). Ninguna tabla nueva. Y endurecimiento de seguridad
+(Sprint 21): rate limiting global por IP en toda la API (más límites propios en `/auth/google` y
+`/auth/refresh`, que antes no tenían ninguno), validación de longitud en los schemas de auth,
+cabeceras ampliadas (`Cache-Control: no-store` y `Cross-Origin-Resource-Policy` siempre; HSTS y
+CSP sólo en producción), rechazo de tráfico no-HTTPS en producción, `Settings` que se niega a
+arrancar en producción con un secreto de desarrollo puesto, un `exception_handler` genérico que
+impide que un error inesperado filtre su mensaje, `network_security_config.xml` en Android, y
+`pip-audit`/`npm audit` en CI — todo verificado con un escaneo real de OWASP ZAP contra el backend
+(dos hallazgos encontrados y corregidos) y de MobSF contra el APK debug y release. Ninguna tabla
+ni migración nueva.
 
 **Nota importante descubierta en el Sprint 7, válida para cualquier sprint futuro que toque
 permisos Android sensibles**: las políticas de Google Play (formulario de declaración de permisos,
@@ -308,11 +317,35 @@ un servicio propio sigue vivo desde otro proceso; se sella también en
 `RuleEnforcementService.start()` (síncrono) para que el primer latido de cada sesión no reporte un
 `SERVICE_INACTIVE` falso, y se borra en `stop()` porque una parada deliberada no es manipulación.
 
-**Siguiente: Sprint 21 — Seguridad integral.** Repaso de OWASP Top 10 y OWASP API Top 10 sobre lo
-construido, con OWASP ASVS como lista de comprobación; rate limiting global, validación estricta,
-cabeceras, CORS mínimo, gestión de secretos y TLS obligatorio; escaneo con OWASP ZAP contra el
-entorno propio y MobSF sobre el APK. Empezar leyendo `docs/security-baseline.md`, que ya lleva la
-matriz de permisos y los controles aplicados hasta hoy.
+**Nota del Sprint 21, válida para cualquier sprint que toque rate limiting, cabeceras o el
+cliente de Redis**: hay **dos** criterios de rate limiting a propósito, y confundirlos rompe uno
+de los dos. `app/core/rate_limit.py` (`enforce_rate_limit`, usado por `/auth/google`,
+`/auth/refresh` y `/pairing/*`) falla **cerrado** — 503 si Redis no responde —, porque una
+protección anti-fuerza-bruta que desaparece en silencio no es protección. El limitador **global**
+de `enforcement_middleware` (`app/main.py`, todas las rutas salvo `/api/v1/health*`) falla
+**abierto**, porque tumbar el 100% de la API por una caída de Redis es una regresión de
+disponibilidad desproporcionada para una capa genérica anti-abuso. `/api/v1/health*` queda
+excluido del conteo por dos razones, ambas reales: un chequeo de salud no debe depender del mismo
+Redis que vigila, y `test_health.py` corre en el job `backend` de CI **sin infraestructura**
+(cualquier cosa que haga tocar Redis a `/health` rompe ese job). Consecuencia descubierta al
+correr la suite completa: como ahora *cada* petición toca Redis, la carrera de *event loop*
+cruzado que el docstring de `close_redis()` ya advertía dejó de ser teórica — `hit_rate_limit()`
+traduce por eso `(RedisError, OSError, RuntimeError)` a `RateLimitBackendError`, y el
+`RuntimeError` de ese trío **no es decorativo**: una conexión con el transporte roto no lanza
+`RedisError`, y sin esa traducción reventaba la petición con un 500 en vez del *fail-open*
+diseñado. `compose.test.yaml` sube `RATE_LIMIT_GLOBAL_MAX_PER_IP` a 100000 porque la suite entera
+sale de una sola IP simulada; los tests que ejercitan el limitador fijan su propio valor por test.
+TLS: lo que existe es *enforcement* (en producción, `request.url.scheme != "https"` → 400), no
+*terminación* — el certificado y el proxy inverso siguen siendo del Paso 25, que exige un dominio
+real. HSTS y CSP sólo se envían en producción: en dev/test romperían los assets de Swagger UI, que
+ahí sigue habilitado. Ver `docs/sprint-21.md` y `docs/sprint-21-evidence.md` (incluye los
+hallazgos reales de ZAP ya corregidos y los de MobSF revisados uno por uno).
+
+**Siguiente: Sprint 22 — Auditoría.** Registro inmutable de acciones sensibles con actor, acción,
+recurso, fecha y origen; consulta de auditoría para el tutor y exportación. `record_audit_event`
+(`app/services/audit.py`) y la tabla `audit_logs` existen desde el Sprint 4 y ya se escriben, pero
+**no se exponen todavía** — eso es justo lo que falta. Ver `docs/planning/plan-desarrollo.md`
+(Paso 21) y la línea correspondiente en "Controles diferidos" de `docs/security-baseline.md`.
 
 ## Entorno de trabajo
 
