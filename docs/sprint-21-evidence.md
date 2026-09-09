@@ -240,6 +240,23 @@ $ grep -rniE "password\s*=|secret\s*=|api_key\s*=" mobile/app/src/main/java/
 Ambos hallazgos son falsos positivos contra bytecode de terceros, no contra código propio —
 documentados, no "arreglados", porque no hay nada propio que arreglar.
 
+## CI en GitHub Actions — los 4 jobs en verde
+
+Runner limpio, commit `a3a1138` (que incluye el fix de Redis descrito arriba):
+
+```
+$ gh run view 34305009763 --json conclusion,jobs
+success
+android: success
+integration: success
+backend: success
+frontend: success
+```
+
+La corrida anterior (`34300219278`, commit `ebb5bad`) falló exactamente en `integration` con el
+`RuntimeError` de *loop* cruzado — es la que motivó el diagnóstico y el fix; queda registrada aquí
+en vez de borrada, porque es la prueba de que el problema era real y no un test inestable.
+
 ## Certificate pinning y CSP con nonce
 
 No implementados este sprint — ver "Controles que quedan fuera de este sprint" en `sprint-21.md`
