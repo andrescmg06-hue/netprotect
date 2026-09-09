@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
+from app.core.rate_limit import client_ip as rate_limit_client_ip
+from app.core.rate_limit import enforce_rate_limit
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -78,6 +80,12 @@ async def login_with_google(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenPairResponse:
+    await enforce_rate_limit(
+        f"ratelimit:auth:login:ip:{rate_limit_client_ip(request)}",
+        limit=settings.auth_login_max_per_ip,
+        window_seconds=settings.auth_login_window_seconds,
+    )
+
     try:
         identity = verify_google_id_token(payload.id_token)
     except InvalidGoogleTokenError as exc:
@@ -109,6 +117,12 @@ async def refresh_tokens(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenPairResponse:
+    await enforce_rate_limit(
+        f"ratelimit:auth:refresh:ip:{rate_limit_client_ip(request)}",
+        limit=settings.auth_refresh_max_per_ip,
+        window_seconds=settings.auth_refresh_window_seconds,
+    )
+
     token_hash = hash_refresh_token(payload.refresh_token)
     result = await db.execute(
         select(UserSession).where(UserSession.refresh_token_hash == token_hash)

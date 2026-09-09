@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +38,23 @@ class Settings(BaseSettings):
     pairing_redeem_max_per_user: int = 10
     pairing_redeem_max_per_ip: int = 30
     pairing_redeem_window_seconds: int = 900
+
+    # Sprint 21: /auth/google and /auth/refresh had no rate limit at all before this — the same
+    # brute-force reasoning that already protects pairing codes applies here (fails closed, see
+    # app/core/rate_limit.py). /auth/logout is deliberately excluded: it requires already holding
+    # a refresh token, so it isn't a brute-force target the way login/refresh are.
+    auth_login_max_per_ip: int = 20
+    auth_login_window_seconds: int = 900
+    auth_refresh_max_per_ip: int = 30
+    auth_refresh_window_seconds: int = 900
+
+    # Sprint 21: a coarse, blanket per-IP limit applied to every route except /health (see
+    # app/main.py). Deliberately generous and fail-open (unlike the auth/pairing limits above):
+    # its job is to blunt scripted abuse and accidental request storms across the whole API, not
+    # to gate a single high-value target — an outage in the rate-limit backend must not take the
+    # entire API down with it.
+    rate_limit_global_max_per_ip: int = 300
+    rate_limit_global_window_seconds: int = 60
 
     # A device that hasn't sent a heartbeat within this window is reported OFFLINE even
     # though its stored status still says ONLINE — computed at read time, not written by a
@@ -131,6 +149,38 @@ class Settings(BaseSettings):
     @property
     def allowed_hosts_list(self) -> list[str]:
         return [item.strip() for item in self.allowed_hosts.split(",") if item.strip()]
+
+    @model_validator(mode="after")
+    def _reject_dev_secrets_in_production(self) -> "Settings":
+        """Fails fast at startup instead of silently running production on dev-only secrets.
+
+        Sprint 21: nothing previously stopped `APP_ENV=production` from booting with the literal
+        `change_me_dev_only_*` defaults still in place if an operator forgot to override `.env` —
+        a misconfiguration that would otherwise only surface once someone actually exploited it.
+        Compares against each field's own declared default rather than hardcoding the literal a
+        second time here, so this check can't silently drift out of sync with config.py above.
+        """
+        if self.app_env != "production":
+            return self
+
+        defaults = type(self).model_fields
+        unsafe = [
+            env_var
+            for env_var, field_name in (
+                ("DATABASE_URL", "database_url"),
+                ("REDIS_URL", "redis_url"),
+                ("JWT_SECRET", "jwt_secret"),
+                ("PAIRING_CODE_PEPPER", "pairing_code_pepper"),
+                ("LOCATION_ENCRYPTION_KEY", "location_encryption_key"),
+            )
+            if getattr(self, field_name) == defaults[field_name].default
+        ]
+        if unsafe:
+            raise ValueError(
+                "app_env=production but still using development default secrets for: "
+                + ", ".join(unsafe)
+            )
+        return self
 
 
 @lru_cache

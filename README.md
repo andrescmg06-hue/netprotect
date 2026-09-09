@@ -347,3 +347,25 @@ enunciado, queda explícitamente fuera: este proyecto no tiene componente VPN. N
 la migración toca un único `CHECK`, el de `alert_type`.
 
 El detalle está en `docs/sprint-20.md`.
+
+## Alcance del Sprint 21
+
+Seguridad integral: repaso sistemático OWASP Top 10/API Top 10/ASVS, rate limiting global,
+validación estricta, cabeceras, TLS obligatorio a nivel de aplicación, gestión de secretos, y
+escaneo real con OWASP ZAP y MobSF. Antes sólo `/pairing/*` tenía límite de frecuencia; ahora
+`/auth/google` y `/auth/refresh` también lo tienen (fallan *cerrado*, mismo criterio que pairing),
+y toda ruta salvo `/api/v1/health*` cuenta contra un límite global por IP que falla *abierto* — una
+caída de Redis no debe tumbar el 100% de la API. `Settings` ahora rehúsa arrancar en producción si
+cualquier secreto (`JWT_SECRET`, `PAIRING_CODE_PEPPER`, `DATABASE_URL`, `REDIS_URL`,
+`LOCATION_ENCRYPTION_KEY`) sigue en su valor de desarrollo, y un `exception_handler` genérico
+evita que un error no manejado filtre su mensaje original. Cabeceras ampliadas en backend y
+frontend (`Cache-Control: no-store`, `Cross-Origin-Resource-Policy`, y `Strict-Transport-Security`/
+`Content-Security-Policy` sólo en producción); en producción, una petición que no llega como HTTPS
+recibe 400 antes de procesar nada (la terminación TLS real sigue pendiente de un dominio, Paso 25).
+`pip-audit` y `npm audit` corren ahora en CI. Un escaneo real de OWASP ZAP contra el backend
+encontró y corrigió dos hallazgos reales (caché y `Cross-Origin-Resource-Policy`); un escaneo real
+de MobSF contra el APK (debug y release) no encontró hallazgos `HIGH` en el build de release. Sin
+certificate pinning todavía (no hay certificado de producción real contra el cual fijarlo).
+
+El detalle está en `docs/sprint-21.md` y la evidencia completa (comandos y salida real, incluidos
+los reportes de ZAP/MobSF) en `docs/sprint-21-evidence.md`.

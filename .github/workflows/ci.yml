@@ -25,6 +25,9 @@ jobs:
             backend/requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: ruff check app tests
+      # Sprint 21: dependency scanning against PyPI's advisory data. Runs after install so it
+      # audits what actually got resolved, not just what the pins ask for.
+      - run: pip-audit --strict --requirement requirements.txt --requirement requirements-dev.txt
       - run: pytest -q -m "not integration"
 
   frontend:
@@ -40,6 +43,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-audit --no-fund
+      # Sprint 21: `npm ci --no-audit` above keeps install output quiet; the audit is its own
+      # step so a failure points at the advisory, not at a broken install. --audit-level=high
+      # to avoid gating CI on low/moderate advisories that often have no fix available yet.
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run build
 

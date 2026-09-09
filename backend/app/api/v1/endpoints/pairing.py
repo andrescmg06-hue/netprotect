@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_role, require_tutor_of_device
-from app.cache.redis_client import RateLimitBackendError, hit_rate_limit
 from app.core.config import settings
+from app.core.rate_limit import client_ip, enforce_rate_limit
 from app.core.security import (
     generate_pairing_code,
     hash_pairing_code,
@@ -30,31 +30,6 @@ from app.services.audit import record_audit_event
 router = APIRouter(tags=["pairing"])
 
 _MAX_CODE_GENERATION_ATTEMPTS = 5
-
-
-def _client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
-
-
-async def _enforce_rate_limit(key: str, *, limit: int, window_seconds: int) -> None:
-    """Counts the attempt and rejects with 429 once over the limit.
-
-    Fails closed on a Redis outage (503 rather than letting the attempt through): brute-force
-    protection that silently disappears when the cache is down is not protection.
-    """
-    try:
-        result = await hit_rate_limit(key, limit=limit, window_seconds=window_seconds)
-    except RateLimitBackendError as exc:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, detail="rate_limit_unavailable"
-        ) from exc
-
-    if not result.allowed:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="too_many_attempts",
-            headers={"Retry-After": str(result.retry_after_seconds)},
-        )
 
 
 def _invalid_code() -> HTTPException:
@@ -81,7 +56,7 @@ async def generate_pairing_code_endpoint(
     current_user: User = Depends(require_role(TUTOR)),
     db: AsyncSession = Depends(get_db),
 ) -> PairingCodeResponse:
-    await _enforce_rate_limit(
+    await enforce_rate_limit(
         f"ratelimit:pairing:generate:user:{current_user.id}",
         limit=settings.pairing_generate_max_per_tutor,
         window_seconds=settings.pairing_generate_window_seconds,
@@ -132,7 +107,7 @@ async def generate_pairing_code_endpoint(
         actor_user_id=current_user.id,
         action="PAIRING_CODE_GENERATED",
         resource_type="pairing_code",
-        ip_address=_client_ip(request),
+        ip_address=client_ip(request),
     )
     await db.commit()
 
@@ -170,7 +145,7 @@ async def revoke_current_pairing_code(
         actor_user_id=current_user.id,
         action="PAIRING_CODE_REVOKED",
         resource_type="pairing_code",
-        ip_address=_client_ip(request),
+        ip_address=client_ip(request),
     )
     await db.commit()
 
@@ -184,14 +159,14 @@ async def redeem_pairing_code(
     current_user: User = Depends(require_role(SUPERVISADO)),
     db: AsyncSession = Depends(get_db),
 ) -> RedeemPairingCodeResponse:
-    client_ip = _client_ip(request)
-    await _enforce_rate_limit(
+    ip = client_ip(request)
+    await enforce_rate_limit(
         f"ratelimit:pairing:redeem:user:{current_user.id}",
         limit=settings.pairing_redeem_max_per_user,
         window_seconds=settings.pairing_redeem_window_seconds,
     )
-    await _enforce_rate_limit(
-        f"ratelimit:pairing:redeem:ip:{client_ip}",
+    await enforce_rate_limit(
+        f"ratelimit:pairing:redeem:ip:{ip}",
         limit=settings.pairing_redeem_max_per_ip,
         window_seconds=settings.pairing_redeem_window_seconds,
     )
@@ -280,7 +255,7 @@ async def redeem_pairing_code(
         action="DEVICE_LINKED",
         resource_type="device",
         resource_id=str(device.id),
-        ip_address=client_ip,
+        ip_address=ip,
     )
     await db.commit()
 
@@ -338,7 +313,7 @@ async def unlink_device(
         action="DEVICE_UNLINKED",
         resource_type="device",
         resource_id=str(device.id),
-        ip_address=_client_ip(request),
+        ip_address=client_ip(request),
     )
     await db.commit()
 

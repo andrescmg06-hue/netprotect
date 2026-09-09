@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sprint 21: control de cleartext más fino que el atributo global usesCleartextTraffic del
+     manifest (que sigue declarado y no estorba: cuando hay networkSecurityConfig, Android da
+     precedencia a este archivo). Base estricta para todas las variantes; el source set `debug`
+     superpone su propia versión de este mismo archivo con la excepción del emulador. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

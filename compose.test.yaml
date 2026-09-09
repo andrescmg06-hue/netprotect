@@ -66,6 +66,11 @@ services:
       LOCATION_ENCRYPTION_KEY: KkxP1iS9ZDOzTx6NGgiAftFSQrsczN4j7bHr8_yd7VI=
       LOG_LEVEL: WARNING
       RUN_INTEGRATION_TESTS: "1"
+      # Sprint 21: the whole suite runs hundreds of requests a minute from a single simulated
+      # address, which the production default (300/min per IP) rightly treats as abuse. Raised
+      # here so unrelated tests don't fail on a shared budget; the tests that actually exercise
+      # the limiter set their own value per test (tests/test_security_hardening_integration.py).
+      RATE_LIMIT_GLOBAL_MAX_PER_IP: "100000"
     depends_on:
       db:
         condition: service_healthy

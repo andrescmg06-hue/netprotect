@@ -72,24 +72,70 @@ Reglas de diseño:
     los tres campos del *heartbeat* se evalúan y se descartan; sólo persiste la alerta resultante.
     Ver `docs/sprint-20.md`.
 
+23. **Rate limiting global y en autenticación (Sprint 21).** Toda ruta salvo `/api/v1/health*`
+    cuenta contra un límite por IP (`enforcement_middleware`, `backend/app/main.py`), que falla
+    *abierto* ante una caída de Redis — a diferencia de los límites de `/auth/google`,
+    `/auth/refresh` y `/pairing/*` (helper compartido `app/core/rate_limit.py`), que siguen
+    fallando *cerrado* por ser objetivos de alto valor. Ver `docs/sprint-21.md`.
+24. **Cabeceras ampliadas (Sprint 21).** `Cache-Control: no-store` y
+    `Cross-Origin-Resource-Policy: same-origin` en toda respuesta (hallazgos reales de un escaneo
+    OWASP ZAP, corregidos el mismo sprint); `Strict-Transport-Security` y
+    `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` sólo en producción (para
+    no romper Swagger UI en dev/test). Frontend: mismas cabeceras base desde Sprint 1 más
+    `Strict-Transport-Security`/`Content-Security-Policy` en `next.config.ts`.
+25. **TLS obligatorio a nivel de aplicación (Sprint 21).** En producción, una petición que no
+    llega como HTTPS (`request.url.scheme`, reflejando `X-Forwarded-Proto` vía
+    `uvicorn --proxy-headers`) responde 400 antes de procesar nada. La terminación TLS real
+    (certificado, proxy inverso) sigue perteneciendo al Paso 25 de `plan-desarrollo.md` — exige un
+    dominio real que este repo no tiene todavía.
+26. **Validación de secretos al arrancar (Sprint 21).** `Settings` rechaza construirse con
+    `app_env=production` si `jwt_secret`/`pairing_code_pepper`/`database_url`/`redis_url`/
+    `location_encryption_key` siguen en su valor de desarrollo — falla el arranque, no una
+    advertencia en el log.
+27. **Validación estricta de autenticación (Sprint 21).** `GoogleLoginRequest.id_token` y los
+    `refresh_token` de `RefreshRequest`/`LogoutRequest` ahora tienen límite de longitud — eran el
+    único grupo de schemas del backend sin uno.
+28. **Errores sin fuga de detalle interno (Sprint 21).** Un `@app.exception_handler(Exception)`
+    genérico devuelve `{"detail": "internal_error", "request_id": ...}` y registra el traceback
+    real sólo del lado del servidor.
+29. **Dependencias auditadas en CI (Sprint 21).** `pip-audit` (backend) y
+    `npm audit --audit-level=high` (frontend) corren en cada push/PR.
+30. **`network_security_config.xml` en Android (Sprint 21).** Base estricta
+    (`cleartextTrafficPermitted="false"`) para todas las variantes, con una excepción sólo en
+    `debug` para el emulador (`10.0.2.2`/`localhost`) — control más fino que el atributo
+    `usesCleartextTraffic` del manifest, que queda superado pero sin retirar.
+31. **Escaneo con OWASP ZAP y MobSF (Sprint 21).** ZAP baseline contra el backend real
+    (`compose.yaml`): 0 hallazgos de riesgo alto/medio, dos advertencias reales corregidas en el
+    propio código (ítem 24). MobSF contra el APK real (debug y release): sin hallazgos `HIGH` en
+    release; las advertencias restantes son de librerías de terceros o decisiones ya documentadas.
+    Ver `docs/sprint-21-evidence.md`.
+
 ## Controles diferidos conscientemente
 
 Se implementarán en los sprints correspondientes:
 
 - RBAC por dispositivo aplicado a endpoints reales de gestión de dispositivos (Sprint 6; la
   dependencia `require_tutor_of_device` ya existe y está probada, falta el CRUD que la use).
-- Rate limiting por identidad/IP/operación, especialmente en la vinculación por código (Sprint 5).
 - Auditoría persistente con consulta y exportación para el tutor (Sprint 22; hoy se escribe pero no
   se expone).
 - Cifrado de campos sensibles adicionales (ubicación, contenido de eventos).
 - FCM: la estructura (registro de token, envío vía API HTTP v1) existe desde el Sprint 18, pero
   sin proyecto Firebase real todavía — pendiente de un humano con cuenta de Google Cloud, ver
   `docs/sprint-18.md`. WebSockets ya no está diferido (Sprint 18).
-- Protección criptográfica y anti-fuerza-bruta del código de vinculación.
 - Políticas de retención y minimización por tipo de dato.
-- SAST/DAST y análisis móvil completos.
 - Gestor de secretos cloud.
-- TLS/HTTPS de producción en edge.
+- **Terminación TLS real** (certificado, proxy inverso) — el *enforcement* a nivel de aplicación ya
+  existe desde el Sprint 21 (ítem 25); falta el dominio real del Paso 25.
+- **Certificate pinning en Android** — no hay todavía un certificado de producción real contra el
+  cual fijarlo (Sprint 21, mismo motivo que la Nota del Sprint 13 sobre el SDK de Maps).
+- **CSP con nonce en el frontend** — `next.config.ts` usa `'unsafe-inline'` en
+  `script-src`/`style-src` porque Next.js App Router no genera un nonce por request sin cambiar de
+  arquitectura (Sprint 21).
+- Rotación de claves (Fernet, JWT).
+
+Ya no están diferidos, desde el Sprint 21: rate limiting por identidad/IP/operación (ahora también
+global y en auth, no sólo en pairing) y SAST/DAST/análisis móvil (ZAP + MobSF corridos contra el
+entorno propio, ver `docs/sprint-21-evidence.md`).
 
 Diferirlos no significa omitirlos: el diseño de cada sprint evita decisiones que impidan agregarlos
 correctamente más adelante.

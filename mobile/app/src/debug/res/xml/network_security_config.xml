@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sprint 21: sustituye al archivo de `main` sólo en builds debug. Antes, el build debug
+     permitía cleartext hacia CUALQUIER destino (usesCleartextTraffic=true); aquí queda acotado a
+     las dos direcciones que un desarrollador realmente usa — 10.0.2.2 es el host visto desde el
+     emulador de Android, donde corre el backend de compose.yaml. El build release sigue con la
+     base estricta de `main`: sin excepciones. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
