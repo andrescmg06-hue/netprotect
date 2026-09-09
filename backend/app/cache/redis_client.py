@@ -62,10 +62,17 @@ async def hit_rate_limit(key: str, *, limit: int, window_seconds: int) -> RateLi
 
     Fails closed: if Redis is unreachable the caller gets an error rather than an
     unlimited allowance, so an outage can't silently disable brute-force protection.
+
+    `RuntimeError` is included alongside the obvious `RedisError`/`OSError`: a connection whose
+    transport was torn down by something outside redis-py's own bookkeeping (the cross-loop
+    teardown race documented on `close_redis()` below) surfaces as a bare asyncio
+    `RuntimeError`, not a `RedisError`. Without this, that one failure mode would crash the
+    caller instead of being reported as the same "backend unavailable" condition every other
+    connection problem already is.
     """
     try:
         current, ttl = await get_redis().eval(_INCREMENT_WITH_TTL, 1, key, window_seconds)
-    except (RedisError, OSError) as exc:
+    except (RedisError, OSError, RuntimeError) as exc:
         raise RateLimitBackendError("rate_limit_backend_unavailable") from exc
 
     retry_after = ttl if ttl and ttl > 0 else window_seconds
@@ -98,6 +105,14 @@ async def close_redis() -> None:
     if client is None:
         return
     try:
+        # Sprint 21: disconnect the pool first, INCLUDING connections currently checked out.
+        # Plain aclose() alone only returns idle connections to the pool and closes those —
+        # a connection still in flight (e.g. a request racing the app's own shutdown) survives
+        # aclose() and would otherwise still be reachable from the next event loop, which is
+        # exactly the "attached to a different loop" crash this function's docstring warns
+        # about. This only started showing up under test once the global rate limiter made
+        # every request touch Redis, instead of only the handful of pairing endpoints.
+        await client.connection_pool.disconnect(inuse_connections=True)
         await client.aclose()
     except (RedisError, OSError, RuntimeError):
         pass

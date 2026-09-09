@@ -85,22 +85,49 @@ FAILED tests/test_history_integration.py::test_the_owning_tutor_sees_rule_and_ge
 1 failed, 241 passed, 5 warnings in 70.84s (0:01:10)
 ```
 
-**Ese fallo es preexistente, no introducido por este sprint**: `test_history_integration.py` no
-tiene ningún cambio desde el Sprint 15 (`git log` lo confirma), y el mismo test, ejecutado solo
-(`pytest tests/test_history_integration.py`, sin el resto de la suite alrededor), pasa limpio:
+**Esto sí lo causó este sprint, y se corrigió — no se descartó como un test inestable.** La
+primera lectura fue justamente esa (el archivo no cambia desde el Sprint 15, y aislado pasa
+limpio: `5 passed in 3.01s`), pero el traceback real decía otra cosa:
 
 ```
+RuntimeError: Task <...BaseHTTPMiddleware...call_next...> got Future <Future pending>
+attached to a different loop
+  en redis/asyncio/connection.py:591, read_response()
+```
+
+Es la fragilidad que el propio docstring de `close_redis()` ya advertía desde antes de este
+sprint: el cliente de Redis es un singleton de proceso atado al primer *event loop* que lo usó, y
+cada `TestClient` levanta su propio *loop*. Antes sólo dos endpoints de `pairing.py` tocaban
+Redis, así que casi nunca se manifestaba; el limitador global de este sprint hace que **cada
+petición de los 242 tests** lo toque, y esa carrera latente pasó a ser reproducible en casi
+cualquier corrida completa.
+
+Corregido en `backend/app/cache/redis_client.py`, en dos capas:
+
+1. `close_redis()` desconecta el *pool* completo —incluidas las conexiones en uso
+   (`connection_pool.disconnect(inuse_connections=True)`)— antes de `aclose()`, que por sí solo
+   sólo cierra las ociosas. Necesario, pero **no suficiente**: la corrida siguiente falló igual.
+2. La causa real: `hit_rate_limit()` sólo traducía `(RedisError, OSError)` a
+   `RateLimitBackendError` —el error que hace fallar *cerrado* a auth/pairing y *abierto* al
+   limitador global—. Una conexión con el transporte cruzado entre *loops* no lanza `RedisError`,
+   lanza un `RuntimeError` de asyncio puro, que se colaba sin traducir y reventaba la petición
+   entera con un 500. Se amplió el `except` a `(RedisError, OSError, RuntimeError)`, el mismo trío
+   que `close_redis()` ya ignoraba. Con eso el limitador global trata la conexión rota como
+   cualquier otra caída de Redis (falla abierto y sigue), redis-py descarta esa conexión del
+   *pool*, y la siguiente llamada de la misma petición (el límite propio de `/auth/google`) abre
+   una conexión sana.
+
+No fue sólo "hacer pasar la suite": sin el punto 2, **cualquier** fallo de socket real en
+producción durante el chequeo del límite global habría devuelto un 500 sin traducir en vez del
+*fail-open* que `enforcement_middleware` pretendía por diseño. Suite completa después del fix:
+
+```
+$ docker compose -f compose.test.yaml down -v
+$ docker compose -f compose.test.yaml build backend
 $ docker compose -f compose.test.yaml run --rm migrate
-$ docker compose -f compose.test.yaml run --rm backend pytest -q tests/test_history_integration.py
-5 passed, 3 warnings in 3.01s
+$ docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+242 passed, 4 warnings in 62.86s (0:01:02)
 ```
-
-Es un caso de contaminación de datos entre tests dependiente del orden de ejecución, ya presente
-antes de este sprint (los dos archivos de test nuevos de este sprint, `test_config_secrets.py` —
-sin base de datos — y `test_security_hardening_integration.py` — orden alfabético posterior a
-`test_history_integration.py` — no pueden ser la causa). Queda anotado aquí en vez de ocultado,
-como exige la regla de este proyecto; corregir el aislamiento de datos de ese test es trabajo
-pendiente fuera del alcance de "seguridad integral".
 
 ## Frontend — lint, build, npm audit
 
