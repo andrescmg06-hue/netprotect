@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { AuditPanel } from "@/components/AuditPanel";
 import { DevicesPanel } from "@/components/DevicesPanel";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
@@ -103,6 +104,7 @@ export default function Home() {
         </div>
 
         {authStatus === "authenticated" && accessToken && <DevicesPanel accessToken={accessToken} />}
+        {authStatus === "authenticated" && accessToken && <AuditPanel accessToken={accessToken} />}
 
         <div className="statusCard" aria-live="polite">
           <div>

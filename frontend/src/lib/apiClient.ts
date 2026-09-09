@@ -706,6 +706,69 @@ export type AlertSilence = {
   silenced_until: string | null;
 };
 
+/** Sprint 22: the caller's own audit trail (actor_user_id == current_user.id on the backend —
+ * see backend/app/api/v1/endpoints/audit.py for why it's scoped that way, not by device). Real
+ * limit/offset paging, unlike history/alerts: AuditLog has no retention purge, so a fixed
+ * response cap would permanently hide older rows once an account passes it.
+ */
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  ip_address: string | null;
+  created_at: string;
+};
+
+export type AuditLogFilters = {
+  action?: string;
+  resource_type?: string;
+  from_date?: string;
+  to_date?: string;
+  limit?: number;
+  offset?: number;
+};
+
+function auditQueryString(filters: AuditLogFilters): string {
+  const params = new URLSearchParams();
+  if (filters.action) params.set("action", filters.action);
+  if (filters.resource_type) params.set("resource_type", filters.resource_type);
+  if (filters.from_date) params.set("from_date", filters.from_date);
+  if (filters.to_date) params.set("to_date", filters.to_date);
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
+  return params.toString();
+}
+
+export function listMyAuditLog(
+  accessToken: string,
+  filters: AuditLogFilters
+): Promise<{ logs: AuditLogEntry[]; total: number; limit: number; offset: number }> {
+  return requestJson(`/api/v1/users/me/audit?${auditQueryString(filters)}`, { method: "GET" }, accessToken);
+}
+
+/** Exporting needs an Authorization header, so a plain <a href> download link won't work — this
+ * fetches the CSV as a Blob and hands the caller an object URL to trigger the save with.
+ */
+export async function exportMyAuditLog(
+  accessToken: string,
+  filters: Omit<AuditLogFilters, "limit" | "offset">
+): Promise<Blob> {
+  const params = new URLSearchParams();
+  if (filters.action) params.set("action", filters.action);
+  if (filters.resource_type) params.set("resource_type", filters.resource_type);
+  if (filters.from_date) params.set("from_date", filters.from_date);
+  if (filters.to_date) params.set("to_date", filters.to_date);
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/me/audit/export?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new ApiError(`HTTP ${response.status}`, response.status);
+  }
+  return response.blob();
+}
+
 export function listDeviceAlerts(
   accessToken: string,
   deviceId: string

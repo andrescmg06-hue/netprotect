@@ -110,14 +110,20 @@ Reglas de diseño:
     release; las advertencias restantes son de librerías de terceros o decisiones ya documentadas.
     Ver `docs/sprint-21-evidence.md`.
 
+32. **Auditoría consultable y exportable, sólo de las acciones propias (Sprint 22).**
+    `GET /users/me/audit` y `GET /users/me/audit/export` exponen `audit_logs` (existente desde el
+    Sprint 2, escrito desde el Sprint 3) filtrando siempre por `actor_user_id == current_user.id`
+    — nunca por rol ni por dispositivo, así que ningún llamante puede ver acciones ajenas. Ni el
+    listado ni la exportación generan una fila nueva (leer el propio registro no es, en sí, una
+    acción a auditar). Sin retención/purga, a diferencia del resto de tablas de eventos: el propio
+    plan lo llama "registro inmutable". Ver `docs/sprint-22.md`.
+
 ## Controles diferidos conscientemente
 
 Se implementarán en los sprints correspondientes:
 
 - RBAC por dispositivo aplicado a endpoints reales de gestión de dispositivos (Sprint 6; la
   dependencia `require_tutor_of_device` ya existe y está probada, falta el CRUD que la use).
-- Auditoría persistente con consulta y exportación para el tutor (Sprint 22; hoy se escribe pero no
-  se expone).
 - Cifrado de campos sensibles adicionales (ubicación, contenido de eventos).
 - FCM: la estructura (registro de token, envío vía API HTTP v1) existe desde el Sprint 18, pero
   sin proyecto Firebase real todavía — pendiente de un humano con cuenta de Google Cloud, ver
@@ -133,9 +139,10 @@ Se implementarán en los sprints correspondientes:
   arquitectura (Sprint 21).
 - Rotación de claves (Fernet, JWT).
 
-Ya no están diferidos, desde el Sprint 21: rate limiting por identidad/IP/operación (ahora también
+Ya no están diferidos: desde el Sprint 21, rate limiting por identidad/IP/operación (ahora también
 global y en auth, no sólo en pairing) y SAST/DAST/análisis móvil (ZAP + MobSF corridos contra el
-entorno propio, ver `docs/sprint-21-evidence.md`).
+entorno propio, ver `docs/sprint-21-evidence.md`); desde el Sprint 22, la consulta y exportación
+de auditoría (ítem 32).
 
 Diferirlos no significa omitirlos: el diseño de cada sprint evita decisiones que impidan agregarlos
 correctamente más adelante.

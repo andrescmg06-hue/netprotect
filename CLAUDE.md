@@ -66,7 +66,7 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (09/09/2026)
 
-Sprints 1 a 21 completos y verificados en CI.
+Sprints 1 a 22 completos y verificados en CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -341,11 +341,31 @@ real. HSTS y CSP sólo se envían en producción: en dev/test romperían los ass
 ahí sigue habilitado. Ver `docs/sprint-21.md` y `docs/sprint-21-evidence.md` (incluye los
 hallazgos reales de ZAP ya corregidos y los de MobSF revisados uno por uno).
 
-**Siguiente: Sprint 22 — Auditoría.** Registro inmutable de acciones sensibles con actor, acción,
-recurso, fecha y origen; consulta de auditoría para el tutor y exportación. `record_audit_event`
-(`app/services/audit.py`) y la tabla `audit_logs` existen desde el Sprint 4 y ya se escriben, pero
-**no se exponen todavía** — eso es justo lo que falta. Ver `docs/planning/plan-desarrollo.md`
-(Paso 21) y la línea correspondiente en "Controles diferidos" de `docs/security-baseline.md`.
+**Nota del Sprint 22, válida para cualquier sprint futuro que toque auditoría**: `AuditLog`
+(`app/models/audit_log.py`, tabla `audit_logs` desde el Sprint 2, escrita desde el Sprint 3) no
+tiene columna `device_id` — sólo modela quién (`actor_user_id`) hizo qué (`action`) sobre qué
+(`resource_type`/`resource_id`, string libre cuyo significado cambia según el tipo). Por eso
+`GET /users/me/audit`/`GET /users/me/audit/export` (nuevos) están **scopeados a "mis propias
+acciones"** (`actor_user_id == current_user.id`), no a "todo lo que pasó en mis dispositivos" —
+esto último exigiría inventar una regla de reconstrucción por tipo de recurso que el modelo no
+soporta directamente. Consecuencia aceptada: `DEVICE_LINKED` se audita con el **supervisado**
+como actor (quien redime el código), así que no aparece en la auditoría del tutor aunque el
+dispositivo sea suyo — no es pérdida real, el tutor ya ve el estado de vinculación en la lista de
+dispositivos desde el Sprint 6. Sin `require_role`: cualquier usuario autenticado consulta sólo su
+propio registro, sin que el rol conceda ni restrinja nada (el filtro por `actor_user_id` ya hace
+imposible ver información ajena). Paginación real (`limit`/`offset` + `total`), divergencia
+consciente del tope fijo `MAX_X` de historial/alertas (Sprint 15/17): esas tablas purgan a los 90
+días y acotan su volumen real; `AuditLog` no tiene retención — el plan la llama explícitamente
+"registro inmutable" — así que un tope fijo sin paginación ocultaría permanentemente lo más
+antiguo. La exportación (`StreamingResponse`, CSV) reutiliza el mismo filtro sin paginar, con un
+tope de seguridad fijo (`MAX_AUDIT_EXPORT_ROWS = 10 000`) en su lugar. Ni el listado ni la
+exportación auditan su propia lectura (mismo criterio ya usado por `list_alerts`/
+`get_device_history`: el rastro registra acciones a revisar después, no la revisión en sí). Sólo
+panel web (filtros + paginación + export); Android es sólo lectura, sin filtros, y es la primera
+sección de `TutorScreen` que es de cuenta en vez de por dispositivo. Ver `docs/sprint-22.md`.
+
+**Siguiente: Sprint 23 — Supervisión remota viable.** Ver `docs/planning/roadmap.md` y
+`docs/planning/plan-desarrollo.md` (Paso 22) para el alcance detallado antes de empezar.
 
 ## Entorno de trabajo
 

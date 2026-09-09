@@ -369,3 +369,17 @@ certificate pinning todavía (no hay certificado de producción real contra el c
 
 El detalle está en `docs/sprint-21.md` y la evidencia completa (comandos y salida real, incluidos
 los reportes de ZAP/MobSF) en `docs/sprint-21-evidence.md`.
+
+## Alcance del Sprint 22
+
+Auditoría: `GET /users/me/audit` y `GET /users/me/audit/export` exponen, con filtros por acción,
+tipo de recurso y rango de fechas, el registro de `audit_logs` que ya existía desde el Sprint 2 y
+se escribía desde el Sprint 3 pero nunca se consultaba. Alcance deliberado — "mis propias
+acciones", no "todo lo que pasó en mis dispositivos" — porque `AuditLog` no tiene columna
+`device_id`; cualquier usuario autenticado ve sólo las filas cuyo `actor_user_id` es el suyo, sin
+que el rol conceda ni restrinja nada adicional. Paginación real (`limit`/`offset` con `total`), a
+diferencia del tope fijo de historial/alertas, porque esta tabla no tiene retención — el plan la
+llama "registro inmutable". Disponible con filtros, paginación y exportación a CSV en el panel
+web; en modo sólo lectura y sin filtros en la app del tutor en Android.
+
+El detalle está en `docs/sprint-22.md` y la evidencia en `docs/sprint-22-evidence.md`.

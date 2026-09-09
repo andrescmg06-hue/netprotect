@@ -35,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.netprotect.app.core.network.ApplicationsClient
+import com.netprotect.app.core.network.AuditClient
+import com.netprotect.app.core.network.AuditLogEntry
 import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.AlertsClient
@@ -111,6 +113,16 @@ private sealed interface AlertsState {
     data class Error(val message: String) : AlertsState
 }
 
+private sealed interface AuditState {
+    data object Loading : AuditState
+    // Account-level, not per-device (backend/app/api/v1/endpoints/audit.py scopes it to
+    // actor_user_id == current_user.id, not to a device) — the tutor's own audited actions.
+    // Read-only and filter-less here, same split as history/alerts: filtering and CSV export
+    // live only in the web panel.
+    data class Loaded(val logs: List<AuditLogEntry>) : AuditState
+    data class Error(val message: String) : AuditState
+}
+
 @Composable
 fun TutorScreen(
     baseUrl: String,
@@ -128,6 +140,7 @@ fun TutorScreen(
     val historyClient = remember { HistoryClient(baseUrl) }
     val statisticsClient = remember { StatisticsClient(baseUrl) }
     val alertsClient = remember { AlertsClient(baseUrl) }
+    val auditClient = remember { AuditClient(baseUrl) }
 
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
@@ -147,6 +160,8 @@ fun TutorScreen(
     val statisticsPeriodByDevice = remember { mutableStateMapOf<String, String>() }
     var expandedAlertsDeviceId by remember { mutableStateOf<String?>(null) }
     val alertsStateByDevice = remember { mutableStateMapOf<String, AlertsState>() }
+    var isAuditExpanded by remember { mutableStateOf(false) }
+    var auditState by remember { mutableStateOf<AuditState>(AuditState.Loading) }
 
     suspend fun reloadDevices() {
         devicesState = try {
@@ -260,6 +275,22 @@ fun TutorScreen(
         }
     }
 
+    fun toggleAudit() {
+        if (isAuditExpanded) {
+            isAuditExpanded = false
+            return
+        }
+        isAuditExpanded = true
+        auditState = AuditState.Loading
+        scope.launch {
+            auditState = try {
+                AuditState.Loaded(auditClient.listMyAuditLog(accessToken))
+            } catch (exception: Exception) {
+                AuditState.Error(exception.message ?: "No se pudo cargar la auditoría")
+            }
+        }
+    }
+
     LaunchedEffect(Unit) { reloadDevices() }
 
     Column(
@@ -335,6 +366,21 @@ fun TutorScreen(
                     Text(it, color = Color(0xFFFFB4AB), fontSize = 13.sp)
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Mi actividad (auditoría)", color = Color.White, fontWeight = FontWeight.Bold)
+            TextButton(onClick = { toggleAudit() }) {
+                Text(if (isAuditExpanded) "Ocultar" else "Ver")
+            }
+        }
+        if (isAuditExpanded) {
+            Spacer(modifier = Modifier.height(4.dp))
+            AuditSection(state = auditState)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -806,6 +852,37 @@ private fun AlertsSection(state: AlertsState?) {
                                 fontSize = 13.sp,
                             )
                             Text(formatCapturedAt(alert.lastOccurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Sprint 22, read-only and account-level (not per-device): the tutor's own audited actions
+ * (backend scopes GET /users/me/audit to actor_user_id == current_user.id). No filters or CSV
+ * export here — those live only in the web panel, same split already used for historial/
+ * alertas/geocercas.
+ */
+@Composable
+private fun AuditSection(state: AuditState) {
+    when (state) {
+        AuditState.Loading -> Text("Cargando auditoría…", color = Color(0xFFABB5C4), fontSize = 13.sp)
+        is AuditState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        is AuditState.Loaded -> {
+            if (state.logs.isEmpty()) {
+                Text("Sin acciones registradas todavía.", color = Color(0xFFABB5C4), fontSize = 13.sp)
+            } else {
+                Column {
+                    state.logs.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            val resource = entry.resourceType?.let { " · $it" } ?: ""
+                            Text("${entry.action}$resource", color = Color.White, fontSize = 13.sp)
+                            Text(formatCapturedAt(entry.createdAt), color = Color(0xFF7D899A), fontSize = 11.sp)
                         }
                     }
                 }
