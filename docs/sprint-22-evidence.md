@@ -113,5 +113,14 @@ diff por un problema de directorio de trabajo dentro de la sesión — se recupe
 
 ## CI en GitHub Actions
 
-Pendiente de push — se actualizará este documento con el enlace de la corrida una vez confirmado
-el commit.
+Commit `cf40fbd` ("feat: add sprint 22 audit log query and export"), corrida
+[34312016658](https://github.com/andrescmg06-hue/netprotect/actions/runs/34312016658):
+
+```
+✓ android      in 2m0s
+✓ integration  in 1m11s
+✓ frontend     in 30s
+✓ backend      in 28s
+```
+
+Los 4 jobs en verde en un runner limpio de GitHub Actions. Sprint 22 cerrado.
