@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { AuditPanel } from "@/components/AuditPanel";
-import { DevicesPanel } from "@/components/DevicesPanel";
+import { DashboardShell } from "@/components/DashboardShell";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,6 +26,13 @@ function fetchReadiness(baseUrl: string, signal: AbortSignal): Promise<ReadyPayl
   );
 }
 
+/** Sprint 24 — Panel web completo. Before this sprint, everything (health check, login, device
+ * list and every per-device panel) lived stacked in this one file. Now an authenticated tutor is
+ * handed straight to DashboardShell, which owns the real navigation across the 16 sections (see
+ * lib/dashboardSections.ts); this file goes back to just being the auth gate, plus the same
+ * infrastructure check from Sprint 1 kept on the pre-login landing, where it's still useful
+ * evidence that Web → Backend → PostgreSQL/Redis works before anyone signs in.
+ */
 export default function Home() {
   const { status: authStatus, user, accessToken, signOut } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("checking");
@@ -35,6 +41,9 @@ export default function Home() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (authStatus === "authenticated") {
+      return;
+    }
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5000);
@@ -57,7 +66,7 @@ export default function Home() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [attempt]);
+  }, [attempt, authStatus]);
 
   const checkInfrastructure = useCallback(() => {
     setApiState("checking");
@@ -66,14 +75,18 @@ export default function Home() {
     setAttempt((current) => current + 1);
   }, []);
 
+  if (authStatus === "authenticated" && user && accessToken) {
+    return <DashboardShell accessToken={accessToken} user={user} onSignOut={() => void signOut()} />;
+  }
+
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">NETPROTECT · SPRINT 7</p>
+        <p className="eyebrow">NETPROTECT · PANEL DEL TUTOR</p>
         <h1>Panel del tutor</h1>
         <p className="lead">
-          Inicia sesión con Google, vincula dispositivos desde la app Android y gestiona su
-          estado, nombre y vínculo desde este panel.
+          Inicia sesión con Google para vincular dispositivos y gestionar reglas, ubicación,
+          alertas y todo lo demás desde un panel único.
         </p>
 
         <div className="authCard" aria-live="polite">
@@ -84,27 +97,7 @@ export default function Home() {
               <GoogleSignInButton />
             </>
           )}
-          {authStatus === "authenticated" && user && (
-            <>
-              <div className="userRow">
-                {user.avatar_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="avatar" src={user.avatar_url} alt="" />
-                )}
-                <div>
-                  <div className="userName">{user.display_name ?? user.email}</div>
-                  <div className="userEmail">{user.email}</div>
-                </div>
-              </div>
-              <button type="button" onClick={() => void signOut()}>
-                Cerrar sesión
-              </button>
-            </>
-          )}
         </div>
-
-        {authStatus === "authenticated" && accessToken && <DevicesPanel accessToken={accessToken} />}
-        {authStatus === "authenticated" && accessToken && <AuditPanel accessToken={accessToken} />}
 
         <div className="statusCard" aria-live="polite">
           <div>

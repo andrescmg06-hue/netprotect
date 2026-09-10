@@ -45,19 +45,28 @@ function storeRefreshToken(token: string | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    typeof window !== "undefined" && readStoredRefreshToken() ? "loading" : "unauthenticated"
-  );
+  // Sprint 24 finding: the initial state used to branch on `typeof window` / sessionStorage
+  // right inside useState's initializer, so a returning tutor (sessionStorage already holding a
+  // refresh token from a previous visit) hydrated with "loading" on the client against a
+  // server-rendered "unauthenticated" tree — a real hydration mismatch, not just an artefact of
+  // testing with a pre-seeded token. The initial state is now the same constant on server and
+  // client; the effect below owns the entire transition, including "no stored token" ->
+  // "unauthenticated" (it used to leave that case for the initializer to have already handled).
+  const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     const storedRefreshToken = readStoredRefreshToken();
-    if (!storedRefreshToken) {
-      return;
-    }
 
-    refreshTokens(storedRefreshToken)
+    // "No stored token" is folded into the same .then()/.catch() chain (via a rejected promise)
+    // as an actual refresh failure, rather than a synchronous setState before the chain starts —
+    // both end up at the same "unauthenticated" outcome, and every setState below still runs
+    // inside a promise callback, never directly in the effect body.
+    (storedRefreshToken
+      ? refreshTokens(storedRefreshToken)
+      : Promise.reject(new Error("no_stored_refresh_token"))
+    )
       .then((tokens) => {
         storeRefreshToken(tokens.refresh_token);
         setAccessToken(tokens.access_token);

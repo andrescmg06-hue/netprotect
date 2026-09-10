@@ -405,3 +405,20 @@ extremos se alcanzan directamente (misma red local o NAT permisivo) — detrás 
 operadora móvil normalmente no conectará. Cámara y micrófono remotos quedan como V2 explícito.
 
 El detalle está en `docs/sprint-23.md` y la evidencia en `docs/sprint-23-evidence.md`.
+
+## Alcance del Sprint 24
+
+Panel web completo: los nueve paneles por dispositivo que ya existían (Sprints 6-23) vivían
+apilados detrás de botones "mostrar/ocultar" dentro de cada fila de dispositivo, sin navegación
+real. Ahora un `DashboardShell` con sidebar agrupado organiza el panel en 16 secciones (Cuenta,
+Dispositivos, Control, Contexto, Seguridad), con un único selector de "dispositivo activo" que
+persiste al cambiar de sección y una URL con hash (`#section=…&device=…`) que sobrevive a recargar
+la página o pegar el enlace. Dos componentes que mezclaban dos tareas de tutor distintas se
+dividieron sin tocar sus endpoints: reglas por app y política/horario escolar; alertas y
+silenciadas. La única funcionalidad nueva es exponer a la web la generación/revocación de un
+código de vinculación (`POST`/`DELETE /pairing/codes`), que existía desde el Sprint 5 pero sólo se
+alcanzaba desde Android — sin backend nuevo. De paso se corrigió un *mismatch* de hidratación real
+en `AuthContext` (preexistente desde el Sprint 3): el estado inicial dependía de `sessionStorage`
+dentro del inicializador de `useState`, que el servidor nunca ve igual que el cliente.
+
+El detalle está en `docs/sprint-24.md` y la evidencia en `docs/sprint-24-evidence.md`.

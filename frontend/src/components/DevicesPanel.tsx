@@ -1,27 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
-import {
-  ApiError,
-  type Device,
-  ensureTutorRole,
-  listDevices,
-  renameDevice,
-  unlinkDevice,
-} from "@/lib/apiClient";
+import { ApiError, type Device, renameDevice, unlinkDevice } from "@/lib/apiClient";
 
-import { AlertsPanel } from "./AlertsPanel";
-import { DeviceApplicationsList } from "./DeviceApplicationsList";
-import { DeviceCategoriesPanel } from "./DeviceCategoriesPanel";
-import { DeviceLocationPanel } from "./DeviceLocationPanel";
-import { DeviceRulesPanel } from "./DeviceRulesPanel";
-import { GeofencePanel } from "./GeofencePanel";
-import { HistoryPanel } from "./HistoryPanel";
-import { RemoteViewPanel } from "./RemoteViewPanel";
-import { StatisticsPanel } from "./StatisticsPanel";
-
-type PanelState =
+export type DevicesState =
   | { kind: "loading" }
   | { kind: "loaded"; devices: Device[] }
   | { kind: "error"; message: string };
@@ -37,50 +20,24 @@ function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-export function DevicesPanel({ accessToken }: { accessToken: string }) {
-  const [state, setState] = useState<PanelState>({ kind: "loading" });
-  const [reloadToken, setReloadToken] = useState(0);
+/** Sprint 24: this used to fetch devices itself and also embed every per-device panel behind
+ * toggle buttons (apps, rules, location, …) — that was the whole "dashboard" before this sprint.
+ * Now DashboardShell owns the single devices fetch (so the header's device switcher and
+ * OverviewPanel see the same list), and each of those panels is its own navigable section; this
+ * component goes back to being just device management (list, rename, unlink), same as Sprint 6.
+ */
+export function DevicesPanel({
+  accessToken,
+  state,
+  reload,
+}: {
+  accessToken: string;
+  state: DevicesState;
+  reload: () => void;
+}) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [expandedAppsId, setExpandedAppsId] = useState<string | null>(null);
-  const [expandedRulesId, setExpandedRulesId] = useState<string | null>(null);
-  const [expandedCategoriesId, setExpandedCategoriesId] = useState<string | null>(null);
-  const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
-  const [expandedGeofenceId, setExpandedGeofenceId] = useState<string | null>(null);
-  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
-  const [expandedStatisticsId, setExpandedStatisticsId] = useState<string | null>(null);
-  const [expandedAlertsId, setExpandedAlertsId] = useState<string | null>(null);
-  const [expandedRemoteViewId, setExpandedRemoteViewId] = useState<string | null>(null);
-
-  // The web panel is tutor-only: make sure this account holds TUTOR, then list its devices.
-  // Every state update happens inside a .then/.catch callback rather than synchronously in
-  // the effect body, so this only ever reacts to the fetch settling.
-  useEffect(() => {
-    let cancelled = false;
-
-    ensureTutorRole(accessToken)
-      .then(() => listDevices(accessToken))
-      .then(({ devices }) => {
-        if (!cancelled) {
-          setState({ kind: "loaded", devices });
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setState({ kind: "error", message: describeError(error, "No se pudo cargar la lista de dispositivos") });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, reloadToken]);
-
-  const reload = useCallback(() => {
-    setState({ kind: "loading" });
-    setReloadToken((current) => current + 1);
-  }, []);
 
   const handleRename = useCallback(
     (deviceId: string) => {
@@ -126,8 +83,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
 
       {state.kind === "loaded" && state.devices.length === 0 && (
         <p className="statusText">
-          Todavía no hay dispositivos vinculados. Genera un código de vinculación desde la app
-          del tutor.
+          Todavía no hay dispositivos vinculados. Genera un código desde la sección &ldquo;Vinculación&rdquo;.
         </p>
       )}
 
@@ -179,122 +135,7 @@ export function DevicesPanel({ accessToken }: { accessToken: string }) {
                     <button type="button" className="dangerButton" onClick={() => handleUnlink(device.id)}>
                       Desvincular
                     </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedAppsId(expandedAppsId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedAppsId === device.id ? "Ocultar apps" : "Ver apps"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedRulesId(expandedRulesId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedRulesId === device.id ? "Ocultar reglas" : "Gestionar reglas"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCategoriesId(
-                          expandedCategoriesId === device.id ? null : device.id
-                        )
-                      }
-                    >
-                      {expandedCategoriesId === device.id
-                        ? "Ocultar categorías"
-                        : "Gestionar categorías"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedLocationId(expandedLocationId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedLocationId === device.id ? "Ocultar ubicación" : "Ver ubicación"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedGeofenceId(expandedGeofenceId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedGeofenceId === device.id ? "Ocultar geocercas" : "Gestionar geocercas"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedHistoryId(expandedHistoryId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedHistoryId === device.id ? "Ocultar historial" : "Ver historial"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedStatisticsId(
-                          expandedStatisticsId === device.id ? null : device.id
-                        )
-                      }
-                    >
-                      {expandedStatisticsId === device.id
-                        ? "Ocultar estadísticas"
-                        : "Ver estadísticas"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedAlertsId(expandedAlertsId === device.id ? null : device.id)
-                      }
-                    >
-                      {expandedAlertsId === device.id ? "Ocultar alertas" : "Ver alertas"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedRemoteViewId(
-                          expandedRemoteViewId === device.id ? null : device.id
-                        )
-                      }
-                    >
-                      {expandedRemoteViewId === device.id ? "Ocultar pantalla" : "Ver pantalla"}
-                    </button>
                   </div>
-                  {expandedAppsId === device.id && (
-                    <DeviceApplicationsList accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedLocationId === device.id && (
-                    <DeviceLocationPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedGeofenceId === device.id && (
-                    <GeofencePanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedHistoryId === device.id && (
-                    <HistoryPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedStatisticsId === device.id && (
-                    <StatisticsPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedAlertsId === device.id && (
-                    <AlertsPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedRemoteViewId === device.id && (
-                    <RemoteViewPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
-                  {expandedRulesId === device.id && (
-                    <DeviceRulesPanel
-                      accessToken={accessToken}
-                      deviceId={device.id}
-                      defaultAppPolicy={device.default_app_policy}
-                      schoolMode={device.school_mode}
-                      onPolicyChanged={reload}
-                    />
-                  )}
-                  {expandedCategoriesId === device.id && (
-                    <DeviceCategoriesPanel accessToken={accessToken} deviceId={device.id} />
-                  )}
                 </>
               )}
             </li>

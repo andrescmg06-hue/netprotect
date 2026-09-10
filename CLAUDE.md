@@ -64,11 +64,17 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (09/09/2026)
+## Estado actual (10/09/2026)
 
 Sprints 1 a 22 completos y verificados en CI; Sprint 23 implementado y verde localmente (backend en
 Docker, `assembleDebug` de Android, lint/build del panel web), pendiente de la corrida de CI y de
-la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`.
+la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`. `/security-review`
+sobre la rama encontró en el Sprint 23 (no corregido todavía, ver `docs/sprint-24-evidence.md`) que
+`ConnectionManager.begin_screen_share` reasigna la sesión de vista remota de un dispositivo sin
+comprobar si ya está anclada a otro tutor conectado — corregirlo antes de dar el Sprint 23 por
+cerrado en firme. Sprint 24 implementado y verde localmente (lint/build del panel web contra Next
+16 + TypeScript estricto, verificación visual end-to-end del dashboard contra el backend real en
+Docker con un usuario y sesión de prueba), sin cambios de backend, pendiente de CI.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -402,8 +408,33 @@ primero y se llevara el video, con la auditoría nombrando a quien lo pidió); y
 una sesión **revalida el permiso contra la base de datos**, porque un WebSocket sobrevive al token
 que lo abrió y nada lo cierra al desvincular a un tutor. Ver `docs/sprint-23.md`.
 
-**Siguiente: Sprint 24 — Panel web completo.** Ver `docs/planning/roadmap.md` y
-`docs/planning/plan-desarrollo.md` (Paso 23) para el alcance detallado antes de empezar.
+**Hallazgo pendiente del Sprint 23** (encontrado por `/security-review` al cerrar el Sprint 24, no
+corregido todavía): `ConnectionManager.begin_screen_share` (`backend/app/services/realtime.py`)
+sobrescribe `_screen_share_peers[device_id]` sin comprobar si ya hay una sesión anclada a otro
+tutor conectado — el mismo tipo de fallo que las dos correcciones del párrafo anterior, pero en el
+flujo de *re*-solicitud: cualquier tutor vinculado puede reenviar `screen_share_request` en
+cualquier momento (incluso a mitad de una sesión ya en curso) y redirigir en silencio a quién
+llegan el consentimiento y el video, sin que la persona supervisada vea de quién es la solicitud.
+Corregir antes de dar el Sprint 23 por cerrado en firme — ver `docs/sprint-24-evidence.md`.
+
+**Nota del Sprint 24, válida para cualquier sprint futuro que toque el panel web**: las "16
+secciones del dashboard" del Paso 23 son, igual que las categorías del Sprint 10, una decisión
+propia — el enunciado que originalmente las nombraba no está en este repo. Trece ya eran un
+componente propio desde su sprint de origen; `DeviceRulesPanel` se dividió en `AppRulesPanel`
+(reglas por app) y `DevicePolicyPanel` (política por defecto + horario escolar) porque eran dos
+tareas distintas de un tutor con ciclos de vida distintos, no para completar la cuenta — ver
+`docs/sprint-24.md` antes de reorganizar la navegación o añadir una sección nueva. El estado del
+dispositivo activo (`DashboardShell`) se calcula en cada render a partir de la selección explícita
+del usuario, no se sincroniza con un `useEffect`: la regla nueva de ESLint
+(`react-hooks/set-state-in-effect`) rechaza cualquier `setState` síncrono en el cuerpo de un
+efecto, incluso sin llamada de red de por medio — "derived state", no un efecto, es el patrón a
+seguir. La navegación usa el hash de la URL (`window.location.hash` + un listener de
+`hashchange`), no `useSearchParams`/rutas dinámicas del App Router, porque este panel entero vive
+tras un *gate* de autenticación 100% cliente y `useSearchParams` exigiría un límite `<Suspense>`
+sin aportar nada aquí.
+
+**Siguiente: Sprint 25 — Pruebas integrales.** Ver `docs/planning/roadmap.md` y
+`docs/planning/plan-desarrollo.md` (Paso 24) para el alcance detallado antes de empezar.
 
 ## Entorno de trabajo
 

@@ -140,6 +140,29 @@ export function ensureTutorRole(accessToken: string): Promise<GrantedRole> {
   );
 }
 
+/** Sprint 5 (backend) / Sprint 24 (web): generating a pairing code was Android-only until now
+ * — the web panel gets the same one-live-code-per-tutor endpoint, so a tutor can link a device
+ * without touching the Android app at all. The code itself is returned once, in the clear,
+ * exactly like the Android client sees it (backend/app/api/v1/endpoints/pairing.py).
+ */
+export type PairingCode = {
+  code: string;
+  expires_at: string;
+  expires_in_seconds: number;
+};
+
+export function generatePairingCode(accessToken: string): Promise<PairingCode> {
+  return requestJson<PairingCode>("/api/v1/pairing/codes", { method: "POST" }, accessToken);
+}
+
+export function revokePairingCode(accessToken: string): Promise<{ revoked_at: string }> {
+  return requestJson<{ revoked_at: string }>(
+    "/api/v1/pairing/codes/current",
+    { method: "DELETE" },
+    accessToken
+  );
+}
+
 export function listDevices(accessToken: string): Promise<{ devices: Device[] }> {
   return requestJson<{ devices: Device[] }>("/api/v1/devices", { method: "GET" }, accessToken);
 }

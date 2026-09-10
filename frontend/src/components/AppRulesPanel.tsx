@@ -7,18 +7,14 @@ import {
   type AppRule,
   type AppRuleEvent,
   type AppliedRuleType,
-  type DefaultAppPolicy,
   type RuleType,
-  type SchoolMode,
   type UpsertAppRuleInput,
   deleteAppRule,
-  deviceRealtimeWebSocketUrl,
   listAppRules,
   listRuleEvents,
-  updateDevicePolicy,
-  updateSchoolMode,
   upsertAppRule,
 } from "@/lib/apiClient";
+import { useDeviceRulesRealtime } from "@/lib/useDeviceRulesRealtime";
 
 type RulesState =
   | { kind: "loading" }
@@ -86,51 +82,11 @@ function describeRule(rule: AppRule): string {
   }
 }
 
-export function DeviceRulesPanel({
-  accessToken,
-  deviceId,
-  defaultAppPolicy,
-  schoolMode,
-  onPolicyChanged,
-}: {
-  accessToken: string;
-  deviceId: string;
-  defaultAppPolicy: DefaultAppPolicy;
-  schoolMode: SchoolMode;
-  onPolicyChanged: () => void;
-}) {
-  const [schoolModeError, setSchoolModeError] = useState<string | null>(null);
-  const [schoolModeStart, setSchoolModeStart] = useState(
-    schoolMode.start_minute !== null ? minutesToTimeString(schoolMode.start_minute) : "07:00"
-  );
-  const [schoolModeEnd, setSchoolModeEnd] = useState(
-    schoolMode.end_minute !== null ? minutesToTimeString(schoolMode.end_minute) : "14:00"
-  );
-  const [schoolModeDaysMask, setSchoolModeDaysMask] = useState(schoolMode.days_mask ?? ALL_DAYS_MASK);
-
-  function handleToggleSchoolMode() {
-    setSchoolModeError(null);
-    if (schoolMode.enabled) {
-      updateSchoolMode(accessToken, deviceId, { enabled: false })
-        .then(() => onPolicyChanged())
-        .catch((error) => setSchoolModeError(describeError(error, "No se pudo desactivar el horario escolar")));
-      return;
-    }
-    const start = timeStringToMinutes(schoolModeStart);
-    const end = timeStringToMinutes(schoolModeEnd);
-    if (start === null || end === null || schoolModeDaysMask === 0) {
-      setSchoolModeError("Indica una franja horaria válida con al menos un día.");
-      return;
-    }
-    updateSchoolMode(accessToken, deviceId, {
-      enabled: true,
-      start_minute: start,
-      end_minute: end,
-      days_mask: schoolModeDaysMask,
-    })
-      .then(() => onPolicyChanged())
-      .catch((error) => setSchoolModeError(describeError(error, "No se pudo activar el horario escolar")));
-  }
+/** Sprint 24: split out of DeviceRulesPanel — this half is per-app rule CRUD plus the blocks
+ * this device already applied; device-level settings (default policy, school mode) moved to
+ * DevicePolicyPanel. Same endpoints, same upsert-by-package semantics as before.
+ */
+export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; deviceId: string }) {
   const [rulesState, setRulesState] = useState<RulesState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
   const [eventsState, setEventsState] = useState<EventsState>({ kind: "idle" });
@@ -145,10 +101,6 @@ export function DeviceRulesPanel({
   const [scheduleEnd, setScheduleEnd] = useState("06:00");
   const [scheduleDaysMask, setScheduleDaysMask] = useState(ALL_DAYS_MASK);
 
-  // Every setState below runs inside a .then()/.catch() already chained in the effect body
-  // (never delegated to a helper, never awaited synchronously) — see DeviceApplicationsList.tsx
-  // for why: an async function whose setState happens after an await still counts as
-  // "calling setState from an effect" to the react-hooks/set-state-in-effect rule.
   useEffect(() => {
     let cancelled = false;
 
@@ -174,42 +126,9 @@ export function DeviceRulesPanel({
     setReloadToken((current) => current + 1);
   }, []);
 
-  // Sprint 18: while this panel is open, stay live instead of only reflecting what was true
-  // at the moment it was expanded — another tutor session, or the device itself reporting a
-  // rule enforcement, can change this device's rules at any time. The socket only ever
-  // triggers a re-fetch (loadRules/onPolicyChanged); it never carries the changed data itself
-  // — see deviceRealtimeWebSocketUrl's comment in apiClient.ts for why. setState only happens
-  // inside the "message" event listener, a real async browser callback, not synchronously in
-  // the effect body, so this doesn't run into the set-state-in-effect rule the project's other
-  // effects work around.
-  useEffect(() => {
-    let cancelled = false;
-    const socket = new WebSocket(deviceRealtimeWebSocketUrl(deviceId));
-
-    socket.addEventListener("open", () => {
-      if (!cancelled) {
-        socket.send(JSON.stringify({ token: accessToken }));
-      }
-    });
-
-    socket.addEventListener("message", (event) => {
-      if (cancelled) return;
-      try {
-        const payload = JSON.parse(event.data as string);
-        if (payload?.event === "rules_changed") {
-          loadRules();
-          onPolicyChanged();
-        }
-      } catch {
-        // Not a frame this panel understands — ignore rather than crash the socket.
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      socket.close();
-    };
-  }, [accessToken, deviceId, loadRules, onPolicyChanged]);
+  // Sprint 18: stay live while this screen is open — another tutor session or the device's own
+  // enforcement can change these rules at any time.
+  useDeviceRulesRealtime(accessToken, deviceId, loadRules);
 
   function toggleEvents() {
     if (eventsState.kind === "loaded" || eventsState.kind === "loading") {
@@ -222,13 +141,6 @@ export function DeviceRulesPanel({
       .catch((error) =>
         setEventsState({ kind: "error", message: describeError(error, "No se pudo cargar el historial") })
       );
-  }
-
-  function handlePolicyChange(next: DefaultAppPolicy) {
-    setFormError(null);
-    updateDevicePolicy(accessToken, deviceId, next)
-      .then(() => onPolicyChanged())
-      .catch((error) => setFormError(describeError(error, "No se pudo cambiar el modo")));
   }
 
   function handleDelete(ruleId: string) {
@@ -299,82 +211,8 @@ export function DeviceRulesPanel({
       });
   }
 
-  const inAllowlistMode = defaultAppPolicy === "BLOCK";
-
   return (
     <div className="rulesPanel">
-      <div className="policyRow">
-        <div>
-          <div className="appLabel">
-            {inAllowlistMode ? "Sólo apps aprobadas" : "Todo permitido salvo lo bloqueado"}
-          </div>
-          <div className="appMeta">
-            {inAllowlistMode
-              ? "Una app sin regla queda bloqueada. La pantalla de inicio, el teléfono y Ajustes nunca se bloquean."
-              : "Una app sin regla funciona normalmente."}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => handlePolicyChange(inAllowlistMode ? "ALLOW" : "BLOCK")}
-        >
-          {inAllowlistMode ? "Permitir todo salvo lo bloqueado" : "Sólo permitir apps aprobadas"}
-        </button>
-      </div>
-
-      <div className="policyRow">
-        <div>
-          <div className="appLabel">
-            {schoolMode.enabled
-              ? `Horario escolar activo (${minutesToTimeString(schoolMode.start_minute ?? 0)}–${minutesToTimeString(schoolMode.end_minute ?? 0)})`
-              : "Horario escolar desactivado"}
-          </div>
-          <div className="appMeta">
-            {schoolMode.enabled
-              ? "En esa franja, todo lo no aprobado queda bloqueado automáticamente."
-              : "Bloquea automáticamente lo no aprobado durante una franja horaria fija, sin tocar tus reglas."}
-          </div>
-          {!schoolMode.enabled && (
-            <div className="scheduleFields" style={{ marginTop: 8 }}>
-              <input
-                type="time"
-                value={schoolModeStart}
-                onChange={(event) => setSchoolModeStart(event.target.value)}
-                aria-label="Hora de inicio del horario escolar"
-              />
-              <span>a</span>
-              <input
-                type="time"
-                value={schoolModeEnd}
-                onChange={(event) => setSchoolModeEnd(event.target.value)}
-                aria-label="Hora de fin del horario escolar"
-              />
-              <div className="dayPicker">
-                {DAY_LABELS.map((label, index) => {
-                  const bit = 1 << index;
-                  const active = (schoolModeDaysMask & bit) !== 0;
-                  return (
-                    <button
-                      type="button"
-                      key={label + index}
-                      className={active ? "dayButton dayButtonActive" : "dayButton"}
-                      onClick={() => setSchoolModeDaysMask((current) => current ^ bit)}
-                      aria-pressed={active}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-        <button type="button" onClick={handleToggleSchoolMode}>
-          {schoolMode.enabled ? "Desactivar" : "Activar horario escolar"}
-        </button>
-      </div>
-      {schoolModeError && <p className="authError">{schoolModeError}</p>}
-
       <form className="ruleForm" onSubmit={handleSubmit}>
         <input
           value={packageName}

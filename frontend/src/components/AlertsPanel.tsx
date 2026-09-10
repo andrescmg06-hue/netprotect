@@ -51,8 +51,22 @@ function alertLabel(alert: Alert): string {
  * entradas/salidas de geocercas) — read through GET /devices/{id}/alerts, which the backend
  * already deduplicates while unread. Marking read and silenciar son acciones de tutor (escriben
  * estado), mismo criterio que crear reglas/geocercas: sólo desde el panel web, no desde Android.
+ *
+ * Sprint 24: `view` splits this into two dashboard sections without splitting the fetch — both
+ * still load in one Promise.all, since silencing an alert here needs to update the "está
+ * silenciada" state on the same alert list. "inbox" (default) shows unread/read alerts;
+ * "silenced" shows the silence rules a tutor set up, so reactivating one lives next to the
+ * others instead of buried under the inbox.
  */
-export function AlertsPanel({ accessToken, deviceId }: { accessToken: string; deviceId: string }) {
+export function AlertsPanel({
+  accessToken,
+  deviceId,
+  view = "inbox",
+}: {
+  accessToken: string;
+  deviceId: string;
+  view?: "inbox" | "silenced";
+}) {
   const [state, setState] = useState<AlertsState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -97,18 +111,19 @@ export function AlertsPanel({ accessToken, deviceId }: { accessToken: string; de
   return (
     <div className="rulesPanel">
       <div className="devicesPanelHeader">
-        <strong>Alertas</strong>
+        <strong>{view === "inbox" ? "Alertas" : "Alertas silenciadas"}</strong>
         <button type="button" onClick={() => setReloadToken((current) => current + 1)}>
           Actualizar
         </button>
       </div>
 
-      {state.kind === "loading" && <p className="statusText">Cargando alertas…</p>}
+      {state.kind === "loading" && <p className="statusText">Cargando…</p>}
       {state.kind === "error" && <p className="authError">{state.message}</p>}
-      {state.kind === "loaded" && state.alerts.length === 0 && (
+
+      {view === "inbox" && state.kind === "loaded" && state.alerts.length === 0 && (
         <p className="statusText">Sin alertas para este dispositivo.</p>
       )}
-      {state.kind === "loaded" && state.alerts.length > 0 && (
+      {view === "inbox" && state.kind === "loaded" && state.alerts.length > 0 && (
         <ul className="appList">
           {state.alerts.map((alert) => (
             <li key={alert.id} className="appRow">
@@ -136,25 +151,25 @@ export function AlertsPanel({ accessToken, deviceId }: { accessToken: string; de
         </ul>
       )}
 
-      {state.kind === "loaded" && state.silences.length > 0 && (
-        <>
-          <p className="statusText">Silenciadas</p>
-          <ul className="appList">
-            {state.silences.map((silence) => (
-              <li key={silence.id} className="appRow">
-                <div className="appLabel">{silence.dedup_key}</div>
-                <span className="appUsage">
-                  {silence.silenced_until
-                    ? `hasta ${new Date(silence.silenced_until).toLocaleString("es-CO")}`
-                    : "indefinido"}{" "}
-                  <button type="button" onClick={() => handleUnsilence(silence.id)}>
-                    Reactivar
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
+      {view === "silenced" && state.kind === "loaded" && state.silences.length === 0 && (
+        <p className="statusText">No hay ninguna alerta silenciada en este dispositivo.</p>
+      )}
+      {view === "silenced" && state.kind === "loaded" && state.silences.length > 0 && (
+        <ul className="appList">
+          {state.silences.map((silence) => (
+            <li key={silence.id} className="appRow">
+              <div className="appLabel">{silence.dedup_key}</div>
+              <span className="appUsage">
+                {silence.silenced_until
+                  ? `hasta ${new Date(silence.silenced_until).toLocaleString("es-CO")}`
+                  : "indefinido"}{" "}
+                <button type="button" onClick={() => handleUnsilence(silence.id)}>
+                  Reactivar
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
