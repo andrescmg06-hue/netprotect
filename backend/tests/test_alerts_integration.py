@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -18,6 +19,14 @@ pytestmark = [
 
 CENTER = {"latitude": 4.710989, "longitude": -74.072092}
 OUTSIDE = {"latitude": 4.750000, "longitude": -74.072092}
+
+
+def _recent(minutes_ago: int) -> str:
+    """A `captured_at` safely inside location_retention_days (7, see app/core/config.py)
+    regardless of when the suite runs — a fixed calendar date eventually ages past that 7-day
+    window and starts failing the moment "now" catches up to it (see docs/sprint-26-evidence.md).
+    """
+    return (datetime.now(UTC) - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @pytest.fixture
@@ -167,13 +176,13 @@ def test_geofence_exit_and_enter_generate_alerts_with_matching_levels(client) ->
 
     # Baseline inside, then an EXIT, then an ENTER back in.
     assert _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-08T07:00:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(20), **CENTER
     ).status_code == 200
     assert _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-08T08:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(10), **OUTSIDE
     ).status_code == 200
     assert _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-08T09:00:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(0), **CENTER
     ).status_code == 200
 
     alerts = _list_alerts(client, tutor_token, device_id).json()["alerts"]

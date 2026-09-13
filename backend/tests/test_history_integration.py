@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -18,6 +19,14 @@ pytestmark = [
 
 CENTER = {"latitude": 4.710989, "longitude": -74.072092}
 OUTSIDE = {"latitude": 4.750000, "longitude": -74.072092}
+
+
+def _recent(minutes_ago: int) -> str:
+    """A `captured_at` safely inside location_retention_days (7, see app/core/config.py)
+    regardless of when the suite runs — a fixed calendar date eventually ages past that 7-day
+    window and starts failing the moment "now" catches up to it (see docs/sprint-26-evidence.md).
+    """
+    return (datetime.now(UTC) - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @pytest.fixture
@@ -115,11 +124,11 @@ def test_the_owning_tutor_sees_rule_and_geofence_events_merged_by_time(client) -
     )
     assert rule_event.status_code == 200, rule_event.text
     baseline = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-06T08:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(10), **OUTSIDE
     )
     assert baseline.status_code == 200, baseline.text
     enter = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T08:00:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(0), **CENTER
     )
     assert enter.status_code == 200, enter.text
 

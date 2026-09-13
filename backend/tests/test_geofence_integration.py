@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -24,6 +24,15 @@ pytestmark = [
 # approximation, which is more than precise enough at this scale.
 CENTER = {"latitude": 4.710989, "longitude": -74.072092}
 OUTSIDE = {"latitude": 4.750000, "longitude": -74.072092}
+
+
+def _recent(minutes_ago: int) -> str:
+    """A `captured_at` safely inside location_retention_days (7, see app/core/config.py)
+    regardless of when the suite runs. A fixed calendar date eventually ages past that 7-day
+    window and starts failing the moment "now" catches up to it — this happened for real (see
+    docs/sprint-26-evidence.md), not something this file should reintroduce.
+    """
+    return (datetime.now(UTC) - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @pytest.fixture
@@ -256,7 +265,7 @@ def test_the_first_report_against_a_geofence_establishes_a_baseline_without_an_e
     _create_geofence(client, tutor_token, device_id)
 
     report = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(30), **CENTER
     )
     assert report.status_code == 200, report.text
 
@@ -271,11 +280,11 @@ def test_moving_from_outside_to_inside_fires_an_enter_event(client) -> None:
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     _create_geofence(client, tutor_token, device_id)
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(30), **OUTSIDE
     )
 
     response = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:15:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(15), **CENTER
     )
     assert response.status_code == 200, response.text
 
@@ -291,11 +300,11 @@ def test_moving_from_inside_to_outside_fires_an_exit_event(client) -> None:
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     _create_geofence(client, tutor_token, device_id)
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(30), **CENTER
     )
 
     response = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:15:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(15), **OUTSIDE
     )
     assert response.status_code == 200, response.text
 
@@ -310,14 +319,14 @@ def test_staying_inside_across_reports_does_not_duplicate_events(client) -> None
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     _create_geofence(client, tutor_token, device_id)
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(30), **OUTSIDE
     )
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:15:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(15), **CENTER
     )
 
     response = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:30:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(0), **CENTER
     )
     assert response.status_code == 200, response.text
 
@@ -331,10 +340,10 @@ def test_deleting_a_geofence_keeps_its_past_events_with_a_name_snapshot(client) 
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     geofence_id = _create_geofence(client, tutor_token, device_id, name="Casa").json()["id"]
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(30), **OUTSIDE
     )
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:15:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(15), **CENTER
     )
 
     client.delete(
@@ -353,10 +362,10 @@ def test_a_stranger_tutor_cannot_read_geofence_events(client) -> None:
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     _create_geofence(client, tutor_token, device_id)
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(30), **OUTSIDE
     )
     _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:15:00Z", **CENTER
+        client, supervised_token, device_id, captured_at=_recent(15), **CENTER
     )
     stranger_token, _ = _make_account(client, "TUTOR")
 
@@ -401,7 +410,7 @@ async def test_reporting_location_purges_geofence_events_older_than_the_retentio
     # A fresh location report triggers the write endpoint's inline purge (app/api/v1/endpoints/
     # location.py) before evaluating a new transition, deleting the old ENTER above.
     fresh_report = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z", **OUTSIDE
+        client, supervised_token, device_id, captured_at=_recent(30), **OUTSIDE
     )
     assert fresh_report.status_code == 200, fresh_report.text
 

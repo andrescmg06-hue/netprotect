@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -72,6 +73,14 @@ def _setup_linked_device(client: TestClient) -> tuple[str, str, str]:
     return tutor_token, supervised_token, device_id
 
 
+def _recent(minutes_ago: int = 0) -> str:
+    """A `captured_at` safely inside location_retention_days (7, see app/core/config.py)
+    regardless of when the suite runs — a fixed calendar date eventually ages past that 7-day
+    window and starts failing the moment "now" catches up to it (see docs/sprint-26-evidence.md).
+    """
+    return (datetime.now(UTC) - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _report_location(
     client: TestClient,
     token: str,
@@ -80,7 +89,7 @@ def _report_location(
     latitude: float = 4.710989,
     longitude: float = -74.072092,
     accuracy_meters: float = 1500.0,
-    captured_at: str = "2026-09-07T09:00:00Z",
+    captured_at: str | None = None,
 ):
     return client.post(
         f"/api/v1/devices/{device_id}/location",
@@ -88,7 +97,7 @@ def _report_location(
             "latitude": latitude,
             "longitude": longitude,
             "accuracy_meters": accuracy_meters,
-            "captured_at": captured_at,
+            "captured_at": captured_at if captured_at is not None else _recent(),
         },
         headers=_auth(token),
     )
@@ -201,8 +210,8 @@ def test_reading_location_for_a_nonexistent_device_is_404(client) -> None:
 
 def test_the_owning_tutor_can_read_the_full_history(client) -> None:
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
-    _report_location(client, supervised_token, device_id, captured_at="2026-09-06T09:00:00Z")
-    _report_location(client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z")
+    _report_location(client, supervised_token, device_id, captured_at=_recent(10))
+    _report_location(client, supervised_token, device_id, captured_at=_recent(0))
 
     response = client.get(
         f"/api/v1/devices/{device_id}/location/history", headers=_auth(tutor_token)
@@ -235,8 +244,9 @@ def test_reporting_purges_rows_older_than_the_retention_window(client) -> None:
 
     # A fresh report triggers the write endpoint's inline purge (app/api/v1/endpoints/
     # location.py) before inserting itself, deleting the row above.
+    fresh_captured_at = _recent(0)
     fresh_report = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z"
+        client, supervised_token, device_id, captured_at=fresh_captured_at
     )
     assert fresh_report.status_code == 200, fresh_report.text
 
@@ -245,7 +255,7 @@ def test_reporting_purges_rows_older_than_the_retention_window(client) -> None:
     )
     reports = after_purge.json()["reports"]
     assert len(reports) == 1
-    assert reports[0]["captured_at"].startswith("2026-09-07")
+    assert reports[0]["captured_at"] == fresh_captured_at
 
 
 def test_purge_never_touches_another_devices_rows(client) -> None:
@@ -261,7 +271,7 @@ def test_purge_never_touches_another_devices_rows(client) -> None:
     assert old_on_other_device.status_code == 200, old_on_other_device.text
 
     fresh_on_this_device = _report_location(
-        client, supervised_token, device_id, captured_at="2026-09-07T09:00:00Z"
+        client, supervised_token, device_id, captured_at=_recent(0)
     )
     assert fresh_on_this_device.status_code == 200, fresh_on_this_device.text
 
