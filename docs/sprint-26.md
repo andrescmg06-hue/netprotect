@@ -156,7 +156,27 @@ permisos para hacerlo por API.
 Un pipeline de CD que aprueba código roto por haber llegado antes que la corrida de pruebas
 anularía el sentido de la aprobación manual en `deploy-production`. `workflow_run` engancha
 `cd.yml` a la finalización real del workflow `ci`, comprobando su `conclusion`, en vez de correr en
-paralelo a ciegas.
+paralelo a ciegas. Verificado en ambos sentidos al cerrar el sprint: una corrida de `ci` en rojo
+hizo que `cd.yml` se saltara por completo, y la siguiente corrida en verde sí disparó
+`build-and-push` de verdad (ver `docs/sprint-26-evidence.md`, sección 17).
+
+### Hallazgo real: tests de integración con fechas fijas que la propia retención de 7 días purgaba
+
+Al empujar los cambios de este sprint para disparar CI, el job `integration` falló de verdad (no
+una simulación): `test_history_integration.py`/`test_location_integration.py` sembraban reportes
+de ubicación con fechas de calendario fijas (`2026-09-06`/`2026-09-07`) que eran seguras cuando se
+escribieron pero no relativas a "ahora" — `location_retention_days` vale 7, y `report_location`
+purga las filas del dispositivo más viejas que esa ventana antes de insertar la nueva. Al llegar el
+reloj real a 2026-09-13, la fecha más vieja de cada test quedó fuera de la ventana justo cuando el
+segundo reporte disparaba la purga, borrando una fila que el test todavía necesitaba (en un caso, la
+línea base contra la que se evalúa una transición de geofencing). `test_geofence_integration.py`/
+`test_alerts_integration.py` tenían el mismo patrón con fechas `2026-09-07`/`2026-09-08` — no
+fallaban ese día, pero habrían fallado en 1-2 días más por el mismo mecanismo. No es un defecto de
+este sprint (las fechas llevaban semanas ahí, de sprints anteriores), pero sí bloqueaba su cierre y
+seguía siendo el mismo tipo de "bomba de tiempo" en los cuatro archivos, así que se corrigió en los
+cuatro a la vez en vez de esperar a que CI lo demostrara uno por uno. Ver
+`docs/sprint-26-evidence.md`, sección 16, para el fallo real, la corrección y la reverificación
+completa (265 pruebas) en Docker antes de volver a empujar.
 
 ## Qué queda pendiente de un humano
 

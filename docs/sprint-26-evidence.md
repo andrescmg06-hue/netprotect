@@ -280,3 +280,102 @@ rm -f .env.production secrets/*.txt
 
 Ningún secreto de verificación ni certificado de prueba quedó en el árbol de trabajo — `secrets/`
 sólo conserva `README.md` y `generate-dev-secrets.sh`, ambos versionados a propósito.
+
+## 16. Hallazgo real: tests de integración con fechas fijas que la propia retención purgaba
+
+Al empujar el commit `3a6265c` para disparar CI, `integration` falló de verdad (corrida
+[34774373642](https://github.com/andrescmg06-hue/netprotect/actions/runs/34774373642)):
+
+```
+backend-1  | >       assert len(events) == 2
+backend-1  | E       AssertionError: assert 1 == 2
+backend-1  | tests/test_history_integration.py:130: AssertionError
+...
+backend-1  | >       assert len(reports) == 2
+backend-1  | E       AssertionError: assert 1 == 2
+backend-1  | tests/test_location_integration.py:213: AssertionError
+backend-1  | FAILED tests/test_history_integration.py::test_the_owning_tutor_sees_rule_and_geofence_events_merged_by_time
+backend-1  | FAILED tests/test_location_integration.py::test_the_owning_tutor_can_read_the_full_history
+backend-1  | 2 failed, 263 passed, 5 warnings in 32.42s
+```
+
+No era una regresión de este sprint: `test_history_integration.py`/`test_location_integration.py`
+sembraban dos reportes de ubicación con fechas de calendario fijas (`2026-09-06`/`2026-09-07`),
+seguras cuando se escribieron pero no relativas a "ahora". `location_retention_days` vale 7
+(`app/core/config.py`) y `report_location` (`app/api/v1/endpoints/location.py`) purga las filas del
+propio dispositivo más viejas que esa ventana **antes** de insertar la nueva — al llegar el reloj
+real a 2026-09-13, la fecha más vieja de cada test (2026-09-06) quedó fuera de la ventana de 7 días
+en el momento en que el segundo reporte (2026-09-07) disparaba la purga, borrando la fila que el
+propio test necesitaba seguir viendo (en `test_history_integration.py`, además, esa fila era la
+línea base contra la que se evalúa la transición de geofencing, así que el ENTER esperado tampoco
+llegó a generarse). `test_geofence_integration.py`/`test_alerts_integration.py` tenían el mismo
+patrón con fechas `2026-09-07`/`2026-09-08` — no fallaban todavía ese día, pero habrían fallado en
+1-2 días más por el mismo mecanismo, así que se corrigieron también en vez de esperar a que CI lo
+demostrara de nuevo.
+
+Corregido (commit `882c985`) reemplazando cada marca de tiempo "reciente" por un helper
+`_recent(minutos_atrás)` calculado con `datetime.now(UTC)` en cada uno de los cuatro archivos,
+preservando el orden relativo que cada test necesitaba. Deliberadamente **no** se tocaron los
+`occurred_at` de `AppRuleEvent` (retención de 90 días, meses de margen todavía) ni las marcas
+"viejas a propósito" (`2026-08-08`, `2026-01-01`): una fecha fija en el pasado sigue "fuera de la
+ventana" para siempre una vez que el reloj ya la superó, así que esas no tienen el mismo defecto.
+
+Verificado de verdad, no sólo re-lanzando CI a ciegas: suite completa reconstruida y corrida en
+Docker local tras el fix, antes de volver a empujar —
+
+```
+docker compose -f compose.test.yaml build backend migrate
+docker compose -f compose.test.yaml run --rm migrate
+docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+...
+backend-1  | 265 passed, 4 warnings in 75.72s (0:01:15)
+```
+
+## 17. CI en GitHub Actions
+
+Commit `882c985` ("fix: stop hardcoding location test timestamps near the 7-day retention edge"),
+corrida [34775112519](https://github.com/andrescmg06-hue/netprotect/actions/runs/34775112519):
+
+```
+✓ backend                26s
+✓ frontend                35s
+✓ integration             1m19s
+✓ api-collection          1m1s
+✓ e2e                     1m40s
+✓ android                 2m1s
+✓ performance             1m52s
+✓ android-instrumented    3m43s
+```
+
+Los 8 jobs en verde en un runner limpio de GitHub Actions, incluida `integration` (que había
+fallado de verdad en la corrida anterior por el hallazgo #16, no simulado).
+
+Esa conclusión exitosa disparó automáticamente `cd.yml` vía `workflow_run` (criterio de aceptación
+#5 de `docs/sprint-26.md`) — corrida
+[34775308144](https://github.com/andrescmg06-hue/netprotect/actions/runs/34775308144):
+
+```
+✓ build-and-push       completed success
+⊘ deploy-production    completed skipped
+```
+
+`build-and-push` publicó imágenes reales en GHCR:
+
+```
+ghcr.io/andrescmg06-hue/netprotect/backend:latest
+ghcr.io/andrescmg06-hue/netprotect/backend:sha-882c98503d5383437d1413a46d0ed84f81610ffc
+ghcr.io/andrescmg06-hue/netprotect/web:latest
+ghcr.io/andrescmg06-hue/netprotect/web:sha-882c98503d5383437d1413a46d0ed84f81610ffc
+```
+
+`deploy-production` se saltó, no falló — exactamente el comportamiento diseñado en
+`docs/sprint-26.md` ("Por qué el job de despliegue real se salta en vez de fallar"): `vars.PROD_HOST`
+no existe en este repositorio. La corrida anterior de `cd.yml`
+([34774569384](https://github.com/andrescmg06-hue/netprotect/actions/runs/34774569384), encadenada
+a la corrida de `ci` que sí había fallado) se saltó por completo, confirmando que el encadenamiento
+por `workflow_run` + comprobación de `conclusion` funciona en ambos sentidos: no construye ni
+publica nada a partir de una corrida de `ci` en rojo.
+
+Sprint 26 cerrado en firme — con la salvedad, ya documentada en `docs/sprint-26.md` ("Qué queda
+pendiente de un humano"), de todo lo que exige cuenta cloud, dominio o permisos de administrador
+sobre el repositorio de GitHub.
