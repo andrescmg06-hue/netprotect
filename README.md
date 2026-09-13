@@ -427,6 +427,8 @@ comprobar si ya estaba anclada a otro tutor conectado, permitiendo que cualquier
 secuestrara en silencio una sesión de video ya en curso. Ya corregido y cubierto por una prueba de
 integración nueva, suite completa de backend en verde en Docker.
 
+El detalle está en `docs/sprint-24.md` y la evidencia en `docs/sprint-24-evidence.md`.
+
 ## Alcance del Sprint 25
 
 Pruebas integrales: cinco frentes que ningún sprint anterior cubría, sobre lo ya construido, sin
@@ -457,4 +459,32 @@ valor sembrado sin la segunda fallar.
 El detalle está en `docs/sprint-25.md` y la evidencia (incluyendo los hallazgos reales encontrados
 en el camino) en `docs/sprint-25-evidence.md`.
 
-El detalle está en `docs/sprint-24.md` y la evidencia en `docs/sprint-24-evidence.md`.
+## Alcance del Sprint 26
+
+Despliegue: infraestructura como código para todo lo que no exige una cuenta cloud ni un dominio
+real todavía (no había ninguno al empezar este sprint), dejando explícitamente pendiente lo que sí
+los exige. Caddy (`infra/caddy/Caddyfile`) termina TLS real y redirige HTTP→HTTPS — Let's Encrypt
+automático contra un dominio público, o su propia CA interna contra `*.localhost` para verificar
+sin dominio propio, verificado con una cadena de certificado validada de extremo a extremo. Los
+ocho secretos de producción (`JWT_SECRET`, `DATABASE_URL`, etc.) pasan de variables de entorno en
+texto plano a archivos montados (`secrets/`, patrón `_FILE` de las imágenes oficiales de
+PostgreSQL/Redis). Backups de PostgreSQL con restauración real probada (insertar datos, respaldar,
+destruir, restaurar, confirmar). Monitorización y logs con Prometheus + Grafana + Loki + Promtail,
+enteramente en Docker; una regla de alerta real (`BackendDown`) se disparó y se resolvió de verdad
+durante la propia verificación de este sprint. Y `.github/workflows/cd.yml`: construye y publica
+imágenes en GHCR tras cada `ci` verde en `main`, con el despliegue real a un servidor detrás de un
+*environment* de GitHub con aprobación manual — que este sprint dejó configurado en el workflow
+pero no pudo activar con revisor obligatorio por falta de permisos de administrador sobre el
+repositorio (pendiente del dueño del repositorio).
+
+Tres hallazgos reales en el camino, los tres encontrados corriendo el stack completo, no en
+aislamiento: `uvicorn --proxy-headers` sólo confía en `X-Forwarded-Proto` desde `127.0.0.1`, no
+desde la IP de contenedor de Caddy, así que todo el tráfico llegaba rechazado con
+`https_required` hasta añadir `--forwarded-allow-ips=*`; un `reverse_proxy` de Caddy sin
+restricción de ruta reenviaba también `/metrics` al público, cerrado con un matcher explícito; y
+Prometheus, que scrapea en HTTP simple dentro de la red interna sin pasar nunca por Caddy, chocaba
+con el mismo `https_required` — la alerta `BackendDown` llegó a dispararse de verdad por esta
+causa antes de corregirla.
+
+El detalle está en `docs/sprint-26.md` y la evidencia (incluyendo los hallazgos reales encontrados
+en el camino) en `docs/sprint-26-evidence.md`.

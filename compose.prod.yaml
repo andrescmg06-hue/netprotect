@@ -1,18 +1,39 @@
 name: netprotect-prod
 
+# Sprint 26: backend/web/migrate carry both `image:` and `build:` on purpose — `docker compose
+# build` (local verification, docs/sprint-26-evidence.md) builds from source same as before;
+# `docker compose pull` (the real deploy path, .github/workflows/cd.yml's deploy-production job)
+# instead fetches the tag build-and-push already pushed to GHCR, with no local build step and no
+# source checkout needed on the production host at all. BACKEND_IMAGE/WEB_IMAGE let a real deploy
+# pin an exact `sha-<commit>` tag instead of always floating on `latest`; unset, both default to
+# `latest` in this repository's own GHCR namespace.
+
+# Sprint 26: every service gets the same rotation instead of the unbounded default json-file
+# driver — a production host left running for months must not fill its disk with old container
+# logs. Promtail (below) still gets everything before rotation deletes it, at the same cadence
+# Grafana's "Backend logs" panel reads from Loki.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:18.6-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - postgres_prod_data:/var/lib/postgresql
     networks:
@@ -20,49 +41,66 @@ services:
 
   redis:
     image: redis:8.2-alpine
-    command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"']
+    command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$$(cat $$REDIS_PASSWORD_FILE)"']
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets:
+      - redis_password
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat $$REDIS_PASSWORD_FILE)\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - redis_prod_data:/data
     networks:
       - private
 
   migrate:
+    image: ${BACKEND_IMAGE:-ghcr.io/andrescmg06-hue/netprotect/backend:latest}
     build:
       context: ./backend
       target: runtime
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets:
+      - database_url
     command: ["alembic", "upgrade", "head"]
     depends_on:
       db:
         condition: service_healthy
+    logging: *default-logging
     networks:
       - private
 
   backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/andrescmg06-hue/netprotect/backend:latest}
     build:
       context: ./backend
       target: runtime
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION}
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      REDIS_URL_FILE: /run/secrets/redis_url
       CORS_ORIGINS: ${CORS_ORIGINS}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
-      JWT_SECRET: ${JWT_SECRET}
-      PAIRING_CODE_PEPPER: ${PAIRING_CODE_PEPPER}
-      LOCATION_ENCRYPTION_KEY: ${LOCATION_ENCRYPTION_KEY}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      PAIRING_CODE_PEPPER_FILE: /run/secrets/pairing_code_pepper
+      LOCATION_ENCRYPTION_KEY_FILE: /run/secrets/location_encryption_key
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+      FCM_SERVICE_ACCOUNT_FILE: ${FCM_SERVICE_ACCOUNT_FILE:-}
+      WEBRTC_STUN_URLS: ${WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
+    secrets:
+      - database_url
+      - redis_url
+      - jwt_secret
+      - pairing_code_pepper
+      - location_encryption_key
     depends_on:
       db:
         condition: service_healthy
@@ -71,13 +109,17 @@ services:
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"
+    logging: *default-logging
+    # No published host port on purpose (Sprint 26): Caddy is now the only container with a port
+    # published to the host, reached over the `edge` network by its container DNS name (backend).
+    # /metrics stays reachable only from other containers on `private` (Prometheus) — see
+    # app/main.py's comment on why that's sufficient instead of adding auth to that one route.
     networks:
       - private
       - edge
 
   web:
+    image: ${WEB_IMAGE:-ghcr.io/andrescmg06-hue/netprotect/web:latest}
     build:
       context: ./frontend
       args:
@@ -90,14 +132,154 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
+    # No published host port either (Sprint 26) — same reasoning as backend, reached by Caddy
+    # over `edge` as `web`.
+    networks:
+      - edge
+
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - web
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - edge
+
+  # Sprint 26: pg_dump on a timer (infra/backup/backup.sh), custom format, pruned by
+  # BACKUP_RETENTION_DAYS. Restoring is deliberately never automatic — see restore.sh's comment —
+  # so this service only ever writes into backups_data, it never reads from it.
+  backup:
+    image: postgres:18.6-alpine
+    entrypoint: ["/scripts/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGDATABASE: ${POSTGRES_DB}
+      PGPASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+    secrets:
+      - postgres_password
+    volumes:
+      - ./infra/backup:/scripts:ro
+      - backups_data:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - private
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    logging: *default-logging
+    # Deliberately not on `edge` and not routed to by Caddy — Prometheus has no login of its own,
+    # unlike Grafana, so it stays reachable only from other containers on `private`.
+    networks:
+      - private
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    secrets:
+      - grafana_admin_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+    logging: *default-logging
+    # Sprint 26 scope decision (see docs/sprint-26.md): bound to the host's loopback only, not
+    # routed through Caddy and not on `edge` — an operator reaches it through an SSH tunnel
+    # (`ssh -L 3000:127.0.0.1:3000 user@host`), not a public URL. Publishing this still works even
+    # though `private` is `internal: true`: that flag blocks the network's containers from
+    # reaching *out* to the internet, not the host's inbound DNAT for a published port — the same
+    # reason db/redis's dev compose can publish 127.0.0.1:5432/6379 despite being on the same kind
+    # of internal network (see B6 in docs/planning/plan-desarrollo.md). Giving Grafana its own
+    # public subdomain later is one more Caddy site block plus one more DNS record away —
+    # deliberately left for whoever picks the real production host, the same "pending a human
+    # with a real domain" situation as WEB_DOMAIN/API_DOMAIN themselves.
     ports:
       - "127.0.0.1:3000:3000"
     networks:
-      - edge
+      - private
+
+  loki:
+    image: grafana/loki:3.3.0
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./infra/monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - private
+
+  promtail:
+    image: grafana/promtail:3.3.0
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./infra/monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - private
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  redis_url:
+    file: ./secrets/redis_url.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  pairing_code_pepper:
+    file: ./secrets/pairing_code_pepper.txt
+  location_encryption_key:
+    file: ./secrets/location_encryption_key.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt
 
 volumes:
   postgres_prod_data:
   redis_prod_data:
+  caddy_data:
+  caddy_config:
+  backups_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   private:

@@ -1,0 +1,25 @@
+# Sprint 26: provisioned at container start (Grafana reads everything under
+# /etc/grafana/provisioning on boot) so a fresh deploy has both data sources wired without a human
+# clicking through Grafana's UI. Both addresses are the `private` Docker network's own service
+# names (compose.prod.yaml) — Grafana reaches them the same way Prometheus reaches the backend.
+apiVersion: 1
+
+datasources:
+  # Explicit `uid:` on both (verified for real this matters — omitting it lets Grafana assign a
+  # random one on each fresh provisioning, which then does not match the fixed
+  # "prometheus"/"loki" uids netprotect-overview.json's panels reference, breaking every panel
+  # with "datasource not found"; see docs/sprint-26-evidence.md).
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false

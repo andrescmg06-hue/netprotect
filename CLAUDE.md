@@ -66,6 +66,11 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (13/09/2026)
 
+Sprints 1 a 26 completos. Sprint 26 (despliegue): infraestructura como código verificada
+localmente sin dominio ni cuenta cloud reales (ver la Nota del Sprint 26 más abajo); CI en los 8
+jobs existentes verificado en verde tras sus cambios, y un nuevo workflow `cd.yml` que construye y
+publica imágenes en GHCR — ver `docs/sprint-26-evidence.md` para la corrida real.
+
 Sprints 1 a 25 completos y verificados en CI (8 jobs — `backend`, `frontend`, `android`,
 `integration`, `android-instrumented`, `api-collection`, `e2e`, `performance` — en verde, runner
 limpio; ver `docs/sprint-25-evidence.md`, sección "CI en GitHub Actions", corrida
@@ -484,8 +489,54 @@ dispositivo físico; se resuelve con `adb kill-server && adb start-server`. La p
 infraestructura real del Sprint 26, cualquier número de quiebre sólo describiría el contenedor de
 desarrollo de quien la ejecute. Ver `docs/sprint-25.md` y `docs/sprint-25-evidence.md`.
 
-**Siguiente: Sprint 26 — Despliegue.** Ver `docs/planning/roadmap.md` y
-`docs/planning/plan-desarrollo.md` (Paso 25) para el alcance detallado antes de empezar.
+**Nota del Sprint 26, válida para cualquier sprint futuro que toque el reverse proxy, los secretos
+de producción o el pipeline de CD**: no había cuenta cloud ni dominio real al empezar este sprint
+(confirmado con el dueño del proyecto antes de escribir código) — la decisión tomada fue construir
+toda la infraestructura como código y verificar todo lo que sí se puede probar sin dominio público,
+dejando lo que exige cuenta/dominio real documentado como pendiente, mismo patrón ya usado para
+Firebase/Maps. Caddy (`infra/caddy/Caddyfile`) termina TLS real: Let's Encrypt automático contra un
+dominio público (`WEB_DOMAIN`/`API_DOMAIN`, ya implícitos en `CORS_ORIGINS`/`ALLOWED_HOSTS`/
+`NEXT_PUBLIC_API_BASE_URL` desde el Sprint 21), o su propia CA interna contra `*.localhost` sin
+dominio propio — verificado con una cadena de certificado validada de extremo a extremo, nunca
+`curl -k`. Tres hallazgos reales, los tres encontrados corriendo el stack **completo**, no en
+aislamiento: `uvicorn --proxy-headers` sólo confía en `X-Forwarded-Proto` desde `127.0.0.1`, no
+desde la IP de contenedor de Caddy, así que todo el tráfico llegaba rechazado con
+`https_required` hasta sumar `--forwarded-allow-ips=*` al `CMD` del `Dockerfile` (seguro
+específicamente porque backend no tiene otro punto de entrada en esta topología: sin puerto
+publicado al host); un `reverse_proxy` de Caddy sin restricción de ruta reenviaba también
+`/metrics` al dominio público, cerrado con un matcher explícito (`@metrics path /metrics` +
+`respond 404`) antes del `reverse_proxy`; y Prometheus, que scrapea `backend:8000/metrics` en HTTP
+simple dentro de la red `private` sin pasar nunca por Caddy, chocaba con el mismo
+`https_required` — la alerta `BackendDown` llegó a **dispararse de verdad** por esta causa la
+primera vez que se levantó el stack completo, y a resolverse de verdad tras el fix
+(`_OPERATIONAL_PATH_PREFIXES` en `app/main.py`, que ya eximía a `/health*` desde antes — luego
+unificada con la excepción, antes separada, del limitador de tasa global, que `/code-review`
+encontró que seguía sin cubrir `/metrics`). Los ocho
+secretos de producción (`JWT_SECRET`, `DATABASE_URL`, etc.) pasan de variables de entorno en texto
+plano a archivos (`secrets/README.md`), con el mismo patrón `_FILE` que ya usan las imágenes
+oficiales de PostgreSQL/Redis (`backend/docker-entrypoint.sh` los exporta antes de `exec`) — elegido
+sobre el `secrets_dir` propio de `pydantic-settings` porque este último no ayuda con valores
+ensamblados como `DATABASE_URL`/`REDIS_URL`. Métricas (`GET /metrics`) son código propio sobre
+`prometheus_client`, no `prometheus-fastapi-instrumentator`: esa librería rompe **cada** request
+con `AttributeError: '_IncludedRouter' object has no attribute 'path'`, el mismo cambio interno de
+FastAPI 0.141 que `test_route_authorization_sweep.py` (Sprint 25) ya tuvo que sortear con
+*duck-typing* — dos librerías rotas por el mismo cambio en un sprint no es coincidencia.
+Prometheus + Grafana + Loki + Promtail corren enteramente en Docker (sin cuenta cloud) en la red
+`private`; sólo Grafana publica un puerto, y sólo a `127.0.0.1` del host (túnel SSH, no dominio
+público). Backups de PostgreSQL (`infra/backup/backup.sh`/`restore.sh`) verificados con un ciclo
+real de pérdida de datos: insertar una fila marcador, respaldar, destruir la tabla, restaurar,
+confirmar que vuelve. `.github/workflows/cd.yml` construye y publica imágenes en GHCR encadenado
+con `workflow_run` a la finalización real (no en paralelo) del workflow `ci`; `deploy-production`
+queda detrás de un *environment* de GitHub llamado `production` y se salta (nunca falla) mientras
+`vars.PROD_HOST` no exista, mismo patrón que `fcm_project_id` vacío en `app/services/push.py`. Ese
+*environment* **no se pudo configurar con revisor obligatorio** en este sprint: crear o modificar
+un *environment* de GitHub exige permisos de administrador sobre el repositorio, y el token usado
+sólo tenía permisos de colaborador — pendiente de que el dueño del repositorio
+(`andrescmg06-hue`) lo configure desde Settings → Environments → production. Ver
+`docs/sprint-26.md` y `docs/sprint-26-evidence.md`.
+
+**Siguiente: Sprint 27 — Documentación y presentación.** Ver `docs/planning/roadmap.md` y
+`docs/planning/plan-desarrollo.md` (Paso 26) para el alcance detallado antes de empezar.
 
 ## Entorno de trabajo
 

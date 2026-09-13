@@ -1,0 +1,31 @@
+groups:
+  - name: netprotect
+    rules:
+      # Fires as soon as Prometheus misses two consecutive scrapes (30s at the default 15s
+      # interval) — deliberately short: this rule exists to page a human about the API being
+      # down, not to absorb noise the way device_offline_threshold_seconds (5 minutes, a mobile
+      # device on flaky connectivity) does.
+      - alert: BackendDown
+        expr: up{job="netprotect-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "El backend de NetProtect no responde a Prometheus"
+          description: "up{job=\"netprotect-backend\"} lleva 30s en 0."
+
+      # status is a bucketed label ("2xx", "4xx", "5xx" — verified against the real /metrics
+      # output in docs/sprint-26-evidence.md), not the exact HTTP status code, so the match below
+      # is an exact string, not a regex over individual codes.
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="netprotect-backend", status="5xx"}[5m]))
+            /
+          sum(rate(http_requests_total{job="netprotect-backend"}[5m]))
+            > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Más del 5% de las respuestas del backend son 5xx"
+          description: "Tasa de error 5xx sobre el total de peticiones, promedio de 5 minutos."

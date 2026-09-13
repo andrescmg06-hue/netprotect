@@ -34,6 +34,12 @@ from app.main import app
 #   since the whole point of logout is to work even after the access token has already expired.
 #   The refresh token itself is the secret an attacker would need, exactly as much as an access
 #   token would be; there is no weaker check here, just a different one.
+# - GET /metrics (Sprint 26): Prometheus scrapes this without an access token, the same reasoning
+#   as /health* above — and unlike /health* it is never reachable from the internet in the first
+#   place regardless (see app/main.py's comment where it's registered): no published host port on
+#   backend, plus infra/caddy/Caddyfile explicitly 404s this one path before its own
+#   `reverse_proxy` line, so only Prometheus itself, on the `private` Docker network, can ever
+#   reach it.
 _PUBLIC_ROUTES: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/"),
@@ -44,6 +50,7 @@ _PUBLIC_ROUTES: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/google"),
         ("POST", "/api/v1/auth/refresh"),
         ("POST", "/api/v1/auth/logout"),
+        ("GET", "/metrics"),
     }
 )
 

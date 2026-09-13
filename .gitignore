@@ -48,6 +48,13 @@ logs/
 # .session.json (Playwright) hold real access/refresh tokens minted for that one run only.
 test-results/
 playwright-report/
+
+# Sprint 26: real secret values for compose.prod.yaml's `secrets:` block — generated once at
+# deploy time (see secrets/README.md), never committed. The directory itself (and its README) is
+# versioned so the expected filenames are documented without any real value ever touching git.
+/secrets/*
+!/secrets/README.md
+!/secrets/generate-dev-secrets.sh
 frontend/e2e/.session.json
 api-tests/environment.json
 

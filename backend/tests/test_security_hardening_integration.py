@@ -81,12 +81,18 @@ def test_a_rejection_says_when_to_come_back(client, monkeypatch) -> None:
     assert 0 < int(denied.headers["Retry-After"]) <= 45
 
 
-def test_health_is_never_rate_limited(client, monkeypatch) -> None:
-    """Health checks are what an orchestrator polls to decide whether this process is alive.
-    Rate-limiting them would make a burst of traffic look like a dead container."""
+@pytest.mark.parametrize("path", ["/api/v1/health", "/metrics"])
+def test_health_and_metrics_are_never_rate_limited(client, monkeypatch, path) -> None:
+    """Health checks are what an orchestrator polls to decide whether this process is alive;
+    rate-limiting them would make a burst of traffic look like a dead container. /metrics
+    (Sprint 26) joined this exemption after /code-review found it missing: an earlier version
+    only exempted it from the separate https_required check
+    (test_production_exempts_health_and_metrics_from_https_required below) and left it still
+    subject to this limiter — Prometheus sharing a source IP with other `private`-network traffic,
+    or a shortened RATE_LIMIT_GLOBAL_WINDOW_SECONDS, could have throttled real scrapes."""
     monkeypatch.setattr(settings, "rate_limit_global_max_per_ip", 1)
 
-    codes = [client.get("/api/v1/health").status_code for _ in range(5)]
+    codes = [client.get(path).status_code for _ in range(5)]
 
     assert codes == [200] * 5
 
@@ -181,6 +187,26 @@ def test_production_accepts_https(monkeypatch) -> None:
         app, base_url="https://testserver", client=(f"test-{uuid.uuid4().hex}", 51000)
     ) as https_client:
         response = https_client.get("/")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/api/v1/health", "/metrics"])
+def test_production_exempts_health_and_metrics_from_https_required(
+    client, monkeypatch, path
+) -> None:
+    """Sprint 26: found by actually running the full compose.prod.yaml stack — Prometheus scrapes
+    backend:8000/metrics in plain HTTP over the `private` Docker network, never through Caddy, so
+    it never presents an X-Forwarded-Proto Caddy would have set. Without this exemption every
+    scrape got a 400 and the BackendDown alert fired for real (docs/sprint-26-evidence.md). Both
+    paths are safe to exempt for the same reason: network segmentation, not TLS, is what already
+    keeps them unreachable from outside `private`/`edge` (see app/main.py's comment on
+    _OPERATIONAL_PATH_PREFIXES, also used by the global rate limiter — see
+    test_health_and_metrics_are_never_rate_limited above).
+    """
+    monkeypatch.setattr(settings, "app_env", "production")
+
+    response = client.get(path)
 
     assert response.status_code == 200
 

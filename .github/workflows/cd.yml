@@ -1,0 +1,122 @@
+name: cd
+
+# Sprint 26: chained off the `ci` workflow's own completion (workflow_run), not a parallel
+# `push: [main]` trigger — a production deploy pipeline approving broken code because it happened
+# to race ahead of the test run would defeat the entire point of the manual-approval gate below.
+# workflow_dispatch stays available for a manual rebuild/republish of the current main without a
+# new commit (e.g. after rotating a base image).
+#
+# Security note (found by /security-review before this sprint closed, fixed here): this repo is
+# public and ci.yml runs on `pull_request` from anyone, forks included. `workflow_run` always
+# executes with this file as committed on the default branch and with real repo secrets — the
+# `branches: [main]` filter alone does NOT make that safe, because for a pull_request-triggered
+# run, `workflow_run.head_branch` is the *fork's* branch name, which an attacker fully controls
+# (naming it "main" satisfies the filter). build-and-push below checks out
+# `workflow_run.head_sha` and pushes the result to this project's real GHCR registry with
+# `packages: write` — without the check added in that job's `if:`, a pull request could get its
+# own Dockerfile built and published as `ghcr.io/.../backend:latest`, poisoning the image a real
+# deploy would later pull. The fix: only proceed when the upstream `ci` run was itself triggered
+# by a `push` (`workflow_run.event == 'push'`), which a fork PR can never cause on this
+# repository's own `main` — pushing to `main` requires write access, i.e. an already-trusted
+# collaborator.
+on:
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          target: runtime
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/web
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      # NEXT_PUBLIC_* are baked in at build time (see frontend/Dockerfile) and are not secrets —
+      # NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is already public by design (Sprint 3: a Google OAuth
+      # *web* client ID is meant to ship in browser JS). Both fall back to the same placeholder
+      # domain .env.production.example already uses: pending a human picking the real production
+      # domain (docs/planning/plan-desarrollo.md, Paso 25), the image this job pushes today is
+      # correct in every way except that one baked-in value, and gets rebuilt with the real vars
+      # set the day that domain exists — same "pending a human with real infrastructure" situation
+      # as WEB_DOMAIN/API_DOMAIN in compose.prod.yaml.
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ vars.PROD_NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com' }}
+            NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ vars.PROD_GOOGLE_WEB_CLIENT_ID }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # Sprint 26 scope decision (docs/sprint-26.md): this job's steps are real and ready to run, but
+  # `if:` skips it — shown as "skipped", not failed — for as long as `vars.PROD_HOST` is unset, the
+  # same "pending a human with real infrastructure" situation as FCM/Maps in earlier sprints
+  # (app/services/push.py's fcm_project_id check is the exact same pattern: treat "not configured
+  # yet" as a deliberate no-op, not an error). The `environment: production` gate is real
+  # regardless of whether the job body ever runs: it is configured with a required reviewer (see
+  # docs/sprint-26-evidence.md) so the day PROD_HOST is set, the very first deploy still stops for
+  # a human to approve before touching the real server.
+  deploy-production:
+    needs: build-and-push
+    if: vars.PROD_HOST != ''
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.PROD_HOST }}
+          username: ${{ vars.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -eu
+            cd /opt/netprotect
+            git pull --ff-only
+            docker compose --env-file .env.production -f compose.prod.yaml pull backend web migrate
+            docker compose --env-file .env.production -f compose.prod.yaml run --rm migrate
+            docker compose --env-file .env.production -f compose.prod.yaml up -d

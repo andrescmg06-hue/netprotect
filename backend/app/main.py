@@ -10,12 +10,30 @@ from fastapi.responses import JSONResponse
 from app.api.v1.router import api_router
 from app.cache.redis_client import RateLimitBackendError, close_redis, hit_rate_limit
 from app.core.config import settings
+from app.core.metrics import metrics_endpoint, metrics_middleware
 from app.core.rate_limit import client_ip
 from app.db.session import dispose_engine
 
 logger = logging.getLogger(__name__)
 
 _HEALTH_PATH_PREFIX = f"{settings.api_v1_prefix}/health"
+# Sprint 26: paths a caller already on the trusted `private` Docker network hits directly, never
+# through Caddy — Prometheus scrapes backend:8000/metrics in plain HTTP (there is no TLS between
+# containers on that network, and issuing Prometheus its own certificate for a link that never
+# leaves a single host would be pure overhead). Verified for real that without exempting it,
+# enforcement_middleware's https_required check below rejected every scrape with 400 — Prometheus
+# has no Caddy-issued X-Forwarded-Proto to present, because it never goes through Caddy at all
+# (docs/sprint-26-evidence.md: this is what made the BackendDown alert fire for real the first
+# time the whole stack ran together). Not a security gap: the same network segmentation that keeps
+# these two paths reachable at all is what makes plain HTTP acceptable for them specifically.
+#
+# Used for BOTH exemptions below (https_required and the global rate limit), not just the one that
+# surfaced first: found by /code-review that an earlier version only added /metrics here for the
+# HTTPS check and left the separate rate-limit skip still checking _HEALTH_PATH_PREFIX alone, so a
+# short-enough RATE_LIMIT_GLOBAL_WINDOW_SECONDS or a shared source IP on the `private` network
+# could still throttle Prometheus's scrapes — inconsistent with treating /metrics as operational
+# infrastructure the same way /health already is.
+_OPERATIONAL_PATH_PREFIXES = (_HEALTH_PATH_PREFIX, "/metrics")
 
 
 @asynccontextmanager
@@ -56,16 +74,20 @@ async def enforcement_middleware(request: Request, call_next):
     at runtime — so an early rejection here still comes back through it and gets X-Request-ID
     and the rest of the security headers attached, same as any other response.
     """
-    if settings.app_env == "production" and request.url.scheme != "https":
-        # uvicorn runs with --proxy-headers, so request.url.scheme already reflects a trusted
-        # X-Forwarded-Proto. This is enforcement, not termination: the real TLS certificate and
-        # reverse proxy are still Paso 25's job (docs/planning/plan-desarrollo.md) — this repo
-        # has no production domain to provision one for yet.
+    if (
+        settings.app_env == "production"
+        and request.url.scheme != "https"
+        and not request.url.path.startswith(_OPERATIONAL_PATH_PREFIXES)
+    ):
+        # uvicorn runs with --proxy-headers --forwarded-allow-ips=* (Sprint 26), so
+        # request.url.scheme already reflects a trusted X-Forwarded-Proto for anything that came
+        # through Caddy. This is enforcement, not termination: the real TLS certificate and
+        # reverse proxy are Caddy's job (infra/caddy/Caddyfile, Sprint 26).
         return JSONResponse(
             {"detail": "https_required"}, status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    if not request.url.path.startswith(_HEALTH_PATH_PREFIX):
+    if not request.url.path.startswith(_OPERATIONAL_PATH_PREFIXES):
         ip = client_ip(request)
         try:
             result = await hit_rate_limit(
@@ -119,6 +141,16 @@ async def request_id_middleware(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def metrics_recording_middleware(request: Request, call_next):
+    """Registered last, so it runs as the outermost layer at runtime (same "last registered wins
+    the outside" rule as request_id_middleware's own docstring explains) — it must see every
+    response, including one enforcement_middleware short-circuits with 429/400, for the request
+    totals in GET /metrics to be accurate.
+    """
+    return await metrics_middleware(request, call_next)
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Logs the real error server-side, returns a generic body that leaks nothing about it.
@@ -140,5 +172,15 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 async def root() -> dict[str, str]:
     return {"service": settings.app_name, "status": "ok"}
 
+
+# Sprint 26: exempted in test_route_authorization_sweep.py's _PUBLIC_ROUTES for the same reason
+# /health* already is — a monitoring scrape must not depend on the same auth stack it might be
+# reporting on. Two independent layers keep it off the public internet: compose.prod.yaml gives
+# backend no published host port (only reachable from other containers on `private`/`edge`), and
+# infra/caddy/Caddyfile explicitly 404s /metrics on the public API domain before its
+# `reverse_proxy` line — verified for real that without that second layer, a bare `reverse_proxy`
+# on that site happily forwards every path, /metrics included, to backend (docs/sprint-26-
+# evidence.md). Only Prometheus, on `private`, can ever actually reach this route.
+app.get("/metrics", include_in_schema=False)(metrics_endpoint)
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -118,6 +118,36 @@ Reglas de diseño:
     acción a auditar). Sin retención/purga, a diferencia del resto de tablas de eventos: el propio
     plan lo llama "registro inmutable". Ver `docs/sprint-22.md`.
 
+33. **Terminación TLS real (Sprint 26).** Caddy (`infra/caddy/Caddyfile`) sustituye al *enforcement*
+    de sólo-cabecera del Sprint 21: HTTP→HTTPS automático, y un certificado gestionado
+    automáticamente — Let's Encrypt real para un dominio público (`WEB_DOMAIN`/`API_DOMAIN`), o la
+    CA interna propia de Caddy para `*.localhost` cuando no hay dominio real todavía (verificado
+    con una cadena de certificado real validada de punta a punta, no `curl -k`, ver
+    `docs/sprint-26-evidence.md`). `uvicorn --forwarded-allow-ips=*` es seguro específicamente
+    porque backend no tiene ningún otro punto de entrada en esta topología: sin puerto publicado al
+    host, sólo Caddy y Prometheus (ambos ya dentro de las redes `edge`/`private`) pueden alcanzarlo.
+34. **Secretos como archivos, no variables de entorno (Sprint 26).** `compose.prod.yaml` monta ocho
+    secretos (`secrets/README.md`) vía el bloque `secrets:` de Docker Compose en
+    `/run/secrets/<nombre>`; `backend/docker-entrypoint.sh` los vuelca a variables de entorno reales
+    dentro del propio proceso siguiendo el mismo patrón `_FILE` que ya usan las imágenes oficiales
+    de PostgreSQL/Redis — así nunca aparecen en `docker inspect` ni en un `.env` persistente en el
+    servidor. Mecanismo agnóstico del proveedor: cualquier gestor de secretos cloud que el Paso 25
+    termine eligiendo sólo necesita materializar esos ocho archivos en el servidor de producción.
+35. **Segmentación de red para telemetría interna (Sprint 26).** `GET /metrics` (Prometheus) no
+    lleva autenticación propia — como `/health*` desde el Sprint 4 — porque dos capas
+    independientes ya lo mantienen fuera de Internet: backend sin puerto publicado, y
+    `infra/caddy/Caddyfile` devolviendo 404 explícito en ese path *antes* de su propio
+    `reverse_proxy` (un `reverse_proxy` sin restricción de ruta reenvía todo, `/metrics` incluido —
+    hallazgo real corregido en este sprint, ver `docs/sprint-26-evidence.md`). Prometheus/Grafana/
+    Loki quedan en la red `private`; Grafana es la única con un puerto publicado, y sólo a
+    `127.0.0.1` del host (acceso por túnel SSH, no por dominio público).
+36. **Backups de PostgreSQL con restauración probada (Sprint 26).** `infra/backup/backup.sh`
+    (`pg_dump -Fc`, purga por `BACKUP_RETENTION_DAYS`) corre en un contenedor propio contra la
+    misma base; `infra/backup/restore.sh` es deliberadamente manual, nunca automático, porque
+    restaurar es destructivo. Verificado con datos reales: insertar una fila marcador, respaldar,
+    destruir la tabla, restaurar y confirmar que la fila (y el resto del esquema, incluidas las
+    semillas de `roles`) vuelve intacta — ver `docs/sprint-26-evidence.md`.
+
 ## Controles diferidos conscientemente
 
 Se implementarán en los sprints correspondientes:
@@ -129,9 +159,12 @@ Se implementarán en los sprints correspondientes:
   sin proyecto Firebase real todavía — pendiente de un humano con cuenta de Google Cloud, ver
   `docs/sprint-18.md`. WebSockets ya no está diferido (Sprint 18).
 - Políticas de retención y minimización por tipo de dato.
-- Gestor de secretos cloud.
-- **Terminación TLS real** (certificado, proxy inverso) — el *enforcement* a nivel de aplicación ya
-  existe desde el Sprint 21 (ítem 25); falta el dominio real del Paso 25.
+- **Gestor de secretos cloud concreto** — el mecanismo agnóstico (secretos como archivo, ítem 34)
+  ya existe desde el Sprint 26; falta que el Paso 25 elija un proveedor real y materialice esos
+  archivos con él en vez de con `secrets/generate-dev-secrets.sh` (sólo para verificación local).
+- **Dominio de producción real** — Caddy y su *enforcement* de HTTPS ya existen desde el Sprint 26
+  (ítem 33); falta `WEB_DOMAIN`/`API_DOMAIN` reales del Paso 25 para que emita Let's Encrypt en vez
+  de su CA interna.
 - **Certificate pinning en Android** — no hay todavía un certificado de producción real contra el
   cual fijarlo (Sprint 21, mismo motivo que la Nota del Sprint 13 sobre el SDK de Maps).
 - **CSP con nonce en el frontend** — `next.config.ts` usa `'unsafe-inline'` en
@@ -142,7 +175,9 @@ Se implementarán en los sprints correspondientes:
 Ya no están diferidos: desde el Sprint 21, rate limiting por identidad/IP/operación (ahora también
 global y en auth, no sólo en pairing) y SAST/DAST/análisis móvil (ZAP + MobSF corridos contra el
 entorno propio, ver `docs/sprint-21-evidence.md`); desde el Sprint 22, la consulta y exportación
-de auditoría (ítem 32).
+de auditoría (ítem 32); desde el Sprint 26, el mecanismo de terminación TLS y el de secretos como
+archivo (ítems 33-34 — el proveedor cloud concreto y el dominio real siguen pendientes del Paso
+25).
 
 Diferirlos no significa omitirlos: el diseño de cada sprint evita decisiones que impidan agregarlos
 correctamente más adelante.

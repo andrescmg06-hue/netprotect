@@ -1,0 +1,26 @@
+# Sprint 26: discovers every container on this host via the Docker API (needs
+# /var/run/docker.sock mounted read-only, see compose.prod.yaml) and tails its json-file log —
+# the same log compose.prod.yaml's `logging:` block already rotates, so shipping it to Loki costs
+# no extra disk growth on top of what production already keeps.
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: container
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: compose_service
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label: compose_project

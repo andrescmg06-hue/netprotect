@@ -1,0 +1,19 @@
+# Sprint 26. Scrapes the backend directly over the `private` Docker network (compose.prod.yaml) —
+# Prometheus itself is never on the `edge` network and Caddy never routes to it, so it is only
+# ever reachable from other containers, the same segmentation already used for PostgreSQL/Redis.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  - job_name: netprotect-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
