@@ -162,4 +162,29 @@ sprint siguiente en el roadmap).
 
 ## 6. CI en GitHub Actions
 
-Sección añadida tras el push de este sprint — ver el resultado real más abajo una vez confirmado.
+Commit `a9e26bb` ("feat: add sprint 27 documentation and presentation deliverables"), corrida
+[34776859885](https://github.com/andrescmg06-hue/netprotect/actions/runs/34776859885):
+
+```
+✓ backend                33s
+✓ frontend                31s
+✓ integration             1m12s
+✓ api-collection          52s
+✓ e2e                     1m27s
+✓ performance             1m43s
+✓ android                 1m51s
+✓ android-instrumented    3m39s
+```
+
+Los 8 jobs en verde en un runner limpio, sin ningún cambio de código de aplicación de por medio —
+consistente con que este sprint es puramente documental (criterio de aceptación #8 de
+`docs/sprint-27.md`).
+
+Disparó automáticamente `cd.yml` vía `workflow_run`
+([34777054727](https://github.com/andrescmg06-hue/netprotect/actions/runs/34777054727)):
+`build-and-push` publicó imágenes nuevas en GHCR (mismo contenido de aplicación que el commit
+anterior, sólo re-etiquetadas con el nuevo SHA); `deploy-production` se saltó, como siempre, por no
+existir `vars.PROD_HOST`.
+
+Con esto, los 27 sprints del roadmap (`docs/planning/roadmap.md`) quedan cerrados con evidencia
+real de principio a fin.
