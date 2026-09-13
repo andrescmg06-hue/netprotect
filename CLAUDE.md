@@ -64,17 +64,19 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
 
-## Estado actual (10/09/2026)
+## Estado actual (13/09/2026)
 
 Sprints 1 a 22 completos y verificados en CI; Sprint 23 implementado y verde localmente (backend en
 Docker, `assembleDebug` de Android, lint/build del panel web), pendiente de la corrida de CI y de
-la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`. `/security-review`
-sobre la rama encontró en el Sprint 23 (no corregido todavía, ver `docs/sprint-24-evidence.md`) que
-`ConnectionManager.begin_screen_share` reasigna la sesión de vista remota de un dispositivo sin
-comprobar si ya está anclada a otro tutor conectado — corregirlo antes de dar el Sprint 23 por
-cerrado en firme. Sprint 24 implementado y verde localmente (lint/build del panel web contra Next
-16 + TypeScript estricto, verificación visual end-to-end del dashboard contra el backend real en
-Docker con un usuario y sesión de prueba), sin cambios de backend, pendiente de CI.
+la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`. Sprint 24
+implementado y verde localmente (lint/build del panel web contra Next 16 + TypeScript estricto,
+verificación visual end-to-end del dashboard contra el backend real en Docker con un usuario y
+sesión de prueba). `/security-review` sobre la rama encontró al cerrar el Sprint 24 un hallazgo real
+en el Sprint 23 (`ConnectionManager.begin_screen_share` reasignaba la sesión de vista remota de un
+dispositivo sin comprobar si ya estaba anclada a otro tutor conectado) — **ya corregido y cubierto
+por una prueba de integración nueva**, suite completa de backend en verde en Docker (261 passed);
+ver `docs/sprint-24-evidence.md` para el detalle y la salida real. Todo lo anterior sigue pendiente
+del `git push` y de la corrida de CI en GitHub Actions sobre el diff final.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -408,14 +410,19 @@ primero y se llevara el video, con la auditoría nombrando a quien lo pidió); y
 una sesión **revalida el permiso contra la base de datos**, porque un WebSocket sobrevive al token
 que lo abrió y nada lo cierra al desvincular a un tutor. Ver `docs/sprint-23.md`.
 
-**Hallazgo pendiente del Sprint 23** (encontrado por `/security-review` al cerrar el Sprint 24, no
-corregido todavía): `ConnectionManager.begin_screen_share` (`backend/app/services/realtime.py`)
-sobrescribe `_screen_share_peers[device_id]` sin comprobar si ya hay una sesión anclada a otro
+**Hallazgo del Sprint 23 encontrado al cerrar el Sprint 24, ya corregido**: `/security-review`
+detectó que `ConnectionManager.begin_screen_share` (`backend/app/services/realtime.py`)
+sobrescribía `_screen_share_peers[device_id]` sin comprobar si ya había una sesión anclada a otro
 tutor conectado — el mismo tipo de fallo que las dos correcciones del párrafo anterior, pero en el
-flujo de *re*-solicitud: cualquier tutor vinculado puede reenviar `screen_share_request` en
+flujo de *re*-solicitud: cualquier tutor vinculado podía reenviar `screen_share_request` en
 cualquier momento (incluso a mitad de una sesión ya en curso) y redirigir en silencio a quién
-llegan el consentimiento y el video, sin que la persona supervisada vea de quién es la solicitud.
-Corregir antes de dar el Sprint 23 por cerrado en firme — ver `docs/sprint-24-evidence.md`.
+llegaban el consentimiento y el video, sin que la persona supervisada viera de quién era la
+solicitud. Corregido: `begin_screen_share` ahora devuelve `False` (sin tocar la sesión existente)
+si el slot ya está ocupado por *otra* conexión, y el endpoint responde al tutor rechazado con un
+frame `{"event": "screen_share_busy"}` en vez de robar la sesión en silencio o descartar el intento
+sin avisar; `RemoteViewPanel.tsx` lo muestra como mensaje al tutor. Cubierto por
+`test_a_second_tutor_cannot_hijack_a_screen_share_session_already_in_progress` — ver
+`docs/sprint-24-evidence.md` para la salida real de la suite completa en Docker.
 
 **Nota del Sprint 24, válida para cualquier sprint futuro que toque el panel web**: las "16
 secciones del dashboard" del Paso 23 son, igual que las categorías del Sprint 10, una decisión

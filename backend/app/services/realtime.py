@@ -50,8 +50,21 @@ class ConnectionManager:
         if not sockets:
             del self._connections[device_id]
 
-    def begin_screen_share(self, device_id: uuid.UUID, tutor_socket: WebSocket) -> None:
+    def begin_screen_share(self, device_id: uuid.UUID, tutor_socket: WebSocket) -> bool:
+        """Claims this device's screen-share slot for `tutor_socket`. Returns False, without
+        touching the existing claim, if another tutor connection already holds a live one —
+        found by /security-review closing Sprint 24: any linked tutor could resend
+        `screen_share_request` mid-session and silently redirect who the consent and video go
+        to next, with the supervised person never shown who the new request is even from.
+        Idempotent for the same socket (a client retrying its own request is not a conflict).
+        A peer that disconnects without a clean `screen_share_stop` can never block a fresh
+        request forever: unregister() clears its claim the moment that socket goes away.
+        """
+        current = self._screen_share_peers.get(device_id)
+        if current is not None and current is not tutor_socket:
+            return False
         self._screen_share_peers[device_id] = tutor_socket
+        return True
 
     def end_screen_share(self, device_id: uuid.UUID) -> None:
         self._screen_share_peers.pop(device_id, None)

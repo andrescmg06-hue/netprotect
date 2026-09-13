@@ -205,7 +205,15 @@ async def _handle_signal(
     if signal.type == "screen_share_request":
         if not await _still_authorized(device_id, user_id, role, db):
             return
-        connection_manager.begin_screen_share(device_id, websocket)
+        if not connection_manager.begin_screen_share(device_id, websocket):
+            # Another tutor connection already holds a live session on this device — reject
+            # instead of silently reassigning it (see begin_screen_share's docstring). The
+            # requester learns their request was refused; the device and the current peer are
+            # left untouched, so the in-progress session is not disrupted.
+            await websocket.send_json(
+                {"event": "screen_share_busy", "device_id": str(device_id)}
+            )
+            return
     elif role == ROLE_TUTOR and not connection_manager.is_screen_share_peer(device_id, websocket):
         return
 

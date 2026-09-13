@@ -458,6 +458,62 @@ def test_the_stream_only_reaches_the_tutor_who_asked_for_it(client) -> None:
                 assert device_ws.receive_json()["sdp"] == "v=0\r\no=- mine"
 
 
+def test_a_second_tutor_cannot_hijack_a_screen_share_session_already_in_progress(client) -> None:
+    """Sprint 24 finding, found by /security-review and fixed here: begin_screen_share used to
+    overwrite the pinned peer unconditionally, so any tutor linked to the device could resend
+    `screen_share_request` mid-session and silently redirect the device's offer to themselves
+    instead of the tutor the supervised person actually agreed to answer.
+    """
+    tutor_token = _make_account(client, "TUTOR")
+    second_tutor_token = _make_account(client, "TUTOR")
+    supervised_token = _make_account(client, "SUPERVISADO")
+
+    device_instance_id = uuid.uuid4().hex
+    device_id = None
+    for token in (tutor_token, second_tutor_token):
+        code = client.post("/api/v1/pairing/codes", headers=_auth(token)).json()["code"]
+        redeemed = client.post(
+            "/api/v1/pairing/redeem",
+            json={
+                "code": code,
+                "device_instance_id": device_instance_id,
+                "device_name": "Celular de Juan",
+                "platform": "ANDROID",
+                "os_version": "16",
+                "app_version": "0.1.0",
+            },
+            headers=_auth(supervised_token),
+        )
+        assert redeemed.status_code == 200, redeemed.text
+        device_id = device_id or redeemed.json()["device_id"]
+        assert redeemed.json()["device_id"] == device_id
+
+    with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as device_ws:
+        _authenticate_ws(device_ws, supervised_token)
+        with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as first_ws:
+            _authenticate_ws(first_ws, tutor_token)
+            first_ws.send_json({"type": "screen_share_request"})
+            assert device_ws.receive_json()["type"] == "screen_share_request"
+
+            with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as hijacker_ws:
+                _authenticate_ws(hijacker_ws, second_tutor_token)
+                hijacker_ws.send_json({"type": "screen_share_request"})
+
+                # Rejected: the late requester is told so, the device is never asked again.
+                assert hijacker_ws.receive_json() == {
+                    "event": "screen_share_busy",
+                    "device_id": device_id,
+                }
+
+                # The session already in progress is untouched: the device's offer still goes
+                # only to the tutor who originally asked.
+                device_ws.send_json({"type": "screen_share_offer", "sdp": "v=0\r\no=- offer"})
+                assert first_ws.receive_json()["type"] == "screen_share_offer"
+
+    assert "SCREEN_SHARE_REQUESTED" in _audit_actions(client, tutor_token)
+    assert "SCREEN_SHARE_REQUESTED" not in _audit_actions(client, second_tutor_token)
+
+
 def test_an_unlinked_tutor_cannot_start_a_session_on_a_socket_it_already_had_open(client) -> None:
     """The socket outlives the access token that opened it, and nothing closes it when the tutor
     is unlinked — so the frame that starts a session re-checks the grant against the database."""

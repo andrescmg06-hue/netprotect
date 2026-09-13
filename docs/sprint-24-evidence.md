@@ -145,8 +145,71 @@ del 24, y requeriría re-verificar la suite de integración de backend en Docker
 anotado aquí para corregirse antes de dar el Sprint 23 por cerrado en firme (o al abrir el
 siguiente sprint que toque `realtime.py`).
 
+## Corrección del hallazgo de `begin_screen_share` (sesión posterior)
+
+El hallazgo de la sección anterior se corrigió antes de dar el Sprint 23/24 por cerrados en firme.
+
+`ConnectionManager.begin_screen_share` (`backend/app/services/realtime.py`) ahora devuelve `bool`
+en vez de `None`: reclama el slot de vista remota del dispositivo sólo si no hay ya una sesión
+viva anclada a **otra** conexión de tutor (comparando el socket, no sólo el `device_id`). Es
+idempotente para el mismo socket (reenviar la propia solicitud no es un conflicto) y una sesión
+cuyo tutor se desconectó sin `screen_share_stop` nunca bloquea una solicitud nueva, porque
+`unregister()` ya limpiaba `_screen_share_peers[device_id]` en cuanto ese socket se iba — esa
+limpieza ya existía desde el Sprint 23, sólo faltaba que `begin_screen_share` la respetara antes
+de sobrescribir.
+
+En `backend/app/api/v1/endpoints/realtime.py`, si `begin_screen_share` devuelve `False` el
+endpoint no relaya nada al dispositivo (la sesión en curso queda intacta) y responde al tutor que
+llegó tarde con un frame `{"event": "screen_share_busy", "device_id": ...}` en vez de descartar su
+solicitud en silencio — mismo patrón ya usado por el frame `{"event": "connected"}` del Sprint 23.
+`RemoteViewPanel.tsx` (panel web) escucha ese evento y muestra "Ya hay otro tutor viendo la
+pantalla de este dispositivo ahora mismo." en vez de dejar al tutor esperando sin explicación.
+Android no se tocó: `screenShareRequested` en `SupervisedScreen.kt` sigue siendo un simple booleano
+del lado del dispositivo, que ahora sólo puede activarse desde la sesión realmente anclada.
+
+Prueba nueva que reproduce el hallazgo exacto y falla sin la corrección:
+`test_a_second_tutor_cannot_hijack_a_screen_share_session_already_in_progress`
+(`backend/tests/test_realtime_integration.py`) — dos tutores vinculados al mismo dispositivo, el
+primero abre una sesión (el dispositivo recibe su `screen_share_request`), el segundo la reenvía a
+mitad de sesión y recibe `screen_share_busy` en vez de robar el `peer`; el dispositivo nunca ve una
+segunda solicitud y su siguiente `screen_share_offer` sigue llegando sólo al primer tutor. También
+se verifica que `SCREEN_SHARE_REQUESTED` se audita para el tutor original y no para el que fue
+rechazado.
+
+Verificación real ejecutada, backend completo en Docker (nunca contra mocks de base de datos):
+
+```
+docker compose -f compose.test.yaml down -v
+docker compose -f compose.test.yaml build backend
+docker compose -f compose.test.yaml run --rm backend ruff check --no-cache app tests alembic
+docker compose -f compose.test.yaml run --rm migrate
+docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+```
+
+Salida real:
+
+```
+All checks passed!                                                  # ruff
+...
+261 passed, 4 warnings in 49.99s                                     # pytest, incluye el test nuevo
+```
+
+(La primera corrida de la suite completa, antes de esta, dio 228 fallos con
+`asyncpg.exceptions.UndefinedTableError: relation "users" does not exist` — el error ya documentado
+en `CLAUDE.md`: el `up` se lanzó después de que el contenedor `db` de una corrida anterior de
+`migrate` se hubiera detenido, dejando una base sin tablas. Se resolvió con `down -v` + `migrate` +
+`up` en una sola secuencia, tal como exige la nota de errores repetidos del proyecto.)
+
+Frontend (por el cambio en `RemoteViewPanel.tsx`), fuera de Docker, entorno local:
+
+```
+npm run lint    # eslint . --max-warnings=0 — sin salida, limpio
+npm run build   # Next 16 + TypeScript estricto — "Compiled successfully"
+```
+
+No corregido en esta sesión ni pendiente de humano: nada. El hallazgo queda cerrado.
+
 ## No ejecutado en esta sesión
 
-- CI en GitHub Actions (job `frontend`) contra este diff, en un runner limpio.
-- `ruff check` / pruebas de backend: no aplica, cero archivos de `backend/` tocados en este
-  sprint.
+- CI en GitHub Actions sobre el diff final (Sprint 23 + 24 + esta corrección) — pendiente del
+  `git push`.

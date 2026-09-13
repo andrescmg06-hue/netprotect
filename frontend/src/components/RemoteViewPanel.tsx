@@ -145,6 +145,18 @@ export function RemoteViewPanel({
             return;
           }
 
+          if (payload.event === "screen_share_busy") {
+            // Backend rejected this request because another tutor connection already holds a
+            // live session on this device (see ConnectionManager.begin_screen_share) — the
+            // in-progress session was left untouched, so this tutor just has to wait its turn.
+            teardown(false);
+            setState({
+              kind: "ended",
+              message: "Ya hay otro tutor viendo la pantalla de este dispositivo ahora mismo.",
+            });
+            return;
+          }
+
           if (payload.type === "screen_share_consent") {
             if (payload.granted) {
               setState({

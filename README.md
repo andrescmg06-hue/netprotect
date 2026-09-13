@@ -421,4 +421,10 @@ alcanzaba desde Android — sin backend nuevo. De paso se corrigió un *mismatch
 en `AuthContext` (preexistente desde el Sprint 3): el estado inicial dependía de `sessionStorage`
 dentro del inicializador de `useState`, que el servidor nunca ve igual que el cliente.
 
+Al cerrar este sprint, `/security-review` encontró un hallazgo real en el Sprint 23 (no en este):
+`ConnectionManager.begin_screen_share` reasignaba la sesión de vista remota de un dispositivo sin
+comprobar si ya estaba anclada a otro tutor conectado, permitiendo que cualquier tutor vinculado
+secuestrara en silencio una sesión de video ya en curso. Ya corregido y cubierto por una prueba de
+integración nueva, suite completa de backend en verde en Docker.
+
 El detalle está en `docs/sprint-24.md` y la evidencia en `docs/sprint-24-evidence.md`.
