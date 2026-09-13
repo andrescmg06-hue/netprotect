@@ -63,10 +63,21 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
   diseño de cada tabla.
 - `docs/android/capability-matrix.md` — qué es técnicamente viable en Android y qué no, con
   referencias oficiales. Antes de asumir que una función de control parental es posible, mirar aquí.
+- `docs/manuals/` — los nueve entregables del Sprint 27 (documento técnico, manuales de
+  instalación/usuario/administrador/despliegue, plan de pruebas, análisis de riesgos, modelo de
+  seguridad, política de privacidad). Síntesis por audiencia con cita a la fuente real; para el
+  detalle completo de una decisión, seguir la cita hasta `docs/sprint-NN.md`.
 
 ## Estado actual (13/09/2026)
 
-Sprints 1 a 26 completos. Sprint 26 (despliegue): infraestructura como código verificada
+Los 27 sprints del roadmap están completos. Sprint 27 (documentación y presentación): nueve
+documentos en `docs/manuals/` que sintetizan por audiencia lo ya construido y verificado en los
+sprints 1-26, sin agregar código ni alcance nuevo — incluida la constatación honesta de que el
+control de navegación web por `VpnService`/DNS del plan original (Paso 8) nunca se construyó (se
+evaluó y se pospuso explícitamente en el Sprint 9, y no se retomó). Ver `docs/sprint-27.md` y
+`docs/sprint-27-evidence.md`.
+
+Sprint 26 (despliegue): infraestructura como código verificada
 localmente sin dominio ni cuenta cloud reales (ver la Nota del Sprint 26 más abajo); CI en los 8
 jobs existentes verificado en verde tras sus cambios, y un nuevo workflow `cd.yml` que construye y
 publica imágenes en GHCR — ver `docs/sprint-26-evidence.md` para la corrida real.
@@ -535,8 +546,19 @@ sólo tenía permisos de colaborador — pendiente de que el dueño del reposito
 (`andrescmg06-hue`) lo configure desde Settings → Environments → production. Ver
 `docs/sprint-26.md` y `docs/sprint-26-evidence.md`.
 
-**Siguiente: Sprint 27 — Documentación y presentación.** Ver `docs/planning/roadmap.md` y
-`docs/planning/plan-desarrollo.md` (Paso 26) para el alcance detallado antes de empezar.
+**Nota del Sprint 27, válida para cualquier trabajo futuro sobre `docs/manuals/`**: son documentos
+de síntesis, no una segunda fuente de verdad — cada uno cita el `docs/sprint-NN.md` o archivo de
+código concreto donde vive el detalle real. Si un sprint futuro cambia algo que un manual describe,
+actualizar el manual en el mismo commit que el cambio, igual que ya se hace con `README.md`. La
+funcionalidad de control de navegación web (`VpnService`/filtrado DNS) del plan original sigue sin
+construirse — documentada así a propósito en `docs/manuals/analisis-riesgos.md` y
+`docs/manuals/documento-tecnico.md` (§3.1), no como un "V2" menor sino como un paso completo del
+plan que quedó sin implementar. Ver `docs/sprint-27.md` y `docs/sprint-27-evidence.md`.
+
+**Los 27 sprints del roadmap están completos.** No queda un "sprint siguiente" — lo que resta es
+exclusivamente lo que varias notas de sprint ya documentan como pendiente de un humano con cuenta
+cloud, dominio o permisos de administrador sobre el repositorio de GitHub (ver
+`docs/manuals/analisis-riesgos.md` para la lista consolidada).
 
 ## Entorno de trabajo
 

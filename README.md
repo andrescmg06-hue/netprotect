@@ -488,3 +488,16 @@ causa antes de corregirla.
 
 El detalle está en `docs/sprint-26.md` y la evidencia (incluyendo los hallazgos reales encontrados
 en el camino) en `docs/sprint-26-evidence.md`.
+
+## Alcance del Sprint 27
+
+Documentación y presentación: el último de los 27 sprints del roadmap, sin código nuevo. Nueve
+documentos en `docs/manuals/` (documento técnico, manuales de instalación/usuario/administrador/
+despliegue, plan de pruebas, análisis de riesgos, modelo de seguridad y política de privacidad),
+cada uno citando el sprint o archivo de origen de cada afirmación en vez de repetir de memoria lo
+ya verificado en `docs/sprint-01.md`…`docs/sprint-26.md`. Documenta explícitamente, sin suavizarlo,
+que el control de navegación web por `VpnService`/DNS del plan original (Paso 8) nunca se
+construyó — se evaluó y se pospuso en el Sprint 9 por necesitar su propia fase, y no se retomó en
+ningún sprint posterior.
+
+El detalle está en `docs/sprint-27.md` y la evidencia en `docs/sprint-27-evidence.md`.
