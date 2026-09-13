@@ -209,7 +209,25 @@ npm run build   # Next 16 + TypeScript estricto — "Compiled successfully"
 
 No corregido en esta sesión ni pendiente de humano: nada. El hallazgo queda cerrado.
 
+## CI en GitHub Actions
+
+Commit `86bbaef` ("fix: pin screen-share sessions against tutor takeover", que trae consigo los
+commits `0e003e5` del Sprint 23 y `41a959d` del Sprint 24, ambos sin *push* hasta este momento),
+corrida [34734490343](https://github.com/andrescmg06-hue/netprotect/actions/runs/34734490343):
+
+```
+✓ frontend      32s
+✓ backend       32s
+✓ integration   1m15s
+✓ android       2m57s
+```
+
+Los 4 jobs en verde en un runner limpio de GitHub Actions. Sprints 23 y 24 cerrados en firme, salvo
+la verificación manual del Sprint 23 que sigue exigiendo una persona real (ver
+`docs/sprint-23-evidence.md`).
+
 ## No ejecutado en esta sesión
 
-- CI en GitHub Actions sobre el diff final (Sprint 23 + 24 + esta corrección) — pendiente del
-  `git push`.
+- La verificación manual del Sprint 23 (una persona real aceptando el diálogo de captura de
+  `MediaProjection` en un dispositivo Android físico o emulado) — sigue fuera del alcance de lo que
+  un agente puede hacer.

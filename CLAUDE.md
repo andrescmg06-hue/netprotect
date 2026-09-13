@@ -66,17 +66,16 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (13/09/2026)
 
-Sprints 1 a 22 completos y verificados en CI; Sprint 23 implementado y verde localmente (backend en
-Docker, `assembleDebug` de Android, lint/build del panel web), pendiente de la corrida de CI y de
-la verificación manual que exige una persona — ver `docs/sprint-23-evidence.md`. Sprint 24
-implementado y verde localmente (lint/build del panel web contra Next 16 + TypeScript estricto,
-verificación visual end-to-end del dashboard contra el backend real en Docker con un usuario y
-sesión de prueba). `/security-review` sobre la rama encontró al cerrar el Sprint 24 un hallazgo real
-en el Sprint 23 (`ConnectionManager.begin_screen_share` reasignaba la sesión de vista remota de un
-dispositivo sin comprobar si ya estaba anclada a otro tutor conectado) — **ya corregido y cubierto
-por una prueba de integración nueva**, suite completa de backend en verde en Docker (261 passed);
-ver `docs/sprint-24-evidence.md` para el detalle y la salida real. Todo lo anterior sigue pendiente
-del `git push` y de la corrida de CI en GitHub Actions sobre el diff final.
+Sprints 1 a 24 completos y verificados en CI (los 4 jobs — `backend`, `frontend`, `android`,
+`integration` — en verde sobre `86bbaef`, runner limpio). Sprint 23: supervisión remota por WebRTC;
+pendiente sólo la verificación manual que exige una persona (una persona real aceptando el diálogo
+de captura de Android) — ver `docs/sprint-23-evidence.md`. Sprint 24: panel web completo, verificado
+end-to-end (lint/build contra Next 16 + TypeScript estricto, verificación visual del dashboard
+contra el backend real en Docker con un usuario y sesión de prueba) — ver `docs/sprint-24-evidence.md`.
+Al cerrar el Sprint 24, `/security-review` encontró un hallazgo real en el Sprint 23
+(`ConnectionManager.begin_screen_share` reasignaba la sesión de vista remota de un dispositivo sin
+comprobar si ya estaba anclada a otro tutor conectado) — corregido y cubierto por una prueba de
+integración nueva antes de hacer *push*, suite completa de backend en verde en Docker (261 passed).
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
