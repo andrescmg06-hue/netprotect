@@ -230,9 +230,28 @@ npm run build   # Next 16 + TypeScript estricto — "Compiled successfully"
 
 ## No ejecutado en esta sesión
 
-- CI en GitHub Actions sobre los 4 jobs nuevos (`android-instrumented`, `api-collection`, `e2e`,
-  `performance`) — pendiente del `git push`; el job `android-instrumented` en particular usa
-  `reactivecircus/android-emulator-runner@v2`, que sólo puede verificarse de verdad corriendo en un
-  runner de GitHub Actions, no en esta máquina.
 - Cualquier prueba que dependa de un login real de Google, como en cada sprint anterior de
   autenticación.
+
+## CI en GitHub Actions
+
+Commit `9b06971` ("feat: add sprint 25 integration testing (auth sweep, offline Room tests,
+API/E2E/perf)"), corrida
+[34738208116](https://github.com/andrescmg06-hue/netprotect/actions/runs/34738208116):
+
+```
+✓ backend                32s     (04:34:32 → 04:35:08)
+✓ frontend                30s     (04:34:32 → 04:35:02)
+✓ integration             1m19s   (04:34:32 → 04:35:51)
+✓ android                 3m3s    (04:34:31 → 04:37:34)
+✓ api-collection          58s     (04:34:32 → 04:35:30)
+✓ e2e                     1m29s   (04:34:32 → 04:36:01)
+✓ performance             1m39s   (04:34:31 → 04:36:10)
+✓ android-instrumented    5m26s   (04:34:32 → 04:39:58)
+```
+
+Los 8 jobs en verde en un runner limpio de GitHub Actions, incluidos los 4 que este sprint agrega.
+`android-instrumented` es, como se esperaba, el más lento (arranca un emulador real vía
+`reactivecircus/android-emulator-runner@v2` sobre KVM) pero corrió sin ningún ajuste adicional
+sobre lo ya validado localmente — ni el arranque del emulador en runner ni el paso de habilitar KVM
+necesitaron corrección. Sprint 25 cerrado en firme.

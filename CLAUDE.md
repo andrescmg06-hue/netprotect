@@ -66,20 +66,24 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 
 ## Estado actual (13/09/2026)
 
-Sprints 1 a 24 completos y verificados en CI (los 4 jobs — `backend`, `frontend`, `android`,
-`integration` — en verde, runner limpio). Sprint 23: supervisión remota por WebRTC; pendiente sólo
-la verificación manual que exige una persona (una persona real aceptando el diálogo de captura de
-Android) — ver `docs/sprint-23-evidence.md`. Sprint 25 (pruebas integrales) implementado y
-verificado localmente: barrido de autorización sobre el router real del backend (encontró y dejó
-documentadas dos excepciones legítimas — `GET /` y `POST /auth/logout` — que nunca se habían
-escrito como decisión); pruebas instrumentadas de Android reales en emulador (8/8, Sprint 19
+Sprints 1 a 25 completos y verificados en CI (8 jobs — `backend`, `frontend`, `android`,
+`integration`, `android-instrumented`, `api-collection`, `e2e`, `performance` — en verde, runner
+limpio; ver `docs/sprint-25-evidence.md`, sección "CI en GitHub Actions", corrida
+[34738208116](https://github.com/andrescmg06-hue/netprotect/actions/runs/34738208116)). Sprint 23:
+supervisión remota por WebRTC; pendiente sólo la verificación manual que exige una persona (una
+persona real aceptando el diálogo de captura de Android) — ver `docs/sprint-23-evidence.md`.
+Sprint 25 (pruebas integrales): barrido de autorización sobre el router real del backend (encontró
+y dejó documentadas dos excepciones legítimas — `GET /` y `POST /auth/logout` — que nunca se
+habían escrito como decisión); pruebas instrumentadas de Android reales en emulador (8/8, Sprint 19
 offline) para `RulesCacheStore`/`PendingRuleEventStore`, sin ninguna cobertura hasta ahora; una
 colección de API con Newman (13 peticiones, 23 aserciones, 0 fallos) contra el backend real; E2E
 web con Playwright contra un build de producción real del panel (Sprint 24) y el backend real; y
 una prueba de rendimiento con k6 (referencia repetible, no de estrés) — ver `docs/sprint-25.md` y
 `docs/sprint-25-evidence.md` para el detalle, las decisiones de diseño y los hallazgos reales
-encontrados en el camino. CI en GitHub Actions con los 4 jobs nuevos que este sprint agrega
-(`android-instrumented`, `api-collection`, `e2e`, `performance`) pendiente del `git push`.
+encontrados en el camino. Los 4 jobs nuevos de CI que este sprint agrega
+(`android-instrumented`, `api-collection`, `e2e`, `performance`) corrieron en verde en su primer
+intento sobre un runner de GitHub Actions, incluido el emulador Android vía
+`reactivecircus/android-emulator-runner@v2`.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
