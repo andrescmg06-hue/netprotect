@@ -126,5 +126,9 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    // Sprint 25: real Room instrumented tests for the Sprint 19 offline cache — an in-memory
+    // Room database still needs a real SQLite from the Android runtime, which is exactly what
+    // room-testing's Room.inMemoryDatabaseBuilder() gives an androidTest, unlike a JVM unit test.
+    androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -79,6 +79,43 @@ services:
     networks:
       - netprotect_test
 
+  # Sprint 25: `backend` above runs pytest and exits — no good for Newman/Playwright/k6, which
+  # need a real HTTP server to hit. Same image (built once, shared build cache with `backend` and
+  # `migrate`), same database, just a different command and a published port. Kept in this file
+  # rather than a separate compose file so it can never drift out of sync with the env vars the
+  # `backend` test service already gets right.
+  api_server:
+    build:
+      context: ./backend
+      target: test
+    environment:
+      APP_ENV: test
+      APP_VERSION: 0.1.0-sprint1
+      DATABASE_URL: postgresql+asyncpg://netprotect_test:change_me_test_only@db:5432/netprotect_test
+      REDIS_URL: redis://:change_me_redis_test_only@redis:6379/0
+      CORS_ORIGINS: http://localhost:3000
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend,api_server,testserver
+      GOOGLE_WEB_CLIENT_ID: test-client-id.apps.googleusercontent.com
+      JWT_SECRET: change_me_test_only_jwt_secret_at_least_32_bytes_long
+      PAIRING_CODE_PEPPER: change_me_test_only_pairing_pepper_at_least_32_byte
+      LOCATION_ENCRYPTION_KEY: KkxP1iS9ZDOzTx6NGgiAftFSQrsczN4j7bHr8_yd7VI=
+      LOG_LEVEL: WARNING
+      # Newman/Playwright/k6 all hit this from outside the container at whatever pace their
+      # scripts run at — not the hundreds-of-requests-a-minute pytest suite, but still enough
+      # to want headroom rather than tripping the production default (300/min per IP).
+      RATE_LIMIT_GLOBAL_MAX_PER_IP: "100000"
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - netprotect_test
+
 networks:
   netprotect_test:
     driver: bridge

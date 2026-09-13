@@ -44,6 +44,13 @@ Thumbs.db
 logs/
 *.log
 
+# Sprint 25: Playwright E2E — generated per-run, never versioned. environment.json (Newman) and
+# .session.json (Playwright) hold real access/refresh tokens minted for that one run only.
+test-results/
+playwright-report/
+frontend/e2e/.session.json
+api-tests/environment.json
+
 # Overrides locales de docker compose (p.ej. remapear un puerto que choca con software
 # instalado en la máquina de quien desarrolla) — nunca compartidos ni versionados.
 compose.override.yaml

@@ -75,3 +75,121 @@ jobs:
       - run: docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
       - if: always()
         run: docker compose -f compose.test.yaml down -v
+
+  # Sprint 25: instrumented tests for the Sprint 19 offline cache (RulesCacheStore,
+  # PendingRuleEventStore) — Room needs a real SQLite from an Android runtime, which neither a
+  # JVM unit test nor this project's CI (no Robolectric) can fake, so this runs on an actual
+  # emulator. API 30 here, not this project's compileSdk 36: any API >= minSdk 26 exercises the
+  # same Room/SQLite behavior, and lower API images boot noticeably faster in CI — nothing under
+  # test is API-version-specific.
+  android-instrumented:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x ./gradlew
+      - name: Enable KVM (required by the emulator runner)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          working-directory: mobile
+          script: ./gradlew connectedDebugAndroidTest
+
+  # Sprint 25: a Postman collection (api-tests/) exercising a real tutor+supervised flow, run
+  # with Newman against the real backend in Docker. Newman is a black-box HTTP runner — it can't
+  # mock Google's verification the way pytest's fixtures do, so a seed script mints a real
+  # session first (see backend/scripts/seed_test_session.py's docstring for why that's not a
+  # backend auth bypass).
+  api-collection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: docker compose -f compose.test.yaml build backend migrate api_server
+      - run: docker compose -f compose.test.yaml run --rm migrate
+      - run: docker compose -f compose.test.yaml up -d db redis api_server
+      - run: |
+          timeout 30 sh -c 'until curl -sf http://localhost:8000/api/v1/health/ready; do sleep 1; done'
+      - name: Seed a real session and build the Newman environment
+        run: |
+          seed=$(docker compose -f compose.test.yaml run --rm api_server python scripts/seed_test_session.py)
+          node api-tests/build_environment.js "$seed" > api-tests/environment.json
+      - run: npx --yes newman run api-tests/netprotect.postman_collection.json -e api-tests/environment.json
+      - if: always()
+        run: docker compose -f compose.test.yaml down -v
+
+  # Sprint 25: Playwright against a production build of the web panel (next build + the
+  # standalone server — see frontend/playwright.config.ts for why `next start` doesn't work
+  # here) and the real backend in Docker. global-setup.ts seeds a real tutor session and a linked
+  # device the same way api-collection does above.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: docker compose -f compose.test.yaml build backend migrate api_server
+      - run: docker compose -f compose.test.yaml run --rm migrate
+      - run: docker compose -f compose.test.yaml up -d db redis api_server
+      - run: |
+          timeout 30 sh -c 'until curl -sf http://localhost:8000/api/v1/health/ready; do sleep 1; done'
+      - name: Seed a real tutor session
+        run: echo "E2E_SEED_JSON=$(docker compose -f compose.test.yaml run --rm api_server python scripts/seed_test_session.py)" >> "$GITHUB_ENV"
+      - run: npx playwright test
+        working-directory: frontend
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+      - if: always()
+        run: docker compose -f compose.test.yaml down -v
+
+  # Sprint 25: a fixed, moderate load profile against the real backend in Docker — a repeatable
+  # reference, not a breaking-point stress test (see docs/sprint-25.md for why: without Sprint
+  # 26's real deployment, a stress number here would only describe this runner's container).
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+      - run: docker compose -f compose.test.yaml build backend migrate api_server
+      - run: docker compose -f compose.test.yaml run --rm migrate
+      - run: docker compose -f compose.test.yaml up -d db redis api_server
+      - run: |
+          timeout 30 sh -c 'until curl -sf http://localhost:8000/api/v1/health/ready; do sleep 1; done'
+      - run: K6_BIN=k6 bash perf/run.sh
+      - if: always()
+        run: docker compose -f compose.test.yaml down -v

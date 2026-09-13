@@ -427,4 +427,34 @@ comprobar si ya estaba anclada a otro tutor conectado, permitiendo que cualquier
 secuestrara en silencio una sesión de video ya en curso. Ya corregido y cubierto por una prueba de
 integración nueva, suite completa de backend en verde en Docker.
 
+## Alcance del Sprint 25
+
+Pruebas integrales: cinco frentes que ningún sprint anterior cubría, sobre lo ya construido, sin
+tocar backend/frontend/Android de producción salvo donde el propio proceso de pruebas lo exigió.
+Una prueba que recorre el router real de FastAPI comprobando que ninguna ruta funcional queda sin
+autenticación (mencionada en el plan desde el Sprint 4 pero nunca escrita) — encontró y dejó
+documentadas dos excepciones legítimas que nadie había puesto por escrito: el banner estático
+`GET /` y `POST /auth/logout` (se autentica por el propio *refresh token* que revoca, no por un
+*access token*). Pruebas instrumentadas de Android en un emulador real para el caché offline y la
+cola de eventos pendientes del Sprint 19 (`RulesCacheStore`, `PendingRuleEventStore`), sin ninguna
+cobertura hasta ahora porque Room exige un runtime Android real. Una colección de API ejercitada
+con Newman contra el backend real (13 peticiones, flujo completo tutor+supervisado, caso
+anti-IDOR incluido). Pruebas E2E web con Playwright contra un build de producción real del panel
+del Sprint 24 y el backend real, no una réplica de las pruebas unitarias de React. Y una prueba de
+rendimiento con k6 — un perfil moderado y repetible, no una prueba de estrés, porque sin la
+infraestructura real del Sprint 26 cualquier número de quiebre sólo describiría el contenedor de
+desarrollo de quien la ejecute.
+
+Newman, Playwright y k6 comparten el mismo problema y la misma solución: ninguno puede simular la
+verificación de Google como sí hacen los tests de pytest (eso sólo funciona dentro del mismo
+proceso), así que un script nuevo (`backend/scripts/seed_test_session.py`, sólo en la imagen de
+pruebas, nunca en la de producción) mint una sesión real con las funciones propias y no mockeadas
+del proyecto — el mismo trabajo que ya hacía a mano la verificación visual del Sprint 24, ahora
+repetible. Un hallazgo real en el camino: el *refresh token* de este proyecto es rotativo y de un
+solo uso desde el Sprint 3, así que una suite E2E no puede iniciar sesión dos veces con el mismo
+valor sembrado sin la segunda fallar.
+
+El detalle está en `docs/sprint-25.md` y la evidencia (incluyendo los hallazgos reales encontrados
+en el camino) en `docs/sprint-25-evidence.md`.
+
 El detalle está en `docs/sprint-24.md` y la evidencia en `docs/sprint-24-evidence.md`.

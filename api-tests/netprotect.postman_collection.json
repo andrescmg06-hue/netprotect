@@ -1,0 +1,297 @@
+{
+  "info": {
+    "name": "NetProtect API (Sprint 25)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Real tutor+supervised flow against the live backend: roles, pairing, app rules, active rules, heartbeat, and the anti-IDOR case. Tokens come from environment.json, built from backend/scripts/seed_test_session.py's output — see api-tests/README.md."
+  },
+  "item": [
+    {
+      "name": "Health is ready",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health/ready"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('reports ready', () => pm.expect(pm.response.json().status).to.eql('ready'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor selects TUTOR role",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/users/me/roles",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role_code\": \"TUTOR\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('role granted', () => pm.expect(pm.response.json().role_code).to.eql('TUTOR'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supervised selects SUPERVISADO role",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{supervisedAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/users/me/roles",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role_code\": \"SUPERVISADO\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('role granted', () => pm.expect(pm.response.json().role_code).to.eql('SUPERVISADO'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor generates a pairing code",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" }],
+        "url": "{{baseUrl}}/pairing/codes"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('code is 6 digits', () => pm.expect(body.code).to.match(/^[0-9]{6}$/));",
+              "pm.collectionVariables.set('pairingCode', body.code);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supervised redeems the pairing code",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{supervisedAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/pairing/redeem",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"code\": \"{{pairingCode}}\", \"device_instance_id\": \"{{$guid}}\", \"device_name\": \"Newman test device\", \"platform\": \"ANDROID\", \"os_version\": \"16\", \"app_version\": \"0.1.0\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('device id present', () => pm.expect(body.device_id).to.be.a('string'));",
+              "pm.collectionVariables.set('deviceId', body.device_id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor creates a block rule",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/rules",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"package_name\": \"com.instagram.android\", \"rule_type\": \"BLOCK\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('rule type is BLOCK', () => pm.expect(body.rule_type).to.eql('BLOCK'));",
+              "pm.collectionVariables.set('ruleId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor lists the device's rules",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/rules"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('contains the rule just created', () => {",
+              "  const rules = pm.response.json().rules;",
+              "  pm.expect(rules.some((r) => r.id === pm.collectionVariables.get('ruleId'))).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supervised fetches active rules",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{supervisedAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/rules/active"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('rule is visible to the device itself', () => {",
+              "  const rules = pm.response.json().rules;",
+              "  pm.expect(rules.some((r) => r.package_name === 'com.instagram.android')).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supervised sends a heartbeat",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{supervisedAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/heartbeat",
+        "body": { "mode": "raw", "raw": "{}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('device goes online', () => pm.expect(pm.response.json().status).to.eql('ONLINE'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor sees the device online",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('status is ONLINE', () => pm.expect(pm.response.json().status.status).to.eql('ONLINE'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A stranger tutor cannot read the device (anti-IDOR)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{strangerTutorAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 404, not 403 (does not confirm the device exists)', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup: tutor deletes the rule",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/rules/{{ruleId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup: tutor unlinks the device",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tutorAccessToken}}" }],
+        "url": "{{baseUrl}}/devices/{{deviceId}}/link"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "pairingCode", "value": "" },
+    { "key": "deviceId", "value": "" },
+    { "key": "ruleId", "value": "" }
+  ]
+}

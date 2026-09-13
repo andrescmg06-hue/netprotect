@@ -67,15 +67,19 @@ explícitamente algo que sólo un humano puede hacer (y quede anotado como tal).
 ## Estado actual (13/09/2026)
 
 Sprints 1 a 24 completos y verificados en CI (los 4 jobs — `backend`, `frontend`, `android`,
-`integration` — en verde sobre `86bbaef`, runner limpio). Sprint 23: supervisión remota por WebRTC;
-pendiente sólo la verificación manual que exige una persona (una persona real aceptando el diálogo
-de captura de Android) — ver `docs/sprint-23-evidence.md`. Sprint 24: panel web completo, verificado
-end-to-end (lint/build contra Next 16 + TypeScript estricto, verificación visual del dashboard
-contra el backend real en Docker con un usuario y sesión de prueba) — ver `docs/sprint-24-evidence.md`.
-Al cerrar el Sprint 24, `/security-review` encontró un hallazgo real en el Sprint 23
-(`ConnectionManager.begin_screen_share` reasignaba la sesión de vista remota de un dispositivo sin
-comprobar si ya estaba anclada a otro tutor conectado) — corregido y cubierto por una prueba de
-integración nueva antes de hacer *push*, suite completa de backend en verde en Docker (261 passed).
+`integration` — en verde, runner limpio). Sprint 23: supervisión remota por WebRTC; pendiente sólo
+la verificación manual que exige una persona (una persona real aceptando el diálogo de captura de
+Android) — ver `docs/sprint-23-evidence.md`. Sprint 25 (pruebas integrales) implementado y
+verificado localmente: barrido de autorización sobre el router real del backend (encontró y dejó
+documentadas dos excepciones legítimas — `GET /` y `POST /auth/logout` — que nunca se habían
+escrito como decisión); pruebas instrumentadas de Android reales en emulador (8/8, Sprint 19
+offline) para `RulesCacheStore`/`PendingRuleEventStore`, sin ninguna cobertura hasta ahora; una
+colección de API con Newman (13 peticiones, 23 aserciones, 0 fallos) contra el backend real; E2E
+web con Playwright contra un build de producción real del panel (Sprint 24) y el backend real; y
+una prueba de rendimiento con k6 (referencia repetible, no de estrés) — ver `docs/sprint-25.md` y
+`docs/sprint-25-evidence.md` para el detalle, las decisiones de diseño y los hallazgos reales
+encontrados en el camino. CI en GitHub Actions con los 4 jobs nuevos que este sprint agrega
+(`android-instrumented`, `api-collection`, `e2e`, `performance`) pendiente del `git push`.
 Existe: arquitectura y Docker; base de datos con migraciones; login
 con Google (backend + web + Android); roles y autorización por recurso (`require_tutor_of_device`,
 404 uniforme para "no existe" y "no es tuyo"); vinculación por código de 6 dígitos con HMAC, límite
@@ -439,8 +443,45 @@ seguir. La navegación usa el hash de la URL (`window.location.hash` + un listen
 tras un *gate* de autenticación 100% cliente y `useSearchParams` exigiría un límite `<Suspense>`
 sin aportar nada aquí.
 
-**Siguiente: Sprint 25 — Pruebas integrales.** Ver `docs/planning/roadmap.md` y
-`docs/planning/plan-desarrollo.md` (Paso 24) para el alcance detallado antes de empezar.
+**Nota del Sprint 25, válida para cualquier sprint futuro que toque el router de FastAPI, Newman,
+Playwright o k6**: la versión de FastAPI resuelta en este proyecto (0.141) ya no aplana
+`include_router()` en `app.routes` — una ruta incluida aparece como un objeto interno con
+`effective_route_contexts()`, no como una `APIRoute` directa. `test_route_authorization_sweep.py`
+(nuevo, `backend/tests/`) recorre ese método por *duck-typing* (comprobando el atributo, no
+importando la clase interna) para no quedar atado a un nombre privado que puede cambiar en otra
+versión. Esa misma prueba dejó documentadas dos excepciones reales que nadie había escrito antes:
+`GET /` (el banner estático) y `POST /auth/logout` (se autentica por posesión del propio
+`refresh_token` que revoca, no por un *access token* bearer — el punto entero de logout es
+funcionar incluso con el *access token* ya expirado). Newman/Playwright/k6 no pueden mockear la
+verificación de Google como sí hacen los tests de pytest (`unittest.mock.patch` sólo funciona
+dentro del mismo proceso) — los tres usan `backend/scripts/seed_test_session.py` (nuevo,
+copiado sólo en el stage `test` del `Dockerfile`, nunca en `runtime`) para mintar una sesión real
+con las funciones **propias y no mockeadas** del proyecto, mismo mecanismo que ya usó a mano
+`docs/sprint-24-evidence.md`; no es una puerta trasera de autenticación, ningún archivo de
+`backend/app` cambia. `compose.test.yaml` ganó un servicio `api_server` (misma imagen de test que
+`backend`/`migrate`, sólo con `command: uvicorn ...` y puerto publicado) porque `backend` ahí corre
+pytest y termina — Newman/Playwright/k6 necesitan un servidor HTTP real que se quede arriba.
+Descubierto de la manera difícil: el *refresh token* de este proyecto es rotativo y de un solo uso
+(Sprint 3) — una suite E2E que inicia sesión más de una vez con el mismo valor sembrado falla la
+segunda vez con `invalid_refresh_token`; `frontend/e2e/dashboard.spec.ts` por eso es **un** test
+continuo (con `test.step` para el reporte) en vez de varios separados. Playwright corre contra
+`node .next/standalone/server.js` (con `public/`/`.next/static` copiados a mano, como ya hace
+`frontend/Dockerfile`), no contra `next start`/`next dev`: `next.config.ts` fija
+`output: "standalone"` desde el Sprint 24, y `next start` se niega a arrancar con esa
+configuración. Las pruebas instrumentadas de Android (`RulesCacheStoreTest`,
+`PendingRuleEventStoreTest`, nuevas en `mobile/app/src/androidTest/`) cubren el offline/
+sincronización del Sprint 19, sin ninguna cobertura hasta este sprint porque Room exige un runtime
+Android real (o Robolectric, no instalado aquí); `PendingRuleEventStoreTest` apunta su
+`RuleEnforcementClient` a un puerto sin nada escuchando para forzar un fallo de red **genuino**, no
+simulado — este proyecto no tiene librería de *mocking*. Un emulador con imagen
+`google_apis_playstore`/reciente puede quedar en `unauthorized` para `adb` incluso sin ser un
+dispositivo físico; se resuelve con `adb kill-server && adb start-server`. La prueba de k6
+(`perf/load-test.js`) es a propósito un perfil moderado y repetible, no de estrés: sin la
+infraestructura real del Sprint 26, cualquier número de quiebre sólo describiría el contenedor de
+desarrollo de quien la ejecute. Ver `docs/sprint-25.md` y `docs/sprint-25-evidence.md`.
+
+**Siguiente: Sprint 26 — Despliegue.** Ver `docs/planning/roadmap.md` y
+`docs/planning/plan-desarrollo.md` (Paso 25) para el alcance detallado antes de empezar.
 
 ## Entorno de trabajo
 
