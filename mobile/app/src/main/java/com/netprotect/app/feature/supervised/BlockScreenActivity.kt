@@ -74,7 +74,10 @@ class BlockScreenActivity : ComponentActivity() {
         }.getOrDefault(packageName)
 }
 
-private fun reasonText(reason: BlockReason): String = when (reason) {
+/** Shared with BlockOverlayController, which renders this same content as a window overlay
+ * instead of an Activity when the overlay permission is available — see that class's docstring.
+ */
+fun reasonText(reason: BlockReason): String = when (reason) {
     BlockReason.BLOCK -> "Tu tutor bloqueó esta app."
     BlockReason.DAILY_LIMIT -> "Ya usaste el tiempo diario permitido para esta app."
     BlockReason.WEEKLY_LIMIT -> "Ya usaste el tiempo semanal permitido para esta app."
@@ -87,7 +90,7 @@ private fun reasonText(reason: BlockReason): String = when (reason) {
 }
 
 @Composable
-private fun BlockScreenContent(appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
+fun BlockScreenContent(appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF090B10)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 48.dp),

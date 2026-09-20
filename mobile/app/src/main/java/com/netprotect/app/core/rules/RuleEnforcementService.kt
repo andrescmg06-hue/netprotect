@@ -9,6 +9,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.inventory.AppInventoryCollector
+import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.core.storage.NetProtectDatabase
@@ -58,6 +59,8 @@ class RuleEnforcementService : Service() {
 
         private const val CHANNEL_ID = "rule_enforcement"
         private const val NOTIFICATION_ID = 1001
+        private const val BLOCK_CHANNEL_ID = "block_screen_alert"
+        private const val BLOCK_NOTIFICATION_ID = 1003
 
         // No official guidance found for a recommended polling interval (see capability
         // matrix); chosen empirically as a balance between block latency and battery/CPU use
@@ -114,6 +117,7 @@ class RuleEnforcementService : Service() {
     }
 
     override fun onDestroy() {
+        BlockOverlayController.hide(applicationContext)
         realtimeClient?.disconnect()
         serviceJob.cancel()
         super.onDestroy()
@@ -201,6 +205,13 @@ class RuleEnforcementService : Service() {
                 runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
             }
 
+            if (changedPackage != null && changedPackage != lastHandledPackage) {
+                // The foreground app genuinely changed: whatever overlay was covering the
+                // previous one no longer applies to what's on screen now. evaluateAndMaybeBlock
+                // below draws a fresh one if the new app is blocked too.
+                BlockOverlayController.hide(applicationContext)
+            }
+
             if (changedPackage == packageName) {
                 // Our own block screen coming to the front: reset the tracking so returning to
                 // a blocked app counts as a fresh visit. Never evaluated — blocking ourselves
@@ -259,16 +270,27 @@ class RuleEnforcementService : Service() {
             LocalDateTime.now(),
             defaultPolicy,
             schoolMode,
-        ) ?: return
+        )
+        if (reason == null) return
         val exemptReasons = setOf(BlockReason.DEFAULT_POLICY, BlockReason.SCHOOL_MODE)
         if (exemptFromDefaultPolicy && reason in exemptReasons) return
 
-        startActivity(
-            Intent(this, BlockScreenActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
-                .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
-        )
+        if (OverlayPermission.isGranted(applicationContext)) {
+            val appLabel = resolveAppLabel(foregroundPackage)
+            BlockOverlayController.show(applicationContext, appLabel, reason) {
+                BlockOverlayController.hide(applicationContext)
+                startActivity(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+        } else {
+            // No overlay permission yet: falls back to the notification path, which still works
+            // while the device is locked (see launchBlockScreen's docstring) — better than
+            // nothing, but the tutor should still be told to grant the overlay permission for
+            // this to work while the device is unlocked and in active use.
+            launchBlockScreen(foregroundPackage, reason)
+        }
         val occurredAt = Instant.now()
         val reported = runCatching {
             client.reportRuleEvent(accessToken, deviceId, foregroundPackage, reason, occurredAt)
@@ -279,6 +301,54 @@ class RuleEnforcementService : Service() {
             runCatching { pendingEventStore.enqueue(deviceId, foregroundPackage, reason, occurredAt) }
         }
     }
+
+    /** Verified live (17/09/2026, API 36 emulator): a foreground service with no visible
+     * Activity can no longer open one with a plain startActivity() — ActivityTaskManager logs
+     * "Background activity launch blocked!" and silently drops the intent, no exception thrown.
+     * A full-screen-intent notification is Android's own sanctioned exemption from that
+     * restriction (the same mechanism incoming calls and alarms use). Needs its own
+     * IMPORTANCE_HIGH channel: the ongoing "service is running" notification is deliberately
+     * IMPORTANCE_LOW/silent, and reusing it would make every block silent too.
+     */
+    private fun launchBlockScreen(foregroundPackage: String, reason: BlockReason) {
+        val manager = getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(BLOCK_CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    BLOCK_CHANNEL_ID,
+                    "Bloqueo de aplicación",
+                    NotificationManager.IMPORTANCE_HIGH,
+                )
+            )
+        }
+        val intent = Intent(this, BlockScreenActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
+            .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this,
+            BLOCK_NOTIFICATION_ID,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, BLOCK_CHANNEL_ID)
+            .setContentTitle("Aplicación bloqueada")
+            .setContentText("NetProtect bloqueó una app según las reglas configuradas.")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(pendingIntent, true)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(BLOCK_NOTIFICATION_ID, notification)
+    }
+
+    private fun resolveAppLabel(packageName: String): String =
+        runCatching {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(appInfo).toString()
+        }.getOrDefault(packageName)
 
     private fun buildNotification(): Notification {
         val manager = getSystemService(NotificationManager::class.java)

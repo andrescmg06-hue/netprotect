@@ -675,3 +675,19 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   `migrate` desactualizado no reconoce, y el siguiente `up` falla con
   `Can't locate revision identified by '<revision>'`. Reconstruir los tres servicios juntos
   (`docker compose -f compose.yaml build backend web migrate`) cuando cualquiera de los dos cambie.
+- Un `Service` en primer plano ya **no** puede abrir una `Activity` con `startActivity()` directo
+  en Android moderno: el sistema lo rechaza como *Background Activity Launch*
+  (`ActivityTaskManager`: "Background activity launch blocked!") en cuanto la app no tiene ya una
+  actividad visible. Verificado en vivo (18/09/2026, emulador API 36) probando el bloqueo del
+  Sprint 8 con la app en segundo plano: la pantalla de bloqueo dejó de aparecer, sin ningún error
+  visible para nadie. La notificación de pantalla completa (`setFullScreenIntent`, el mecanismo
+  que sí usan llamadas/alarmas) tampoco basta de reemplazo: sólo lanza la Activity automáticamente
+  con el dispositivo **bloqueado** — desbloqueado y en uso, que es justo el momento en que hace
+  falta bloquear de verdad, se degrada a un simple aviso que hay que tocar. La solución real es
+  dibujar la pantalla de bloqueo como ventana superpuesta (`SYSTEM_ALERT_WINDOW`,
+  `TYPE_APPLICATION_OVERLAY`), el único mecanismo exento de ambas restricciones — permiso especial
+  propio (`OverlayPermission`, con su tarjeta en `SupervisedScreen`, mismo patrón que el acceso de
+  uso), y con la salvedad de que `WindowManager`/`LifecycleRegistry` sólo aceptan hilo principal:
+  invocarlos desde la corrutina en `Dispatchers.Default` del *polling loop* crasheaba el proceso al
+  instante. Ver `BlockOverlayController.kt`, que cae de vuelta a la notificación cuando el permiso
+  de superposición no está concedido (sigue funcionando con el dispositivo bloqueado).
