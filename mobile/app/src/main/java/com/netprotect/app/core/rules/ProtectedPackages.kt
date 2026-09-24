@@ -3,6 +3,7 @@ package com.netprotect.app.core.rules
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import android.telecom.TelecomManager
 
@@ -54,9 +55,13 @@ object ProtectedPackages {
             .resolveActivity(Intent(Intent.ACTION_DIAL), PackageManager.MATCH_DEFAULT_ONLY)
             ?.activityInfo
             ?.packageName
+        // systemDialerPackage only exists from API 29; calling it on 26-28 crashes with
+        // NoSuchMethodError, so below that the other two lookups have to cover it.
+        val systemDialer =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) telecom?.systemDialerPackage else null
         return listOfNotNull(
             telecom?.defaultDialerPackage,
-            telecom?.systemDialerPackage,
+            systemDialer,
             dialIntentHandler,
         )
     }
