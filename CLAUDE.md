@@ -555,10 +555,28 @@ construirse — documentada así a propósito en `docs/manuals/analisis-riesgos.
 `docs/manuals/documento-tecnico.md` (§3.1), no como un "V2" menor sino como un paso completo del
 plan que quedó sin implementar. Ver `docs/sprint-27.md` y `docs/sprint-27-evidence.md`.
 
-**Los 27 sprints del roadmap están completos.** No queda un "sprint siguiente" — lo que resta es
-exclusivamente lo que varias notas de sprint ya documentan como pendiente de un humano con cuenta
-cloud, dominio o permisos de administrador sobre el repositorio de GitHub (ver
-`docs/manuals/analisis-riesgos.md` para la lista consolidada).
+**Los 27 sprints del roadmap original están completos.** Después se abrió un plan propio de tres
+sprints, `docs/planning/plan-turn.md` (Sprints 28–30): un servidor TURN para que la vista remota
+del Sprint 23 transmita video entre redes sin camino directo. Una prueba en vivo del 24/09/2026
+mostró que la señalización funcionaba pero el video no llegaba (ICE `failed` entre el emulador y
+el navegador del host).
+
+**Nota del Sprint 28, válida para cualquier trabajo futuro sobre coturn o las credenciales TURN**:
+coturn (`infra/coturn/`) corre en los tres compose **solo en su propia red y con IP fija**, porque
+`denied-peer-ip` (obligatorio, para que el relay no sirva para llegar a PostgreSQL/Redis) también
+corta el relay entre dos clientes del mismo coturn, y la única salida verificada es
+`allowed-peer-ip` apuntando a esa IP exacta (spike R1, `docs/sprint-28-evidence.md`). No bajar
+`user-quota` de 16 sin medir: con 4 una sesión legítima ya fallaba con `486`, porque una conexión
+WebRTC abre una asignación por interfaz × URL × transporte. El backend emite credenciales efímeras
+(`app/services/turn.py`, esquema `use-auth-secret` de coturn, 1 hora, nonce aleatorio y nunca el
+`user_id`) en el campo nuevo `turn_servers` de `webrtc-config`; `ice_servers` no se toca por
+compatibilidad con la APK instalada. `scripts/verify_turn.sh`, paso del job `integration` de CI, es
+la prueba real contra coturn: pytest sólo puede verificar la forma de la credencial. Ver
+`docs/sprint-28.md`.
+
+Lo que resta fuera del plan TURN es exclusivamente lo que varias notas de sprint ya documentan
+como pendiente de un humano con cuenta cloud, dominio o permisos de administrador sobre el
+repositorio de GitHub (ver `docs/manuals/analisis-riesgos.md` para la lista consolidada).
 
 ## Entorno de trabajo
 
@@ -691,3 +709,16 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   invocarlos desde la corrutina en `Dispatchers.Default` del *polling loop* crasheaba el proceso al
   instante. Ver `BlockOverlayController.kt`, que cae de vuelta a la notificación cuando el permiso
   de superposición no está concedido (sigue funcionando con el dispositivo bloqueado).
+- Git Bash en Windows reescribe rutas del contenedor en los argumentos de `docker run`/`docker
+  compose` (`/etc/coturn/...` pasó a ser `C:/Program Files/Git/etc/...`). En el Sprint 28 coturn
+  arrancó **sin su configuración**, sin autenticación ni bloqueos, y la prueba dio un "éxito" falso.
+  Exportar `MSYS_NO_PATHCONV=1` antes de cualquier comando de Docker con rutas del contenedor, y
+  confirmar con `docker inspect` qué comando se ejecutó realmente antes de creer un resultado.
+- Una prueba que no puede fallar no demuestra nada. Para verificaciones contra servicios reales
+  (coturn en el Sprint 28), incluir un control negativo que **deba** fallar, por ejemplo una
+  credencial firmada con otro secreto, y comprobar que falla.
+- `gradlew lintDebug` no corre en CI y es el único que detecta llamadas a APIs de Android más
+  nuevas que `minSdk 26`. En el emulador (API 36) nunca fallan, y en un teléfono real con
+  Android 8–15 cierran la app (`NoSuchMethodError`). Así se encontraron dos el 24/09/2026:
+  `checkOpNoThrow` con `attributionTag` y `systemDialerPackage`. Correrlo antes de cerrar cualquier
+  sprint que toque Android.

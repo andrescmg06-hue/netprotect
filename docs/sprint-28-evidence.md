@@ -200,3 +200,16 @@ El script quedó agregado como paso del job `integration` de CI, después de pyt
 `compose.yaml` y `compose.test.yaml` pasan `config --quiet`. En `compose.prod.yaml` el backend
 resuelve `TURN_SHARED_SECRET_FILE: /run/secrets/turn_shared_secret`, `TURN_URLS` desde el
 entorno y el secret `turn_shared_secret` montado.
+
+## `/security-review` del sprint
+
+Se corrió sobre `git diff main...HEAD` más los cambios sin commit. **Resultado: ninguna
+vulnerabilidad de alta confianza (≥ 8/10).** Candidatos revisados y descartados:
+
+| Candidato | Confianza | Motivo del descarte |
+|---|---|---|
+| Usar el relay para llegar a servicios internos | 2/10 | coturn no comparte red con db, redis ni backend. `denied-peer-ip` cubre los rangos privados, loopback, link-local, CGNAT e IPv6; `allowed-peer-ip` sólo re-permite la IP propia de coturn, donde únicamente corre turnserver y no hay CLI. |
+| Falsificar o alargar credenciales | 1/10 | El HMAC cubre el usuario completo y la expiración la fija el servidor; coturn recalcula ambos. Lo confirma `verify_turn.sh`: caducada y alterada se rechazan. |
+| Credenciales para quien no participa | 1/10 | `require_device_participant` sigue en el endpoint (404 uniforme). La respuesta nunca incluye el secreto. |
+| Exposición del secreto TURN | 2/10 | Fuera de argv (archivo `0600`); en producción llega como Compose secret; está en la lista de valores de desarrollo que producción rechaza. |
+| Cambio de CSP de Google Identity Services | 1/10 | Sólo las entradas `accounts.google.com/gsi` que Google documenta. `'unsafe-inline'` ya existía antes. |

@@ -501,3 +501,17 @@ construyó — se evaluó y se pospuso en el Sprint 9 por necesitar su propia fa
 ningún sprint posterior.
 
 El detalle está en `docs/sprint-27.md` y la evidencia en `docs/sprint-27-evidence.md`.
+
+## Alcance del Sprint 28
+
+Primer sprint del plan `docs/planning/plan-turn.md`: un servidor TURN (coturn) para que la vista
+remota del Sprint 23 transmita video también entre redes sin camino directo. coturn corre en dev,
+test y prod, solo en su propia red y con IP fija, sin acceso a la base de datos. Bloquea las
+redes privadas, pero permite el relay entre dos clientes (verificado en vivo). El backend emite en
+`GET /devices/{id}/webrtc-config` una credencial efímera (1 hora, HMAC con `TURN_SHARED_SECRET`)
+en el campo nuevo `turn_servers`, y deja `ice_servers` intacto para la APK instalada.
+`scripts/verify_turn.sh`, también en CI, prueba contra el coturn real que la credencial del
+backend se acepta y que una caducada o alterada se rechaza. Los clientes todavía no la usan: eso
+es el Sprint 29.
+
+El detalle está en `docs/sprint-28.md` y la evidencia en `docs/sprint-28-evidence.md`.
