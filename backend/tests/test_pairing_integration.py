@@ -78,6 +78,17 @@ def _generate_code(client: TestClient, tutor_token: str) -> str:
     return response.json()["code"]
 
 
+def _live_code_row(code: str):
+    """The live row for `code`. Filtering by hash alone is not unique: with 10^6 possible codes,
+    a used, revoked or expired row from an earlier test can share the hash."""
+    return select(PairingCode).where(
+        PairingCode.code_hash == hash_pairing_code(code),
+        PairingCode.used_at.is_(None),
+        PairingCode.revoked_at.is_(None),
+        PairingCode.expires_at > datetime.now(UTC),
+    )
+
+
 # --------------------------------------------------------------------------- happy path
 
 
@@ -174,11 +185,7 @@ async def test_an_expired_code_is_refused(client, db_session) -> None:
     supervised_token, _ = _make_account(client, "SUPERVISADO")
     code = _generate_code(client, tutor_token)
 
-    row = (
-        await db_session.execute(
-            select(PairingCode).where(PairingCode.code_hash == hash_pairing_code(code))
-        )
-    ).scalar_one()
+    row = (await db_session.execute(_live_code_row(code))).scalar_one()
     row.expires_at = datetime.now(UTC) - timedelta(seconds=1)
     await db_session.commit()
 
@@ -187,6 +194,34 @@ async def test_an_expired_code_is_refused(client, db_session) -> None:
     )
 
     assert response.status_code == 401
+
+
+async def test_a_code_sharing_its_hash_with_an_old_used_code_still_links(
+    client, db_session
+) -> None:
+    """Regression (Sprint 28 CI): with only 10^6 codes, a new live code eventually matches a
+    used/revoked/expired row left in the table. Redemption must still find the live one."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    code = _generate_code(client, tutor_token)
+
+    # Force the collision instead of waiting for chance: an already-used row, same hash.
+    live = (await db_session.execute(_live_code_row(code))).scalar_one()
+    db_session.add(
+        PairingCode(
+            tutor_user_id=live.tutor_user_id,
+            code_hash=live.code_hash,
+            expires_at=live.expires_at,
+            used_at=datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+
+    response = client.post(
+        "/api/v1/pairing/redeem", json=_redeem_body(code), headers=_auth(supervised_token)
+    )
+
+    assert response.status_code == 200, response.text
 
 
 def test_generating_a_new_code_retires_the_previous_one(client) -> None:
@@ -243,11 +278,7 @@ async def test_every_rejection_looks_identical_from_outside(client, db_session) 
         (revoked_code, "revoked_at"),
         (used_code, "used_at"),
     ):
-        row = (
-            await db_session.execute(
-                select(PairingCode).where(PairingCode.code_hash == hash_pairing_code(code_value))
-            )
-        ).scalar_one()
+        row = (await db_session.execute(_live_code_row(code_value))).scalar_one()
         if field == "expires_at":
             row.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         else:

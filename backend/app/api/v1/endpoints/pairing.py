@@ -176,10 +176,16 @@ async def redeem_pairing_code(
 
     code_hash = hash_pairing_code(payload.code)
 
-    # FOR UPDATE serialises concurrent redemptions of the same code: the second request
-    # blocks here and then sees used_at already set, instead of both linking a device.
+    # Only live codes, matching what generation guarantees unique: used, revoked and expired
+    # rows stay in the table, and with 10^6 possible codes a new one sooner or later shares its
+    # hash with an old one. Looking up by hash alone then returned two rows and crashed with a
+    # 500 instead of linking (surfaced by CI in Sprint 28).
+    #
+    # FOR UPDATE serialises concurrent redemptions of the same code: the second request blocks
+    # here, and once the first commits PostgreSQL re-checks the WHERE clause, finds used_at
+    # set and returns nothing, instead of both linking a device.
     result = await db.execute(
-        select(PairingCode).where(PairingCode.code_hash == code_hash).with_for_update()
+        select(PairingCode).where(*_active_code_clause(code_hash)).with_for_update()
     )
     code_row = result.scalar_one_or_none()
 

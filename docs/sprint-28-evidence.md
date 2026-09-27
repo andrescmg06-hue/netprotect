@@ -201,6 +201,42 @@ El script quedó agregado como paso del job `integration` de CI, después de pyt
 resuelve `TURN_SHARED_SECRET_FILE: /run/secrets/turn_shared_secret`, `TURN_URLS` desde el
 entorno y el secret `turn_shared_secret` montado.
 
+## CI — primera corrida en rojo: un error latente del Sprint 5, no del Sprint 28
+
+Corrida [36350292957](https://github.com/andrescmg06-hue/netprotect/actions/runs/36350292957):
+7 jobs en verde y `integration` en rojo con `1 failed, 272 passed`. La que falló no era una
+prueba de TURN, sino `test_tamper_integration.py::test_a_heartbeat_that_reports_nothing_new_stays_online`
+(Sprint 20), al vincular su dispositivo:
+
+```text
+File "/app/app/api/v1/endpoints/pairing.py", line 184, in redeem_pairing_code
+    code_row = result.scalar_one_or_none()
+sqlalchemy.exc.MultipleResultsFound: Multiple rows were found when one or none was required
+```
+
+**Causa:** `POST /pairing/redeem` buscaba el código sólo por su hash. Los códigos usados,
+revocados o caducados se quedan en la tabla, y la generación sólo garantiza que un código sea
+único entre los **activos**. Con 10^6 códigos posibles, uno nuevo termina coincidiendo con uno
+viejo y el canje devolvía un 500 en vez de vincular. La suite genera cientos de códigos por
+corrida, así que cayó por azar; en producción la probabilidad crece con los códigos acumulados.
+
+**Corrección:** el canje filtra con la misma condición de "código activo" que ya usaba la
+generación (`_active_code_clause`), manteniendo `FOR UPDATE`. Dos canjes simultáneos siguen sin
+poder vincular dos veces: tras el commit del primero, PostgreSQL reevalúa el `WHERE`, ve
+`used_at` puesto y el segundo recibe la respuesta uniforme `invalid_or_expired_code`. Las dos
+consultas de prueba que buscaban sólo por hash (`scalar_one()`) pasaron a buscar la fila activa.
+
+**Prueba de regresión que fuerza la colisión** en lugar de esperarla
+(`test_a_code_sharing_its_hash_with_an_old_used_code_still_links`):
+
+```text
+con el endpoint anterior:  sqlalchemy.exc.MultipleResultsFound ... 1 failed
+con la corrección:         1 passed
+```
+
+Suite completa tras la corrección: `274 passed`; `ruff`: `All checks passed!`;
+`verify_turn.sh`: 3/3 OK.
+
 ## `/security-review` del sprint
 
 Se corrió sobre `git diff main...HEAD` más los cambios sin commit. **Resultado: ninguna
