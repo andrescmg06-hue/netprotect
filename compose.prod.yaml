@@ -158,6 +158,36 @@ services:
     networks:
       - edge
 
+  # Sprint 28: TURN relay for remote view (docs/planning/plan-turn.md). On its own `turn` network
+  # only: it must be reachable from the internet but has no business on `private` next to db and
+  # redis, and denied-peer-ip (infra/coturn/turnserver.conf) is a second barrier, not the only one.
+  # The secret arrives as a Compose secret, never an env var (entrypoint.sh). TURN_EXTERNAL_IP is
+  # the host's public IPv4, which clients are told to send to; it is required here because a relay
+  # that advertises its container address would be unreachable from outside.
+  coturn:
+    image: coturn/coturn:4.7.0
+    entrypoint: ["sh", "/etc/coturn/netprotect/entrypoint.sh"]
+    environment:
+      TURN_SHARED_SECRET_FILE: /run/secrets/turn_shared_secret
+      TURN_REALM: ${TURN_REALM:?falta TURN_REALM}
+      TURN_RELAY_IP: 172.30.97.10
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:?falta TURN_EXTERNAL_IP}
+    secrets:
+      - turn_shared_secret
+    volumes:
+      - ./infra/coturn:/etc/coturn/netprotect:ro
+    restart: unless-stopped
+    logging: *default-logging
+    # Every port here must also be open in the host firewall (docs/manuals/manual-despliegue.md).
+    # The relay range matches min-port/max-port in turnserver.conf.
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49200:49160-49200/udp"
+    networks:
+      turn:
+        ipv4_address: 172.30.97.10
+
   # Sprint 26: pg_dump on a timer (infra/backup/backup.sh), custom format, pruned by
   # BACKUP_RETENTION_DAYS. Restoring is deliberately never automatic — see restore.sh's comment —
   # so this service only ever writes into backups_data, it never reads from it.
@@ -270,6 +300,8 @@ secrets:
     file: ./secrets/location_encryption_key.txt
   grafana_admin_password:
     file: ./secrets/grafana_admin_password.txt
+  turn_shared_secret:
+    file: ./secrets/turn_shared_secret.txt
 
 volumes:
   postgres_prod_data:
@@ -286,3 +318,8 @@ networks:
     internal: true
   edge:
     driver: bridge
+  turn:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.97.0/24

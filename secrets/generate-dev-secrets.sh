@@ -34,6 +34,7 @@ printf '%s' "$(random 48)" > jwt_secret.txt
 printf '%s' "$(random 48)" > pairing_code_pepper.txt
 printf '%s' "$(fernet_key)" > location_encryption_key.txt
 printf '%s' "$(random 24)" > grafana_admin_password.txt
+printf '%s' "$(random 48)" > turn_shared_secret.txt
 
 chmod 600 ./*.txt
 echo "secrets/*.txt generados (POSTGRES_USER=${POSTGRES_USER}, POSTGRES_DB=${POSTGRES_DB})"

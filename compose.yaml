@@ -111,6 +111,28 @@ services:
     networks:
       - netprotect
 
+  # Sprint 28: TURN relay for remote view (docs/planning/plan-turn.md). Alone on its own network,
+  # never on `netprotect`: even before denied-peer-ip (infra/coturn/turnserver.conf) it has no
+  # route to db/redis. The fixed address is required by allowed-peer-ip (Spike R1,
+  # docs/sprint-28-evidence.md). Bound to 127.0.0.1 like db/redis: the host browser reaches it as
+  # localhost and the Android emulator as 10.0.2.2, which the emulator maps onto the host loopback.
+  coturn:
+    image: coturn/coturn:4.7.0
+    restart: unless-stopped
+    entrypoint: ["sh", "/etc/coturn/netprotect/entrypoint.sh"]
+    environment:
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?falta TURN_SHARED_SECRET en .env}
+      TURN_REALM: ${TURN_REALM:-netprotect.local}
+      TURN_RELAY_IP: 172.30.99.10
+    volumes:
+      - ./infra/coturn:/etc/coturn/netprotect:ro
+    ports:
+      - "127.0.0.1:3478:3478/udp"
+      - "127.0.0.1:3478:3478/tcp"
+    networks:
+      turn:
+        ipv4_address: 172.30.99.10
+
 volumes:
   postgres_dev_data:
     name: netprotect_postgres_dev_data
@@ -121,3 +143,9 @@ networks:
   netprotect:
     name: netprotect_network
     driver: bridge
+  turn:
+    name: netprotect_turn_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.99.0/24

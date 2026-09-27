@@ -116,6 +116,28 @@ services:
     networks:
       - netprotect_test
 
+  # Sprint 28: the same relay config as compose.yaml/compose.prod.yaml, so the integration tests
+  # exercise the real hardened coturn, not a permissive one. Its own network with a fixed address
+  # for allowed-peer-ip (Spike R1, docs/sprint-28-evidence.md); the TURN client used by the tests
+  # joins `turn_test`, the database never does.
+  coturn:
+    image: coturn/coturn:4.7.0
+    entrypoint: ["sh", "/etc/coturn/netprotect/entrypoint.sh"]
+    environment:
+      TURN_SHARED_SECRET: change_me_test_only_turn_shared_secret_at_least_32
+      TURN_REALM: netprotect.test
+      TURN_RELAY_IP: 172.30.98.10
+    volumes:
+      - ./infra/coturn:/etc/coturn/netprotect:ro
+    networks:
+      turn_test:
+        ipv4_address: 172.30.98.10
+
 networks:
   netprotect_test:
     driver: bridge
+  turn_test:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.98.0/24
