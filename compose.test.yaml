@@ -64,6 +64,10 @@ services:
       JWT_SECRET: change_me_test_only_jwt_secret_at_least_32_bytes_long
       PAIRING_CODE_PEPPER: change_me_test_only_pairing_pepper_at_least_32_byte
       LOCATION_ENCRYPTION_KEY: KkxP1iS9ZDOzTx6NGgiAftFSQrsczN4j7bHr8_yd7VI=
+      # Sprint 28: must match the `coturn` service below, so a credential this backend issues is
+      # one that relay really accepts (docs/sprint-28-evidence.md).
+      TURN_SHARED_SECRET: change_me_test_only_turn_shared_secret_at_least_32
+      TURN_URLS: turn:172.30.98.10:3478?transport=udp
       LOG_LEVEL: WARNING
       RUN_INTEGRATION_TESTS: "1"
       # Sprint 21: the whole suite runs hundreds of requests a minute from a single simulated
@@ -99,6 +103,8 @@ services:
       JWT_SECRET: change_me_test_only_jwt_secret_at_least_32_bytes_long
       PAIRING_CODE_PEPPER: change_me_test_only_pairing_pepper_at_least_32_byte
       LOCATION_ENCRYPTION_KEY: KkxP1iS9ZDOzTx6NGgiAftFSQrsczN4j7bHr8_yd7VI=
+      TURN_SHARED_SECRET: change_me_test_only_turn_shared_secret_at_least_32
+      TURN_URLS: turn:172.30.98.10:3478?transport=udp
       LOG_LEVEL: WARNING
       # Newman/Playwright/k6 all hit this from outside the container at whatever pace their
       # scripts run at — not the hundreds-of-requests-a-minute pytest suite, but still enough

@@ -138,15 +138,24 @@ class Settings(BaseSettings):
     # Remote screen viewing (Sprint 23). WebRTC needs at least one STUN server to discover each
     # peer's public address before it can try a direct connection. Served to both clients from
     # GET /devices/{id}/webrtc-config instead of being hardcoded in Kotlin and TypeScript
-    # separately, so the day a TURN server exists it is added here only. Not a secret: STUN URLs
-    # are public infrastructure addresses, which is why this is a plain default rather than a
-    # change_me_* placeholder.
-    #
-    # No TURN server is configured, and that is a documented limitation, not an oversight: STUN
-    # alone only works when the two peers can reach each other directly (same LAN, or NATs
-    # permissive enough to hole-punch). Behind most mobile/carrier-grade NAT this simply will not
-    # connect — see docs/sprint-23.md.
+    # separately. Not a secret: STUN URLs are public infrastructure addresses, which is why this
+    # is a plain default rather than a change_me_* placeholder. STUN alone only works when the two
+    # peers can reach each other directly, which is what the TURN settings below are for.
     webrtc_stun_urls: str = "stun:stun.l.google.com:19302"
+
+    # TURN relay (Sprint 28, docs/planning/plan-turn.md). The backend never talks to coturn: it
+    # signs short-lived credentials with this secret (app/services/turn.py) and coturn verifies
+    # them on its own (`use-auth-secret`). Its own secret, never jwt_secret — leaking the relay
+    # key must not leak session signing, and vice versa.
+    turn_shared_secret: str = "change_me_dev_only_turn_shared_secret_at_least_32"  # noqa: S105
+    # Comma-separated turn: URLs handed to both clients. Blank means "no relay configured": the
+    # config endpoint then returns no TURN servers instead of failing, same pattern as a blank
+    # fcm_project_id.
+    turn_urls: str = ""
+    # One hour (plan D3): coturn re-checks the credential when an allocation is refreshed, so a
+    # shorter lifetime would cut a long session off mid-stream; much longer would widen what a
+    # leaked credential is worth.
+    turn_credential_ttl_seconds: int = 3600
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -166,6 +175,10 @@ class Settings(BaseSettings):
     @property
     def webrtc_stun_urls_list(self) -> list[str]:
         return [item.strip() for item in self.webrtc_stun_urls.split(",") if item.strip()]
+
+    @property
+    def turn_urls_list(self) -> list[str]:
+        return [item.strip() for item in self.turn_urls.split(",") if item.strip()]
 
     @model_validator(mode="after")
     def _reject_dev_secrets_in_production(self) -> "Settings":
@@ -189,6 +202,7 @@ class Settings(BaseSettings):
                 ("JWT_SECRET", "jwt_secret"),
                 ("PAIRING_CODE_PEPPER", "pairing_code_pepper"),
                 ("LOCATION_ENCRYPTION_KEY", "location_encryption_key"),
+                ("TURN_SHARED_SECRET", "turn_shared_secret"),
             )
             if getattr(self, field_name) == defaults[field_name].default
         ]

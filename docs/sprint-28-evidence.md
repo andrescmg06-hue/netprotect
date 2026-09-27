@@ -134,3 +134,69 @@ TURN_SHARED_SECRET_FILE) is required`, exit 1), en vez de quedar abierto sin aut
 
 **Lo que esta tarea todavía no verifica:** el acceso por el puerto publicado, desde el host (el
 navegador) y desde el emulador (`10.0.2.2`). Eso se prueba con los clientes reales en el Sprint 29.
+
+## Tareas 3–5 — Credenciales efímeras en el backend
+
+**Qué se agregó:**
+
+- `app/core/config.py`: `turn_shared_secret` (con valor de desarrollo `change_me_*`), `turn_urls`
+  (vacío = sin relay) y `turn_credential_ttl_seconds=3600`. `TURN_SHARED_SECRET` entró en la
+  lista de secretos que producción se niega a usar con su valor de desarrollo.
+- `app/services/turn.py`: `issue_turn_credential()` devuelve
+  `username = "<expira_unix>:<nonce aleatorio>"` y `credential = base64(HMAC-SHA1(secreto,
+  username))`. El nonce es aleatorio en cada emisión, nunca el `user_id`.
+- `WebRtcConfigResponse` ganó `turn_servers: [{urls, username, credential}]`. `ice_servers`
+  quedó exactamente igual que en el Sprint 23, para que la APK instalada siga funcionando.
+- Los tres compose pasan `TURN_SHARED_SECRET`/`TURN_URLS` al backend; en producción el secreto es
+  el mismo Compose secret que usa coturn (`TURN_SHARED_SECRET_FILE`).
+
+### Suite completa del backend (`compose.test.yaml`, PostgreSQL y Redis reales)
+
+```text
+backend-1  | 273 passed, 4 warnings in 36.27s
+backend-1 exited with code 0
+```
+
+Antes del sprint eran 265. Las 8 nuevas son:
+
+- 6 unitarias (`tests/test_turn_credentials.py`): sin URLs no hay credencial; formato
+  `expira:nonce` con expiración = ahora + TTL; credencial = HMAC-SHA1 en base64; otro secreto da
+  otra credencial; nonce distinto en cada emisión; URLs separadas y recortadas.
+- 1 de integración (`test_webrtc_config_hands_both_peers_a_turn_credential_coturn_can_verify`):
+  tutor y supervisado reciben `ice_servers` sin cambios y un `turn_servers` cuya credencial
+  corresponde al secreto de coturn.
+- El nuevo caso parametrizado de `test_production_refuses_any_single_development_default` para
+  `turn_shared_secret`.
+
+`ruff check --no-cache app tests alembic`: `All checks passed!`. La primera corrida sin
+`--no-cache` falló porque ruff no tenía permiso para crear su caché dentro del contenedor, un
+problema del entorno, no del código.
+
+## Tarea 6 — Credencial del backend contra el coturn real (`scripts/verify_turn.sh`)
+
+El script levanta el coturn endurecido de `compose.test.yaml`, pide tres credenciales al código
+propio del backend (sin mocks, dentro de su contenedor, con su configuración real) y las prueba
+con `turnutils_uclient` en la red `turn_test`:
+
+```text
+OK   valid credential -> relayed
+OK   expired credential -> rejected
+OK   tampered credential -> rejected
+TURN credential verification passed
+```
+
+La credencial alterada cambia un carácter **del medio**, no el último, siguiendo la lección ya
+registrada en `CLAUDE.md`: el último carácter de base64 puede llevar sólo bits de relleno.
+
+**Control negativo** (para comprobar que la prueba puede fallar): el backend emitió una
+credencial con `TURN_SHARED_SECRET=a-secret-coturn-does-not-know` y coturn respondió
+`ERROR: Cannot complete Allocation`. El "relayed" de la credencial válida demuestra, por lo
+tanto, que backend y coturn comparten de verdad el secreto.
+
+El script quedó agregado como paso del job `integration` de CI, después de pytest.
+
+### Compose revalidado
+
+`compose.yaml` y `compose.test.yaml` pasan `config --quiet`. En `compose.prod.yaml` el backend
+resuelve `TURN_SHARED_SECRET_FILE: /run/secrets/turn_shared_secret`, `TURN_URLS` desde el
+entorno y el secret `turn_shared_secret` montado.

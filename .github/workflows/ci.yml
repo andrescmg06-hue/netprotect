@@ -73,6 +73,9 @@ jobs:
       - run: docker compose -f compose.test.yaml build
       - run: docker compose -f compose.test.yaml run --rm migrate
       - run: docker compose -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+      # Sprint 28: a credential the backend issues must be one the real hardened coturn accepts,
+      # and an expired or tampered one must be refused (scripts/verify_turn.sh).
+      - run: sh scripts/verify_turn.sh
       - if: always()
         run: docker compose -f compose.test.yaml down -v
 

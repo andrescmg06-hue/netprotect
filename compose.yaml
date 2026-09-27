@@ -71,6 +71,11 @@ services:
       LOCATION_ENCRYPTION_KEY: ${LOCATION_ENCRYPTION_KEY:?falta LOCATION_ENCRYPTION_KEY en .env}
       FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
       FCM_SERVICE_ACCOUNT_FILE: ${FCM_SERVICE_ACCOUNT_FILE:-}
+      # Sprint 28: signs credentials the `coturn` service below verifies, so it must be the same
+      # value. Both relay addresses are sent because the backend can't tell which client asks:
+      # the host browser reaches coturn as localhost, the Android emulator as 10.0.2.2.
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?falta TURN_SHARED_SECRET en .env}
+      TURN_URLS: ${TURN_URLS:-turn:localhost:3478?transport=udp,turn:10.0.2.2:3478?transport=udp}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:

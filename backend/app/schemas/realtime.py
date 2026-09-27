@@ -73,10 +73,23 @@ ScreenShareSignal = Annotated[
 ]
 
 
+class TurnServer(BaseModel):
+    """One RTCIceServer entry for the relay: every TURN URL shares one short-lived credential
+    (app/services/turn.py)."""
+
+    urls: list[str]
+    username: str
+    credential: str
+
+
 class WebRtcConfigResponse(BaseModel):
-    """What both clients need to build an RTCPeerConnection. `ice_servers` is a list of URLs
-    rather than the full RTCIceServer object shape because this project has no TURN server, and
-    TURN is the only part of that shape that needs credentials — see settings.webrtc_stun_urls.
+    """What both clients need to build an RTCPeerConnection.
+
+    `ice_servers` stays a plain list of STUN URLs, exactly as in Sprint 23, because the APK already
+    installed parses it that way. TURN needs credentials, so it arrives in its own field instead
+    (plan D6): an old client ignores `turn_servers` and keeps working on STUN alone. Empty when no
+    relay is configured.
     """
 
     ice_servers: list[str]
+    turn_servers: list[TurnServer] = Field(default_factory=list)

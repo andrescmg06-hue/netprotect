@@ -16,6 +16,7 @@ _REAL_ENOUGH = {
     "jwt_secret": "a-real-production-jwt-secret-of-sufficient-length-xyz",
     "pairing_code_pepper": "a-real-production-pairing-pepper-of-sufficient-len",
     "location_encryption_key": "KkxP1iS9ZDOzTx6NGgiAftFSQrsczN4j7bHr8_yd7VI=",
+    "turn_shared_secret": "a-real-production-turn-shared-secret-long-enough",
 }
 
 

@@ -17,6 +17,7 @@ from app.schemas.realtime import (
     RegisterPushTokenRequest,
     RegisterPushTokenResponse,
     ScreenShareSignal,
+    TurnServer,
     WebRtcConfigResponse,
 )
 from app.services.audit import record_audit_event
@@ -26,6 +27,7 @@ from app.services.realtime import (
     connection_manager,
     notify_screen_share_requested,
 )
+from app.services.turn import issue_turn_credential
 
 router = APIRouter(tags=["realtime"])
 
@@ -283,12 +285,22 @@ async def get_webrtc_config(
 ) -> WebRtcConfigResponse:
     """The ICE servers both peers must agree on before they can try to connect.
 
-    Served from the backend rather than compiled into each client so that adding a TURN server
-    later is a config change, not an Android release plus a web deploy. Not audited: reading a
+    Served from the backend rather than compiled into each client, so the relay is a config
+    change, not an Android release plus a web deploy. The TURN credential is minted per request
+    and only for a participant of this device (require_device_participant), which is the whole
+    reason it can't be a static password baked into the clients. Not audited: reading a
     connection parameter is not an action to review later — the session events in
     _audit_action_for are.
     """
-    return WebRtcConfigResponse(ice_servers=settings.webrtc_stun_urls_list)
+    turn = issue_turn_credential(datetime.now(UTC))
+    return WebRtcConfigResponse(
+        ice_servers=settings.webrtc_stun_urls_list,
+        turn_servers=(
+            [TurnServer(urls=turn.urls, username=turn.username, credential=turn.credential)]
+            if turn is not None
+            else []
+        ),
+    )
 
 
 @router.post("/devices/{device_id}/push-token", response_model=RegisterPushTokenResponse)
