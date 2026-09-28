@@ -1,21 +1,6 @@
 "use client";
 
-import {
-  Banknote,
-  Clapperboard,
-  Gamepad2,
-  GraduationCap,
-  Hammer,
-  MessageCircle,
-  Newspaper,
-  Plus,
-  ShieldAlert,
-  ShoppingCart,
-  Tags,
-  Trash2,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { Plus, ShieldAlert, Tags, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RuleTypeFields, type RuleTypeFieldsValue, DEFAULT_RULE_TYPE_FIELDS, validateRuleTypeFields } from "@/components/RuleTypeFields";
@@ -45,6 +30,7 @@ import {
   upsertAppCategory,
   upsertCategoryRule,
 } from "@/lib/apiClient";
+import { CATEGORIES, CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/categoryFormatting";
 import { describeRule, ruleTypeLabel } from "@/lib/ruleFormatting";
 
 import styles from "./DeviceCategoriesPanel.module.css";
@@ -58,48 +44,6 @@ type CategoryRulesState =
   | { kind: "loading" }
   | { kind: "loaded"; categoryRules: CategoryRule[] }
   | { kind: "error"; message: string };
-
-const CATEGORIES: Category[] = [
-  "SOCIAL_MEDIA",
-  "GAMES",
-  "STREAMING",
-  "EDUCATION",
-  "PRODUCTIVITY",
-  "COMMUNICATION",
-  "NEWS",
-  "SHOPPING",
-  "FINANCE",
-  "UTILITIES",
-  "ADULT_CONTENT",
-];
-
-const CATEGORY_LABELS: Record<Category, string> = {
-  SOCIAL_MEDIA: "Redes sociales",
-  GAMES: "Juegos",
-  STREAMING: "Streaming",
-  EDUCATION: "Educación",
-  PRODUCTIVITY: "Productividad",
-  COMMUNICATION: "Comunicación",
-  NEWS: "Noticias",
-  SHOPPING: "Compras",
-  FINANCE: "Finanzas",
-  UTILITIES: "Utilidades",
-  ADULT_CONTENT: "Contenido para adultos",
-};
-
-const CATEGORY_ICONS: Record<Category, LucideIcon> = {
-  SOCIAL_MEDIA: Users,
-  GAMES: Gamepad2,
-  STREAMING: Clapperboard,
-  EDUCATION: GraduationCap,
-  PRODUCTIVITY: Hammer,
-  COMMUNICATION: MessageCircle,
-  NEWS: Newspaper,
-  SHOPPING: ShoppingCart,
-  FINANCE: Banknote,
-  UTILITIES: Tags,
-  ADULT_CONTENT: ShieldAlert,
-};
 
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;

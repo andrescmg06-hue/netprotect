@@ -1,62 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Bell, BellOff, Check, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
+  Button,
+  Card,
+  CardHeader,
+  type Column,
+  DataTable,
+  EmptyState,
+  MetricCard,
+  MetricGrid,
+  SegmentedControl,
+  Spinner,
+  StatusBadge,
+} from "@/components/ui";
+import { ALERT_LEVEL_ICON, ALERT_LEVEL_LABEL, ALERT_LEVEL_TONE, alertLabel, silenceLabel } from "@/lib/alertFormatting";
+import {
   type Alert,
+  type AlertLevel,
   type AlertSilence,
   ApiError,
   deleteAlertSilence,
   listAlertSilences,
   listDeviceAlerts,
+  listGeofences,
   markAlertRead,
   silenceAlert,
 } from "@/lib/apiClient";
+
+import styles from "./AlertsPanel.module.css";
 
 type AlertsState =
   | { kind: "loading" }
   | { kind: "loaded"; alerts: Alert[]; silences: AlertSilence[] }
   | { kind: "error"; message: string };
 
+const LEVELS: AlertLevel[] = ["INFO", "WARNING", "HIGH", "CRITICAL"];
+
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-function alertLabel(alert: Alert): string {
-  switch (alert.alert_type) {
-    case "APP_BLOCKED":
-      return `Se bloqueó ${alert.package_name}`;
-    case "APP_LIMIT_REACHED":
-      return `Se alcanzó el límite de tiempo de ${alert.package_name}`;
-    case "GEOFENCE_EXIT":
-      return `Salió de ${alert.geofence_name}`;
-    case "GEOFENCE_ENTER":
-      return `Entró a ${alert.geofence_name}`;
-    // Sprint 20 — señales de manipulación. Sin package_name ni geofence_name: describen el
-    // estado del dispositivo, no una app ni una zona concreta.
-    case "PERMISSION_REVOKED":
-      return "El permiso de acceso a uso de apps no está activo: el dispositivo no puede aplicar reglas";
-    case "SERVICE_INACTIVE":
-      return "El servicio de control de apps no está en ejecución en el dispositivo";
-    case "HEARTBEAT_SILENCE":
-      return "El dispositivo dejó de reportarse durante un periodo anormalmente largo";
-    case "CLOCK_TAMPERING":
-      return "La hora del dispositivo no coincide con la del servidor";
-    case "UNINSTALL_ATTEMPT":
-      return "Se intentó desactivar la protección contra desinstalación";
-  }
-}
-
-/** Sprint 17: a tutor inbox generated from signals that already existed (bloqueos de reglas,
- * entradas/salidas de geocercas) — read through GET /devices/{id}/alerts, which the backend
- * already deduplicates while unread. Marking read and silenciar son acciones de tutor (escriben
- * estado), mismo criterio que crear reglas/geocercas: sólo desde el panel web, no desde Android.
+/** Sprint 17 (logic), Sprint 37 (design): a tutor inbox generated from signals that already
+ * existed (bloqueos de reglas, entradas/salidas de geocercas, señales de manipulación) — read
+ * through GET /devices/{id}/alerts, deduplicated server-side while unread. Marking read and
+ * silenciar son acciones de tutor, sólo desde el panel web.
  *
- * Sprint 24: `view` splits this into two dashboard sections without splitting the fetch — both
+ * `view` splits this into two dashboard sections without splitting the fetch (Sprint 24): both
  * still load in one Promise.all, since silencing an alert here needs to update the "está
- * silenciada" state on the same alert list. "inbox" (default) shows unread/read alerts;
- * "silenced" shows the silence rules a tutor set up, so reactivating one lives next to the
- * others instead of buried under the inbox.
+ * silenciada" state on the same alert list. "inbox" is a master-detail list (no calendario de
+ * silencios en el mockup — plan-frontend.md regla 1: no existe, se omite; silenciar sigue siendo
+ * indefinido, como desde el Sprint 17); "silenced" resolves each dedup_key into the app/zona a
+ * tutor recognizes via a small local geofence-name lookup.
  */
 export function AlertsPanel({
   accessToken,
@@ -69,6 +66,9 @@ export function AlertsPanel({
 }) {
   const [state, setState] = useState<AlertsState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
+  const [levelFilter, setLevelFilter] = useState<AlertLevel | "ALL">("ALL");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [geofenceNames, setGeofenceNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -90,87 +90,245 @@ export function AlertsPanel({
     };
   }, [accessToken, deviceId, reloadToken]);
 
+  useEffect(() => {
+    if (view !== "silenced") return;
+    let cancelled = false;
+
+    listGeofences(accessToken, deviceId)
+      .then(({ geofences }) => {
+        if (!cancelled) {
+          setGeofenceNames(Object.fromEntries(geofences.map((geofence) => [geofence.id, geofence.name])));
+        }
+      })
+      .catch(() => {
+        // Best-effort: silenceLabel falls back to the raw geofence id when this hasn't loaded.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, deviceId, view, reloadToken]);
+
+  const alerts = useMemo(() => (state.kind === "loaded" ? state.alerts : []), [state]);
+  const silences = state.kind === "loaded" ? state.silences : [];
+
+  const filteredAlerts = useMemo(
+    () => (levelFilter === "ALL" ? alerts : alerts.filter((alert) => alert.level === levelFilter)),
+    [alerts, levelFilter]
+  );
+  const selectedAlert = useMemo(
+    () => filteredAlerts.find((alert) => alert.id === selectedId) ?? filteredAlerts[0] ?? null,
+    [filteredAlerts, selectedId]
+  );
+  const levelCounts = useMemo(() => {
+    const counts: Record<AlertLevel, number> = { INFO: 0, WARNING: 0, HIGH: 0, CRITICAL: 0 };
+    for (const alert of alerts) counts[alert.level] += 1;
+    return counts;
+  }, [alerts]);
+
+  function reload() {
+    setReloadToken((current) => current + 1);
+  }
+
   function handleRead(alertId: string) {
     markAlertRead(accessToken, deviceId, alertId)
-      .then(() => setReloadToken((current) => current + 1))
-      .catch(() => setReloadToken((current) => current + 1));
+      .then(reload)
+      .catch(reload);
   }
 
   function handleSilence(alertId: string) {
     silenceAlert(accessToken, deviceId, alertId, null)
-      .then(() => setReloadToken((current) => current + 1))
-      .catch(() => setReloadToken((current) => current + 1));
+      .then(reload)
+      .catch(reload);
   }
 
   function handleUnsilence(silenceId: string) {
     deleteAlertSilence(accessToken, deviceId, silenceId)
-      .then(() => setReloadToken((current) => current + 1))
-      .catch(() => setReloadToken((current) => current + 1));
+      .then(reload)
+      .catch(reload);
+  }
+
+  if (view === "silenced") {
+    const silenceColumns: Column<AlertSilence>[] = [
+      {
+        key: "what",
+        header: "Alerta silenciada",
+        primary: true,
+        render: (silence) => silenceLabel(silence.dedup_key, geofenceNames),
+      },
+      {
+        key: "until",
+        header: "Vence",
+        render: (silence) =>
+          silence.silenced_until ? new Date(silence.silenced_until).toLocaleString("es-CO") : "Indefinido",
+      },
+      {
+        key: "actions",
+        header: "",
+        align: "right",
+        render: (silence) => (
+          <Button size="sm" variant="ghost" icon={Bell} onClick={() => handleUnsilence(silence.id)}>
+            Reactivar
+          </Button>
+        ),
+      },
+    ];
+
+    return (
+      <Card padding="none">
+        <div className={styles.cardHead}>
+          <CardHeader
+            icon={BellOff}
+            title="Alertas silenciadas"
+            actions={
+              <Button size="sm" icon={RefreshCw} onClick={reload}>
+                Actualizar
+              </Button>
+            }
+          />
+        </div>
+        {state.kind === "loading" && (
+          <div className={styles.emptyWrap}>
+            <Spinner label="Cargando…" />
+          </div>
+        )}
+        {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
+        {state.kind === "loaded" && silences.length === 0 && (
+          <div className={styles.emptyWrap}>
+            <EmptyState icon={BellOff} title="No hay ninguna alerta silenciada en este dispositivo" />
+          </div>
+        )}
+        {state.kind === "loaded" && silences.length > 0 && (
+          <DataTable columns={silenceColumns} rows={silences} rowKey={(silence) => silence.id} />
+        )}
+      </Card>
+    );
   }
 
   return (
-    <div className="rulesPanel">
-      <div className="devicesPanelHeader">
-        <strong>{view === "inbox" ? "Alertas" : "Alertas silenciadas"}</strong>
-        <button type="button" onClick={() => setReloadToken((current) => current + 1)}>
+    <>
+      <MetricGrid>
+        {LEVELS.map((level) => (
+          <MetricCard
+            key={level}
+            icon={ALERT_LEVEL_ICON[level]}
+            tone={ALERT_LEVEL_TONE[level]}
+            label={ALERT_LEVEL_LABEL[level]}
+            value={levelCounts[level]}
+          />
+        ))}
+      </MetricGrid>
+
+      <div className={styles.controls}>
+        <SegmentedControl
+          label="Filtrar por nivel"
+          value={levelFilter}
+          onChange={setLevelFilter}
+          options={[
+            { value: "ALL" as const, label: "Todas" },
+            ...LEVELS.map((level) => ({ value: level, label: ALERT_LEVEL_LABEL[level] })),
+          ]}
+        />
+        <Button size="sm" icon={RefreshCw} onClick={reload}>
           Actualizar
-        </button>
+        </Button>
       </div>
 
-      {state.kind === "loading" && <p className="statusText">Cargando…</p>}
-      {state.kind === "error" && <p className="authError">{state.message}</p>}
-
-      {view === "inbox" && state.kind === "loaded" && state.alerts.length === 0 && (
-        <p className="statusText">Sin alertas para este dispositivo.</p>
-      )}
-      {view === "inbox" && state.kind === "loaded" && state.alerts.length > 0 && (
-        <ul className="appList">
-          {state.alerts.map((alert) => (
-            <li key={alert.id} className="appRow">
-              <div className="appLabel">
-                [{alert.level}] {alertLabel(alert)}
-                {alert.occurrence_count > 1 ? ` (x${alert.occurrence_count})` : ""}
-                {alert.read_at ? " — leída" : ""}
-              </div>
-              <span className="appUsage">
-                {new Date(alert.last_occurred_at).toLocaleString("es-CO")}
-                {alert.read_at === null && (
-                  <>
-                    {" "}
-                    <button type="button" onClick={() => handleRead(alert.id)}>
-                      Marcar leída
-                    </button>{" "}
-                    <button type="button" onClick={() => handleSilence(alert.id)}>
-                      Silenciar
+      <div className={styles.columns}>
+        <Card padding="none">
+          <div className={styles.cardHead}>
+            <CardHeader icon={Bell} title="Bandeja" />
+          </div>
+          {state.kind === "loading" && (
+            <div className={styles.emptyWrap}>
+              <Spinner label="Cargando…" />
+            </div>
+          )}
+          {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
+          {state.kind === "loaded" && filteredAlerts.length === 0 && (
+            <div className={styles.emptyWrap}>
+              <EmptyState icon={Bell} title="Sin alertas para este filtro" />
+            </div>
+          )}
+          {state.kind === "loaded" && filteredAlerts.length > 0 && (
+            <ul className={styles.list}>
+              {filteredAlerts.map((alert) => {
+                const Icon = ALERT_LEVEL_ICON[alert.level];
+                const selected = selectedAlert?.id === alert.id;
+                return (
+                  <li key={alert.id}>
+                    <button
+                      type="button"
+                      className={selected ? `${styles.row} ${styles.rowSelected}` : styles.row}
+                      onClick={() => setSelectedId(alert.id)}
+                    >
+                      <span className={`${styles.rowIcon} ${styles[ALERT_LEVEL_TONE[alert.level]]}`}>
+                        <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                      </span>
+                      <span className={styles.rowBody}>
+                        <span className={styles.rowTitle}>
+                          {!alert.read_at && <span className={styles.unreadDot} aria-hidden="true" />}
+                          {alertLabel(alert)}
+                        </span>
+                        <span className={styles.rowMeta}>
+                          {new Date(alert.last_occurred_at).toLocaleString("es-CO")}
+                          {alert.occurrence_count > 1 ? ` · x${alert.occurrence_count}` : ""}
+                        </span>
+                      </span>
                     </button>
-                  </>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
 
-      {view === "silenced" && state.kind === "loaded" && state.silences.length === 0 && (
-        <p className="statusText">No hay ninguna alerta silenciada en este dispositivo.</p>
-      )}
-      {view === "silenced" && state.kind === "loaded" && state.silences.length > 0 && (
-        <ul className="appList">
-          {state.silences.map((silence) => (
-            <li key={silence.id} className="appRow">
-              <div className="appLabel">{silence.dedup_key}</div>
-              <span className="appUsage">
-                {silence.silenced_until
-                  ? `hasta ${new Date(silence.silenced_until).toLocaleString("es-CO")}`
-                  : "indefinido"}{" "}
-                <button type="button" onClick={() => handleUnsilence(silence.id)}>
-                  Reactivar
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+        <Card>
+          {selectedAlert ? (
+            <>
+              <CardHeader
+                icon={ALERT_LEVEL_ICON[selectedAlert.level]}
+                title={alertLabel(selectedAlert)}
+                actions={<StatusBadge tone={ALERT_LEVEL_TONE[selectedAlert.level]}>{ALERT_LEVEL_LABEL[selectedAlert.level]}</StatusBadge>}
+              />
+              <dl className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <dt>Primera vez</dt>
+                  <dd>{new Date(selectedAlert.first_occurred_at).toLocaleString("es-CO")}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Última vez</dt>
+                  <dd>{new Date(selectedAlert.last_occurred_at).toLocaleString("es-CO")}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Repeticiones</dt>
+                  <dd>{selectedAlert.occurrence_count}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Estado</dt>
+                  <dd>
+                    {selectedAlert.read_at
+                      ? `Leída (${new Date(selectedAlert.read_at).toLocaleString("es-CO")})`
+                      : "Sin leer"}
+                  </dd>
+                </div>
+              </dl>
+              <div className={styles.detailActions}>
+                {!selectedAlert.read_at && (
+                  <Button icon={Check} onClick={() => handleRead(selectedAlert.id)}>
+                    Marcar leída
+                  </Button>
+                )}
+                <Button variant="secondary" icon={BellOff} onClick={() => handleSilence(selectedAlert.id)}>
+                  Silenciar
+                </Button>
+              </div>
+            </>
+          ) : (
+            <EmptyState icon={Bell} title="Selecciona una alerta para ver su detalle" />
+          )}
+        </Card>
+      </div>
+    </>
   );
 }
