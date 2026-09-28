@@ -35,11 +35,11 @@ backend pass · frontend pass · integration pass · api-collection pass
 performance pass · e2e pass · android pending · android-instrumented pending
 ```
 
-(Estado en el momento de escribir esto; los dos jobs de Android seguían en ejecución. Se anota el
-resultado final al cerrar el sprint.)
+Resultado final de los 8 jobs antes del merge: backend, frontend, android, android-instrumented,
+integration, api-collection, e2e y performance en `pass`. PR fusionado como `38b77b8`.
 
 ## 4. No verificado
 
 - Tests instrumentados de Android en local (sin emulador levantado).
 - `make test` en local (ver Decisiones en `docs/sprint-40.md`).
-- Prueba de `opencode.json` leyendo `.env` desde OpenCode: **pendiente del dueño**.
+- Prueba de `opencode.json`: el dueño reportó que DeepSeek **no pudo leer** `.env` (no hay captura).

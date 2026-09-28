@@ -29,8 +29,12 @@ Primer sprint del rediseño Android (`docs/android-redesign/`). Solo documentaci
 - **El PR ya existía** (#2, borrador). Se reutilizó en vez de abrir otro. El PR #1 (`sprint-28-turn`)
   queda redundante al fusionar #2: sus commits ya viajan en la misma rama.
 
-## Pendiente
+## Cierre
 
-- Que el dueño abra OpenCode con DeepSeek V4 Pro, le pida leer `.env` y confirme que se niega
-  (prueba de `opencode.json`); sin eso, la sintaxis de patrones de permisos no está verificada.
-- Merge del PR #2 a `main` (lo decide el dueño) y creación de `android-redesign` desde `main`.
+- **Prueba de `opencode.json`:** el dueño abrió OpenCode con DeepSeek y le pidió leer `.env`; **se
+  negó** (resultado reportado por el dueño, no capturado en el repo).
+- **PR #2 fusionado a `main`** el 2026-09-28 (merge commit `38b77b8`) con los 8 jobs de CI en verde.
+  El PR #1 (`sprint-28-turn`) quedó marcado como fusionado por GitHub.
+- **Rama `android-redesign`** creada desde `main`; los commits del sprint van ahí. Aún **no se ha
+  empujado** al remoto.
+- Siguiente: S41 (sesión y errores), solo Claude Code, preferible con Opus.
