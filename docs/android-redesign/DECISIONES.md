@@ -20,7 +20,7 @@ Con 17 pantallas hace falta pila de navegación y botón "atrás" del sistema.
   plugin de `kotlinx-serialization`.
 
 **Recomendación: (a).** Dos niveles de profundidad y ningún *deep link* no justifican la dependencia.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Rutas propias (sealed interface + pila en rememberSaveable + BackHandler) — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-02 · ViewModel — bloquea S44
 
@@ -31,7 +31,7 @@ vuelve a pedir los datos.
 - **(b) Introducir `lifecycle-viewmodel-compose`** solo para pantallas de datos.
 
 **Recomendación: (a)** ahora; revisarlo en S51 con evidencia (si la recarga molesta de verdad).
-Estado: Pendiente
+Estado: **Resuelta** — (a) Mantener la regla: sin ViewModel; revisar en S51 — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-03 · Iconos — bloquea S42
 
@@ -41,7 +41,7 @@ Estado: Pendiente
 - **(c) Librería de terceros de Lucide para Compose**.
 
 **Recomendación: (a).**
-Estado: Pendiente
+Estado: **Resuelta** — (a) SVG de Lucide convertidos a VectorDrawable — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-04 · Tipografía Inter — bloquea S42
 
@@ -50,7 +50,7 @@ Estado: Pendiente
 - **(c) Fuente del sistema.**
 
 **Recomendación: (a).**
-Estado: Pendiente
+Estado: **Resuelta** — (a) Empaquetar Inter en res/font/ — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-05 · Ubicación sin nombre de lugar ni mapa — bloquea S45
 
@@ -65,7 +65,7 @@ enviar coordenadas del menor a un tercero (choca con la invariante de privacidad
 - **(c)** Geocodificación en el backend con un proveedor externo.
 
 **Recomendación: (a).** Coordenadas en texto: mostrarlas en pequeño o no (subdecisión).
-Estado: Pendiente
+Estado: **Resuelta** — (a) Sin nombre de lugar ni mapa; 'Abrir en mapa' y 'Dentro de <geocerca>' local — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-06 · Integración de ramas — bloquea S40
 
@@ -77,7 +77,7 @@ Estado: Pendiente
 
 **Recomendación: (a).** `main` no queda a medias (pantallas claras y oscuras mezcladas) mientras dure
 el rediseño; se integra en S51.
-Estado: Pendiente
+Estado: **Resuelta** — (a) PR sprint-31-design-system → main; rama android-redesign desde main — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-07 · Iconos de apps en la lista del tutor — bloquea S45
 
@@ -88,7 +88,7 @@ El backend no envía iconos.
   (`PackageManager`, `QUERY_ALL_PACKAGES` ya declarado); si no, monograma. Ningún dato sale del teléfono.
 
 **Recomendación: (b).**
-Estado: Pendiente
+Estado: **Resuelta** — (b) Icono local si la app está instalada en el teléfono del tutor; si no, monograma — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-08 · Barra inferior y "Más" — bloquea S44
 
@@ -99,7 +99,7 @@ Los mockups muestran Inicio / Dispositivos / Actividad / Más, pero ninguno defi
 - **(b)** Tres pestañas: sin "Dispositivos" (la lista ya está en Inicio).
 
 **Recomendación: (a)**, con el contenido de "Más" indicado.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Cuatro pestañas: Inicio / Dispositivos / Actividad / Más (Cambiar de modo, Cerrar sesión, Acerca de) — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-09 · "Silenciar" alerta — bloquea S46
 
@@ -109,7 +109,7 @@ El backend acepta `days` o `null` (indefinido). La web usa `null` y deja quitar 
 - **(b)** Opciones 1 / 7 / 30 días / indefinido y gestión de silencios en el móvil.
 
 **Recomendación: (a).**
-Estado: Pendiente
+Estado: **Resuelta** — (a) Silencio indefinido con confirmación; quitar silencios solo desde la web — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-10 · Auditar la consulta de ubicación — bloquea S47
 
@@ -121,7 +121,7 @@ La especificación pone "consultar ubicación" como ejemplo de auditoría, pero 
 - **(b)** No registrarlo; "Mi actividad" muestra solo lo que ya se audita.
 
 **Recomendación: (a)**: quién miró la ubicación de un menor es justo lo que una auditoría debe responder.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Registrar LOCATION_VIEWED (acción + id de dispositivo, nunca coordenadas) — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-11 · Detalle en la pantalla de bloqueo — bloquea S49
 
@@ -131,7 +131,7 @@ Estado: Pendiente
   devuelve `RuleEvaluator` → toca el código de aplicación de reglas.
 
 **Recomendación: (a)** ahora; (b) como tarea separada si se quiere.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Motivo + app + categoría real + frase de reinicio; sin franja horaria concreta — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-12 · Forma del consentimiento — bloquea S50
 
@@ -142,7 +142,7 @@ El consentimiento real es por solicitud; tras él, Android muestra su diálogo c
 - **(b)** Sin casilla: "Aceptar" / "Ahora no" (como hoy).
 
 **Recomendación: (a)**: doble gesto explícito, coherente con el mockup, sin afirmaciones falsas.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Casilla 'Autorizo…' + Continuar + Ahora no, con los textos corregidos — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-13 · Tests de UI de Compose — bloquea S42
 
@@ -151,7 +151,7 @@ Estado: Pendiente
 - **(b)** Solo tests JVM de formateadores y mapeos + verificación manual con capturas.
 
 **Recomendación: (a)**: son dependencias solo de prueba.
-Estado: Pendiente
+Estado: **Resuelta** — (a) Añadir ui-test-junit4 / ui-test-manifest (solo pruebas) — 2026-09-28 (dueño del proyecto, S40)
 
 ## D-14 · `lintDebug` en CI — bloquea S51 (opcional)
 
@@ -161,4 +161,4 @@ Deuda D-02 de `docs/tasks.md`: es el único chequeo que detecta APIs por encima 
 - **(b)** Dejarlo manual.
 
 **Recomendación: (a).**
-Estado: Pendiente
+Estado: **Resuelta** — (a) Añadir lintDebug al job android de CI en S51 — 2026-09-28 (dueño del proyecto, S40)

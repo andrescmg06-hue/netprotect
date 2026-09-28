@@ -558,3 +558,13 @@ elimina la tarjeta de infraestructura del login anterior y su `fetch` a `/api/v1
 endpoint del backend no se toca). Ninguna ruta de API ni lógica de negocio cambió.
 
 El detalle está en `docs/sprint-39.md`.
+
+## Alcance del Sprint 40
+
+Preparación del rediseño de la app Android (Sprints 40–51): se resuelven las 14 decisiones de
+`docs/android-redesign/DECISIONES.md`, se mide la línea base de tests, se escribe el inventario de
+lo que la app hace hoy (`docs/android-redesign/INVENTARIO.md`) y se configura OpenCode
+(`AGENTS.md` + `opencode.json` en la raíz). No cambia ningún archivo de `mobile/`, `backend/`,
+`frontend/` ni `infra/`.
+
+El detalle está en `docs/sprint-40.md`.

@@ -31,3 +31,44 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 ## Tareas
 | Id | Prioridad | Estado | Descripción |
 |---|---|---|---|
+
+## Rediseño Android (S40–S51)
+Detalle y arquitectura objetivo: `docs/android-redesign/ARCHITECTURE_GAPS.md`. Decisiones D-01…D-14
+resueltas el 2026-09-28: `docs/android-redesign/DECISIONES.md`. La prioridad P1–P3 sigue la escala de
+este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se resuelven dentro de S48/S50.
+
+| Id | Prioridad | Estado | Descripción — sprint |
+|---|---|---|---|
+| G-01 | P1 | todo | Token de la UI caduca a los 15 min sin renovarse — S41 |
+| G-02 | P1 | todo | Posible carrera entre refresh concurrentes (verificar; puede revocar la familia de tokens) — S41 |
+| G-03 | P2 | todo | Sin modelo de errores: se muestran `HTTP 401` crudos o se tragan (`runCatching`) — S41 |
+| G-04 | P1 | todo | Sin tema, tipografía, iconos, logo ni icono de lanzador — S42 |
+| G-05 | P1 | todo | Sin componentes compartidos (tarjeta, badge, estados vacío/carga/error, fila…) — S42 |
+| G-06 | P1 | todo | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — S42/S44/S48 |
+| G-07 | P2 | todo | Formateadores ("hace 12 min", "1 h 24 min", Hoy/Ayer) y etiquetas dispersos — S42 |
+| G-08 | P2 | todo | `TutorScreen.kt` monolítico (963 líneas; ver D-06 de deuda técnica) — S44 |
+| G-09 | P3 | todo | Cuenta atrás real del código de vinculación (`expires_in_seconds`) — S44 |
+| G-10 | P3 | todo | `os_version`/`app_version` no se leen en `DeviceClient` — S44 |
+| G-11 | P2 | todo | Desvincular sin confirmación; fallos silenciados — S44 |
+| G-12 | P3 | todo | Apps: búsqueda, fecha real del uso, iconos (D-07 = icono local o monograma) — S45 |
+| G-13 | P2 | todo | Ubicación/geocercas con textos de retraso y sin datos inventados (D-05) — S45 |
+| G-14 | P3 | todo | Historial agrupado por día con nombre de app — S46 |
+| G-15 | P3 | todo | Estadísticas con la semántica real de cumplimiento (días dentro del límite) — S46 |
+| G-16 | P2 | todo | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
+| G-17 | P3 | todo | Mi actividad con etiquetas, agrupación y paginación — S47 |
+| G-18 | P2 | todo | La consulta de ubicación no se audita (D-10 = `LOCATION_VIEWED`; backend) — S47 |
+| G-19 | P1 | todo | `SupervisedScreen` monolítico con los efectos de servicios dentro — S48 |
+| G-20 | P3 | todo | Vincular con entrada de 6 casillas y errores claros — S48 |
+| G-21 | P3 | todo | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
+| G-22 | P2 | todo | B-01 dispositivos duplicados en `GET /devices/me` — S48 |
+| G-23 | P2 | todo | Pantalla de bloqueo: 7 variantes con icono y categoría reales (D-11) — S49 |
+| G-24 | P2 | todo | Pantalla de consentimiento completa con textos verdaderos (D-12) — S50 |
+| G-25 | P2 | todo | Registro de estado de servicios (pantalla 17) — S50 |
+| G-26 | P2 | todo | B-02 reconexión del canal realtime — S50 |
+| G-27 | P2 | todo | Accesibilidad, rotación, sin conexión, build release, código muerto — S51 |
+| L-01 | P1 | todo | `AuthRepository.kt:32`: `CredentialManager.getCredential` sin capturar `NoCredentialException` (lint CredentialManagerMisuse); revisar con `security-reviewer` — S41 |
+| L-02 | P2 | todo | `AndroidManifest.xml:62`: `allowBackup` obsoleto y falta `dataExtractionRules` (lint DataExtractionRules); privacidad de datos de menores — S51 |
+| L-03 | P2 | todo | `AndroidManifest.xml:61`: falta `android:icon` explícito (lint MissingApplicationIcon); lo cubre G-04 — S42 |
+| L-04 | P3 | todo | 11 avisos UseKtx (`SharedPreferences.edit`, `String.toUri`) y 13 de dependencias/AGP desactualizados (lint); actualizar aparte, no durante el rediseño |
+| L-05 | P2 | todo | `backend/.venv` desactualizado (falta `prometheus_client`): `pytest -m "not integration"` no se puede ejecutar local (21 errores de colección) |
+| L-06 | P2 | todo | Solo `RuleEvaluator` tiene tests en Android (35); el rediseño de UI no tiene red de seguridad hasta D-13 (S42) |
