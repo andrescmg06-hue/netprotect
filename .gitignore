@@ -72,5 +72,8 @@ compose.override.yml
 .claude/settings.local.json
 .claude/*.lock
 
+# Harness: cache de los hooks de Stop (huella de la última verificación limpia)
+.claude/.cache/
+
 # Impeccable: review captures are regenerated every sprint; surface briefs are committed.
 .impeccable/review/
