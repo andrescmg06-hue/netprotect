@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { DashboardShell } from "@/components/DashboardShell";
-import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { LoginHero } from "@/components/LoginHero";
+import { LoginPanel } from "@/components/LoginPanel";
 import { useAuth } from "@/contexts/AuthContext";
+
+import styles from "./page.module.css";
 
 type ApiState = "checking" | "online" | "offline";
 
@@ -32,11 +35,14 @@ function fetchReadiness(baseUrl: string, signal: AbortSignal): Promise<ReadyPayl
  * lib/dashboardSections.ts); this file goes back to just being the auth gate, plus the same
  * infrastructure check from Sprint 1 kept on the pre-login landing, where it's still useful
  * evidence that Web → Backend → PostgreSQL/Redis works before anyone signs in.
+ *
+ * Sprint 33: the pre-login view is now LoginHero (the infrastructure check) + LoginPanel (the
+ * Google button) side by side — same fetch/retry logic as before, new layout.
  */
 export default function Home() {
   const { status: authStatus, user, accessToken, signOut } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("checking");
-  const [detail, setDetail] = useState("Comprobando Backend, PostgreSQL y Redis…");
+  const [detail, setDetail] = useState("Verificando que todos los servicios estén disponibles…");
   const [ready, setReady] = useState<ReadyPayload | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -71,7 +77,7 @@ export default function Home() {
   const checkInfrastructure = useCallback(() => {
     setApiState("checking");
     setReady(null);
-    setDetail("Comprobando Backend, PostgreSQL y Redis…");
+    setDetail("Verificando que todos los servicios estén disponibles…");
     setAttempt((current) => current + 1);
   }, []);
 
@@ -80,64 +86,11 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
-      <section className="hero">
-        <p className="eyebrow">NETPROTECT · PANEL DEL TUTOR</p>
-        <h1>Panel del tutor</h1>
-        <p className="lead">
-          Inicia sesión con Google para vincular dispositivos y gestionar reglas, ubicación,
-          alertas y todo lo demás desde un panel único.
-        </p>
-
-        <div className="authCard" aria-live="polite">
-          {authStatus === "loading" && <span className="statusText">Comprobando sesión…</span>}
-          {authStatus === "unauthenticated" && (
-            <>
-              <span className="statusText">Inicia sesión con tu cuenta de Google para continuar.</span>
-              <GoogleSignInButton />
-            </>
-          )}
-        </div>
-
-        <div className="statusCard" aria-live="polite">
-          <div>
-            <span className={`dot ${apiState}`} aria-hidden="true" />
-            <strong>Estado del incremento</strong>
-          </div>
-          <span className="statusText">{detail}</span>
-          <button type="button" onClick={checkInfrastructure}>
-            Volver a comprobar
-          </button>
-        </div>
-
-        <div className="grid">
-          <article>
-            <span>01</span>
-            <h2>Web</h2>
-            <p>Next.js + TypeScript. Consume la API central y valida la infraestructura.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h2>Backend</h2>
-            <p>FastAPI como frontera única para autenticación, reglas y datos.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h2>PostgreSQL</h2>
-            <p>{ready ? `Estado: ${ready.database}` : "Fuente de verdad relacional."}</p>
-          </article>
-          <article>
-            <span>04</span>
-            <h2>Redis</h2>
-            <p>{ready ? `Estado: ${ready.redis}` : "Cache y datos temporales; no es fuente de verdad."}</p>
-          </article>
-          <article>
-            <span>05</span>
-            <h2>Android</h2>
-            <p>Una sola app Kotlin/Compose para Tutor y Supervisado. También valida la API.</p>
-          </article>
-        </div>
-      </section>
+    <main className={styles.page}>
+      <div className={styles.heroColumn}>
+        <LoginHero apiState={apiState} detail={detail} ready={ready} onRetry={checkInfrastructure} />
+      </div>
+      <LoginPanel authStatus={authStatus === "loading" ? "loading" : "unauthenticated"} />
     </main>
   );
 }

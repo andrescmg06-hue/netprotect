@@ -1,0 +1,148 @@
+.columns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profileText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.profileName {
+  color: var(--color-navy);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.profileEmail {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 24px 160px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.field:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.fieldIcon {
+  color: var(--color-text-muted);
+}
+
+.fieldLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.fieldValue {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.securityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.securityIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-neutral-soft);
+  color: var(--color-text-muted);
+}
+
+.securityOk {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.securityText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.securityText strong {
+  color: var(--color-navy);
+  font-size: var(--text-base);
+}
+
+.securityText span {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.signOutBlock {
+  padding-top: var(--space-4);
+}
+
+.signOutHint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .field {
+    grid-template-columns: 20px 1fr;
+    grid-template-areas: "icon label" ". value";
+    row-gap: 2px;
+  }
+
+  .fieldIcon {
+    grid-area: icon;
+  }
+
+  .fieldLabel {
+    grid-area: label;
+  }
+
+  .fieldValue {
+    grid-area: value;
+    white-space: normal;
+  }
+}

@@ -269,7 +269,12 @@ export function DashboardShell({
           {activeSection === "account" && <AccountPanel user={user} onSignOut={onSignOut} />}
 
           {activeSection === "overview" && (
-            <OverviewPanel devices={devices} onOpenAlerts={(deviceId) => navigate("alerts", deviceId)} />
+            <OverviewPanel
+              accessToken={accessToken}
+              devices={devices}
+              unreadByDevice={unreadByDevice}
+              onNavigate={navigate}
+            />
           )}
 
           {activeSection === "devices" && (
