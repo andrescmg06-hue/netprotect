@@ -546,3 +546,15 @@ de todo el CSS heredado y una revisión de seguridad sin hallazgos.
 
 El detalle de cada sprint está en `docs/sprint-31.md` … `docs/sprint-38.md` y
 `docs/sprint-38-cierre.md`.
+
+## Alcance del Sprint 39
+
+La pantalla de inicio de sesión de `/` (sin sesión) pasa a ser una réplica pixel a pixel de la que
+estaba aislada en `/login-mockup`: fondo fotográfico, "Panel del tutor", imagen laptop+teléfono,
+tarjeta blanca "Inicia sesión" con el botón "Continuar con Google" y el pie con Ayuda / Privacidad /
+Términos. La ruta `/login-mockup` desaparece y, con ella, Tailwind y sus dependencias (el login se
+porta a CSS Modules sobre los tokens de `globals.css`, con Nunito solo para esta pantalla). Se
+elimina la tarjeta de infraestructura del login anterior y su `fetch` a `/api/v1/health/ready` (el
+endpoint del backend no se toca). Ninguna ruta de API ni lógica de negocio cambió.
+
+El detalle está en `docs/sprint-39.md`.

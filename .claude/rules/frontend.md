@@ -9,7 +9,7 @@ paths:
   que la API no tiene, se omite o se usa el dato real equivalente. Nunca se simula.
 - Tareas de UI no cambian rutas de API ni lógica de negocio.
 - Estilos: CSS Module por componente sobre los tokens de `src/app/globals.css`; primitivas desde
-  `@/components/ui`. Nada de colores, radios ni espaciados a mano. Sin Tailwind (salvo `/login-mockup`).
+  `@/components/ui`. Nada de colores, radios ni espaciados a mano. Sin Tailwind.
 - Sin librerías de gráficos ni de mapas: `DonutChart`, `BarList`, `ProgressBar`, `Timeline` y
   `GeofenceMap` son propios. El mapa es un esquema **a propósito** (no enviar coordenadas de un menor
   a servidores de teselas).

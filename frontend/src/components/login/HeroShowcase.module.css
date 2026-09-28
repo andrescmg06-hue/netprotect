@@ -1,0 +1,25 @@
+.wrap {
+  pointer-events: none;
+  position: absolute;
+  left: 14.7vw;
+  top: 38vh;
+  display: none;
+  max-height: 47vh;
+  max-width: 49vw;
+  user-select: none;
+}
+
+.image {
+  height: auto;
+  max-height: 47vh;
+  width: auto;
+  max-width: 49vw;
+  object-fit: contain;
+  object-position: left top;
+}
+
+@media (min-width: 1024px) {
+  .wrap {
+    display: block;
+  }
+}
