@@ -574,9 +574,34 @@ compatibilidad con la APK instalada. `scripts/verify_turn.sh`, paso del job `int
 la prueba real contra coturn: pytest sólo puede verificar la forma de la credencial. Ver
 `docs/sprint-28.md`.
 
+**Nota del Sprint 29, válida para cualquier trabajo futuro sobre `RealtimeClient`, el canal de
+señalización de vista remota, o el ciclo de vida del token de acceso en Android**: el panel web y
+Android ya usan `turn_servers`, verificado en vivo (par de candidatos `relay` en ambos extremos,
+`docs/sprint-29-evidence.md`) — pero llegar ahí exigió corregir dos fallos reales sin relación con
+coturn en sí. Primero, `RealtimeClient.connect()` mandaba el frame `{"token": ...}` desde el
+callback `onOpen` de OkHttp; `ScreenShareService` abre su propio socket y manda su oferta muy poco
+después de llamar a `connect()`, y OkHttp encola los envíos en el orden en que se llama a `send()`
+sin esperar a que el *handshake* termine — así que la oferta podía encolarse antes que el token, el
+backend cerraba la conexión por no reconocer un token como primer frame, y la oferta se perdía sin
+ningún rastro. El token ahora se encola como parte de `connect()`, antes de que la función retorne,
+en vez de depender del callback. Segundo, `ScreenShareService` usaba el `accessToken` que
+`SupervisedScreen` (Compose) tenía capturado en su propio estado — el mismo token de sesión en
+primer plano que la nota del Sprint 19 ya señalaba como el único sin refresco automático; con la
+app abierta más de los 15 minutos que vive un token, `GET /webrtc-config` daba 401 y el
+`runCatching` ya existente lo convertía en silencio en "sin servidores ICE", reproduciendo el
+fallo que el Sprint 28 se construyó para resolver. Ahora llama a `BackgroundTokenRefresher.refresh()`
+al iniciar cada sesión, igual que `RuleEnforcementService`/`SyncWorker` desde el Sprint 19. El
+backend, además, ahora registra (`screen_share_signal_dropped`) cualquier frame de señalización
+que descarte por tipo inválido o rol equivocado — nunca el contenido de una oferta SDP ni de un
+candidato ICE, verificado con `/security-review` — porque antes de este sprint ese descarte era
+silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprint-29.md`.
+
 Lo que resta fuera del plan TURN es exclusivamente lo que varias notas de sprint ya documentan
 como pendiente de un humano con cuenta cloud, dominio o permisos de administrador sobre el
-repositorio de GitHub (ver `docs/manuals/analisis-riesgos.md` para la lista consolidada).
+repositorio de GitHub (ver `docs/manuals/analisis-riesgos.md` para la lista consolidada), más lo
+que el Sprint 29 dejó anotado como backlog propio en `docs/sprint-29.md` (dispositivos duplicados
+en `GET /devices/me`, reconexión del canal en tiempo real de Android, y el mensaje claro cuando la
+misma cuenta es tutor y supervisado, heredado del Sprint 28).
 
 ## Entorno de trabajo
 
@@ -722,3 +747,17 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   Android 8–15 cierran la app (`NoSuchMethodError`). Así se encontraron dos el 24/09/2026:
   `checkOpNoThrow` con `attributionTag` y `systemDialerPackage`. Correrlo antes de cerrar cualquier
   sprint que toque Android.
+- `EGL_emulation: eglQueryContext ... EGL_BAD_ATTRIBUTE` en Logcat, en el punto donde WebRTC arma
+  `SurfaceTextureHelper` para capturar pantalla, es ruido propio del emulador — no significa que la
+  captura falló. Se investigó como causa real de un video que no llegaba (Sprint 29), incluido
+  cambiar `Graphics acceleration` del AVD, sin que el mensaje cambiara ni tuviera relación con el
+  fallo real (ver más abajo). Antes de perseguir este error, confirmar primero si el indicador rojo
+  de grabación del sistema aparece — si aparece, la captura sí está funcionando.
+- Un `WebSocket` de OkHttp (Android) encola cada `send()` en el orden en que se llama, sin esperar
+  a que termine el *handshake* — así que mandar el frame de autenticación desde el callback `onOpen`
+  en vez de justo al crear el socket deja una ventana real donde un `send()` posterior del mismo
+  llamador puede colarse antes. El backend de este proyecto exige que el primer frame de cada canal
+  sea el token (`_authenticate()`); si algo se adelanta, cierra la conexión sin dejar rastro visible
+  para quien la abrió. Encolar el frame de autenticación de forma síncrona, antes de que la función
+  de conexión retorne, es lo que garantiza el orden — no el callback en el que se dispare. Encontrado
+  en el Sprint 29 (`RealtimeClient.kt`/`ScreenShareService.kt`), ver `docs/sprint-29-evidence.md`.

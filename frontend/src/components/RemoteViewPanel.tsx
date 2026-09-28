@@ -81,9 +81,18 @@ export function RemoteViewPanel({
     setState({ kind: "requesting" });
 
     fetchWebRtcConfig(accessToken, deviceId)
-      .then(({ ice_servers }) => {
+      .then(({ ice_servers, turn_servers }) => {
+        // STUN for a direct path when one exists, plus the TURN relay (Sprint 28) for when it
+        // doesn't — an emulator behind its own NAT, or two mobile networks.
         const peer = new RTCPeerConnection({
-          iceServers: ice_servers.map((urls) => ({ urls })),
+          iceServers: [
+            ...ice_servers.map((urls) => ({ urls })),
+            ...turn_servers.map(({ urls, username, credential }) => ({
+              urls,
+              username,
+              credential,
+            })),
+          ],
         });
         peerRef.current = peer;
 
@@ -106,17 +115,16 @@ export function RemoteViewPanel({
           );
         });
 
-        // Without a TURN server (this project has none — see docs/sprint-23.md), a failed
-        // connection is the expected outcome on most mobile networks, so it gets its own message
-        // rather than a generic error.
+        // Reaching this means even the TURN relay (Sprint 28) couldn't carry the stream — usually
+        // a network that blocks the relay's port — so it gets its own message, not a generic one.
         peer.addEventListener("connectionstatechange", () => {
           if (peer.connectionState === "failed") {
             teardown(false);
             setState({
               kind: "ended",
               message:
-                "No se pudo establecer la conexión directa con el dispositivo. Sin un servidor " +
-                "TURN esto sólo funciona cuando ambos están en una red que lo permite.",
+                "No se pudo establecer la conexión de video con el dispositivo, ni directa ni " +
+                "a través del servidor de retransmisión. Revisa la conexión a internet de ambos.",
             });
           }
         });

@@ -515,3 +515,18 @@ backend se acepta y que una caducada o alterada se rechaza. Los clientes todaví
 es el Sprint 29.
 
 El detalle está en `docs/sprint-28.md` y la evidencia en `docs/sprint-28-evidence.md`.
+
+## Alcance del Sprint 29
+
+Segundo sprint del plan `docs/planning/plan-turn.md`: el panel web y la app Android ya usan el
+`turn_servers` que el Sprint 28 emite. Verificado en vivo con el emulador y el navegador del host —
+la situación que fallaba desde el 24/09/2026 (video que nunca llega) ahora funciona, con un par de
+candidatos `relay` en ambos extremos en `chrome://webrtc-internals`. En el camino se encontraron y
+corrigieron dos fallos reales, sin relación con coturn en sí: Android podía mandar su oferta de
+video antes que el frame de autenticación en el mismo socket (carrera en el orden de envío de
+OkHttp), y `ScreenShareService` usaba un token de acceso que podía estar vencido por no
+refrescarse como ya hacen `RuleEnforcementService`/`SyncWorker`. El backend ahora registra
+cualquier frame de señalización que descarte, sin incluir nunca el contenido de una oferta SDP o
+un candidato ICE.
+
+El detalle está en `docs/sprint-29.md` y la evidencia en `docs/sprint-29-evidence.md`.

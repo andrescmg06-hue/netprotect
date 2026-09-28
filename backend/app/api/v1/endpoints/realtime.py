@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -30,6 +31,7 @@ from app.services.realtime import (
 from app.services.turn import issue_turn_credential
 
 router = APIRouter(tags=["realtime"])
+logger = logging.getLogger(__name__)
 
 # Close codes above 4000 are the private-use range the WebSocket spec reserves for
 # applications. 4401/4404 deliberately echo the HTTP status codes this project's REST
@@ -197,11 +199,36 @@ async def _handle_signal(
     would hand the stream to someone the supervised person never agreed to.
     """
     try:
-        signal = _signal_adapter.validate_python(json.loads(raw_text))
-    except (ValueError, ValidationError):
+        payload = json.loads(raw_text)
+    except ValueError:
+        return
+    frame_type = payload.get("type") if isinstance(payload, dict) else None
+    if frame_type is None:
+        # No `type`: a liveness ping, which is expected traffic, not a dropped signal.
+        return
+
+    try:
+        signal = _signal_adapter.validate_python(payload)
+    except ValidationError as exc:
+        # Logged because a silent drop here once hid a whole class of failure: the device's offer
+        # vanished and both peers just waited. Type, size and failing field only — never the SDP.
+        logger.warning(
+            "screen_share_signal_dropped device_id=%s role=%s type=%s bytes=%d reason=%s",
+            device_id,
+            role,
+            str(frame_type)[:40],
+            len(raw_text),
+            ";".join(f"{'.'.join(map(str, e['loc']))}:{e['type']}" for e in exc.errors())[:200],
+        )
         return
 
     if role not in _SIGNAL_SENDER_ROLES[signal.type]:
+        logger.warning(
+            "screen_share_signal_dropped device_id=%s role=%s type=%s reason=role_not_allowed",
+            device_id,
+            role,
+            signal.type,
+        )
         return
 
     if signal.type == "screen_share_request":
