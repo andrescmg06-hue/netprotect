@@ -1,0 +1,77 @@
+.columns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.cardHead {
+  padding: var(--space-5) var(--space-6) 0;
+}
+
+.emptyWrap {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.error {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-4);
+  color: var(--color-danger-text);
+}
+
+.appCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.appPackage {
+  overflow: hidden;
+  color: var(--color-navy);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ruleDetail {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.historyToggle {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.historyEmpty {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .ruleCell {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}

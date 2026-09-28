@@ -1,0 +1,11 @@
+.timeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 480px) {
+  .timeRow {
+    grid-template-columns: 1fr;
+  }
+}

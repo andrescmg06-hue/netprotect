@@ -65,7 +65,8 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
 
     // "Reglas por aplicación" is per-device (dashboardSections.ts) — the device selector
     // defaults to whichever device loaded first, and global-setup paired exactly one, so no
-    // selection is needed before the rule for it shows up.
-    await expect(page.getByText(session.packageName)).toBeVisible();
+    // selection is needed before the rule for it shows up. Sprint 35's own form repeats the same
+    // package name inside its "Ej. ..." hint, so match the rule row's exact text, not the hint's.
+    await expect(page.getByText(session.packageName, { exact: true })).toBeVisible();
   });
 });
