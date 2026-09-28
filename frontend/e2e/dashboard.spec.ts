@@ -50,8 +50,10 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
     await nav(page).getByRole("button", { name: "Dispositivos", exact: true }).click();
     await expect(title(page)).toHaveText("Dispositivos");
     // The device paired in global-setup shows up for real — not a fixture, an actual row read
-    // back from the backend this test's own setup wrote to.
-    await expect(page.getByText(session.deviceName)).toBeVisible();
+    // back from the backend this test's own setup wrote to. Sprint 34's master-detail layout
+    // shows the name twice (list row, detail card) plus once more, hidden, in the unlink
+    // <dialog>'s title — by role+name instead of by text so the row alone matches.
+    await expect(page.getByRole("button", { name: session.deviceName })).toBeVisible();
 
     await nav(page).getByRole("button", { name: "Vinculación", exact: true }).click();
     await expect(title(page)).toHaveText("Vinculación");

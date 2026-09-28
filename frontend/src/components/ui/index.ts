@@ -1,5 +1,7 @@
+export { AppIcon } from "./AppIcon";
 export { Button } from "./Button";
 export { Card, CardHeader } from "./Card";
+export { DataTable, type Column } from "./DataTable";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ALL_DAYS_MASK, DayPicker, describeDays } from "./DayPicker";
 export { EmptyState } from "./EmptyState";

@@ -1,0 +1,76 @@
+.error {
+  margin: 0;
+  color: var(--color-danger-text);
+}
+
+.searchRow {
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  max-width: 360px;
+}
+
+.emptyWrap,
+.noResults {
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+.noResults {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.appCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.appText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.appLabel {
+  overflow: hidden;
+  color: var(--color-navy);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appPackage {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usageCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 140px;
+}
+
+.usageBar {
+  width: 60px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-soft);
+  overflow: hidden;
+}
+
+.usageFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+
+.usageText {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
