@@ -1,8 +1,12 @@
 "use client";
 
+import { Check, PhoneOff, ScreenShare, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button, Card, CardHeader, Spinner } from "@/components/ui";
 import { ApiError, deviceRealtimeWebSocketUrl, fetchWebRtcConfig } from "@/lib/apiClient";
+
+import styles from "./RemoteViewPanel.module.css";
 
 type ViewerState =
   | { kind: "idle" }
@@ -10,6 +14,38 @@ type ViewerState =
   | { kind: "connecting"; detail: string }
   | { kind: "streaming" }
   | { kind: "ended"; message: string };
+
+type StepKey = "request" | "wait" | "connect" | "live";
+
+const STEPS: { key: StepKey; label: string }[] = [
+  { key: "request", label: "Solicitar" },
+  { key: "wait", label: "Esperando" },
+  { key: "connect", label: "Conectando" },
+  { key: "live", label: "Activa" },
+];
+
+function currentStep(state: ViewerState): StepKey | null {
+  switch (state.kind) {
+    case "idle":
+      return null;
+    case "requesting":
+      return "wait";
+    case "connecting":
+      return "connect";
+    case "streaming":
+      return "live";
+    case "ended":
+      return null;
+  }
+}
+
+function formatDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
 
 /** Why a session ended, in the tutor's terms rather than the protocol's. The device sends these
  * reasons (see ScreenShareService); anything unrecognised falls back to a neutral message instead
@@ -28,7 +64,7 @@ function describeStopReason(reason: unknown): string {
   }
 }
 
-/** Sprint 23. Live view of a supervised device's screen, over WebRTC.
+/** Sprint 23 (logic), Sprint 38 (design). Live view of a supervised device's screen, over WebRTC.
  *
  * The browser is deliberately the passive half: the device captures and offers, this panel only
  * answers and renders. That is what keeps the WebRTC dependency on the Android side alone — a
@@ -37,7 +73,10 @@ function describeStopReason(reason: unknown): string {
  * Nothing starts without the supervised person accepting twice (this panel's request, then
  * Android's own capture dialog), and nothing is recorded: the stream is rendered and discarded.
  * There is no session state on the backend to reconnect to either — closing this panel ends the
- * session, by design (see docs/sprint-23.md).
+ * session, by design (see docs/sprint-23.md). The stepper only distinguishes what the frontend
+ * can actually tell apart: "consentimiento" and "negociando" are both the same `connecting`
+ * state internally (the `detail` text tells them apart, shown under "Conectando"), because the
+ * signalling protocol never reports which of the two is in progress separately.
  */
 export function RemoteViewPanel({
   accessToken,
@@ -47,9 +86,11 @@ export function RemoteViewPanel({
   deviceId: string;
 }) {
   const [state, setState] = useState<ViewerState>({ kind: "idle" });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamStartedAtRef = useRef<number | null>(null);
 
   const teardown = useCallback((notifyPeer: boolean) => {
     if (notifyPeer && socketRef.current?.readyState === WebSocket.OPEN) {
@@ -70,6 +111,18 @@ export function RemoteViewPanel({
   // react-hooks/set-state-in-effect rule the whole project works around (see CLAUDE.md).
   useEffect(() => () => teardown(true), [teardown]);
 
+  // Ticks the visible duration while streaming; the interval callback is the only place that
+  // calls setState here, never the effect body itself.
+  useEffect(() => {
+    if (state.kind !== "streaming") return;
+    const id = setInterval(() => {
+      if (streamStartedAtRef.current) {
+        setElapsedSeconds(Math.floor((Date.now() - streamStartedAtRef.current) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [state.kind]);
+
   const stop = useCallback(() => {
     teardown(true);
     setState({ kind: "ended", message: "Cerraste la transmisión." });
@@ -78,6 +131,8 @@ export function RemoteViewPanel({
   // A click handler, not an effect: every setState below runs from a user gesture or from a real
   // async browser callback, never synchronously during render.
   const start = useCallback(() => {
+    setElapsedSeconds(0);
+    streamStartedAtRef.current = null;
     setState({ kind: "requesting" });
 
     fetchWebRtcConfig(accessToken, deviceId)
@@ -100,6 +155,7 @@ export function RemoteViewPanel({
           if (videoRef.current) {
             videoRef.current.srcObject = event.streams[0] ?? null;
           }
+          streamStartedAtRef.current = Date.now();
           setState({ kind: "streaming" });
         });
 
@@ -234,41 +290,92 @@ export function RemoteViewPanel({
 
   const isActive =
     state.kind === "requesting" || state.kind === "connecting" || state.kind === "streaming";
+  const step = currentStep(state);
+  const activeIndex = step ? STEPS.findIndex((item) => item.key === step) : -1;
 
   return (
-    <div className="rulesPanel">
-      <div className="devicesPanelHeader">
-        <strong>Ver pantalla</strong>
-        {isActive ? (
-          <button type="button" onClick={stop}>
-            Detener
-          </button>
-        ) : (
-          <button type="button" onClick={start}>
-            Solicitar ver pantalla
-          </button>
-        )}
+    <Card>
+      <CardHeader
+        icon={ScreenShare}
+        title="Vista remota"
+        actions={
+          isActive && (
+            <Button variant="danger" icon={PhoneOff} onClick={stop}>
+              Detener
+            </Button>
+          )
+        }
+      />
+
+      <div className={styles.notice}>
+        <ShieldCheck size={18} aria-hidden="true" />
+        <p>
+          La transmisión sólo empieza si la persona supervisada acepta, ella la ve mientras dure y
+          puede cortarla cuando quiera. No se graba nada: el video se muestra aquí y no se guarda.
+        </p>
       </div>
 
-      <p className="statusText">
-        La transmisión sólo empieza si la persona supervisada acepta, ella la ve mientras dure y
-        puede cortarla cuando quiera. No se graba nada: el video se muestra aquí y no se guarda.
-      </p>
+      {activeIndex >= 0 && (
+        <ol className={styles.stepper}>
+          {STEPS.map((item, index) => {
+            const status = index < activeIndex ? "done" : index === activeIndex ? "active" : "pending";
+            return (
+              <li key={item.key} className={styles.step} data-status={status}>
+                <span className={styles.stepDot}>{status === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}</span>
+                <span className={styles.stepLabel}>{item.label}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+
+      {state.kind === "idle" && (
+        <div className={styles.idle}>
+          <p className={styles.idleText}>Todavía no has pedido ver la pantalla de este dispositivo.</p>
+          <Button variant="primary" icon={ScreenShare} onClick={start}>
+            Solicitar ver pantalla
+          </Button>
+        </div>
+      )}
 
       {state.kind === "requesting" && (
-        <p className="statusText">Esperando respuesta en el dispositivo…</p>
+        <div className={styles.waiting}>
+          <Spinner label="Esperando respuesta en el dispositivo…" />
+        </div>
       )}
-      {state.kind === "connecting" && <p className="statusText">{state.detail}</p>}
-      {state.kind === "ended" && <p className="authError">{state.message}</p>}
 
-      <video
-        ref={videoRef}
-        className="remoteScreenVideo"
-        autoPlay
-        playsInline
-        muted
-        hidden={state.kind !== "streaming"}
-      />
-    </div>
+      {state.kind === "connecting" && (
+        <div className={styles.waiting}>
+          <Spinner label={state.detail} />
+        </div>
+      )}
+
+      {state.kind === "ended" && (
+        <div className={styles.ended}>
+          <p className={styles.endedMessage}>{state.message}</p>
+          <Button variant="primary" icon={ScreenShare} onClick={start}>
+            Solicitar ver pantalla
+          </Button>
+        </div>
+      )}
+
+      {/* Always mounted — never conditionally rendered — so the single DOM node the
+          peer's "track" listener attaches srcObject to survives every state transition. Only
+          its wrapper's class (and the phone bezel around it) changes with `state.kind`. */}
+      <div className={state.kind === "streaming" ? styles.streamingWrap : styles.videoHidden}>
+        {state.kind === "streaming" && <span className={styles.duration}>{formatDuration(elapsedSeconds)}</span>}
+        <div className={state.kind === "streaming" ? styles.phoneFrame : undefined}>
+          {state.kind === "streaming" && <div className={styles.phoneNotch} />}
+          <video
+            ref={videoRef}
+            className={state.kind === "streaming" ? styles.video : undefined}
+            autoPlay
+            playsInline
+            muted
+            hidden={state.kind !== "streaming"}
+          />
+        </div>
+      </div>
+    </Card>
   );
 }

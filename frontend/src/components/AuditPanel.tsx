@@ -1,13 +1,12 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, Download, History, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import {
-  type AuditLogEntry,
-  ApiError,
-  exportMyAuditLog,
-  listMyAuditLog,
-} from "@/lib/apiClient";
+import { Button, Card, CardHeader, type Column, DataTable, EmptyState, Field, Input, Spinner } from "@/components/ui";
+import { type AuditLogEntry, ApiError, exportMyAuditLog, listMyAuditLog } from "@/lib/apiClient";
+
+import styles from "./AuditPanel.module.css";
 
 type AuditState =
   | { kind: "loading" }
@@ -20,9 +19,9 @@ function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** Sprint 22: an account-level activity log, not a per-device panel — it lists the caller's own
- * audited actions (backend/app/api/v1/endpoints/audit.py), which is why it takes no deviceId and
- * is mounted once in page.tsx alongside DevicesPanel rather than inside each device row.
+/** Sprint 22 (logic), Sprint 38 (design). An account-level activity log, not a per-device panel —
+ * it lists the caller's own audited actions (backend/app/api/v1/endpoints/audit.py), which is why
+ * it takes no deviceId and is mounted once alongside DevicesPanel rather than inside each device.
  */
 export function AuditPanel({ accessToken }: { accessToken: string }) {
   const [state, setState] = useState<AuditState>({ kind: "loading" });
@@ -31,6 +30,7 @@ export function AuditPanel({ accessToken }: { accessToken: string }) {
   const [actionFilter, setActionFilter] = useState("");
   const [resourceTypeFilter, setResourceTypeFilter] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,11 +59,13 @@ export function AuditPanel({ accessToken }: { accessToken: string }) {
 
   function handleExport() {
     setExportError(null);
+    setExporting(true);
     exportMyAuditLog(accessToken, {
       action: actionFilter || undefined,
       resource_type: resourceTypeFilter || undefined,
     })
       .then((blob) => {
+        setExporting(false);
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -72,83 +74,127 @@ export function AuditPanel({ accessToken }: { accessToken: string }) {
         URL.revokeObjectURL(url);
       })
       .catch((error) => {
+        setExporting(false);
         setExportError(describeError(error, "No se pudo exportar la auditoría"));
       });
   }
 
   const totalPages = state.kind === "loaded" ? Math.max(1, Math.ceil(state.total / PAGE_SIZE)) : 1;
+  const logs = state.kind === "loaded" ? state.logs : [];
+
+  const columns: Column<AuditLogEntry>[] = [
+    {
+      key: "action",
+      header: "Acción",
+      primary: true,
+      render: (entry) => <span className={styles.action}>{entry.action}</span>,
+    },
+    {
+      key: "resource",
+      header: "Recurso",
+      render: (entry) =>
+        entry.resource_type ? (
+          <span className={styles.resource}>
+            {entry.resource_type}
+            {entry.resource_id ? <span className={styles.resourceId}> · {entry.resource_id}</span> : null}
+          </span>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "when",
+      header: "Fecha",
+      render: (entry) => new Date(entry.created_at).toLocaleString("es-CO"),
+    },
+    {
+      key: "ip",
+      header: "IP",
+      align: "right",
+      render: (entry) => entry.ip_address ?? "—",
+    },
+  ];
 
   return (
-    <div className="rulesPanel">
-      <div className="devicesPanelHeader">
-        <strong>Mi actividad (auditoría)</strong>
-        <button type="button" onClick={() => setReloadToken((current) => current + 1)}>
-          Actualizar
-        </button>
+    <Card padding="none">
+      <div className={styles.cardHead}>
+        <CardHeader
+          icon={History}
+          title="Mi actividad"
+          actions={
+            <Button size="sm" icon={RefreshCw} onClick={() => setReloadToken((current) => current + 1)}>
+              Actualizar
+            </Button>
+          }
+        />
       </div>
 
-      <div className="deviceRenameForm">
-        <input
-          placeholder="Filtrar por acción (ej. DEVICE_RENAMED)"
-          value={actionFilter}
-          onChange={(event) => {
-            setPage(0);
-            setActionFilter(event.target.value);
-          }}
-        />
-        <input
-          placeholder="Filtrar por tipo de recurso (ej. device)"
-          value={resourceTypeFilter}
-          onChange={(event) => {
-            setPage(0);
-            setResourceTypeFilter(event.target.value);
-          }}
-        />
-        <button type="button" onClick={handleExport}>
+      <div className={styles.filters}>
+        <Field label="Acción">
+          {(id) => (
+            <Input
+              id={id}
+              value={actionFilter}
+              onChange={(event) => {
+                setPage(0);
+                setActionFilter(event.target.value);
+              }}
+              placeholder="Ej. DEVICE_RENAMED"
+            />
+          )}
+        </Field>
+        <Field label="Tipo de recurso">
+          {(id) => (
+            <Input
+              id={id}
+              value={resourceTypeFilter}
+              onChange={(event) => {
+                setPage(0);
+                setResourceTypeFilter(event.target.value);
+              }}
+              placeholder="Ej. device"
+            />
+          )}
+        </Field>
+        <Button icon={Download} onClick={handleExport} loading={exporting}>
           Exportar CSV
-        </button>
+        </Button>
       </div>
-      {exportError && <p className="authError">{exportError}</p>}
+      {exportError && <p className={styles.error}>{exportError}</p>}
 
-      {state.kind === "loading" && <p className="statusText">Cargando auditoría…</p>}
-      {state.kind === "error" && <p className="authError">{state.message}</p>}
-      {state.kind === "loaded" && state.logs.length === 0 && (
-        <p className="statusText">Sin acciones registradas con estos filtros.</p>
+      {state.kind === "loading" && (
+        <div className={styles.emptyWrap}>
+          <Spinner label="Cargando auditoría…" />
+        </div>
       )}
-      {state.kind === "loaded" && state.logs.length > 0 && (
+      {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
+      {state.kind === "loaded" && logs.length === 0 && (
+        <div className={styles.emptyWrap}>
+          <EmptyState icon={History} title="Sin acciones registradas con estos filtros" />
+        </div>
+      )}
+      {state.kind === "loaded" && logs.length > 0 && (
         <>
-          <ul className="appList">
-            {state.logs.map((entry) => (
-              <li key={entry.id} className="appRow">
-                <div className="appLabel">
-                  {entry.action}
-                  {entry.resource_type ? ` · ${entry.resource_type}` : ""}
-                  {entry.resource_id ? ` (${entry.resource_id})` : ""}
-                </div>
-                <span className="appUsage">
-                  {new Date(entry.created_at).toLocaleString("es-CO")}
-                  {entry.ip_address ? ` · ${entry.ip_address}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="deviceRenameForm">
-            <button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
+          <DataTable columns={columns} rows={logs} rowKey={(entry) => entry.id} />
+          <div className={styles.pagination}>
+            <Button size="sm" variant="ghost" icon={ChevronLeft} disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
               Anterior
-            </button>
-            <span className="statusText">
+            </Button>
+            <span className={styles.pageInfo}>
               Página {page + 1} de {totalPages} · {state.total} en total
             </span>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={ChevronRight}
               disabled={page + 1 >= totalPages}
               onClick={() => setPage((current) => current + 1)}
             >
               Siguiente
-            </button>
+            </Button>
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }
