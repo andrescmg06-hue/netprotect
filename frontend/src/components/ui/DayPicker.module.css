@@ -1,0 +1,40 @@
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.day {
+  flex: 1 1 36px;
+  min-width: 36px;
+  height: 38px;
+  margin: 0;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-softer);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.day:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.active,
+.active:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.day:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

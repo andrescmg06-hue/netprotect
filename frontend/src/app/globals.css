@@ -1,12 +1,81 @@
+/* Sprint 31 — design tokens. Every colour, radius, shadow and spacing value in the app comes from
+   here; components never hard-code them. See docs/planning/plan-frontend.md. */
 :root {
-  color-scheme: dark;
-  --background: #090b10;
-  --surface: #11151d;
-  --line: #293141;
-  --text: #f2f5f9;
-  --muted: #9da8b8;
-  --accent: #6be3bf;
-  --danger: #ff7b83;
+  color-scheme: light;
+
+  --color-primary: #246bfe;
+  --color-primary-hover: #1456d9;
+  --color-primary-soft: #eaf1ff;
+  --color-primary-softer: #f3f7ff;
+  --color-navy: #102b63;
+
+  --color-bg: #f5f9ff;
+  --color-bg-gradient: linear-gradient(180deg, #f5f9ff 0%, #eef4ff 100%);
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f9fc;
+  --color-border: #e6ecf5;
+  --color-border-strong: #d5dfee;
+
+  --color-text: #1b2b4b;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
+
+  --color-success: #16b364;
+  --color-success-soft: #e7f8ef;
+  --color-success-text: #0e8a4b;
+  --color-danger: #f04438;
+  --color-danger-soft: #feeceb;
+  --color-danger-text: #c4271c;
+  --color-warning: #f79009;
+  --color-warning-soft: #fef3e2;
+  --color-warning-text: #b25e02;
+  --color-purple: #7a5af8;
+  --color-purple-soft: #f1edfe;
+  --color-purple-text: #5b3fd6;
+  --color-neutral-soft: #eef2f7;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(16, 43, 99, 0.04), 0 4px 20px rgba(30, 70, 140, 0.05);
+  --shadow-pop: 0 12px 32px rgba(16, 43, 99, 0.14);
+  --focus-ring: 0 0 0 3px rgba(36, 107, 254, 0.25);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 32px;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 150ms;
+  --duration: 200ms;
+
+  /* Aliases for the pre-Sprint-31 panels, so each keeps working in the light theme until its own
+     sprint replaces its markup with the ui/ components. Remove once nothing reads them. */
+  --background: var(--color-bg);
+  --surface: var(--color-surface);
+  --line: var(--color-border);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-primary);
+  --danger: var(--color-danger);
 }
 
 * {
@@ -17,14 +86,82 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--background);
-  color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+  background: #eef4ff;
 }
 
 body {
   min-height: 100vh;
+  background: var(--color-bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-navy);
+  line-height: 1.2;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Legacy bare-button look. :where() keeps its specificity at zero so ui/Button (a CSS Module
+   class) always wins without. */
+:where(button) {
+  width: fit-content;
+  margin-top: 1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.9rem;
+  background: var(--surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+:where(button):hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-softer);
+}
+
+:where(button):disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Legacy styles (Sprints 1–24). Same class names the current panels use, restyled onto the
+   tokens above. Each block goes away in the sprint that rebuilds its view.
+   ------------------------------------------------------------------------------------------ */
 
 .shell {
   min-height: 100vh;
@@ -39,34 +176,39 @@ body {
 
 .eyebrow {
   margin: 0 0 16px;
-  color: var(--accent);
-  font-size: 0.82rem;
+  color: var(--color-primary);
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.16em;
 }
 
-h1 {
+.hero h1 {
   max-width: 820px;
   margin: 0;
-  font-size: clamp(2.5rem, 7vw, 5.8rem);
-  line-height: 0.98;
-  letter-spacing: -0.055em;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  letter-spacing: -0.03em;
 }
 
 .lead {
   max-width: 760px;
-  margin: 28px 0 0;
+  margin: 20px 0 0;
   color: var(--muted);
-  font-size: 1.15rem;
+  font-size: var(--text-md);
   line-height: 1.65;
 }
 
-.statusCard {
-  margin-top: 36px;
-  padding: 18px 20px;
+.statusCard,
+.authCard,
+.devicesPanel {
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.statusCard {
+  margin-top: 24px;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -84,11 +226,11 @@ h1 {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--muted);
+  background: var(--color-text-subtle);
 }
 
 .dot.online {
-  background: var(--accent);
+  background: var(--color-success);
 }
 
 .dot.offline {
@@ -97,16 +239,13 @@ h1 {
 
 .statusText {
   color: var(--muted);
-  font-size: 0.94rem;
+  font-size: var(--text-sm);
   text-align: right;
 }
 
 .authCard {
   margin-top: 16px;
   padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -132,21 +271,18 @@ h1 {
 
 .authCard .userEmail {
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
 }
 
 .authError {
-  color: var(--danger);
-  font-size: 0.88rem;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
   margin: 4px 0 0;
 }
 
 .devicesPanel {
   margin-top: 16px;
   padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
 }
 
 .devicesPanelHeader {
@@ -172,8 +308,8 @@ h1 {
 .deviceRow {
   padding: 14px 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--background);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -187,7 +323,7 @@ h1 {
 
 .deviceMeta {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   margin-top: 2px;
 }
 
@@ -211,52 +347,54 @@ h1 {
   width: 100%;
 }
 
-.deviceRenameForm input {
+.deviceRenameForm input,
+.ruleForm input,
+.ruleForm select,
+.deviceSwitcher select {
   padding: 0.5rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.95rem;
+  font: inherit;
 }
 
 .dangerButton {
-  border-color: rgba(255, 123, 131, 0.4);
-  color: var(--danger);
+  border-color: rgba(240, 68, 56, 0.35);
+  color: var(--color-danger-text);
 }
 
 .dangerButton:hover {
-  border-color: rgba(255, 123, 131, 0.8);
+  background: var(--color-danger-soft);
 }
 
 .statusPill {
   padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--color-neutral-soft);
   color: var(--muted);
 }
 
-.statusPill.online {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.4);
+.statusPill.online,
+.statusPill.allowlist {
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
 }
 
 .statusPill.offline,
 .statusPill.unlinked {
-  color: var(--danger);
-  border-color: rgba(255, 123, 131, 0.4);
+  color: var(--muted);
+  background: var(--color-neutral-soft);
 }
 
 /* Sprint 20: ALERT es el único estado que el backend escribe por detección de manipulación
-   (app/services/tamper.py). Se distingue de OFFLINE con fondo propio: "no se reporta" y
-   "se detectó manipulación" no deben leerse igual de un vistazo. */
+   (app/services/tamper.py). Se distingue de OFFLINE con color propio: "no se reporta" y "se
+   detectó manipulación" no deben leerse igual de un vistazo. */
 .statusPill.alert {
-  color: var(--danger);
-  border-color: rgba(255, 123, 131, 0.8);
-  background: rgba(255, 123, 131, 0.14);
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
 }
 
 .appList {
@@ -279,23 +417,18 @@ h1 {
 }
 
 .appLabel {
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .appMeta {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .appUsage {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   white-space: nowrap;
-}
-
-.statusPill.allowlist {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.4);
 }
 
 .policyRow {
@@ -313,9 +446,11 @@ h1 {
 }
 
 .rulesPanel {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -329,16 +464,6 @@ h1 {
   flex-wrap: wrap;
 }
 
-.ruleForm input,
-.ruleForm select {
-  padding: 0.5rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
 .ruleForm button {
   margin-top: 0;
 }
@@ -350,7 +475,7 @@ h1 {
 }
 
 .locationMap {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   margin-top: 4px;
 }
 
@@ -361,7 +486,7 @@ h1 {
   width: 100%;
   max-height: 420px;
   margin-top: 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #000;
   object-fit: contain;
 }
@@ -381,47 +506,45 @@ h1 {
 .dayButton {
   margin-top: 0;
   padding: 0.4rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: transparent;
   color: var(--muted);
-  cursor: pointer;
 }
 
 .dayButtonActive {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.6);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
 }
 
 .grid {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
 }
 
-article {
-  min-height: 190px;
-  padding: 22px;
+.grid article {
+  padding: 20px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
-article > span {
-  color: var(--accent);
-  font-size: 0.78rem;
+.grid article > span {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
-article h2 {
-  margin: 42px 0 8px;
-  font-size: 1.18rem;
+.grid article h2 {
+  margin: 20px 0 6px;
+  font-size: var(--text-md);
 }
 
-article p {
+.grid article p {
   margin: 0;
   color: var(--muted);
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -446,14 +569,11 @@ article p {
   }
 }
 
-/* Sprint 24 — dashboard shell. A fixed-width sidebar plus a scrolling main column on desktop;
-   below 900px the sidebar becomes a horizontally-scrolling strip of buttons, same as the rest of
-   this file's responsive breakpoints, so the dashboard stays usable on a phone without a second
-   layout system. */
+/* Sprint 24 — dashboard shell (replaced by the AppShell in Sprint 32). */
 .dashboard {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 260px 1fr;
   align-items: start;
 }
 
@@ -473,42 +593,35 @@ article p {
 .sidebarGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sidebarGroupLabel {
-  color: var(--muted);
-  font-size: 0.72rem;
+  color: var(--color-primary);
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0 10px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .sidebarButton {
   width: 100%;
   margin-top: 0;
   text-align: left;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.9rem;
-  cursor: pointer;
+  border-color: transparent;
+  color: var(--color-text);
 }
 
 .sidebarButton:hover {
-  border-color: var(--line);
-  color: var(--text);
+  background: var(--color-primary-softer);
 }
 
 .sidebarButtonActive,
 .sidebarButtonActive:hover {
-  background: rgba(107, 227, 191, 0.12);
-  border-color: rgba(107, 227, 191, 0.4);
-  color: var(--accent);
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .dashboardMain {
@@ -529,7 +642,9 @@ article p {
 
 .dashboardTitle {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .deviceSwitcher {
@@ -537,24 +652,15 @@ article p {
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.deviceSwitcher select {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .pairingCode {
   margin-top: 8px;
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--background);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-softer);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -565,7 +671,7 @@ article p {
   font-size: 2.4rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--accent);
+  color: var(--color-navy);
 }
 
 @media (max-width: 900px) {
@@ -600,19 +706,4 @@ article p {
     width: max-content;
     white-space: nowrap;
   }
-}
-
-button {
-  width: fit-content;
-  margin-top: 1rem;
-  border: 1px solid rgba(107, 227, 191, 0.4);
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  background: transparent;
-  color: #eaf5f1;
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: rgba(107, 227, 191, 0.8);
 }

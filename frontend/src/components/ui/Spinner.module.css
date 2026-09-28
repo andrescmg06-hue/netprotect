@@ -1,0 +1,20 @@
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.spinner svg {
+  animation: spin 0.8s linear infinite;
+}
+
+.label {
+  font-size: var(--text-sm);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
