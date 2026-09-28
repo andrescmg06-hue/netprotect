@@ -53,7 +53,7 @@
 .secondary {
   background: var(--color-surface);
   border-color: #cfdcf7;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .secondary:hover:not(:disabled) {
@@ -79,5 +79,5 @@
 
 .ghost:hover:not(:disabled) {
   background: var(--color-primary-softer);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }

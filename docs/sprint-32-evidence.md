@@ -49,3 +49,22 @@ valor que calculó el propio revisor (#5b6b82, ≈5:1). No se abrió una tercera
 
 `npx impeccable update` (v4.2.0 → v4.4.0) falló con HTTP 404 del proveedor; no se instaló nada y
 se siguió con v4.2.0.
+
+## DESIGN.md y corrección de contraste
+
+El documentador del skill (agente nuevo con la definición de `.claude/agents/impeccable-documenter.md`)
+escribió `DESIGN.md` y `.impeccable/design.json` desde el código construido, y midió cinco pares
+de color por debajo de 4,5:1: texto de badge verde (4,01), naranja (4,26), gris (4,23), azul sobre
+el fondo de hover (4,24) y gris/azul sobre el fondo de página (4,50/4,31). Corregidos en los tokens:
+
+| Token | Antes | Ahora | Peor caso medido |
+|---|---|---|---|
+| `--color-text-muted` | #64748b | #5b6b82 | 4,83:1 (sobre #eef2f7) |
+| `--color-success-text` | #0e8a4b | #0b7a42 | 4,92:1 |
+| `--color-warning-text` | #b25e02 | #9a5000 | 5,43:1 |
+| `--color-primary-text` (nuevo) | — | #1f5fe6 | 4,96:1 (sobre #eef4ff) |
+
+`#246bfe` queda solo para rellenos (texto blanco encima: 4,56:1); todo texto o icono azul usa
+`--color-primary-text`. `DESIGN.md` se actualizó con la regla "Fill-vs-Text Blue" y los valores
+medidos. Los nombres de la paleta ("The Calm Blue Frame", Signal Blue, Shield Navy…) son propuesta
+del documentador y quedan a confirmar por el dueño del proyecto.

@@ -7,6 +7,9 @@
   --color-primary-hover: #1456d9;
   --color-primary-soft: #eaf1ff;
   --color-primary-softer: #f3f7ff;
+  /* Blue for text and icons: #246bfe is for fills (white on it 4.56:1) but falls under 4.5:1 as
+     text on the light washes; this one clears 4.9:1 on every light surface. */
+  --color-primary-text: #1f5fe6;
   --color-navy: #102b63;
 
   --color-bg: #f5f9ff;
@@ -17,18 +20,18 @@
   --color-border-strong: #d5dfee;
 
   --color-text: #1b2b4b;
-  --color-text-muted: #64748b;
+  --color-text-muted: #5b6b82; /* ≥4.8:1 on white, page ground and tinted rows */
   --color-text-subtle: #94a3b8;
 
   --color-success: #16b364;
   --color-success-soft: #e7f8ef;
-  --color-success-text: #0e8a4b;
+  --color-success-text: #0b7a42;
   --color-danger: #f04438;
   --color-danger-soft: #feeceb;
   --color-danger-text: #c4271c;
   --color-warning: #f79009;
   --color-warning-soft: #fef3e2;
-  --color-warning-text: #b25e02;
+  --color-warning-text: #9a5000;
   --color-purple: #7a5af8;
   --color-purple-soft: #f1edfe;
   --color-purple-text: #5b3fd6;
@@ -112,7 +115,7 @@ h4 {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 :focus-visible {
@@ -156,7 +159,7 @@ html {
   border-radius: var(--radius-md);
   padding: 0.6rem 0.9rem;
   background: var(--surface);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
@@ -193,7 +196,7 @@ html {
 
 .eyebrow {
   margin: 0 0 16px;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -526,7 +529,7 @@ html {
 }
 
 .dayButtonActive {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
 }
@@ -547,7 +550,7 @@ html {
 }
 
 .grid article > span {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-size: var(--text-xs);
   font-weight: 700;
 }

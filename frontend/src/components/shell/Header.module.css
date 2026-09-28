@@ -34,7 +34,7 @@
 
 .iconButton:hover {
   background: var(--color-primary-softer);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .menuButton,
@@ -88,8 +88,7 @@
 }
 
 .searchInput::placeholder {
-  /* Slightly darker than text-muted: 4.5:1 on the light-blue field. */
-  color: #5b6b82;
+  color: var(--color-text-muted);
 }
 
 .searchInput:focus {
@@ -132,7 +131,7 @@
 
 .resultActive {
   background: var(--color-primary-softer);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .resultLabel {
@@ -146,8 +145,7 @@
 }
 
 .resultHint {
-  /* Same value as the placeholder: ≥4.5:1 on white and on the highlighted #f3f7ff row. */
-  color: #5b6b82;
+  color: var(--color-text-muted);
   font-size: var(--text-xs);
 }
 
@@ -268,7 +266,7 @@
 
 .menuItem:hover {
   background: var(--color-primary-softer);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .menuDanger:hover {

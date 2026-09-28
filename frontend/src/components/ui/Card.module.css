@@ -37,7 +37,7 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .icon {
