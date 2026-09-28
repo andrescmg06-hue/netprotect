@@ -603,6 +603,36 @@ que el Sprint 29 dejó anotado como backlog propio en `docs/sprint-29.md` (dispo
 en `GET /devices/me`, reconexión del canal en tiempo real de Android, y el mensaje claro cuando la
 misma cuenta es tutor y supervisado, heredado del Sprint 28).
 
+**Nota de los Sprints 31–38 (rediseño del panel web), válida para cualquier cambio futuro en
+`frontend/`**: plan en `docs/planning/plan-frontend.md`, un `docs/sprint-NN.md` por sprint y
+`docs/sprint-38-cierre.md`. La regla que lo gobierna: **el aspecto sigue a los mockups, la
+funcionalidad sigue al backend** — si un mockup muestra algo que la API no tiene, se omite o se
+reemplaza por el dato real equivalente, nunca se simula. Ninguna ruta de API ni lógica de negocio
+cambió en estos ocho sprints. Cómo está armado ahora: tokens de diseño en
+`src/app/globals.css` (`:root`; los colores `*-text` son los que pasan AA como texto — los de
+relleno como `--color-primary` no), un CSS Module por componente (sin Tailwind), primitivas en
+`src/components/ui/` (importar siempre desde el barrel `@/components/ui`), `lucide-react` como
+única librería de iconos, y **ninguna librería de gráficos ni de mapas**: `DonutChart`,
+`BarList`, `ProgressBar`, `Timeline` y el esquema de geocercas (`GeofenceMap`) son SVG/HTML
+propios — el mapa de geocercas es un esquema a escala a propósito, para no mandar coordenadas de
+un menor a un servidor de teselas externo. `DashboardShell` renderiza el `PageHeader` de cada
+sección; los paneles **no** deben renderizar el suyo. `globals.css` ya no tiene estilos heredados
+de los Sprints 1–24 ni el antiguo "look" de `<button>`: su `:where(button)` es un reset neutro, así
+que un botón nativo nuevo necesita su propia clase. Lecciones concretas de estos sprints:
+`react-hooks/refs` prohíbe leer `ref.current` durante el render (usar estado), y
+`react-hooks/immutability` prohíbe reasignar una variable local dentro del `map()` del JSX
+(precalcular con `reduce` antes del `return`, ver `DonutChart`); una barra que se anima debe usar
+`transform: scaleX`, no `width` (el detector de Impeccable lo marca como *layout thrash*); el
+`<video>` de `RemoteViewPanel` debe quedar **siempre montado** — el evento `track` de WebRTC
+asigna `srcObject` al nodo que `videoRef` ya apunta, y montarlo sólo en el estado "streaming"
+pierde el stream; y `next build` en Windows falla con `EBUSY ... .next/standalone` si queda vivo un
+`node .next/standalone/server.js` de una verificación anterior (matarlo antes de reconstruir).
+Para verificar una vista con datos reales: levantar `compose.test.yaml` (con `migrate` primero),
+sembrar con `backend/scripts/seed_test_session.py` + llamadas HTTP reales, servir el build
+standalone en `localhost:3000` (el `CORS_ORIGINS` de test es exactamente ese origen) y detener
+antes `backend`/`web` de `compose.yaml`, que ocupan el mismo puerto 8000. El *refresh token* de
+la sesión sembrada es de un solo uso: cada `page.goto` de Playwright que recarga la app lo rota.
+
 ## Entorno de trabajo
 
 - Windows con Docker Desktop, Android Studio (SDK 36 + un AVD con Google APIs) y Node/Python locales
@@ -665,7 +695,9 @@ aborta todo el stack en cuanto cualquier contenedor termina, y `migrate` termina
   `secrets.token_urlsafe(48)` y documentarlo en los tres `.env.*.example`.
 - Frontend: Next.js App Router, componentes cliente (`"use client"`). Ver `src/contexts/AuthContext.tsx`
   para el patrón de sesión actual (en memoria + `sessionStorage`, no cookie `HttpOnly` — decisión
-  documentada y deliberadamente pospuesta en `docs/sprint-03.md`).
+  documentada y deliberadamente pospuesta en `docs/sprint-03.md`). Estilos: CSS Modules sobre los
+  tokens de `globals.css` y las primitivas de `src/components/ui/` (ver la nota de los Sprints
+  31–38); nada de colores, radios ni espaciados escritos a mano fuera de los tokens.
 - Android: sin Hilt/DI ni ViewModel todavía — el proyecto es pequeño y se ha mantenido así a
   propósito; no introducir esas dependencias sin que el tamaño del proyecto lo justifique.
 - Commits: mensajes explicando el *por qué*, no sólo el qué. Co-autoría con el modelo que hizo el

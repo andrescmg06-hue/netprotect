@@ -17,6 +17,14 @@
   max-width: 1440px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-8) var(--space-10);
+  animation: section-enter var(--duration-slow) var(--ease);
+}
+
+.deviceBody {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  min-width: 0;
 }
 
 .error {

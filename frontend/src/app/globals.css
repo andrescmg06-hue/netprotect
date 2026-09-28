@@ -69,16 +69,7 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration-fast: 150ms;
   --duration: 200ms;
-
-  /* Aliases for the pre-Sprint-31 panels, so each keeps working in the light theme until its own
-     sprint replaces its markup with the ui/ components. Remove once nothing reads them. */
-  --background: var(--color-bg);
-  --surface: var(--color-surface);
-  --line: var(--color-border);
-  --text: var(--color-text);
-  --muted: var(--color-text-muted);
-  --accent: var(--color-primary);
-  --danger: var(--color-danger);
+  --duration-slow: 250ms;
 }
 
 * {
@@ -137,8 +128,36 @@ html {
   scrollbar-color: #c7d3e6 transparent;
 }
 
-.tabular {
-  font-variant-numeric: tabular-nums;
+
+/* Neutral reset: every button in the app is styled by its own CSS Module (ui/Button, the shell,
+   the panels' row/option buttons). The pre-Sprint-31 rule this replaces gave every bare <button>
+   a border, padding and `margin-top: 1rem`, which silently leaked into module classes that didn't
+   override all of them (Alertas' inbox rows, the policy cards). */
+:where(button) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+:where(button):disabled {
+  cursor: not-allowed;
+}
+
+/* Sprint 38: each dashboard section fades in when it's opened (DashboardShell keys its content
+   wrapper on section + device). Opacity and transform only, so nothing reflows. */
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -146,317 +165,8 @@ html {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-/* Legacy bare-button look. :where() keeps its specificity at zero so ui/Button (a CSS Module
-   class) always wins without. */
-:where(button) {
-  width: fit-content;
-  margin-top: 1rem;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  padding: 0.6rem 0.9rem;
-  background: var(--surface);
-  color: var(--color-primary-text);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background var(--duration-fast) var(--ease),
-    border-color var(--duration-fast) var(--ease);
-}
-
-:where(button):hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-softer);
-}
-
-:where(button):disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* ------------------------------------------------------------------------------------------
-   Legacy styles (Sprints 1–24). Same class names the current panels use, restyled onto the
-   tokens above. Each block goes away in the sprint that rebuilds its view.
-   ------------------------------------------------------------------------------------------ */
-
-.devicesPanel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-
-.statusText {
-  color: var(--muted);
-  font-size: var(--text-sm);
-  text-align: right;
-}
-
-.authError {
-  color: var(--color-danger-text);
-  font-size: var(--text-sm);
-  margin: 4px 0 0;
-}
-
-.devicesPanel {
-  margin-top: 16px;
-  padding: 18px 20px;
-}
-
-.devicesPanelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.devicesPanelHeader button {
-  margin-top: 0;
-}
-
-.deviceList {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.deviceRow {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-muted);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.deviceName {
-  font-weight: 600;
-}
-
-.deviceMeta {
-  color: var(--muted);
-  font-size: var(--text-sm);
-  margin-top: 2px;
-}
-
-.deviceActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.deviceActions button,
-.deviceRenameForm button {
-  margin-top: 0;
-}
-
-.deviceRenameForm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.deviceRenameForm input,
-.ruleForm input,
-.ruleForm select {
-  padding: 0.5rem 0.7rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-strong);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.dangerButton {
-  border-color: rgba(240, 68, 56, 0.35);
-  color: var(--color-danger-text);
-}
-
-.dangerButton:hover {
-  background: var(--color-danger-soft);
-}
-
-.statusPill {
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  background: var(--color-neutral-soft);
-  color: var(--muted);
-}
-
-.statusPill.online,
-.statusPill.allowlist {
-  color: var(--color-success-text);
-  background: var(--color-success-soft);
-}
-
-.statusPill.offline,
-.statusPill.unlinked {
-  color: var(--muted);
-  background: var(--color-neutral-soft);
-}
-
-/* Sprint 20: ALERT es el único estado que el backend escribe por detección de manipulación
-   (app/services/tamper.py). Se distingue de OFFLINE con color propio: "no se reporta" y "se
-   detectó manipulación" no deben leerse igual de un vistazo. */
-.statusPill.alert {
-  color: var(--color-danger-text);
-  background: var(--color-danger-soft);
-}
-
-.appList {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--line);
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.appRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.appLabel {
-  font-size: var(--text-base);
-}
-
-.appMeta {
-  color: var(--muted);
-  font-size: var(--text-xs);
-}
-
-.appUsage {
-  color: var(--muted);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-.policyRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.policyRow button {
-  margin-top: 0;
-}
-
-.rulesPanel {
-  padding: 20px 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ruleForm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.ruleForm button {
-  margin-top: 0;
-}
-
-.locationDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.locationMap {
-  border-radius: var(--radius-md);
-  margin-top: 4px;
-}
-
-/* Sprint 23: el video remoto se escala al ancho del panel; la pantalla de un teléfono es más
-   alta que ancha, así que se limita la altura para que no empuje el resto del panel fuera de
-   vista. */
-.remoteScreenVideo {
-  width: 100%;
-  max-height: 420px;
-  margin-top: 10px;
-  border-radius: var(--radius-md);
-  background: #000;
-  object-fit: contain;
-}
-
-.scheduleFields {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.dayPicker {
-  display: flex;
-  gap: 4px;
-}
-
-.dayButton {
-  margin-top: 0;
-  padding: 0.4rem 0.6rem;
-  color: var(--muted);
-}
-
-.dayButtonActive {
-  color: var(--color-primary-text);
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
-}
-
-@media (max-width: 820px) {
-  .statusText {
-    text-align: left;
-  }
-}
-
-.pairingCode {
-  margin-top: 8px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--color-primary-softer);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.pairingCodeDigits {
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--color-navy);
 }

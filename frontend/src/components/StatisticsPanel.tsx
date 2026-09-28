@@ -153,7 +153,13 @@ export function StatisticsPanel({
           isEmpty={data ? categorySegments.every((segment) => segment.value === 0) : true}
           emptyLabel="Sin datos de uso en este periodo"
         >
-          <DonutChart segments={categorySegments} centerValue={formatDuration(metrics.totalSeconds)} centerLabel="total" formatValue={formatDuration} />
+          <DonutChart
+            label="Uso por categoría"
+            segments={categorySegments}
+            centerValue={formatDuration(metrics.totalSeconds)}
+            centerLabel="total"
+            formatValue={formatDuration}
+          />
         </ChartCard>
 
         <ChartCard

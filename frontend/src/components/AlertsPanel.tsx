@@ -260,6 +260,7 @@ export function AlertsPanel({
                     <button
                       type="button"
                       className={selected ? `${styles.row} ${styles.rowSelected}` : styles.row}
+                      aria-current={selected ? "true" : undefined}
                       onClick={() => setSelectedId(alert.id)}
                     >
                       <span className={`${styles.rowIcon} ${styles[ALERT_LEVEL_TONE[alert.level]]}`}>

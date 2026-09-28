@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 
+import styles from "./GoogleSignInButton.module.css";
+
 type GoogleCredentialResponse = { credential: string };
 
 type GoogleAccountsId = {
@@ -58,7 +60,7 @@ export function GoogleSignInButton() {
 
   if (!GOOGLE_CLIENT_ID) {
     return (
-      <p className="authError">
+      <p className={styles.error} role="alert">
         Falta configurar NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID.
       </p>
     );
@@ -72,7 +74,7 @@ export function GoogleSignInButton() {
         onReady={() => setScriptReady(true)}
       />
       <div ref={buttonRef} />
-      {error && <p className="authError">{error}</p>}
+      {error && <p className={styles.error} role="alert">{error}</p>}
     </div>
   );
 }

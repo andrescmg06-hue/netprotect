@@ -316,12 +316,19 @@ export function RemoteViewPanel({
       </div>
 
       {activeIndex >= 0 && (
-        <ol className={styles.stepper}>
+        <ol className={styles.stepper} aria-label="Progreso de la solicitud">
           {STEPS.map((item, index) => {
             const status = index < activeIndex ? "done" : index === activeIndex ? "active" : "pending";
             return (
-              <li key={item.key} className={styles.step} data-status={status}>
-                <span className={styles.stepDot}>{status === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}</span>
+              <li
+                key={item.key}
+                className={styles.step}
+                data-status={status}
+                aria-current={status === "active" ? "step" : undefined}
+              >
+                <span className={styles.stepDot} aria-hidden="true">
+                  {status === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}
+                </span>
                 <span className={styles.stepLabel}>{item.label}</span>
               </li>
             );
@@ -352,7 +359,9 @@ export function RemoteViewPanel({
 
       {state.kind === "ended" && (
         <div className={styles.ended}>
-          <p className={styles.endedMessage}>{state.message}</p>
+          <p className={styles.endedMessage} role="status">
+            {state.message}
+          </p>
           <Button variant="primary" icon={ScreenShare} onClick={start}>
             Solicitar ver pantalla
           </Button>

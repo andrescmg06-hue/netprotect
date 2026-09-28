@@ -34,10 +34,6 @@
   background: var(--color-primary-softer);
 }
 
-.clickable {
-  cursor: pointer;
-}
-
 .right {
   text-align: right;
 }

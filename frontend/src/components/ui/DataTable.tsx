@@ -21,12 +21,10 @@ export function DataTable<T>({
   columns,
   rows,
   rowKey,
-  onRowClick,
 }: {
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
-  onRowClick?: (row: T) => void;
 }) {
   return (
     <div className={styles.wrapper}>
@@ -44,11 +42,7 @@ export function DataTable<T>({
           {rows.map((row) => {
             const key = rowKey(row);
             return (
-              <tr
-                key={key}
-                className={onRowClick ? styles.clickable : undefined}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-              >
+              <tr key={key}>
                 {columns.map((column) => (
                   <td
                     key={column.key}

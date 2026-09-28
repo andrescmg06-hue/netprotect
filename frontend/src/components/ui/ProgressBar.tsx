@@ -27,7 +27,15 @@ export function ProgressBar({
         <span className={styles.label}>{label}</span>
         {detail && <span className={styles.detail}>{detail}</span>}
       </div>
-      <div className={styles.track}>
+      <div
+        className={styles.track}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={value === null ? undefined : Math.round(fraction * 100)}
+        aria-valuetext={value === null ? "Sin datos" : `${Math.round(fraction * 100)}%`}
+        aria-label={typeof label === "string" ? label : undefined}
+      >
         {value !== null && <div className={`${styles.fill} ${styles[tone]}`} style={{ transform: `scaleX(${fraction})` }} />}
       </div>
     </div>

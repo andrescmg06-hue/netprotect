@@ -227,7 +227,8 @@ export function DashboardShell({
           onSignOut={onSignOut}
         />
 
-        <main className={styles.content}>
+        {/* Keyed on the section so each one mounts fresh and runs the entry animation. */}
+        <main key={activeSection} className={styles.content}>
           <PageHeader
             title={activeDefinition.label}
             description={activeDefinition.description}
@@ -285,8 +286,12 @@ export function DashboardShell({
 
           {activeSection === "audit" && <AuditPanel accessToken={accessToken} />}
 
+          {/* Keyed on the device (the header and its selector stay mounted, so keyboard focus
+              survives the switch): a device change unmounts the old panel, so its cleanup runs —
+              RemoteViewPanel closes the old device's WebRTC session instead of leaving it streaming
+              under the new device's card. */}
           {activeDefinition.perDevice && activeDevice && (
-            <>
+            <div key={activeDevice.id} className={styles.deviceBody}>
               {activeSection === "apps" && (
                 <DeviceApplicationsList accessToken={accessToken} deviceId={activeDevice.id} />
               )}
@@ -318,7 +323,7 @@ export function DashboardShell({
                 <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" />
               )}
               {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} />}
-            </>
+            </div>
           )}
         </main>
       </div>

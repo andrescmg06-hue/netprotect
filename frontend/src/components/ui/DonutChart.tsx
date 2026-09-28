@@ -21,11 +21,13 @@ export function DonutChart({
   centerValue,
   centerLabel,
   formatValue,
+  label,
 }: {
   segments: DonutSegment[];
   centerValue?: string;
   centerLabel?: string;
   formatValue?: (value: number) => string;
+  label: string;
 }) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   const arcs = segments
@@ -37,9 +39,13 @@ export function DonutChart({
       return acc;
     }, []);
 
+  const accessibleName = `${label}: ${segments
+    .map((segment) => `${segment.label} ${formatValue ? formatValue(segment.value) : segment.value}`)
+    .join(", ")}`;
+
   return (
     <div className={styles.wrap}>
-      <svg viewBox="0 0 160 160" className={styles.svg} role="img" aria-label="Distribución por categoría">
+      <svg viewBox="0 0 160 160" className={styles.svg} role="img" aria-label={accessibleName}>
         <circle cx="80" cy="80" r={RADIUS} fill="none" stroke="var(--color-neutral-soft)" strokeWidth={STROKE} />
         {total > 0 && (
           <g transform="rotate(-90 80 80)">
@@ -70,7 +76,7 @@ export function DonutChart({
         )}
       </svg>
 
-      <ul className={styles.legend}>
+      <ul className={styles.legend} aria-hidden="true">
         {segments.map((segment) => (
           <li key={segment.key} className={styles.legendRow}>
             <span className={styles.swatch} style={{ background: segment.color }} aria-hidden="true" />

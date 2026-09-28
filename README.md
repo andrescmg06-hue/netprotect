@@ -530,3 +530,19 @@ cualquier frame de señalización que descarte, sin incluir nunca el contenido d
 un candidato ICE.
 
 El detalle está en `docs/sprint-29.md` y la evidencia en `docs/sprint-29-evidence.md`.
+
+## Alcance de los Sprints 31–38 (rediseño del panel web)
+
+Plan propio, `docs/planning/plan-frontend.md`: el panel web pasa del tema oscuro y CSS plano de
+los Sprints 1–24 a un sistema de diseño claro (tokens en `globals.css`, CSS Modules por
+componente, Inter, `lucide-react`, componentes base en `frontend/src/components/ui/`). Las 16
+secciones y el login se rehicieron sprint a sprint con la misma regla: **el aspecto sigue a los
+mockups, la funcionalidad sigue al backend** — nada que el backend no haga aparece en pantalla, y
+ninguna ruta de API ni lógica de negocio cambió. Gráficos, mapa de geocercas y línea de tiempo
+son SVG/HTML propios, sin librerías de gráficos ni servicios de mapas externos. El Sprint 38
+cerró con un pase de accesibilidad (contraste AA, patrón de teclado del selector segmentado,
+`aria-*` en gráficos y pasos), animación de entrada con `prefers-reduced-motion`, la eliminación
+de todo el CSS heredado y una revisión de seguridad sin hallazgos.
+
+El detalle de cada sprint está en `docs/sprint-31.md` … `docs/sprint-38.md` y
+`docs/sprint-38-cierre.md`.

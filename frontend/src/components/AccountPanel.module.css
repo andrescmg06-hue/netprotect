@@ -117,7 +117,7 @@
 
 .signOutHint {
   margin: var(--space-2) 0 0;
-  color: var(--color-text-subtle);
+  color: var(--color-text-muted);
   font-size: var(--text-xs);
   text-align: center;
 }
