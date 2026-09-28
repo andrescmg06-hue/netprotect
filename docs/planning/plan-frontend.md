@@ -121,10 +121,11 @@ conserva en Monitoreo (regla 1 del brief: no eliminar funcionalidades).
 
 - **Ubicación:** última posición, precisión y hora; mapa embebido si hay clave, enlace si no.
 - **Geocercas:** formulario, lista, historial de entradas/salidas y aviso de detección
-  aproximada (~15 min). **Decisión a confirmar al empezar el sprint:** mapa como elemento
-  principal. Opciones: (a) Leaflet + OpenStreetMap — mapa real, pero añade dependencia, cambia la
-  CSP y envía coordenadas aproximadas a un servidor de teselas externo; (b) vista esquemática en
-  SVG propia con las zonas a escala y la última ubicación, sin servicios externos.
+  aproximada (~15 min). **Decidido al empezar el sprint: opción (b), esquema propio en SVG**, sin
+  Leaflet ni OpenStreetMap — no envía coordenadas de un menor a un servidor de teselas externo, y
+  hoy no existe un mapa interactivo para crear geocercas (se escribe la coordenada a mano o se usa
+  "última ubicación conocida"); un mapa real con clic-para-crear sería una función nueva, no un
+  rediseño de la que ya existe.
 - **Historial:** componente `Timeline` agrupado por día, filtro por tipo (bloqueo / geocerca),
   Actualizar.
 

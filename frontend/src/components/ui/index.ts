@@ -13,3 +13,4 @@ export { SegmentedControl } from "./SegmentedControl";
 export { Spinner } from "./Spinner";
 export { StatusBadge, type Tone } from "./StatusBadge";
 export { Switch } from "./Switch";
+export { Timeline, type TimelineItem } from "./Timeline";

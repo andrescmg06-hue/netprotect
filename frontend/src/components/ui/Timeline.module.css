@@ -1,0 +1,111 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dayLabel {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 13px;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.marker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+}
+
+.marker.success {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.marker.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.marker.warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.marker.info {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+}
+
+.marker.purple {
+  background: var(--color-purple-soft);
+  color: var(--color-purple-text);
+}
+
+.marker.neutral {
+  background: var(--color-neutral-soft);
+  color: var(--color-text-muted);
+}
+
+.itemBody {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: 4px;
+}
+
+.itemTitle {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.itemTime {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
