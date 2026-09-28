@@ -43,6 +43,7 @@ import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationPermission
+import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.rules.RuleEnforcementService
@@ -82,6 +83,7 @@ fun SupervisedScreen(
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
     var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
+    var hasOverlayPermission by remember { mutableStateOf(OverlayPermission.isGranted(context)) }
     // Sprint 23: set from the signalling socket's callback (OkHttp's thread) and read by the
     // composition — a Compose state, so the recomposition happens on its own.
     var screenShareRequested by remember { mutableStateOf(false) }
@@ -115,6 +117,14 @@ fun SupervisedScreen(
     val deviceAdminLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { hasDeviceAdmin = DeviceAdminPermission.isActive(context) }
+
+    // Verified live (17/09/2026): this is what actually shows the block screen while the device
+    // is unlocked and in active use — a plain startActivity()/full-screen-intent from
+    // RuleEnforcementService gets rejected or degraded to a heads-up banner in that exact
+    // situation. Same result-launcher shape as device admin above.
+    val overlayPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { hasOverlayPermission = OverlayPermission.isGranted(context) }
 
     // ACCESS_COARSE_LOCATION is an ordinary runtime permission (unlike PACKAGE_USAGE_STATS
     // above): the system dialog itself grants or denies it, no trip to Settings needed. Shown
@@ -489,6 +499,44 @@ fun SupervisedScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
                     ) {
                         Text("Permitir ubicación aproximada")
+                    }
+                }
+            }
+        }
+
+        if (state is SupervisedState.Linked && !hasOverlayPermission) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF121722),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Mostrar sobre otras apps",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Sin este permiso, la pantalla de bloqueo no puede cubrir una app " +
+                            "mientras el teléfono está desbloqueado y en uso — Android sólo la " +
+                            "muestra automáticamente cuando el teléfono está bloqueado. Con este " +
+                            "permiso, el bloqueo aparece de inmediato en cualquier momento.",
+                        color = Color(0xFFABB5C4),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D6E5A)),
+                    ) {
+                        Text("Permitir")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { hasOverlayPermission = OverlayPermission.isGranted(context) }) {
+                        Text("Ya lo activé, verificar de nuevo", color = Color(0xFFABB5C4))
                     }
                 }
             }

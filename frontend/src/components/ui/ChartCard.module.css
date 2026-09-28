@@ -1,0 +1,7 @@
+.head {
+  padding: var(--space-5) var(--space-6) 0;
+}
+
+.body {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}

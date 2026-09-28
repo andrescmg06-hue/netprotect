@@ -501,3 +501,60 @@ construyó — se evaluó y se pospuso en el Sprint 9 por necesitar su propia fa
 ningún sprint posterior.
 
 El detalle está en `docs/sprint-27.md` y la evidencia en `docs/sprint-27-evidence.md`.
+
+## Alcance del Sprint 28
+
+Primer sprint del plan `docs/planning/plan-turn.md`: un servidor TURN (coturn) para que la vista
+remota del Sprint 23 transmita video también entre redes sin camino directo. coturn corre en dev,
+test y prod, solo en su propia red y con IP fija, sin acceso a la base de datos. Bloquea las
+redes privadas, pero permite el relay entre dos clientes (verificado en vivo). El backend emite en
+`GET /devices/{id}/webrtc-config` una credencial efímera (1 hora, HMAC con `TURN_SHARED_SECRET`)
+en el campo nuevo `turn_servers`, y deja `ice_servers` intacto para la APK instalada.
+`scripts/verify_turn.sh`, también en CI, prueba contra el coturn real que la credencial del
+backend se acepta y que una caducada o alterada se rechaza. Los clientes todavía no la usan: eso
+es el Sprint 29.
+
+El detalle está en `docs/sprint-28.md` y la evidencia en `docs/sprint-28-evidence.md`.
+
+## Alcance del Sprint 29
+
+Segundo sprint del plan `docs/planning/plan-turn.md`: el panel web y la app Android ya usan el
+`turn_servers` que el Sprint 28 emite. Verificado en vivo con el emulador y el navegador del host —
+la situación que fallaba desde el 24/09/2026 (video que nunca llega) ahora funciona, con un par de
+candidatos `relay` en ambos extremos en `chrome://webrtc-internals`. En el camino se encontraron y
+corrigieron dos fallos reales, sin relación con coturn en sí: Android podía mandar su oferta de
+video antes que el frame de autenticación en el mismo socket (carrera en el orden de envío de
+OkHttp), y `ScreenShareService` usaba un token de acceso que podía estar vencido por no
+refrescarse como ya hacen `RuleEnforcementService`/`SyncWorker`. El backend ahora registra
+cualquier frame de señalización que descarte, sin incluir nunca el contenido de una oferta SDP o
+un candidato ICE.
+
+El detalle está en `docs/sprint-29.md` y la evidencia en `docs/sprint-29-evidence.md`.
+
+## Alcance de los Sprints 31–38 (rediseño del panel web)
+
+Plan propio, `docs/planning/plan-frontend.md`: el panel web pasa del tema oscuro y CSS plano de
+los Sprints 1–24 a un sistema de diseño claro (tokens en `globals.css`, CSS Modules por
+componente, Inter, `lucide-react`, componentes base en `frontend/src/components/ui/`). Las 16
+secciones y el login se rehicieron sprint a sprint con la misma regla: **el aspecto sigue a los
+mockups, la funcionalidad sigue al backend** — nada que el backend no haga aparece en pantalla, y
+ninguna ruta de API ni lógica de negocio cambió. Gráficos, mapa de geocercas y línea de tiempo
+son SVG/HTML propios, sin librerías de gráficos ni servicios de mapas externos. El Sprint 38
+cerró con un pase de accesibilidad (contraste AA, patrón de teclado del selector segmentado,
+`aria-*` en gráficos y pasos), animación de entrada con `prefers-reduced-motion`, la eliminación
+de todo el CSS heredado y una revisión de seguridad sin hallazgos.
+
+El detalle de cada sprint está en `docs/sprint-31.md` … `docs/sprint-38.md` y
+`docs/sprint-38-cierre.md`.
+
+## Alcance del Sprint 39
+
+La pantalla de inicio de sesión de `/` (sin sesión) pasa a ser una réplica pixel a pixel de la que
+estaba aislada en `/login-mockup`: fondo fotográfico, "Panel del tutor", imagen laptop+teléfono,
+tarjeta blanca "Inicia sesión" con el botón "Continuar con Google" y el pie con Ayuda / Privacidad /
+Términos. La ruta `/login-mockup` desaparece y, con ella, Tailwind y sus dependencias (el login se
+porta a CSS Modules sobre los tokens de `globals.css`, con Nunito solo para esta pantalla). Se
+elimina la tarjeta de infraestructura del login anterior y su `fetch` a `/api/v1/health/ready` (el
+endpoint del backend no se toca). Ninguna ruta de API ni lógica de negocio cambió.
+
+El detalle está en `docs/sprint-39.md`.

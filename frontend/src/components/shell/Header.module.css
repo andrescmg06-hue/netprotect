@@ -1,0 +1,333 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 72px;
+  /* Same inner width as the centered content column below (max 1440px), so the avatar lines up
+     with the page's right edge on very wide screens. */
+  padding: 0 max(var(--space-8), calc((100% - 1440px) / 2 + var(--space-8)));
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.iconButton {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.iconButton:hover {
+  background: var(--color-primary-softer);
+  color: var(--color-primary-text);
+}
+
+.menuButton,
+.mobileMark {
+  display: none;
+}
+
+.bellDot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  box-sizing: content-box;
+  background: var(--color-danger);
+}
+
+/* Search */
+.search {
+  position: relative;
+  flex: 1;
+  max-width: 560px;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--space-4) 0 44px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-softer);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-base);
+  transition:
+    background var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.searchInput:focus {
+  outline: none;
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.searchInput::-webkit-search-cancel-button {
+  display: none;
+}
+
+.results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  animation: drop var(--duration-fast) var(--ease);
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.resultActive {
+  background: var(--color-primary-softer);
+  color: var(--color-primary-text);
+}
+
+.resultLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultHint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.noResults {
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Right side */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.divider {
+  width: 1px;
+  height: 28px;
+  margin: 0 var(--space-2);
+  background: var(--color-border);
+}
+
+.userMenu {
+  position: relative;
+}
+
+.userButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 48px;
+  margin: 0;
+  padding: 0 var(--space-2) 0 4px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-navy);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.userButton:hover {
+  background: var(--color-primary-softer);
+}
+
+.userName {
+  max-width: 180px;
+  overflow: hidden;
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+.userButton[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  animation: drop var(--duration-fast) var(--ease);
+}
+
+.menuHeader {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.menuName {
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.menuEmail {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--color-primary-softer);
+  color: var(--color-primary-text);
+}
+
+.menuDanger:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 1199px) {
+  .header {
+    padding: 0 var(--space-6);
+  }
+
+  .userName {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .header {
+    gap: var(--space-2);
+    height: 64px;
+    padding: 0 var(--space-3);
+  }
+
+  .menuButton {
+    display: inline-grid;
+  }
+
+  .mobileMark {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-right: var(--space-1);
+  }
+
+  .settingsButton,
+  .divider,
+  .chevron {
+    display: none;
+  }
+
+  .searchInput {
+    height: 40px;
+    padding-left: 40px;
+  }
+
+  .searchIcon {
+    left: 12px;
+  }
+
+  .actions {
+    gap: 0;
+  }
+
+  .userButton {
+    padding: 0 4px;
+  }
+}

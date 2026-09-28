@@ -1,0 +1,61 @@
+.wrap {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+/* The button keeps the neutral `:where(button)` reset from globals.css (transparent background,
+   no border, inherited font/colour); the card's white and this shadow are what delimit it. */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: clamp(48px, 4.1vw, 58px);
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: var(--login-button-shadow);
+}
+
+.button:hover {
+  box-shadow: var(--login-button-shadow-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.missing {
+  margin: 0;
+  border: 1px solid var(--login-divider);
+  border-radius: 12px;
+  background: var(--login-panel-soft);
+  padding: 0.75rem 1rem;
+  /* 13px, matching `--text-sm` in globals.css. */
+  font-size: 13px;
+  color: var(--login-muted-soft);
+}
+
+.error {
+  margin: 0;
+  /* `text-sm` -> 13px, same override as above. */
+  font-size: 13px;
+  color: var(--login-danger);
+}
+
+.fallback {
+  display: flex;
+  justify-content: center;
+}
+
+.fallbackHidden {
+  display: none;
+}

@@ -2,14 +2,12 @@ package com.netprotect.app.core.network
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 
 /** Sprint 18 real-time channel: one WebSocket per device, authenticated by sending
- * `{"token": accessToken}` as the first frame right after the handshake completes — not a
- * header, matching the backend's app/api/v1/endpoints/realtime.py (a browser client on the web
+ * `{"token": accessToken}` as the first frame after the handshake — not a header, matching the backend's app/api/v1/endpoints/realtime.py (a browser client on the web
  * panel side can't set custom headers on a WebSocket handshake either, so both clients speak the
  * same first-message protocol).
  *
@@ -43,17 +41,19 @@ class RealtimeClient(private val baseUrl: String) {
         socket = client.newWebSocket(
             request,
             object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    webSocket.send(JSONObject().put("token", accessToken).toString())
-                }
-
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     val body = runCatching { JSONObject(text) }.getOrNull() ?: return
                     val name = body.optString("event").ifEmpty { body.optString("type") }
                     if (name.isNotEmpty()) onEvent(name, body)
                 }
             },
-        )
+        ).also { newSocket ->
+            // Queued now rather than sent from onOpen: OkHttp flushes frames queued before the
+            // handshake completes *ahead of* onOpen, so a caller that sent right after connect()
+            // (ScreenShareService's offer) used to reach the backend before the token and got the
+            // socket closed as unauthenticated. The queue keeps call order, so this stays first.
+            newSocket.send(JSONObject().put("token", accessToken).toString())
+        }
     }
 
     /** Sends a frame to the backend, which relays it to the other peer on this device's channel.

@@ -864,8 +864,17 @@ export function deviceRealtimeWebSocketUrl(deviceId: string): string {
 
 // Sprint 23 — remote screen viewing. The same socket above also carries the WebRTC signalling
 // between this browser and the supervised device; these are the ICE servers both ends must use.
+// Sprint 28: `turn_servers` carries the relay with a short-lived credential minted per request
+// (app/services/turn.py); empty when the backend has no relay configured.
+export type TurnServer = {
+  urls: string[];
+  username: string;
+  credential: string;
+};
+
 export type WebRtcConfig = {
   ice_servers: string[];
+  turn_servers: TurnServer[];
 };
 
 export function fetchWebRtcConfig(

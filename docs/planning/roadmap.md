@@ -29,5 +29,8 @@
 | 25 | Pruebas integrales |
 | 26 | Despliegue |
 | 27 | Documentación y presentación |
+| 28 | Servidor TURN y credenciales efímeras (ver `plan-turn.md`) |
+| 29 | Clientes web y Android usando el TURN |
+| 30 | Verificación con relay forzado, producción y documentación |
 
 Cada sprint debe producir un incremento verificable y no sólo documentación o pseudocódigo.

@@ -28,6 +28,20 @@
          notificación es deliberadamente visible, no algo que ocultar. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Verificado en ejecución real (17/09/2026, emulador API 36): un foreground service sin
+         actividad visible ya NO puede abrir una Activity con startActivity() directo — Android
+         lo bloquea como "Background Activity Launch" (ActivityTaskManager: "Background activity
+         launch blocked!"). El mecanismo que Android sí exime de esta restricción es exactamente
+         el que usan las llamadas entrantes y alarmas: una notificación con
+         Notification.Builder#setFullScreenIntent(). Ver BlockScreenActivity/
+         RuleEnforcementService y docs/android/capability-matrix.md. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- The mechanism that actually works while the device is unlocked and in active use — see
+         BlockOverlayController. Special-access permission, granted separately in Settings, same
+         shape as PACKAGE_USAGE_STATS. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Sprint 13 (ubicación): sólo aproximada a propósito — ver docs/android/capability-matrix.md.
          Deliberadamente sin ACCESS_FINE_LOCATION y sin ACCESS_BACKGROUND_LOCATION: un foreground
          service foregroundServiceType="location" ya cuenta como "en primer plano" para el sistema

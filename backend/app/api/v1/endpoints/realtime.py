@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -17,6 +18,7 @@ from app.schemas.realtime import (
     RegisterPushTokenRequest,
     RegisterPushTokenResponse,
     ScreenShareSignal,
+    TurnServer,
     WebRtcConfigResponse,
 )
 from app.services.audit import record_audit_event
@@ -26,8 +28,10 @@ from app.services.realtime import (
     connection_manager,
     notify_screen_share_requested,
 )
+from app.services.turn import issue_turn_credential
 
 router = APIRouter(tags=["realtime"])
+logger = logging.getLogger(__name__)
 
 # Close codes above 4000 are the private-use range the WebSocket spec reserves for
 # applications. 4401/4404 deliberately echo the HTTP status codes this project's REST
@@ -195,11 +199,36 @@ async def _handle_signal(
     would hand the stream to someone the supervised person never agreed to.
     """
     try:
-        signal = _signal_adapter.validate_python(json.loads(raw_text))
-    except (ValueError, ValidationError):
+        payload = json.loads(raw_text)
+    except ValueError:
+        return
+    frame_type = payload.get("type") if isinstance(payload, dict) else None
+    if frame_type is None:
+        # No `type`: a liveness ping, which is expected traffic, not a dropped signal.
+        return
+
+    try:
+        signal = _signal_adapter.validate_python(payload)
+    except ValidationError as exc:
+        # Logged because a silent drop here once hid a whole class of failure: the device's offer
+        # vanished and both peers just waited. Type, size and failing field only — never the SDP.
+        logger.warning(
+            "screen_share_signal_dropped device_id=%s role=%s type=%s bytes=%d reason=%s",
+            device_id,
+            role,
+            str(frame_type)[:40],
+            len(raw_text),
+            ";".join(f"{'.'.join(map(str, e['loc']))}:{e['type']}" for e in exc.errors())[:200],
+        )
         return
 
     if role not in _SIGNAL_SENDER_ROLES[signal.type]:
+        logger.warning(
+            "screen_share_signal_dropped device_id=%s role=%s type=%s reason=role_not_allowed",
+            device_id,
+            role,
+            signal.type,
+        )
         return
 
     if signal.type == "screen_share_request":
@@ -283,12 +312,22 @@ async def get_webrtc_config(
 ) -> WebRtcConfigResponse:
     """The ICE servers both peers must agree on before they can try to connect.
 
-    Served from the backend rather than compiled into each client so that adding a TURN server
-    later is a config change, not an Android release plus a web deploy. Not audited: reading a
+    Served from the backend rather than compiled into each client, so the relay is a config
+    change, not an Android release plus a web deploy. The TURN credential is minted per request
+    and only for a participant of this device (require_device_participant), which is the whole
+    reason it can't be a static password baked into the clients. Not audited: reading a
     connection parameter is not an action to review later — the session events in
     _audit_action_for are.
     """
-    return WebRtcConfigResponse(ice_servers=settings.webrtc_stun_urls_list)
+    turn = issue_turn_credential(datetime.now(UTC))
+    return WebRtcConfigResponse(
+        ice_servers=settings.webrtc_stun_urls_list,
+        turn_servers=(
+            [TurnServer(urls=turn.urls, username=turn.username, credential=turn.credential)]
+            if turn is not None
+            else []
+        ),
+    )
 
 
 @router.post("/devices/{device_id}/push-token", response_model=RegisterPushTokenResponse)

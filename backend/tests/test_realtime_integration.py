@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import hmac
 import os
 import uuid
 from unittest.mock import AsyncMock, patch
@@ -6,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from app.core.config import settings
 from app.main import app
 from app.services.google_auth import GoogleIdentity
 
@@ -547,6 +551,27 @@ def test_both_peers_can_read_the_webrtc_config(client) -> None:
         )
         assert response.status_code == 200, response.text
         assert response.json()["ice_servers"]
+
+
+def test_webrtc_config_hands_both_peers_a_turn_credential_coturn_can_verify(client) -> None:
+    # compose.test.yaml sets TURN_URLS and the same TURN_SHARED_SECRET as its coturn service.
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+
+    for token in (tutor_token, supervised_token):
+        body = client.get(
+            f"/api/v1/devices/{device_id}/webrtc-config", headers=_auth(token)
+        ).json()
+
+        # Sprint 23's field is untouched, so an installed APK that only knows it keeps working.
+        assert body["ice_servers"] == settings.webrtc_stun_urls_list
+        [turn] = body["turn_servers"]
+        assert turn["urls"] == settings.turn_urls_list
+        expected = base64.b64encode(
+            hmac.new(
+                settings.turn_shared_secret.encode(), turn["username"].encode(), hashlib.sha1
+            ).digest()
+        ).decode()
+        assert turn["credential"] == expected
 
 
 def test_an_unrelated_tutor_cannot_read_the_webrtc_config(client) -> None:

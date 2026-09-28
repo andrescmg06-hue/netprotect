@@ -10,8 +10,10 @@ import android.content.Intent
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.WebRtcConfigClient
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +65,7 @@ class ScreenShareService : Service() {
 
         const val ACTION_STOP = "com.netprotect.app.SCREEN_SHARE_STOP"
 
+        private const val TAG = "ScreenShareService"
         private const val CHANNEL_ID = "screen_share"
         private const val NOTIFICATION_ID = 1003
 
@@ -145,14 +148,21 @@ class ScreenShareService : Service() {
 
     private suspend fun startSession(
         baseUrl: String,
-        accessToken: String,
+        screenAccessToken: String,
         deviceId: String,
         resultData: Intent,
     ) {
-        // Asked of the backend rather than hardcoded so that adding a TURN server later needs no
-        // new APK. If it can't be reached, fall back to no ICE servers at all: on the same LAN
-        // (host-candidate to host-candidate) a connection can still succeed, and failing the whole
-        // session over a config fetch would be worse than trying.
+        // The token handed over by SupervisedScreen is whatever that screen got when it opened,
+        // and it is never renewed: after 15 minutes with the app open it is expired, and both the
+        // config fetch and this service's socket would be rejected. Same fix the other background
+        // components already use (Sprint 19).
+        val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
+            ?: screenAccessToken
+
+        // Asked of the backend rather than hardcoded, so the TURN relay and its per-request
+        // credentials need no new APK. If it can't be reached, fall back to no ICE servers at
+        // all: on the same LAN (host-candidate to host-candidate) a connection can still
+        // succeed, and failing the whole session over a config fetch would be worse than trying.
         val iceServers = runCatching {
             WebRtcConfigClient(baseUrl).getIceServers(accessToken, deviceId)
         }.getOrDefault(emptyList())
@@ -174,7 +184,13 @@ class ScreenShareService : Service() {
             .also { peerConnectionFactory = it }
 
         val configuration = PeerConnection.RTCConfiguration(
-            iceServers.map { PeerConnection.IceServer.builder(it).createIceServer() }
+            iceServers.map { server ->
+                PeerConnection.IceServer.builder(server.urls).apply {
+                    // Only the TURN relay has credentials (Sprint 28); STUN entries don't.
+                    server.username?.let { setUsername(it) }
+                    server.credential?.let { setPassword(it) }
+                }.createIceServer()
+            }
         ).apply { sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN }
 
         val connection = factory.createPeerConnection(configuration, PeerObserver())
@@ -345,8 +361,12 @@ class ScreenShareService : Service() {
     private open inner class SimpleSdpObserver : SdpObserver {
         override fun onCreateSuccess(description: SessionDescription) = Unit
         override fun onSetSuccess() = Unit
-        override fun onCreateFailure(error: String?) = Unit
-        override fun onSetFailure(error: String?) = Unit
+        override fun onCreateFailure(error: String?) {
+            Log.w(TAG, "SDP create failed: $error")
+        }
+        override fun onSetFailure(error: String?) {
+            Log.w(TAG, "SDP set failed: $error")
+        }
     }
 
     private fun buildNotification(): Notification {

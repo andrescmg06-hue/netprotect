@@ -3,6 +3,7 @@ package com.netprotect.app.core.permissions
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Process
 import android.provider.Settings
 
@@ -13,12 +14,23 @@ import android.provider.Settings
 object UsageAccessPermission {
     fun isGranted(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val mode = appOps.checkOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            context.packageName,
-            /* attributionTag = */ null,
-        )
+        // The attributionTag overload only exists from API 36; calling it on anything older
+        // crashes with NoSuchMethodError, so older versions use the original three-argument one.
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                context.packageName,
+                /* attributionTag = */ null,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                context.packageName,
+            )
+        }
         return mode == AppOpsManager.MODE_ALLOWED
     }
 

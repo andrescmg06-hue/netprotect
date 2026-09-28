@@ -1,36 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Ban, History, LogIn, LogOut, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
+import { Button, Card, CardHeader, EmptyState, SegmentedControl, Spinner, Timeline, type TimelineItem } from "@/components/ui";
 import { ApiError, type HistoryEvent, listDeviceHistory } from "@/lib/apiClient";
+import { ruleTypeLabel } from "@/lib/ruleFormatting";
+
+import styles from "./HistoryPanel.module.css";
 
 type HistoryState =
   | { kind: "loading" }
   | { kind: "loaded"; events: HistoryEvent[] }
   | { kind: "error"; message: string };
 
+type Filter = "all" | "app_rule" | "geofence";
+
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-function eventLabel(event: HistoryEvent): string {
+function toTimelineItem(event: HistoryEvent): TimelineItem {
   if (event.event_type === "APP_RULE") {
-    return `Bloqueo (${event.rule_type_applied}) de ${event.package_name}`;
+    const typeLabel = event.rule_type_applied ? ruleTypeLabel(event.rule_type_applied) : "Bloqueo";
+    return {
+      id: event.id,
+      icon: Ban,
+      tone: "danger",
+      title: `${typeLabel} de ${event.package_name ?? "una aplicación"}`,
+      occurredAt: event.occurred_at,
+    };
   }
-  return event.geofence_event_type === "ENTER"
-    ? `Entró a ${event.geofence_name}`
-    : `Salió de ${event.geofence_name}`;
+  const isEnter = event.geofence_event_type === "ENTER";
+  const zoneName = event.geofence_name ?? "una zona";
+  return {
+    id: event.id,
+    icon: isEnter ? LogIn : LogOut,
+    tone: isEnter ? "success" : "neutral",
+    title: isEnter ? `Entró a ${zoneName}` : `Salió de ${zoneName}`,
+    occurredAt: event.occurred_at,
+  };
 }
 
-/** Sprint 15: a single chronological timeline merging AppRuleEvent (bloqueos, Sprint 8) and
- * GeofenceEvent (entradas/salidas, Sprint 14) — the two event logs that already existed, read
- * through the new unified GET /devices/{id}/history endpoint rather than duplicated here.
- * Ubicación cruda no aparece: ya tiene su propia vista (DeviceLocationPanel) y mezclarla aquí
- * enterraría estos eventos discretos bajo hasta 96 puntos/día.
- */
+/** Sprint 15 (logic), Sprint 36 (design): a single chronological timeline merging AppRuleEvent
+ * (bloqueos) and GeofenceEvent (entradas/salidas) through the unified GET /devices/{id}/history
+ * endpoint. The type filter and day grouping are presentation only — same events, same order,
+ * nothing recomputed on the backend. Ubicación cruda still doesn't appear here (its own view). */
 export function HistoryPanel({ accessToken, deviceId }: { accessToken: string; deviceId: string }) {
   const [state, setState] = useState<HistoryState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -52,30 +71,54 @@ export function HistoryPanel({ accessToken, deviceId }: { accessToken: string; d
     };
   }, [accessToken, deviceId, reloadToken]);
 
+  const events = useMemo(() => (state.kind === "loaded" ? state.events : []), [state]);
+  const filtered = useMemo(
+    () =>
+      events.filter((event) => {
+        if (filter === "app_rule") return event.event_type === "APP_RULE";
+        if (filter === "geofence") return event.event_type === "GEOFENCE";
+        return true;
+      }),
+    [events, filter]
+  );
+  const items = useMemo(() => filtered.map(toTimelineItem), [filtered]);
+
   return (
-    <div className="rulesPanel">
-      <div className="devicesPanelHeader">
-        <strong>Historial</strong>
-        <button type="button" onClick={() => setReloadToken((current) => current + 1)}>
-          Actualizar
-        </button>
+    <Card padding="none">
+      <div className={styles.head}>
+        <CardHeader icon={History} title="Historial de eventos" />
+        <div className={styles.headActions}>
+          <SegmentedControl
+            label="Filtrar por tipo de evento"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "Todo" },
+              { value: "app_rule", label: "Bloqueos" },
+              { value: "geofence", label: "Geocercas" },
+            ]}
+          />
+          <Button size="sm" icon={RefreshCw} onClick={() => setReloadToken((current) => current + 1)}>
+            Actualizar
+          </Button>
+        </div>
       </div>
 
-      {state.kind === "loading" && <p className="statusText">Cargando historial…</p>}
-      {state.kind === "error" && <p className="authError">{state.message}</p>}
-      {state.kind === "loaded" && state.events.length === 0 && (
-        <p className="statusText">Todavía no hay eventos registrados para este dispositivo.</p>
-      )}
-      {state.kind === "loaded" && state.events.length > 0 && (
-        <ul className="appList">
-          {state.events.map((event) => (
-            <li key={event.id} className="appRow">
-              <div className="appLabel">{eventLabel(event)}</div>
-              <span className="appUsage">{new Date(event.occurred_at).toLocaleString("es-CO")}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      <div className={styles.body}>
+        {state.kind === "loading" && <Spinner label="Cargando historial…" />}
+        {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
+        {state.kind === "loaded" && filtered.length === 0 && (
+          <EmptyState
+            icon={History}
+            title={
+              events.length === 0
+                ? "Todavía no hay eventos registrados para este dispositivo"
+                : "Ningún evento coincide con este filtro"
+            }
+          />
+        )}
+        {state.kind === "loaded" && filtered.length > 0 && <Timeline items={items} />}
+      </div>
+    </Card>
   );
 }

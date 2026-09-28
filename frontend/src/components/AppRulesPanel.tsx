@@ -1,20 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Ban, CalendarClock, Clock, History, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { RuleTypeFields, type RuleTypeFieldsValue, DEFAULT_RULE_TYPE_FIELDS, validateRuleTypeFields } from "@/components/RuleTypeFields";
+import {
+  AppIcon,
+  Button,
+  Card,
+  CardHeader,
+  type Column,
+  DataTable,
+  EmptyState,
+  Field,
+  Input,
+  MetricCard,
+  MetricGrid,
+  Spinner,
+  StatusBadge,
+} from "@/components/ui";
 import {
   ApiError,
   type AppRule,
   type AppRuleEvent,
-  type AppliedRuleType,
-  type RuleType,
   type UpsertAppRuleInput,
   deleteAppRule,
   listAppRules,
   listRuleEvents,
   upsertAppRule,
 } from "@/lib/apiClient";
+import { describeRule, ruleTypeLabel } from "@/lib/ruleFormatting";
 import { useDeviceRulesRealtime } from "@/lib/useDeviceRulesRealtime";
+
+import styles from "./AppRulesPanel.module.css";
 
 type RulesState =
   | { kind: "loading" }
@@ -27,64 +45,16 @@ type EventsState =
   | { kind: "loaded"; events: AppRuleEvent[] }
   | { kind: "error"; message: string };
 
-const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
-const ALL_DAYS_MASK = 0b111_1111;
-
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
-}
-
-function timeStringToMinutes(value: string): number | null {
-  const match = /^(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return null;
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-
-function minutesToTimeString(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-    .toString()
-    .padStart(2, "0");
-  const mins = (minutes % 60).toString().padStart(2, "0");
-  return `${hours}:${mins}`;
-}
-
-function daysMaskToLabel(mask: number): string {
-  return DAY_LABELS.filter((_, index) => (mask & (1 << index)) !== 0).join(" ");
-}
-
-function ruleTypeLabel(type: AppliedRuleType): string {
-  return {
-    ALLOW: "Permitir",
-    BLOCK: "Bloquear",
-    DAILY_LIMIT: "Límite diario",
-    WEEKLY_LIMIT: "Límite semanal",
-    SCHEDULE: "Horario",
-    CATEGORY: "Por categoría",
-    SCHOOL_MODE: "Horario escolar",
-    DEFAULT_POLICY: "Sin aprobar",
-  }[type];
-}
-
-function describeRule(rule: AppRule): string {
-  switch (rule.rule_type) {
-    case "BLOCK":
-      return "Bloqueada siempre";
-    case "ALLOW":
-      return "Aprobada";
-    case "DAILY_LIMIT":
-      return `Máximo ${rule.daily_limit_minutes} min/día`;
-    case "WEEKLY_LIMIT":
-      return `Máximo ${rule.weekly_limit_minutes} min/semana`;
-    case "SCHEDULE":
-      return `Bloqueada ${minutesToTimeString(rule.schedule_start_minute ?? 0)}–${minutesToTimeString(
-        rule.schedule_end_minute ?? 0
-      )} (${daysMaskToLabel(rule.schedule_days_mask ?? 0)})`;
-  }
 }
 
 /** Sprint 24: split out of DeviceRulesPanel — this half is per-app rule CRUD plus the blocks
  * this device already applied; device-level settings (default policy, school mode) moved to
  * DevicePolicyPanel. Same endpoints, same upsert-by-package semantics as before.
+ *
+ * Sprint 35: the rule-type fields (type + minutes/schedule/days) move to the shared
+ * RuleTypeFields, since DeviceCategoriesPanel needs the exact same form.
  */
 export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; deviceId: string }) {
   const [rulesState, setRulesState] = useState<RulesState>({ kind: "loading" });
@@ -94,12 +64,10 @@ export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; 
   const [submitting, setSubmitting] = useState(false);
 
   const [packageName, setPackageName] = useState("");
-  const [ruleType, setRuleType] = useState<RuleType>("BLOCK");
-  const [dailyLimitMinutes, setDailyLimitMinutes] = useState("30");
-  const [weeklyLimitMinutes, setWeeklyLimitMinutes] = useState("180");
-  const [scheduleStart, setScheduleStart] = useState("22:00");
-  const [scheduleEnd, setScheduleEnd] = useState("06:00");
-  const [scheduleDaysMask, setScheduleDaysMask] = useState(ALL_DAYS_MASK);
+  const [fields, setFields] = useState<RuleTypeFieldsValue>(DEFAULT_RULE_TYPE_FIELDS);
+  const updateFields = useCallback((patch: Partial<RuleTypeFieldsValue>) => {
+    setFields((current) => ({ ...current, ...patch }));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +98,17 @@ export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; 
   // enforcement can change these rules at any time.
   useDeviceRulesRealtime(accessToken, deviceId, loadRules);
 
+  const rules = useMemo(() => (rulesState.kind === "loaded" ? rulesState.rules : []), [rulesState]);
+  const metrics = useMemo(
+    () => ({
+      total: rules.length,
+      blocked: rules.filter((rule) => rule.rule_type === "BLOCK").length,
+      limited: rules.filter((rule) => rule.rule_type === "DAILY_LIMIT" || rule.rule_type === "WEEKLY_LIMIT").length,
+      scheduled: rules.filter((rule) => rule.rule_type === "SCHEDULE").length,
+    }),
+    [rules]
+  );
+
   function toggleEvents() {
     if (eventsState.kind === "loaded" || eventsState.kind === "loading") {
       setEventsState({ kind: "idle" });
@@ -159,44 +138,17 @@ export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; 
       return;
     }
 
+    const extras = validateRuleTypeFields(fields);
+    if ("error" in extras) {
+      setFormError(extras.error);
+      return;
+    }
+
     const input: UpsertAppRuleInput = {
       package_name: packageName.trim(),
-      rule_type: ruleType,
+      rule_type: fields.ruleType,
+      ...extras,
     };
-
-    if (ruleType === "DAILY_LIMIT") {
-      const minutes = Number(dailyLimitMinutes);
-      if (!Number.isInteger(minutes) || minutes <= 0) {
-        setFormError("El límite diario debe ser un número de minutos mayor que 0.");
-        return;
-      }
-      input.daily_limit_minutes = minutes;
-    }
-
-    if (ruleType === "WEEKLY_LIMIT") {
-      const minutes = Number(weeklyLimitMinutes);
-      if (!Number.isInteger(minutes) || minutes <= 0) {
-        setFormError("El límite semanal debe ser un número de minutos mayor que 0.");
-        return;
-      }
-      input.weekly_limit_minutes = minutes;
-    }
-
-    if (ruleType === "SCHEDULE") {
-      const start = timeStringToMinutes(scheduleStart);
-      const end = timeStringToMinutes(scheduleEnd);
-      if (start === null || end === null) {
-        setFormError("Indica una hora de inicio y de fin válidas.");
-        return;
-      }
-      if (scheduleDaysMask === 0) {
-        setFormError("Selecciona al menos un día para el horario.");
-        return;
-      }
-      input.schedule_start_minute = start;
-      input.schedule_end_minute = end;
-      input.schedule_days_mask = scheduleDaysMask;
-    }
 
     setSubmitting(true);
     upsertAppRule(accessToken, deviceId, input)
@@ -211,133 +163,139 @@ export function AppRulesPanel({ accessToken, deviceId }: { accessToken: string; 
       });
   }
 
+  const ruleColumns: Column<AppRule>[] = [
+    {
+      key: "app",
+      header: "Aplicación",
+      primary: true,
+      render: (rule) => (
+        <span className={styles.appCell}>
+          <AppIcon label={rule.package_name} seed={rule.package_name} />
+          <span className={styles.appPackage}>{rule.package_name}</span>
+        </span>
+      ),
+    },
+    {
+      key: "rule",
+      header: "Regla",
+      render: (rule) => (
+        <span className={styles.ruleCell}>
+          <StatusBadge tone={rule.rule_type === "BLOCK" ? "danger" : rule.rule_type === "ALLOW" ? "success" : rule.rule_type === "SCHEDULE" ? "purple" : "warning"}>
+            {ruleTypeLabel(rule.rule_type)}
+          </StatusBadge>
+          <span className={styles.ruleDetail}>{describeRule(rule)}</span>
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      render: (rule) => (
+        <Button size="sm" variant="ghost" icon={Trash2} onClick={() => handleDelete(rule.id)}>
+          Eliminar
+        </Button>
+      ),
+    },
+  ];
+
+  const eventColumns: Column<AppRuleEvent>[] = [
+    {
+      key: "app",
+      header: "Aplicación",
+      primary: true,
+      render: (event) => (
+        <span className={styles.appCell}>
+          <AppIcon label={event.package_name} seed={event.package_name} />
+          <span className={styles.appPackage}>{event.package_name}</span>
+        </span>
+      ),
+    },
+    { key: "type", header: "Regla aplicada", render: (event) => ruleTypeLabel(event.rule_type_applied) },
+    {
+      key: "when",
+      header: "Fecha",
+      align: "right",
+      render: (event) => new Date(event.occurred_at).toLocaleString("es-CO"),
+    },
+  ];
+
   return (
-    <div className="rulesPanel">
-      <form className="ruleForm" onSubmit={handleSubmit}>
-        <input
-          value={packageName}
-          onChange={(event) => setPackageName(event.target.value)}
-          placeholder="com.instagram.android"
-          maxLength={255}
-          aria-label="Paquete de la app"
-        />
-        <select value={ruleType} onChange={(event) => setRuleType(event.target.value as RuleType)}>
-          <option value="BLOCK">Bloquear</option>
-          <option value="ALLOW">Permitir</option>
-          <option value="DAILY_LIMIT">Límite diario</option>
-          <option value="WEEKLY_LIMIT">Límite semanal</option>
-          <option value="SCHEDULE">Horario</option>
-        </select>
+    <>
+      <MetricGrid>
+        <MetricCard icon={ShieldCheck} tone="info" label="Reglas activas" value={metrics.total} />
+        <MetricCard icon={Ban} tone="danger" label="Apps bloqueadas" value={metrics.blocked} />
+        <MetricCard icon={Clock} tone="warning" label="Con límite de tiempo" value={metrics.limited} />
+        <MetricCard icon={CalendarClock} tone="purple" label="Con horario" value={metrics.scheduled} />
+      </MetricGrid>
 
-        {ruleType === "DAILY_LIMIT" && (
-          <input
-            type="number"
-            min={1}
-            value={dailyLimitMinutes}
-            onChange={(event) => setDailyLimitMinutes(event.target.value)}
-            aria-label="Minutos por día"
-          />
-        )}
-
-        {ruleType === "WEEKLY_LIMIT" && (
-          <input
-            type="number"
-            min={1}
-            value={weeklyLimitMinutes}
-            onChange={(event) => setWeeklyLimitMinutes(event.target.value)}
-            aria-label="Minutos por semana"
-          />
-        )}
-
-        {ruleType === "SCHEDULE" && (
-          <div className="scheduleFields">
-            <input
-              type="time"
-              value={scheduleStart}
-              onChange={(event) => setScheduleStart(event.target.value)}
-              aria-label="Hora de inicio del bloqueo"
-            />
-            <span>a</span>
-            <input
-              type="time"
-              value={scheduleEnd}
-              onChange={(event) => setScheduleEnd(event.target.value)}
-              aria-label="Hora de fin del bloqueo"
-            />
-            <div className="dayPicker">
-              {DAY_LABELS.map((label, index) => {
-                const bit = 1 << index;
-                const active = (scheduleDaysMask & bit) !== 0;
-                return (
-                  <button
-                    type="button"
-                    key={label + index}
-                    className={active ? "dayButton dayButtonActive" : "dayButton"}
-                    onClick={() => setScheduleDaysMask((current) => current ^ bit)}
-                    aria-pressed={active}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+      <div className={styles.columns}>
+        <Card padding="none">
+          <div className={styles.cardHead}>
+            <CardHeader icon={ShieldCheck} title="Reglas activas" />
           </div>
-        )}
+          {rulesState.kind === "loading" && (
+            <div className={styles.emptyWrap}>
+              <Spinner label="Cargando reglas…" />
+            </div>
+          )}
+          {rulesState.kind === "error" && <p className={styles.error}>{rulesState.message}</p>}
+          {rulesState.kind === "loaded" && rules.length === 0 && (
+            <div className={styles.emptyWrap}>
+              <EmptyState icon={ShieldCheck} title="Todavía no hay reglas para este dispositivo" />
+            </div>
+          )}
+          {rulesState.kind === "loaded" && rules.length > 0 && (
+            <DataTable columns={ruleColumns} rows={rules} rowKey={(rule) => rule.id} />
+          )}
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Guardando…" : "Guardar regla"}
-        </button>
-      </form>
+          <div className={styles.historyToggle}>
+            <Button size="sm" icon={History} onClick={toggleEvents}>
+              {eventsState.kind === "loaded" || eventsState.kind === "loading"
+                ? "Ocultar historial de bloqueos"
+                : "Ver historial de bloqueos"}
+            </Button>
+          </div>
 
-      {formError && <p className="authError">{formError}</p>}
+          {eventsState.kind === "loading" && (
+            <div className={styles.emptyWrap}>
+              <Spinner label="Cargando historial…" />
+            </div>
+          )}
+          {eventsState.kind === "error" && <p className={styles.error}>{eventsState.message}</p>}
+          {eventsState.kind === "loaded" && eventsState.events.length === 0 && (
+            <p className={styles.historyEmpty}>Todavía no se aplicó ningún bloqueo en este dispositivo.</p>
+          )}
+          {eventsState.kind === "loaded" && eventsState.events.length > 0 && (
+            <DataTable columns={eventColumns} rows={eventsState.events} rowKey={(event) => event.id} />
+          )}
+        </Card>
 
-      {rulesState.kind === "loading" && <p className="statusText">Cargando reglas…</p>}
-      {rulesState.kind === "error" && <p className="authError">{rulesState.message}</p>}
-      {rulesState.kind === "loaded" && rulesState.rules.length === 0 && (
-        <p className="statusText">Todavía no hay reglas para este dispositivo.</p>
-      )}
-      {rulesState.kind === "loaded" && rulesState.rules.length > 0 && (
-        <ul className="appList">
-          {rulesState.rules.map((rule) => (
-            <li key={rule.id} className="appRow">
-              <div>
-                <div className="appLabel">{rule.package_name}</div>
-                <div className="appMeta">
-                  {ruleTypeLabel(rule.rule_type)} · {describeRule(rule)}
-                </div>
-              </div>
-              <button type="button" className="dangerButton" onClick={() => handleDelete(rule.id)}>
-                Eliminar
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        <Card>
+          <CardHeader icon={Plus} title="Crear nueva regla" />
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <Field label="Aplicación (paquete)" hint="Ej. com.instagram.android">
+              {(id) => (
+                <Input
+                  id={id}
+                  value={packageName}
+                  onChange={(event) => setPackageName(event.target.value)}
+                  placeholder="com.instagram.android"
+                  maxLength={255}
+                />
+              )}
+            </Field>
 
-      <button type="button" onClick={toggleEvents}>
-        {eventsState.kind === "loaded" || eventsState.kind === "loading"
-          ? "Ocultar historial de bloqueos"
-          : "Ver historial de bloqueos"}
-      </button>
+            <RuleTypeFields value={fields} onChange={updateFields} />
 
-      {eventsState.kind === "loading" && <p className="statusText">Cargando historial…</p>}
-      {eventsState.kind === "error" && <p className="authError">{eventsState.message}</p>}
-      {eventsState.kind === "loaded" && eventsState.events.length === 0 && (
-        <p className="statusText">Todavía no se aplicó ningún bloqueo en este dispositivo.</p>
-      )}
-      {eventsState.kind === "loaded" && eventsState.events.length > 0 && (
-        <ul className="appList">
-          {eventsState.events.map((event) => (
-            <li key={event.id} className="appRow">
-              <div>
-                <div className="appLabel">{event.package_name}</div>
-                <div className="appMeta">{ruleTypeLabel(event.rule_type_applied)}</div>
-              </div>
-              <span className="appUsage">{new Date(event.occurred_at).toLocaleString("es-CO")}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            {formError && <p className={styles.error}>{formError}</p>}
+
+            <Button type="submit" variant="primary" loading={submitting}>
+              Guardar regla
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 }

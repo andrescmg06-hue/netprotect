@@ -9,15 +9,20 @@ const apiWebSocketUrl = apiBaseUrl.replace(/^http/, "ws");
 // script-src/style-src still need 'unsafe-inline': Next.js App Router injects inline bootstrap
 // scripts and styles, and removing that would take a nonce plumbed through middleware. Left as a
 // deliberate, documented limit of this sprint (docs/sprint-21.md), not an oversight.
+// The accounts.google.com/gsi entries are what Google Identity Services documents for a CSP:
+// without them the sign-in script is blocked and the Google button never renders.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
+  // lh3.googleusercontent.com serves the tutor's Google profile photo (avatar_url); without it the
+  // header and sidebar avatar fall back to initials in every environment (found in Sprint 31).
+  "img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com https://lh3.googleusercontent.com",
   "font-src 'self'",
-  `connect-src 'self' ${apiBaseUrl} ${apiWebSocketUrl}`,
-  // The tutor's location view (Sprint 13) embeds Google Maps in an iframe.
-  "frame-src https://www.google.com",
+  `connect-src 'self' ${apiBaseUrl} ${apiWebSocketUrl} https://accounts.google.com/gsi/`,
+  // The tutor's location view (Sprint 13) embeds Google Maps in an iframe; the Google sign-in
+  // button renders inside an accounts.google.com/gsi iframe.
+  "frame-src https://www.google.com https://accounts.google.com/gsi/",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

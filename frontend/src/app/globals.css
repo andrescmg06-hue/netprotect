@@ -1,12 +1,75 @@
+/* Sprint 31 — design tokens. Every colour, radius, shadow and spacing value in the app comes from
+   here; components never hard-code them. See docs/planning/plan-frontend.md. */
 :root {
-  color-scheme: dark;
-  --background: #090b10;
-  --surface: #11151d;
-  --line: #293141;
-  --text: #f2f5f9;
-  --muted: #9da8b8;
-  --accent: #6be3bf;
-  --danger: #ff7b83;
+  color-scheme: light;
+
+  --color-primary: #246bfe;
+  --color-primary-hover: #1456d9;
+  --color-primary-soft: #eaf1ff;
+  --color-primary-softer: #f3f7ff;
+  /* Blue for text and icons: #246bfe is for fills (white on it 4.56:1) but falls under 4.5:1 as
+     text on the light washes; this one clears 4.9:1 on every light surface. */
+  --color-primary-text: #1f5fe6;
+  --color-navy: #102b63;
+
+  --color-bg: #f5f9ff;
+  --color-bg-gradient: linear-gradient(180deg, #f5f9ff 0%, #eef4ff 100%);
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f9fc;
+  --color-border: #e6ecf5;
+  --color-border-strong: #d5dfee;
+
+  --color-text: #1b2b4b;
+  --color-text-muted: #5b6b82; /* ≥4.8:1 on white, page ground and tinted rows */
+  --color-text-subtle: #94a3b8;
+
+  --color-success: #16b364;
+  --color-success-soft: #e7f8ef;
+  --color-success-text: #0b7a42;
+  --color-danger: #f04438;
+  --color-danger-soft: #feeceb;
+  --color-danger-text: #c4271c;
+  --color-warning: #f79009;
+  --color-warning-soft: #fef3e2;
+  --color-warning-text: #9a5000;
+  --color-purple: #7a5af8;
+  --color-purple-soft: #f1edfe;
+  --color-purple-text: #5b3fd6;
+  --color-neutral-soft: #eef2f7;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(16, 43, 99, 0.04), 0 4px 20px rgba(30, 70, 140, 0.05);
+  --shadow-pop: 0 12px 32px rgba(16, 43, 99, 0.14);
+  --focus-ring: 0 0 0 3px rgba(36, 107, 254, 0.25);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 32px;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 150ms;
+  --duration: 200ms;
+  --duration-slow: 250ms;
 }
 
 * {
@@ -17,602 +80,93 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--background);
-  color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+  background: #eef4ff;
 }
 
 body {
   min-height: 100vh;
-}
-
-.shell {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 48px 24px;
-}
-
-.hero {
-  width: min(1040px, 100%);
-}
-
-.eyebrow {
-  margin: 0 0 16px;
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
-h1 {
-  max-width: 820px;
-  margin: 0;
-  font-size: clamp(2.5rem, 7vw, 5.8rem);
-  line-height: 0.98;
-  letter-spacing: -0.055em;
-}
-
-.lead {
-  max-width: 760px;
-  margin: 28px 0 0;
-  color: var(--muted);
-  font-size: 1.15rem;
-  line-height: 1.65;
-}
-
-.statusCard {
-  margin-top: 36px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.statusCard > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.dot.online {
-  background: var(--accent);
-}
-
-.dot.offline {
-  background: var(--danger);
-}
-
-.statusText {
-  color: var(--muted);
-  font-size: 0.94rem;
-  text-align: right;
-}
-
-.authCard {
-  margin-top: 16px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.authCard .userRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.authCard .avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-}
-
-.authCard .userName {
-  font-weight: 600;
-}
-
-.authCard .userEmail {
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.authError {
-  color: var(--danger);
-  font-size: 0.88rem;
-  margin: 4px 0 0;
-}
-
-.devicesPanel {
-  margin-top: 16px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-}
-
-.devicesPanelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.devicesPanelHeader button {
-  margin-top: 0;
-}
-
-.deviceList {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.deviceRow {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--background);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.deviceName {
-  font-weight: 600;
-}
-
-.deviceMeta {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-top: 2px;
-}
-
-.deviceActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.deviceActions button,
-.deviceRenameForm button {
-  margin-top: 0;
-}
-
-.deviceRenameForm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.deviceRenameForm input {
-  padding: 0.5rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-.dangerButton {
-  border-color: rgba(255, 123, 131, 0.4);
-  color: var(--danger);
-}
-
-.dangerButton:hover {
-  border-color: rgba(255, 123, 131, 0.8);
-}
-
-.statusPill {
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  border: 1px solid var(--line);
-  color: var(--muted);
-}
-
-.statusPill.online {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.4);
-}
-
-.statusPill.offline,
-.statusPill.unlinked {
-  color: var(--danger);
-  border-color: rgba(255, 123, 131, 0.4);
-}
-
-/* Sprint 20: ALERT es el único estado que el backend escribe por detección de manipulación
-   (app/services/tamper.py). Se distingue de OFFLINE con fondo propio: "no se reporta" y
-   "se detectó manipulación" no deben leerse igual de un vistazo. */
-.statusPill.alert {
-  color: var(--danger);
-  border-color: rgba(255, 123, 131, 0.8);
-  background: rgba(255, 123, 131, 0.14);
-}
-
-.appList {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--line);
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.appRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.appLabel {
-  font-size: 0.9rem;
-}
-
-.appMeta {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.appUsage {
-  color: var(--muted);
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
-
-.statusPill.allowlist {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.4);
-}
-
-.policyRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.policyRow button {
-  margin-top: 0;
-}
-
-.rulesPanel {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ruleForm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.ruleForm input,
-.ruleForm select {
-  padding: 0.5rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-.ruleForm button {
-  margin-top: 0;
-}
-
-.locationDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.locationMap {
-  border-radius: 10px;
-  margin-top: 4px;
-}
-
-/* Sprint 23: el video remoto se escala al ancho del panel; la pantalla de un teléfono es más
-   alta que ancha, así que se limita la altura para que no empuje el resto del panel fuera de
-   vista. */
-.remoteScreenVideo {
-  width: 100%;
-  max-height: 420px;
-  margin-top: 10px;
-  border-radius: 10px;
-  background: #000;
-  object-fit: contain;
-}
-
-.scheduleFields {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.dayPicker {
-  display: flex;
-  gap: 4px;
-}
-
-.dayButton {
-  margin-top: 0;
-  padding: 0.4rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.dayButtonActive {
-  color: var(--accent);
-  border-color: rgba(107, 227, 191, 0.6);
-}
-
-.grid {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-article {
-  min-height: 190px;
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-}
-
-article > span {
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-article h2 {
-  margin: 42px 0 8px;
-  font-size: 1.18rem;
-}
-
-article p {
-  margin: 0;
-  color: var(--muted);
+  background: var(--color-bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (max-width: 820px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .statusCard {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .statusText {
-    text-align: left;
-  }
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-navy);
+  line-height: 1.2;
 }
 
-@media (max-width: 480px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+a {
+  color: var(--color-primary-text);
 }
 
-/* Sprint 24 — dashboard shell. A fixed-width sidebar plus a scrolling main column on desktop;
-   below 900px the sidebar becomes a horizontally-scrolling strip of buttons, same as the rest of
-   this file's responsive breakpoints, so the dashboard stays usable on a phone without a second
-   layout system. */
-.dashboard {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  align-items: start;
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }
 
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  padding: 24px 16px;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+::selection {
+  background: rgba(36, 107, 254, 0.18);
 }
 
-.sidebarGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+input,
+textarea {
+  caret-color: var(--color-primary);
 }
 
-.sidebarGroupLabel {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0 10px;
-  margin-bottom: 2px;
+html {
+  scrollbar-color: #c7d3e6 transparent;
 }
 
-.sidebarButton {
-  width: 100%;
-  margin-top: 0;
-  text-align: left;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
 
-.sidebarButton:hover {
-  border-color: var(--line);
-  color: var(--text);
-}
-
-.sidebarButtonActive,
-.sidebarButtonActive:hover {
-  background: rgba(107, 227, 191, 0.12);
-  border-color: rgba(107, 227, 191, 0.4);
-  color: var(--accent);
-}
-
-.dashboardMain {
-  padding: 32px clamp(16px, 4vw, 40px) 60px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-}
-
-.dashboardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.dashboardTitle {
+/* Neutral reset: every button in the app is styled by its own CSS Module (ui/Button, the shell,
+   the panels' row/option buttons). The pre-Sprint-31 rule this replaces gave every bare <button>
+   a border, padding and `margin-top: 1rem`, which silently leaked into module classes that didn't
+   override all of them (Alertas' inbox rows, the policy cards). */
+:where(button) {
   margin: 0;
-  font-size: 1.6rem;
-}
-
-.deviceSwitcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.deviceSwitcher select {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.pairingCode {
-  margin-top: 8px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--background);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.pairingCodeDigits {
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--accent);
-}
-
-@media (max-width: 900px) {
-  .dashboard {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    overflow-x: auto;
-    overflow-y: visible;
-    padding: 12px 16px;
-  }
-
-  .sidebarGroup {
-    flex-direction: row;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  .sidebarGroupLabel {
-    padding: 0;
-  }
-
-  .sidebarButton {
-    width: max-content;
-    white-space: nowrap;
-  }
-}
-
-button {
-  width: fit-content;
-  margin-top: 1rem;
-  border: 1px solid rgba(107, 227, 191, 0.4);
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  background: transparent;
-  color: #eaf5f1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
 }
 
-button:hover {
-  border-color: rgba(107, 227, 191, 0.8);
+:where(button):disabled {
+  cursor: not-allowed;
+}
+
+/* Sprint 38: each dashboard section fades in when it's opened (DashboardShell keys its content
+   wrapper on section + device). Opacity and transform only, so nothing reflows. */
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

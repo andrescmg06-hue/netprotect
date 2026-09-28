@@ -1,0 +1,55 @@
+.cardHead {
+  padding: var(--space-5) var(--space-6) 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+}
+
+.filters > :first-child,
+.filters > :nth-child(2) {
+  min-width: 200px;
+}
+
+.error {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-4);
+  color: var(--color-danger-text);
+}
+
+.emptyWrap {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.action {
+  color: var(--color-navy);
+  font-weight: 500;
+}
+
+.resource {
+  color: var(--color-text);
+}
+
+.resourceId {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.pageInfo {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

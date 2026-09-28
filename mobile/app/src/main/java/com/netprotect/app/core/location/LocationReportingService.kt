@@ -1,5 +1,6 @@
 package com.netprotect.app.core.location
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -124,6 +125,11 @@ class LocationReportingService : Service() {
      * or cached) is available at all — every case is handled the same way by the caller: skip
      * this cycle, try again after the next delay.
      */
+    // Lint's @RequiresPermission check only recognises a direct ContextCompat/ActivityCompat
+    // call, not the LocationPermission.isGranted(this) wrapper this project uses everywhere else
+    // (Sprint 13) — the check right below is real, and both calls flagged are already wrapped in
+    // runCatching for the race between that check and the call landing.
+    @SuppressLint("MissingPermission")
     private suspend fun fetchCurrentLocation(): Location? {
         if (!LocationPermission.isGranted(this)) return null
         val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager

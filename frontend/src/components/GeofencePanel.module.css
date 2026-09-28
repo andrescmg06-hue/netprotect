@@ -1,0 +1,94 @@
+.cardHead {
+  padding: var(--space-5) var(--space-6) 0;
+}
+
+.disclosure {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.emptyWrap {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.error {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-4);
+  color: var(--color-danger-text);
+}
+
+.zoneName {
+  color: var(--color-navy);
+  font-weight: 500;
+}
+
+.coords {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.historyToggle {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.historyEmpty {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.eventCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.eventDetail {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+
+  .rowActions {
+    justify-content: flex-start;
+  }
+}
