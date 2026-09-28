@@ -1,0 +1,45 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    ".claude/rules/android.md",
+    "docs/android-redesign/mockups/README.md"
+  ],
+  "permission": {
+    "read": {
+      "*": "allow",
+      ".env": "deny",
+      "*.env": "deny",
+      ".env.*": "deny",
+      "*/.env.*": "deny",
+      "secrets/*": "deny",
+      "mobile/local.properties": "deny",
+      "mobile/app/google-services.json": "deny"
+    },
+    "edit": {
+      "*": "allow",
+      ".claude/*": "deny",
+      "CLAUDE.md": "deny",
+      "AGENTS.md": "deny",
+      "opencode.json": "deny",
+      "frontend/AGENTS.md": "deny",
+      "backend/alembic/versions/*": "deny",
+      ".env*": "deny",
+      "secrets/*": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git commit*": "deny",
+      "git push*": "deny",
+      "git reset*": "deny",
+      "./gradlew *": "allow",
+      "cd mobile && ./gradlew *": "allow",
+      "adb *": "allow",
+      "ls*": "allow",
+      "mv docs/delegated/*": "allow",
+      "*platform-tools/adb.exe *": "allow"
+    }
+  }
+}
