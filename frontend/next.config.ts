@@ -15,7 +15,9 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
-  "img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com",
+  // lh3.googleusercontent.com serves the tutor's Google profile photo (avatar_url); without it the
+  // header and sidebar avatar fall back to initials in every environment (found in Sprint 31).
+  "img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com https://lh3.googleusercontent.com",
   "font-src 'self'",
   `connect-src 'self' ${apiBaseUrl} ${apiWebSocketUrl} https://accounts.google.com/gsi/`,
   // The tutor's location view (Sprint 13) embeds Google Maps in an iframe; the Google sign-in

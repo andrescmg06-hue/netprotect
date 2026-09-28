@@ -47,7 +47,8 @@
 
 @media (max-width: 720px) {
   .aside {
-    align-items: flex-start;
+    align-items: stretch;
+    width: 100%;
   }
 
   .breadcrumb {

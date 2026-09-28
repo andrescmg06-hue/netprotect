@@ -26,6 +26,8 @@ hoy sigue existiendo; nada nuevo se agrega por verse bien.
    llamadas de `apiClient.ts` se mueven tal cual (incluido el patrón de `react-hooks/set-state-in-effect`
    de `CLAUDE.md`).
 5. **Se navega igual.** El hash `#section=…&device=…` y `DashboardShell` siguen siendo el router.
+6. **Móvil y escritorio con la misma prioridad** (confirmado en `PRODUCT.md`, 27/09/2026): cada
+   vista se revisa a 390 px y a 1440 px en su propio sprint, no en un pase final.
 
 ## Decisiones técnicas
 

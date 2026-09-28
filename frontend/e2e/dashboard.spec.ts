@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 /** Sprint 25: real browser, real backend (see global-setup.ts), against the production build
  * (`next build && node .next/standalone/server.js` — see playwright.config.ts). Seeds a tutor
@@ -24,6 +24,15 @@ const session = JSON.parse(
   readFileSync(path.join(__dirname, ".session.json"), "utf-8")
 ) as { tutorRefreshToken: string; deviceName: string; packageName: string };
 
+/** Sprint 32: located by role, not by CSS class, so a visual redesign doesn't break the test. */
+function nav(page: Page) {
+  return page.getByRole("navigation", { name: "Secciones del panel" });
+}
+
+function title(page: Page) {
+  return page.getByRole("heading", { level: 1 });
+}
+
 test("a returning tutor can navigate the whole dashboard and see real backend data", async ({
   page,
 }) => {
@@ -33,26 +42,26 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
 
   await test.step("lands on the dashboard, not the login screen", async () => {
     await page.goto("/");
-    await expect(page.locator(".dashboard")).toBeVisible();
-    await expect(page.locator(".dashboardTitle")).toHaveText("Resumen");
+    await expect(nav(page)).toBeVisible();
+    await expect(title(page)).toHaveText("Inicio");
   });
 
   await test.step("the sidebar switches sections and shows the real paired device", async () => {
-    await page.getByRole("button", { name: "Dispositivos", exact: true }).click();
-    await expect(page.locator(".dashboardTitle")).toHaveText("Dispositivos");
+    await nav(page).getByRole("button", { name: "Dispositivos", exact: true }).click();
+    await expect(title(page)).toHaveText("Dispositivos");
     // The device paired in global-setup shows up for real — not a fixture, an actual row read
     // back from the backend this test's own setup wrote to.
     await expect(page.getByText(session.deviceName)).toBeVisible();
 
-    await page.getByRole("button", { name: "Vinculación", exact: true }).click();
-    await expect(page.locator(".dashboardTitle")).toHaveText("Vinculación");
+    await nav(page).getByRole("button", { name: "Vinculación", exact: true }).click();
+    await expect(title(page)).toHaveText("Vinculación");
   });
 
   await test.step("the rule created for that device is visible in its own panel", async () => {
-    await page.getByRole("button", { name: "Reglas por aplicación", exact: true }).click();
-    await expect(page.locator(".dashboardTitle")).toHaveText("Reglas por aplicación");
+    await nav(page).getByRole("button", { name: "Reglas por aplicación", exact: true }).click();
+    await expect(title(page)).toHaveText("Reglas por aplicación");
 
-    // "Reglas por aplicación" is per-device (dashboardSections.ts) — the device switcher
+    // "Reglas por aplicación" is per-device (dashboardSections.ts) — the device selector
     // defaults to whichever device loaded first, and global-setup paired exactly one, so no
     // selection is needed before the rule for it shows up.
     await expect(page.getByText(session.packageName)).toBeVisible();

@@ -71,3 +71,6 @@ compose.override.yml
 .claude/skills/impeccable/scripts/
 .claude/settings.local.json
 .claude/*.lock
+
+# Impeccable: review captures are regenerated every sprint; surface briefs are committed.
+.impeccable/review/
