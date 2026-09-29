@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.netprotect.app.feature.home.LoginScreen
 import com.netprotect.app.feature.home.ServiceStatus
 import com.netprotect.app.ui.theme.NetProtectTheme
@@ -55,7 +56,7 @@ class LoginScreenTest {
                 LoginScreen(error = null, service = ServiceStatus.Unavailable, onSignIn = {}, onRetryService = { count++ })
             }
         }
-        composeRule.onNodeWithText("Reintentar").performClick()
+        composeRule.onNodeWithText("Reintentar").performScrollTo().performClick()
         composeRule.waitForIdle()
         assertEquals(1, count)
     }
@@ -68,7 +69,7 @@ class LoginScreenTest {
                 LoginScreen(error = null, service = ServiceStatus.Ready, onSignIn = { signedIn = true }, onRetryService = {})
             }
         }
-        composeRule.onNodeWithText("Iniciar sesión con Google").performClick()
+        composeRule.onNodeWithText("Iniciar sesión con Google").performScrollTo().performClick()
         composeRule.waitForIdle()
         assertTrue(signedIn)
     }

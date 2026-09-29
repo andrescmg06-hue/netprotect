@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.netprotect.app.feature.home.RoleSelectionScreen
 import com.netprotect.app.ui.theme.NetProtectTheme
 import org.junit.Assert.assertTrue
@@ -82,7 +83,7 @@ class RoleSelectionScreenTest {
                 )
             }
         }
-        composeRule.onAllNodesWithText("Elegir")[0].performClick()
+        composeRule.onAllNodesWithText("Elegir")[0].performScrollTo().performClick()
         composeRule.waitForIdle()
         assertTrue(tutor)
         assertTrue(!supervised)
@@ -104,7 +105,7 @@ class RoleSelectionScreenTest {
                 )
             }
         }
-        composeRule.onAllNodesWithText("Elegir")[1].performClick()
+        composeRule.onAllNodesWithText("Elegir")[1].performScrollTo().performClick()
         composeRule.waitForIdle()
         assertTrue(supervised)
         assertTrue(!tutor)
@@ -125,7 +126,7 @@ class RoleSelectionScreenTest {
                 )
             }
         }
-        composeRule.onNodeWithText("Cerrar sesión").performClick()
+        composeRule.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
         composeRule.waitForIdle()
         assertTrue(signedOut)
     }
