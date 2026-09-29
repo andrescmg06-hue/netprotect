@@ -94,7 +94,7 @@ fun AppsScreen(
                 Spacer(Modifier.height(16.dp))
             }
             NpCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Column {
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
@@ -107,14 +107,14 @@ fun AppsScreen(
                                 tint = NpColors.SlateMuted,
                             )
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NpColors.SignalBlue,
                             unfocusedBorderColor = NpColors.HairlineStrong,
                             errorBorderColor = NpColors.Danger,
                         ),
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     NpButton(
                         text = "Actualizar",
                         onClick = onRefresh,
