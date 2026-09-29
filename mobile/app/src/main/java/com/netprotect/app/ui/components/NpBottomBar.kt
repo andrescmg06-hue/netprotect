@@ -1,6 +1,7 @@
 package com.netprotect.app.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
+import com.netprotect.app.ui.theme.NpElevation
+import com.netprotect.app.ui.theme.NpShapes
 import com.netprotect.app.ui.theme.NpText
 
 data class NpBottomItem(
@@ -45,10 +49,18 @@ fun NpBottomBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // A rounded white card with the card shadow, as in mockup 03; whoever places it decides
+    // whether it floats (outer padding) or sits at the edge.
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = NpShapes.Xl,
+        color = NpColors.PaperWhite,
+        border = BorderStroke(1.dp, NpColors.Hairline),
+        shadowElevation = NpElevation.Card,
+    ) {
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .background(NpColors.PaperWhite)
             .heightIn(min = 64.dp)
             .padding(vertical = 4.dp),
     ) {
@@ -98,6 +110,7 @@ fun NpBottomBar(
                 }
             }
         }
+    }
     }
 }
 
