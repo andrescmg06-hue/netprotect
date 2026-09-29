@@ -136,3 +136,66 @@ Pega la salida **real**:
 
 1. Archivos creados. 2. Salidas reales de §10 y de los tests. 3. Componentes con alguna decisión tuya
 (y por qué). 4. Pendientes, sin adornos. 5. Preguntas `[PREGUNTA PARA CLAUDE]`. No simules ninguna salida.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados
+
+**`{pkg}/ui/components/`** (23 archivos, uno por componente):
+`NpCard.kt`, `NpButton.kt` (+ `enum NpButtonVariant`), `IconTile.kt`, `ListRow.kt`, `StatusPill.kt`,
+`SeverityBadge.kt`, `InfoBanner.kt`, `SectionHeader.kt`, `EmptyState.kt`, `LoadingState.kt`,
+`ErrorState.kt`, `BrandHeader.kt`, `NpTopBar.kt`, `NpBottomBar.kt` (+ `data class NpBottomItem`),
+`SegmentedControl.kt`, `FilterChips.kt`, `UsageBar.kt`, `TimelineItem.kt`, `DayHeader.kt`,
+`CodeDisplay.kt`, `OtpInput.kt`, `ConfirmDialog.kt`, `PermissionCard.kt`.
+
+**`mobile/app/src/debug/`**: `java/com/netprotect/app/debug/DesignGallery.kt`,
+`java/com/netprotect/app/debug/DesignGalleryActivity.kt`, `AndroidManifest.xml`.
+
+**`mobile/app/src/androidTest/java/com/netprotect/app/ui/`**: `DesignGalleryTest.kt`, `ComponentsTest.kt`.
+
+### 2. Salidas reales (§10 y tests)
+
+`cd mobile && ./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL** (37 s, 116 tasks).
+
+`connectedDebugAndroidTest` (había emulador `Pixel_8` en `adb devices`): **16 tests, 0 fallos, 0 saltados** —
+`DesignGalleryTest.galleryRendersEverySectionTitle` (1), `ComponentsTest` (7: loading/disabled no llaman a
+`onClick`, OtpInput "12a34 56789"→"123456", CodeDisplay 0 s→"El código venció", SeverityBadge CRITICAL→"Crítica",
+ErrorState invoca `onRetry`, NpBottomBar ítems ≥48 dp) y los 8 Room preexistentes.
+
+`lintDebug`: **0 errores, 25 avisos**, ninguno en `ui/components` ni `src/debug`. (Durante el desarrollo aparecieron
+3 `AutoboxingStateCreation` en `DesignGallery.kt` por `mutableStateOf(0)`; corregidos a `mutableIntStateOf` y
+desaparecieron.)
+
+`grep -rnE "Color\(0x" .../ui/components .../src/debug` → **sin coincidencias** (solo `@Preview(backgroundColor = 0xFFF5F9FF)`).
+
+`mobile/app/src/main/AndroidManifest.xml` **no** contiene `DesignGalleryActivity` (verificado).
+
+Galería abierta en el emulador (`adb shell am start -n com.netprotect.app/com.netprotect.app.debug.DesignGalleryActivity`)
+y capturadas 6 pantallas con `adb shell screencap -p` + `pull` (3 posiciones distintas: arriba/medio/final) en
+`%TEMP%\sprint42b-gallery\`, fuera del repo.
+
+`git status --short` / `git diff --stat`: solo archivos de §5.
+
+### 3. Componentes con decisiones mías
+
+- **`UsageBar`**: la barra es de 8 dp y no hay radio de 4 dp en `NpShapes` (los radios literales están prohibidos);
+  usé `NpShapes.Sm` (8 dp), que sobre una barra de 8 dp da extremos totalmente redondeados.
+- **`NpButton`**: usé `heightIn(min = 48/40 dp)` (mínimo, no fijo) para que el texto pueda envolver a dos líneas sin
+  aplastarse en vertical, tal como exige el encargo ("no `TextButton` de Material").
+- **`CodeDisplay`**: agrupo los 6 dígitos 3+3 con espacio fino U+2009 ("espacio fino" del encargo); "Vence en m:ss" se
+  calcula de `remainingSeconds` (143 s → "2:23"; el "2:59" del encargo es ilustrativo del formato).
+- **`SegmentedControl`/`FilterChips`**: opciones a 48 dp (el encargo dice "Alto ≥ 48 dp" y `AGENTS.md` exige objetivo
+  táctil ≥48 dp), más altas que los 32 px visuales de `DESIGN.md`.
+- **Variante `Text` de `NpButton`**: "pulsado → SignalBlueText" lo resuelvo con `collectIsPressedAsState`.
+- **`StatusPill`/`SeverityBadge`**: el icono lleva `contentDescription = null` (decorativo; el texto ya informa).
+
+### 4. Pendientes
+
+Ninguno en lo que depende de mí. El E2E visual de la galería lo revisa Claude (yo no puedo ver las capturas:
+este modelo no acepta imágenes); las capturas quedan listas en `%TEMP%\sprint42b-gallery\`.
+
+### 5. Preguntas para Claude
+
+Ninguna.
