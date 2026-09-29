@@ -16,6 +16,9 @@ data class GeofenceEvent(
     val geofenceName: String,
     val eventType: String,
     val occurredAt: String,
+    // Sprint 45: matches an event to its zone (names can repeat or change). Null only if an older
+    // backend omits it; such an event still shows in the history, just not as a zone's last event.
+    val geofenceId: String? = null,
 )
 
 /** Read-only from Android, same as reglas/categorías (Sprint 8-10): creating and editing
@@ -44,6 +47,7 @@ class GeofenceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
                 geofenceName = event.getString("geofence_name"),
                 eventType = event.getString("event_type"),
                 occurredAt = event.getString("occurred_at"),
+                geofenceId = event.optString("geofence_id").takeIf { it.isNotBlank() && it != "null" },
             )
         }
     }

@@ -1,6 +1,20 @@
 package com.netprotect.app.feature.tutor
 
 import android.os.SystemClock
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import com.netprotect.app.core.network.ApplicationsClient
+import com.netprotect.app.core.network.DeviceSummary
+import com.netprotect.app.core.network.GeofenceClient
+import com.netprotect.app.core.network.LocationClient
+import com.netprotect.app.feature.tutor.apps.AppsScreen
+import com.netprotect.app.feature.tutor.geofences.GeofencesScreen
+import com.netprotect.app.feature.tutor.location.LocationScreen
+import com.netprotect.app.feature.tutor.sections.geofencesView
+import com.netprotect.app.feature.tutor.sections.locationView
+import com.netprotect.app.ui.state.Loader
+import java.time.ZoneId
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -183,11 +197,13 @@ fun TutorShell(
                         onOpenSection = { open(TutorRoute.Section(deviceId, it)) },
                     )
                 }
-                is TutorRoute.Section -> LegacyDeviceSectionScreen(
-                    section = route.section,
-                    deviceId = route.deviceId,
+                is TutorRoute.Section -> DeviceSectionRoute(
+                    route = route,
+                    device = (home.devices as? LoadState.Loaded)?.value?.firstOrNull { it.id == route.deviceId },
+                    now = now,
                     baseUrl = baseUrl,
                     session = session,
+                    onBack = { stack.value = stack.value.pop() },
                 )
             }
         }
@@ -198,6 +214,98 @@ fun TutorShell(
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+/** Sprint 45: Apps, Ubicación and Geocercas have their redesigned screens; the other three device
+ * sections still use the pre-redesign ones until Sprints 46–47. */
+@Composable
+private fun DeviceSectionRoute(
+    route: TutorRoute.Section,
+    device: DeviceSummary?,
+    now: Instant,
+    baseUrl: String,
+    session: TokenSession,
+    onBack: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val deviceId = route.deviceId
+    val today = remember(now) { now.atZone(ZoneId.systemDefault()).toLocalDate() }
+    when (route.section) {
+        DeviceSection.Apps -> {
+            val client = remember { ApplicationsClient(baseUrl) }
+            val apps = remember(deviceId) {
+                Loader { session.authorized { token -> client.getApplications(token, deviceId) } }
+            }
+            LaunchedEffect(deviceId) { apps.refresh() }
+            AppsScreen(
+                device = device,
+                apps = apps.state,
+                today = today,
+                now = now,
+                onRefresh = { scope.launch { apps.refresh() } },
+                onBack = onBack,
+            )
+        }
+        DeviceSection.Location -> {
+            val locationClient = remember { LocationClient(baseUrl) }
+            val geofenceClient = remember { GeofenceClient(baseUrl) }
+            val location = remember(deviceId) {
+                Loader {
+                    val report = session.authorized { token -> locationClient.getLatestLocation(token, deviceId) }
+                    // Only used to say "Dentro de «zona»"; if the zones can't be loaded the location
+                    // is still shown, just without that line.
+                    val zones = runCatching {
+                        session.authorized { token -> geofenceClient.listGeofences(token, deviceId) }
+                    }.getOrDefault(emptyList())
+                    locationView(report, zones)
+                }
+            }
+            LaunchedEffect(deviceId) { location.refresh() }
+            LocationScreen(
+                device = device,
+                location = location.state,
+                now = now,
+                onRefresh = { scope.launch { location.refresh() } },
+                onOpenMap = {
+                    // D-05: the coordinates leave the app only when the tutor taps this, and only to
+                    // the map app installed on this phone (a plain geo: intent, no API key, no tiles).
+                    val report = (location.state as? LoadState.Loaded)?.value?.report
+                    report != null && runCatching {
+                        val uri = "geo:${report.latitude},${report.longitude}?q=${report.latitude},${report.longitude}".toUri()
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    }.isSuccess
+                },
+                onBack = onBack,
+            )
+        }
+        DeviceSection.Geofences -> {
+            val client = remember { GeofenceClient(baseUrl) }
+            val geofences = remember(deviceId) {
+                Loader {
+                    geofencesView(
+                        geofences = session.authorized { token -> client.listGeofences(token, deviceId) },
+                        events = session.authorized { token -> client.listGeofenceEvents(token, deviceId) },
+                    )
+                }
+            }
+            LaunchedEffect(deviceId) { geofences.refresh() }
+            GeofencesScreen(
+                device = device,
+                geofences = geofences.state,
+                today = today,
+                now = now,
+                onRefresh = { scope.launch { geofences.refresh() } },
+                onBack = onBack,
+            )
+        }
+        else -> LegacyDeviceSectionScreen(
+            section = route.section,
+            deviceId = deviceId,
+            baseUrl = baseUrl,
+            session = session,
         )
     }
 }
