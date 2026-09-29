@@ -5,6 +5,10 @@ import com.netprotect.app.ui.theme.NpTone
 
 /** Etiquetas de alerta — textos **literales** del panel web (`frontend/src/lib/alertFormatting.ts`). */
 object AlertLabels {
+    // The API can omit the package or zone name; Kotlin would print the word "null" to the tutor.
+    private const val APP_FALLBACK = "una app"
+    private const val ZONE_FALLBACK = "una zona"
+
     fun levelLabel(level: String): String = when (level) {
         "INFO" -> "Info"
         "WARNING" -> "Advertencia"
@@ -30,10 +34,10 @@ object AlertLabels {
     }
 
     fun alertMessage(type: String, packageName: String?, geofenceName: String?): String = when (type) {
-        "APP_BLOCKED" -> "Se bloqueó $packageName"
-        "APP_LIMIT_REACHED" -> "Se alcanzó el límite de tiempo de $packageName"
-        "GEOFENCE_EXIT" -> "Salió de $geofenceName"
-        "GEOFENCE_ENTER" -> "Entró a $geofenceName"
+        "APP_BLOCKED" -> "Se bloqueó ${packageName ?: APP_FALLBACK}"
+        "APP_LIMIT_REACHED" -> "Se alcanzó el límite de tiempo de ${packageName ?: APP_FALLBACK}"
+        "GEOFENCE_EXIT" -> "Salió de ${geofenceName ?: ZONE_FALLBACK}"
+        "GEOFENCE_ENTER" -> "Entró a ${geofenceName ?: ZONE_FALLBACK}"
         "PERMISSION_REVOKED" -> "El permiso de acceso a uso de apps no está activo: el dispositivo no puede aplicar reglas"
         "SERVICE_INACTIVE" -> "El servicio de control de apps no está en ejecución en el dispositivo"
         "HEARTBEAT_SILENCE" -> "El dispositivo dejó de reportarse durante un periodo anormalmente largo"
