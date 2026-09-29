@@ -42,7 +42,7 @@ import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.feature.supervised.SupervisedScreen
-import com.netprotect.app.feature.tutor.TutorScreen
+import com.netprotect.app.feature.tutor.TutorShell
 import kotlinx.coroutines.launch
 
 private const val ROLE_TUTOR = "TUTOR"
@@ -189,9 +189,10 @@ fun HomeScreen() {
                 onSelectSupervised = { selectRole(current.user, ROLE_SUPERVISADO) },
                 onSignOut = { scope.launch { signOut() } },
             )
-            is HomeState.InTutorMode -> TutorScreen(
+            is HomeState.InTutorMode -> TutorShell(
                 baseUrl = BuildConfig.API_BASE_URL,
                 session = authRepository.session,
+                user = current.user,
                 onSignOut = ::signOut,
                 onSwitchMode = { switchMode(current.user) },
             )
