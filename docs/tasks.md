@@ -45,10 +45,10 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-01 | P1 | done | Token de la UI caduca a los 15 min sin renovarse — S41 |
 | G-02 | P1 | done | Posible carrera entre refresh concurrentes (verificar; puede revocar la familia de tokens) — S41 |
 | G-03 | P2 | done | Sin modelo de errores: se muestran `HTTP 401` crudos o se tragan (`runCatching`) — S41 |
-| G-04 | P1 | todo | Sin tema, tipografía, iconos, logo ni icono de lanzador — S42 |
-| G-05 | P1 | todo | Sin componentes compartidos (tarjeta, badge, estados vacío/carga/error, fila…) — S42 |
-| G-06 | P1 | todo | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — S42/S44/S48 |
-| G-07 | P2 | todo | Formateadores ("hace 12 min", "1 h 24 min", Hoy/Ayer) y etiquetas dispersos — S42 |
+| G-04 | P1 | done | Sin tema, tipografía, iconos, logo ni icono de lanzador — S42 |
+| G-05 | P1 | done | Sin componentes compartidos (tarjeta, badge, estados vacío/carga/error, fila…) — S42 |
+| G-06 | P1 | doing | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — esqueleto hecho en S42 (NavStack); rutas y shells en S44/S48 |
+| G-07 | P2 | done | Formateadores ("hace 12 min", "1 h 24 min", Hoy/Ayer) y etiquetas dispersos — S42 |
 | G-08 | P2 | todo | `TutorScreen.kt` monolítico (963 líneas; ver D-06 de deuda técnica) — S44 |
 | G-09 | P3 | todo | Cuenta atrás real del código de vinculación (`expires_in_seconds`) — S44 |
 | G-10 | P3 | todo | `os_version`/`app_version` no se leen en `DeviceClient` — S44 |
@@ -71,7 +71,7 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-27 | P2 | todo | Accesibilidad, rotación, sin conexión, build release, código muerto — S51 |
 | L-01 | P1 | done | `AuthRepository.kt:32`: `CredentialManager.getCredential` sin capturar `NoCredentialException` (lint CredentialManagerMisuse); revisar con `security-reviewer` — S41 |
 | L-02 | P2 | todo | `AndroidManifest.xml:62`: `allowBackup` obsoleto y falta `dataExtractionRules` (lint DataExtractionRules); privacidad de datos de menores — S51 |
-| L-03 | P2 | todo | `AndroidManifest.xml:61`: falta `android:icon` explícito (lint MissingApplicationIcon); lo cubre G-04 — S42 |
+| L-03 | P2 | done | `AndroidManifest.xml:61`: falta `android:icon` explícito (lint MissingApplicationIcon); lo cubre G-04 — S42 |
 | L-04 | P3 | todo | 11 avisos UseKtx (`SharedPreferences.edit`, `String.toUri`) y 13 de dependencias/AGP desactualizados (lint); actualizar aparte, no durante el rediseño |
 | L-05 | P2 | todo | `backend/.venv` desactualizado (falta `prometheus_client`): `pytest -m "not integration"` no se puede ejecutar local (21 errores de colección) |
 | L-06 | P2 | todo | Solo `RuleEvaluator` tiene tests en Android (35); el rediseño de UI no tiene red de seguridad hasta D-13 (S42) |

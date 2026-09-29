@@ -580,3 +580,13 @@ alertas duplicadas. Probado en un teléfono real con tokens de 1 minuto.
 
 El detalle está en `docs/sprint-41.md`.
 
+## Alcance del Sprint 42
+
+Base del rediseño de la app Android, sin cambiar ninguna pantalla todavía: tema claro con los colores,
+la tipografía (Inter) y las formas de `DESIGN.md`; 52 iconos Lucide; logo e icono de lanzador; formateadores
+de fechas y duraciones y etiquetas en español; 23 componentes compartidos con su vista previa; una galería
+de componentes que solo existe en builds de depuración; y el esqueleto de navegación (una pila de rutas que
+sobrevive a la rotación). Primer sprint con trabajo delegado a DeepSeek, revisado y corregido por Claude.
+
+El detalle está en `docs/sprint-42.md`.
+
