@@ -590,3 +590,12 @@ sobrevive a la rotación). Primer sprint con trabajo delegado a DeepSeek, revisa
 
 El detalle está en `docs/sprint-42.md`.
 
+## Alcance del Sprint 43
+
+Primeras pantallas reales de la app Android rediseñadas sobre el sistema de diseño: carga, inicio de sesión con
+Google y elección de modo (Tutor o Supervisado), según los mockups 1 y 2. El login muestra ahora una sola línea de
+estado del servicio ("Comprobando", "Listo" o "No disponible" con "Reintentar") en lugar del detalle de base de datos
+y Redis. No cambia el flujo de autenticación.
+
+El detalle está en `docs/sprint-43.md`.
+
