@@ -47,12 +47,12 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-03 | P2 | done | Sin modelo de errores: se muestran `HTTP 401` crudos o se tragan (`runCatching`) — S41 |
 | G-04 | P1 | done | Sin tema, tipografía, iconos, logo ni icono de lanzador — S42 |
 | G-05 | P1 | done | Sin componentes compartidos (tarjeta, badge, estados vacío/carga/error, fila…) — S42 |
-| G-06 | P1 | doing | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — esqueleto hecho en S42 (NavStack); rutas y shells en S44/S48 |
+| G-06 | P1 | doing | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — esqueleto S42; shell del tutor S44; shell del supervisado S48 |
 | G-07 | P2 | done | Formateadores ("hace 12 min", "1 h 24 min", Hoy/Ayer) y etiquetas dispersos — S42 |
-| G-08 | P2 | todo | `TutorScreen.kt` monolítico (963 líneas; ver D-06 de deuda técnica) — S44 |
-| G-09 | P3 | todo | Cuenta atrás real del código de vinculación (`expires_in_seconds`) — S44 |
-| G-10 | P3 | todo | `os_version`/`app_version` no se leen en `DeviceClient` — S44 |
-| G-11 | P2 | todo | Desvincular sin confirmación; fallos silenciados — S44 |
+| G-08 | P2 | done | `TutorScreen.kt` monolítico (963 líneas; ver D-06 de deuda técnica) — S44 |
+| G-09 | P3 | done | Cuenta atrás real del código de vinculación (`expires_in_seconds`) — S44 |
+| G-10 | P3 | done | `os_version`/`app_version` no se leen en `DeviceClient` — S44 |
+| G-11 | P2 | done | Desvincular sin confirmación; fallos silenciados — S44 |
 | G-12 | P3 | todo | Apps: búsqueda, fecha real del uso, iconos (D-07 = icono local o monograma) — S45 |
 | G-13 | P2 | todo | Ubicación/geocercas con textos de retraso y sin datos inventados (D-05) — S45 |
 | G-14 | P3 | todo | Historial agrupado por día con nombre de app — S46 |

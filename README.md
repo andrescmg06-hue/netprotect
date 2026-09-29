@@ -599,3 +599,12 @@ y Redis. No cambia el flujo de autenticación.
 
 El detalle está en `docs/sprint-43.md`.
 
+## Alcance del Sprint 44
+
+El modo tutor de la app Android deja de ser una sola columna: barra inferior con Inicio, Dispositivos, Actividad y Más;
+el detalle de cada dispositivo abre sus seis secciones como pantallas. Desvincular pide confirmación, renombrar valida el
+nombre, el código de vinculación muestra una cuenta atrás real y cada dispositivo indica su versión de Android y su última
+actividad. Las secciones del dispositivo conservan su aspecto anterior hasta los Sprints 45–47.
+
+El detalle está en `docs/sprint-44.md`.
+

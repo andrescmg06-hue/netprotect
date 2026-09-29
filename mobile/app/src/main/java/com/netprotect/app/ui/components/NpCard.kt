@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -18,12 +19,15 @@ import com.netprotect.app.ui.theme.NpElevation
 import com.netprotect.app.ui.theme.NpShadow
 import com.netprotect.app.ui.theme.NpShapes
 
-/** Tarjeta blanca con borde `Hairline`, sombra `NpElevation.Card` y radio 16 dp. Si `onClick` no es
+/** Tarjeta (blanca por defecto; `containerColor`/`borderColor` para variantes como la zona de
+ * peligro) con borde `Hairline`, sombra `NpElevation.Card` y radio 16 dp. Si `onClick` no es
  * null, es pulsable con semántica de botón (objetivo táctil ≥ 48 dp). */
 @Composable
 fun NpCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    containerColor: Color = NpColors.PaperWhite,
+    borderColor: Color = NpColors.Hairline,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = NpShapes.Xl
@@ -43,16 +47,16 @@ fun NpCard(
             onClick = onClick,
             modifier = shadowed,
             shape = shape,
-            color = NpColors.PaperWhite,
-            border = BorderStroke(1.dp, NpColors.Hairline),
+            color = containerColor,
+            border = BorderStroke(1.dp, borderColor),
             content = body,
         )
     } else {
         Surface(
             modifier = shadowed,
             shape = shape,
-            color = NpColors.PaperWhite,
-            border = BorderStroke(1.dp, NpColors.Hairline),
+            color = containerColor,
+            border = BorderStroke(1.dp, borderColor),
             content = body,
         )
     }

@@ -10,6 +10,9 @@ data class DeviceSummary(
     val status: String,
     val lastSeenAt: String?,
     val timezone: String?,
+    // Sprint 44: already in the backend's DeviceResponse; null when the device never reported it.
+    val osVersion: String? = null,
+    val appVersion: String? = null,
 )
 
 data class MyDeviceInfo(
@@ -28,6 +31,11 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         val devices = payload.getJSONArray("devices")
         return (0 until devices.length()).map { index -> devices.getJSONObject(index).toSummary() }
     }
+
+    /** Sprint 44: one device the tutor supervises (the detail screen reloads it on its own). The
+     * backend answers 404 both when it doesn't exist and when it isn't this tutor's. */
+    suspend fun getDevice(accessToken: String, deviceId: String): DeviceSummary =
+        getJson("/api/v1/devices/$deviceId", accessToken).toSummary()
 
     /** What the server currently believes about this signed-in account's own device, or null
      * if it isn't linked (server-side truth, not the local pairing cache — see
@@ -116,6 +124,8 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             status = status.getString("status"),
             lastSeenAt = status.optString("last_seen_at").takeIf { it.isNotBlank() },
             timezone = optString("timezone").takeIf { it.isNotBlank() },
+            osVersion = optString("os_version").takeIf { it.isNotBlank() && it != "null" },
+            appVersion = optString("app_version").takeIf { it.isNotBlank() && it != "null" },
         )
     }
 }

@@ -1,16 +1,17 @@
 # Progreso — NetProtect
-_Actualizado: 2026-09-28 · Sprint actual: 43_
+_Actualizado: 2026-09-28 · Sprint actual: 44_
 
 ## En curso
 - Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
   trabajo) para que el contexto por área cargue solo según la ruta tocada.
 
 ## Siguiente paso
-- S44 (Tutor: estructura, Inicio y Detalle del dispositivo, pantallas 3–4): crea la navegación del tutor y
-  parte `TutorScreen.kt`. Es el sprint más grande del modo tutor. Plan:
-  `docs/android-redesign/sprints/S44-tutor-inicio-y-detalle.md`.
+- S45 (Apps, Ubicación y Geocercas, pantallas 5–7): datos de un menor; incluye la revisión de privacidad.
+  Plan: `docs/android-redesign/sprints/S45-tutor-apps-ubicacion-geocercas.md`.
 
 ## Terminado recientemente
+- Sprint 44: modo tutor con barra inferior, Inicio, Dispositivos, Detalle (desvincular con confirmación) y Más —
+  `docs/sprint-44.md`
 - Sprint 43: pantallas de carga, inicio de sesión y elegir modo rediseñadas (mockups 1–2) — `docs/sprint-43.md`
 - Sprint 42: sistema de diseño Android (tema, Inter, iconos Lucide, formateadores, 23 componentes,
   galería de depuración) y esqueleto de navegación — `docs/sprint-42.md`
