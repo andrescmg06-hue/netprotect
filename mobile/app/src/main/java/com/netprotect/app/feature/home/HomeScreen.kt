@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,6 +84,8 @@ fun HomeScreen() {
 
     var state by remember { mutableStateOf<HomeState>(HomeState.Loading) }
     var infraState by remember { mutableStateOf<InfraState>(InfraState.Checking) }
+    // Sprint 43: bumped by "Reintentar"; one tap = one new /health/ready check, never a loop.
+    var infraAttempt by remember { mutableIntStateOf(0) }
 
     fun stateAfterSignIn(user: CurrentUser): HomeState =
         when (RolePreference.read(context)) {
@@ -148,8 +151,9 @@ fun HomeScreen() {
     // Only worth checking (and showing) while the user is stuck at the sign-in screen: it's
     // the one place "no se pudo iniciar sesión" is ambiguous between a bad login and a
     // backend that simply isn't reachable yet.
-    LaunchedEffect(state) {
+    LaunchedEffect(state, infraAttempt) {
         if (state is HomeState.SignedOut) {
+            infraState = InfraState.Checking
             infraState = try {
                 InfraState.Ready(healthClient.check()).also {
                     // Sprint 41: a session kept while the backend was unreachable at startup
@@ -162,16 +166,24 @@ fun HomeScreen() {
         }
     }
 
+    // The Surface keeps the old dark colour only for the Tutor/Supervised screens that have not been
+    // redesigned yet (S44/S48); the three screens below paint their own light background.
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF090B10)) {
         when (val current = state) {
-            HomeState.Loading -> LoadingContent()
-            is HomeState.SignedOut -> SignedOutContent(
+            HomeState.Loading -> LoadingScreen()
+            is HomeState.SignedOut -> LoginScreen(
                 error = current.error,
-                infraState = infraState,
+                service = when (infraState) {
+                    InfraState.Checking -> ServiceStatus.Checking
+                    is InfraState.Ready -> ServiceStatus.Ready
+                    is InfraState.Error -> ServiceStatus.Unavailable
+                },
                 onSignIn = ::signIn,
+                onRetryService = { infraAttempt++ },
             )
-            is HomeState.SelectingRole -> RoleSelectionContent(
-                user = current.user,
+            is HomeState.SelectingRole -> RoleSelectionScreen(
+                displayName = current.user.displayName,
+                email = current.user.email,
                 error = current.error,
                 onSelectTutor = { selectRole(current.user, ROLE_TUTOR) },
                 onSelectSupervised = { selectRole(current.user, ROLE_SUPERVISADO) },
@@ -189,170 +201,6 @@ fun HomeScreen() {
                 onSignOut = ::signOut,
                 onSwitchMode = { switchMode(current.user) },
             )
-        }
-    }
-}
-
-@Composable
-private fun LoadingContent() {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("Cargando…", color = Color.White, fontSize = 18.sp)
-    }
-}
-
-@Composable
-private fun SignedOutContent(error: String?, infraState: InfraState, onSignIn: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 48.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = "NETPROTECT",
-            color = Color(0xFF6BE3BF),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Control parental",
-            color = Color.White,
-            fontSize = 34.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        Text(
-            text = "Inicia sesión con tu cuenta de Google para continuar como tutor o como " +
-                "dispositivo supervisado.",
-            color = Color(0xFFABB5C4),
-            fontSize = 16.sp,
-            lineHeight = 23.sp,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF121722),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                error?.let {
-                    Text(it, color = Color(0xFFFFB4AB), fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-                Button(
-                    onClick = onSignIn,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1D6E5A),
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Text("Iniciar sesión con Google")
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(14.dp))
-        InfraStatusLine(infraState)
-    }
-}
-
-@Composable
-private fun InfraStatusLine(state: InfraState) {
-    when (state) {
-        InfraState.Checking -> Text(
-            "Comprobando conexión con el servidor…",
-            color = Color(0xFF7D899A),
-            fontSize = 12.sp,
-        )
-        is InfraState.Error -> Text(
-            "Servidor no disponible: ${state.message}",
-            color = Color(0xFFFFB4AB),
-            fontSize = 12.sp,
-        )
-        is InfraState.Ready -> Text(
-            "Servidor: ${state.health.backend.uppercase()} · " +
-                "BD: ${state.health.database.uppercase()} · " +
-                "Redis: ${state.health.redis.uppercase()}",
-            color = Color(0xFF6BE3BF),
-            fontSize = 12.sp,
-        )
-    }
-}
-
-@Composable
-private fun RoleSelectionContent(
-    user: CurrentUser,
-    error: String?,
-    onSelectTutor: () -> Unit,
-    onSelectSupervised: () -> Unit,
-    onSignOut: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 48.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = "Hola, ${user.displayName ?: user.email}",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "¿Cómo vas a usar este dispositivo?",
-            color = Color(0xFFABB5C4),
-            fontSize = 16.sp,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-
-        RoleOptionCard(
-            title = "Soy tutor",
-            description = "Superviso otros dispositivos desde este teléfono o tablet.",
-            onClick = onSelectTutor,
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        RoleOptionCard(
-            title = "Este es el dispositivo supervisado",
-            description = "Este teléfono es el que un tutor va a supervisar.",
-            onClick = onSelectSupervised,
-        )
-
-        error?.let {
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(it, color = Color(0xFFFFB4AB), fontSize = 13.sp)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-            TextButton(onClick = onSignOut) {
-                Text("Cerrar sesión", color = Color(0xFFABB5C4))
-            }
-        }
-    }
-}
-
-@Composable
-private fun RoleOptionCard(title: String, description: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF121722),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(description, color = Color(0xFFABB5C4), fontSize = 14.sp, lineHeight = 20.sp)
-            Spacer(modifier = Modifier.height(14.dp))
-            Button(
-                onClick = onClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1D6E5A),
-                    contentColor = Color.White,
-                ),
-            ) {
-                Text("Elegir")
-            }
         }
     }
 }
