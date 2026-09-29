@@ -186,3 +186,49 @@ Pega la salida **real** (no la inventes):
 Errores que se cometieron en el S42 y que debes evitar: escribir una regla contradictoria sin avisar (si una instrucción
 de este encargo se contradice, dilo en el informe en vez de elegir en silencio), y declarar como verificado algo que no
 ejecutaste (los tests conectados se ejecutan o se declaran PENDIENTES).
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos modificados / creados
+
+**Modificados (rellenados los cuerpos, firmas intactas)**:
+`{pkg}/feature/home/LoadingScreen.kt`, `LoginScreen.kt`, `RoleSelectionScreen.kt`.
+
+**Creados**:
+`mobile/app/src/androidTest/java/com/netprotect/app/ui/LoginScreenTest.kt`,
+`mobile/app/src/androidTest/java/com/netprotect/app/ui/RoleSelectionScreenTest.kt`,
+`mobile/app/src/debug/java/com/netprotect/app/debug/ScreensGallery.kt`,
+`mobile/app/src/debug/java/com/netprotect/app/debug/ScreensGalleryActivity.kt`.
+
+**Modificado** (solo se añadió la actividad): `mobile/app/src/debug/AndroidManifest.xml`
+(`ScreensGalleryActivity`, mismo formato que `DesignGalleryActivity`).
+
+`HomeScreen.kt` **no** aparece en `git status` (no se tocó).
+
+### 2. Salidas reales (§11 y tests)
+
+- `cd mobile && ./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL** (47 s, 116 tasks).
+- `lintDebug`: **0 errores, 25 avisos** (base 25); **ninguno** en `feature/home` ni `src/debug`.
+- `./gradlew connectedDebugAndroidTest` en el emulador `Pixel_8` (encendido): **32 tests, 0 fallos, 0 saltados**.
+  De ellos, 16 son míos y pasaron:
+  - `LoginScreenTest` (8): `checkingShowsItsLabelAndNoRetry`, `readyShowsItsLabel`, `unavailableShowsItsLabelAndRetry`, `retryCallsOnRetryServiceExactlyOnce`, `signInCallsOnSignIn`, `errorIsShownWhenPresent`, `errorIsAbsentWhenNull`, `noInfrastructureJargonIsShown`.
+  - `RoleSelectionScreenTest` (8): `greetsWithFirstName`, `greetsWithEmailWhenNameIsNull`, `greetsWithEmailWhenNameIsBlank`, `tutorChoiceCallsOnSelectTutor`, `supervisedChoiceCallsOnSelectSupervised`, `signOutCallsOnSignOut`, `errorShowsWhenPresent`, `errorAbsentWhenNull`.
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(" .../feature/home .../src/debug` → **solo** `HomeScreen.kt:171` (`Color(0xFF090B10)`), que es **preexistente de Claude** (la superficie oscura de Tutor/Supervised aún no rediseñadas). Mis archivos (3 pantallas + 2 galería) no tienen ninguna coincidencia.
+- Galería abierta en el emulador (`adb shell am start -n com.netprotect.app/com.netprotect.app.debug.ScreensGalleryActivity`) y verificada con `uiautomator dump`: se ven "LoadingScreen" (logo "Net"/"Protect" + "Cargando…") y el título "LoginScreen · Checking". Capturas guardadas fuera del repo en `%TEMP%\sprint43-gallery\`.
+
+### 3. Lo que decidí fuera del encargo
+
+- **Ancho del marco de la galería**: el encargo pide "360 dp de ancho"; usé `Modifier.fillMaxWidth()` (≈328 dp tras el padding de 16 dp de la galería) porque un marco literal de 360 dp se desbordaría del ancho disponible en un teléfono de 360 dp. La altura sí es `760.dp` literal.
+- **Pie del `LoginScreen`**: va como hijo del `Box` raíz con `align(Alignment.BottomCenter)` + `navigationBarsPadding()` + `padding(bottom = 24.dp)`, fuera del bloque centrado (la sugerencia del encargo).
+- **Nombre del saludo**: `displayName?.trim().orEmpty().substringBefore(' ').ifBlank { email }` — cumple "primera palabra" y "null/en blanco → correo" (los 3 casos están en los tests).
+
+### 4. Pendientes
+
+- **No pude revisar las capturas visualmente** (este modelo no acepta imágenes). Las capturas quedan en `%TEMP%\sprint43-gallery\` para Claude.
+- **Nota sobre la galería**: el `verticalScroll` exterior de `ScreensGallery` no respondió a `adb shell input swipe`/`input roll` (el gesto cae sobre el `verticalScroll` interior de cada pantalla). Con `uiautomator` confirmé que la galería **sí renderiza** y que el `ScrollView` exterior es `scrollable=true`; el deslizamiento real con el dedo debería funcionar por el *nested scroll* estándar de Compose, pero no lo pude confirmar con gesto sintético. Lo dejo anotado por si Claude quiere verificarlo al tocar la galería.
+
+### 5. Preguntas para Claude
+
+Ninguna.
