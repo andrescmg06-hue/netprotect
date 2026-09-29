@@ -220,3 +220,49 @@ Pega la salida **real**:
 1. Archivos modificados/creados. 2. Salidas reales de §11 y de los tests. 3. Decisiones tuyas fuera del encargo (y por qué).
 4. Pendientes. 5. `[PREGUNTA PARA CLAUDE]`. Si una instrucción de este encargo contradice a otra o al código, **dilo en el
 informe** en lugar de elegir en silencio. Lo que no ejecutaste, se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos modificados / creados
+
+**Reemplazados los cuerpos (firmas intactas)**: `feature/tutor/home/TutorHomeScreen.kt`,
+`feature/tutor/devices/DevicesScreen.kt`, `feature/tutor/device/DeviceDetailScreen.kt`,
+`feature/tutor/more/MoreScreen.kt`. `InterimDeviceList` **eliminado** (verificado: 0 coincidencias).
+
+**Creados**: `feature/tutor/devices/DeviceListItem.kt` (con `DeviceListItem` + el composable interno
+`DeviceList` de los 4 estados) y los 4 tests androidTest
+(`TutorHomeScreenTest`, `DevicesScreenTest`, `DeviceDetailScreenTest`, `MoreScreenTest`).
+
+**Modificado**: `src/debug/.../ScreensGallery.kt` (secciones nuevas de las 4 pantallas).
+
+`TutorShell.kt` y los `*State.kt` **no** aparecen en `git status`.
+
+### 2. Salidas reales (§11 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL** (51 s).
+- `lintDebug`: **0 errores, 25 avisos** (base 25); **ninguno** en `feature/tutor/{home,devices,device,more}`.
+- `./gradlew connectedDebugAndroidTest` (emulador `Pixel_8`): **50 tests, 0 fallos, 0 saltados**. De ellos, 18 son de este sprint y pasaron:
+  - `TutorHomeScreenTest` (9): idle→onGenerateCode; active→"Uso único…"+"Revocar"→onRevokeCode; expired→"El código venció…"; failed→mensaje+"Entendido"→onDismissPairing; lista vacía→"Todavía no hay dispositivos…"; tocar dispositivo→onOpenDevice(id); osVersion null→"Android" (no "Android null"); estado→"En línea" (no "ONLINE"); lastSeenAt null→"Sin actividad registrada todavía.".
+  - `DevicesScreenTest` (1): failed→mensaje+"Reintentar"→onRefresh.
+  - `DeviceDetailScreenTest` (5): desvincular abre diálogo y "Cancelar" no llama; "Desvincular" llama una vez; `RenameUi("   ")`→"Guardar" deshabilitado; `Failed(notFound=true)`→mensaje+"Volver a dispositivos"→onBack; "Alertas"→onOpenSection(Alerts).
+  - `MoreScreenTest` (3): "Versión 0.1.0" + frase de privacidad; "Cambiar de modo"→onSwitchMode; "Cerrar sesión"→onSignOut.
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|currentTimeMillis" .../feature/tutor/{home,devices,device,more}` → **sin coincidencias**.
+- `grep -rn "InterimDeviceList" mobile/app/src` → **sin coincidencias**.
+- Galería abierta y capturadas **9 pantallas distintas** fuera del repo en `%TEMP%\sprint44-gallery\` (esta vez el deslizamiento lento de 1500 ms sí hizo scroll del `verticalScroll` exterior, a diferencia del S43 donde usé 1200 ms). La actividad quedó enfocada y sin `FATAL` en logcat.
+
+### 3. Decisiones tuyas fuera del encargo
+
+- **`DeviceList`** (composable `internal` en `DeviceListItem.kt`) es la "función privada o composable interno" que pedía §7.2; recibe `onRetry` además de los datos.
+- **Formato "Android {osVersion}" y "Última actividad: …" duplicado** en `DeviceDetailScreen` (inline) respecto a los helpers `private` de `DeviceListItem.kt`, porque están en paquetes distintos (`device` vs `devices`) y no quise acoplar pantallas.
+- **`MoreScreen`**: añadí un `Spacer(24.dp)` final (no lo menciona §7.6 explícitamente) por coherencia con las otras tres pantallas y para no pegar la última tarjeta a la barra inferior.
+- **Tarjeta "Cerrar sesión" de `MoreScreen` sin chevron** (el encargo la describe sin él, a diferencia de "Cambiar de modo"): lo seguí literal.
+
+### 4. Pendientes
+
+- **Revisión visual** de las 4 pantallas y la galería: para Claude (este modelo no acepta imágenes). Las capturas quedan en `%TEMP%\sprint44-gallery\`.
+
+### 5. Preguntas para Claude
+
+Ninguna.
