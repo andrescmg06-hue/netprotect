@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,7 +37,9 @@ import com.netprotect.app.ui.theme.NpText
 
 enum class NpButtonVariant { Primary, Secondary, Text, Danger }
 
-/** Botón con 4 variantes. Alto ≥ 48 dp (`small` = 40 dp mínimo). `loading` sustituye el icono por un
+/** Botón con 4 variantes. `tintIcon = false` deja el icono en sus colores (la "G" de Google);
+ * `trailingIcon` pone una flecha al final y hace que el texto ocupe el centro del ancho disponible
+ * (úsalo con `Modifier.fillMaxWidth()`). Alto ≥ 48 dp (`small` = 40 dp mínimo). `loading` sustituye el icono por un
  * spinner y desactiva el botón (sin dobles toques); `enabled = false` baja la opacidad al 55 %. El
  * texto puede envolver a dos líneas sin aplastarse en vertical (no es un `TextButton` de Material). */
 @Composable
@@ -46,6 +49,8 @@ fun NpButton(
     modifier: Modifier = Modifier,
     variant: NpButtonVariant = NpButtonVariant.Primary,
     @DrawableRes icon: Int? = null,
+    tintIcon: Boolean = true,
+    @DrawableRes trailingIcon: Int? = null,
     loading: Boolean = false,
     enabled: Boolean = true,
     small: Boolean = false,
@@ -87,6 +92,7 @@ fun NpButton(
         contentAlignment = Alignment.Center,
     ) {
         Row(
+            modifier = if (trailingIcon != null) Modifier.fillMaxWidth() else Modifier,
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
@@ -102,7 +108,7 @@ fun NpButton(
                     painter = painterResource(icon),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = contentColor,
+                    tint = if (tintIcon) contentColor else Color.Unspecified,
                 )
                 Spacer(Modifier.width(8.dp))
             }
@@ -111,7 +117,17 @@ fun NpButton(
                 style = NpText.BodyStrong,
                 color = contentColor,
                 textAlign = TextAlign.Center,
+                modifier = if (trailingIcon != null) Modifier.weight(1f) else Modifier,
             )
+            if (trailingIcon != null) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(trailingIcon),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = contentColor,
+                )
+            }
         }
     }
 }

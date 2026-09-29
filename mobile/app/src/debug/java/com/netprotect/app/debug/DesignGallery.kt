@@ -2,6 +2,7 @@ package com.netprotect.app.debug
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.ColumnScope
@@ -91,6 +92,11 @@ fun DesignGallery() {
             NpButton("Deshabilitado", {}, enabled = false)
             NpButton("Con icono", {}, icon = NpIcons.Check)
             NpButton("Pequeño", {}, small = true)
+            NpButton(
+                "Iniciar sesión con Google", {}, Modifier.fillMaxWidth(), variant = NpButtonVariant.Secondary,
+                icon = NpIcons.GoogleG, tintIcon = false, trailingIcon = NpIcons.ArrowRight,
+            )
+            NpButton("Elegir", {}, Modifier.fillMaxWidth(), trailingIcon = NpIcons.ArrowRight)
         }
 
         Section("StatusPill") {
@@ -146,6 +152,7 @@ fun DesignGallery() {
         Section("BrandHeader") {
             BrandHeader()
             BrandHeader(subtitle = "Panel del tutor")
+            BrandHeader(modifier = Modifier.fillMaxWidth(), stacked = true)
         }
 
         Section("NpTopBar") {

@@ -7,7 +7,7 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 |---|---|---|---|---|
 | B-01 | P2 | todo | Dispositivos duplicados en `GET /devices/me` | `docs/sprint-29.md` |
 | B-02 | P2 | todo | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
-| B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado | Sprints 28–29 |
+| B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado. **Hallazgo S43:** `POST /users/me/roles` concede cualquier rol sin condiciones (`roles.py`), así que no hay error que mostrar en la app; hace falta un cambio de backend (p. ej. rechazar el canje en `pairing.py` cuando el tutor del código es la misma cuenta) | Sprints 28–29, `docs/sprint-43.md` |
 | B-04 | P1 | done | Latidos con 500: alertas duplicadas por reportes simultáneos (`MultipleResultsFound`) | `docs/sprint-41.md` |
 | B-05 | P2 | todo | Panel web: el sondeo de alertas no renueva el token caducado (401 cada minuto) | `docs/sprint-41-evidence.md` |
 | B-06 | P3 | todo | Android: con letra grande, los botones de texto se aplastan en vertical (pantallas actuales; lo cubre el rediseño) | `docs/sprint-41.md` |

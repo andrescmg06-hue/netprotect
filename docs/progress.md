@@ -1,15 +1,17 @@
 # Progreso — NetProtect
-_Actualizado: 2026-09-28 · Sprint actual: 42_
+_Actualizado: 2026-09-28 · Sprint actual: 43_
 
 ## En curso
 - Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
   trabajo) para que el contexto por área cargue solo según la ruta tocada.
 
 ## Siguiente paso
-- S43 (Login y Elegir modo, pantallas 1–2): primer sprint de pantallas sobre el sistema de diseño.
-  Plan: `docs/android-redesign/sprints/S43-login-y-elegir-modo.md`. Antes, fusionar los PRs del S41 y S42.
+- S44 (Tutor: estructura, Inicio y Detalle del dispositivo, pantallas 3–4): crea la navegación del tutor y
+  parte `TutorScreen.kt`. Es el sprint más grande del modo tutor. Plan:
+  `docs/android-redesign/sprints/S44-tutor-inicio-y-detalle.md`.
 
 ## Terminado recientemente
+- Sprint 43: pantallas de carga, inicio de sesión y elegir modo rediseñadas (mockups 1–2) — `docs/sprint-43.md`
 - Sprint 42: sistema de diseño Android (tema, Inter, iconos Lucide, formateadores, 23 componentes,
   galería de depuración) y esqueleto de navegación — `docs/sprint-42.md`
 - Sprint 41: la sesión Android sobrevive a los 15 min (renovación única por proceso), errores en
