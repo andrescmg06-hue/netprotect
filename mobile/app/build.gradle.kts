@@ -130,5 +130,10 @@ dependencies {
     // Room database still needs a real SQLite from the Android runtime, which is exactly what
     // room-testing's Room.inMemoryDatabaseBuilder() gives an androidTest, unlike a JVM unit test.
     androidTestImplementation(libs.androidx.room.testing)
+    // Sprint 42 (D-13): Compose UI tests (screen states, component gallery). Test-only artifacts,
+    // versions come from the Compose BOM above; ui-test-manifest adds the empty activity the
+    // tests host their content in, and only to debug builds.
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
