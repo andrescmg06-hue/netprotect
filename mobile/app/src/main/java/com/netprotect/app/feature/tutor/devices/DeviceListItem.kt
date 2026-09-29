@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.core.network.DeviceSummary
@@ -69,7 +70,7 @@ fun DeviceListItem(
                 )
                 Text(
                     text = "Los datos se sincronizan periódicamente.",
-                    style = NpText.Caption,
+                    style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
                     color = NpColors.SlateMuted,
                 )
             }
@@ -100,7 +101,7 @@ internal fun DeviceList(
                 EmptyState(
                     icon = NpIcons.Smartphone,
                     title = "Todavía no hay dispositivos vinculados.",
-                    message = "Genera un código de vinculación desde Inicio para añadir uno.",
+                    message = "Genera un código de vinculación para añadir uno.",
                     modifier = modifier,
                 )
             } else {

@@ -28,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -128,7 +129,7 @@ fun DeviceDetailScreen(
                         )
                         Text(
                             text = "Los datos se sincronizan periódicamente.",
-                            style = NpText.Caption,
+                            style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
                             color = NpColors.SlateMuted,
                         )
                         Spacer(Modifier.height(16.dp))
@@ -141,7 +142,7 @@ fun DeviceDetailScreen(
                             onEditRename = onEditRename,
                             onSaveRename = onSaveRename,
                             onCancelRename = onCancelRename,
-                            onConfirmUnlink = { confirming = true },
+                            onAskUnlink = { confirming = true },
                         )
                         Spacer(Modifier.height(16.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -185,7 +186,8 @@ private fun ManagementCard(
     onEditRename: (String) -> Unit,
     onSaveRename: () -> Unit,
     onCancelRename: () -> Unit,
-    onConfirmUnlink: () -> Unit,
+    // Opens the confirmation dialog; unlinking itself only happens from the dialog.
+    onAskUnlink: () -> Unit,
 ) {
     NpCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -245,7 +247,9 @@ private fun ManagementCard(
         }
         Spacer(Modifier.height(16.dp))
         NpCard(
-            onClick = if (unlinking) null else onConfirmUnlink,
+            onClick = if (unlinking) null else onAskUnlink,
+            containerColor = NpColors.DangerWash,
+            borderColor = NpColors.Danger.copy(alpha = 0.3f),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconTile(icon = NpIcons.Trash2, tone = NpTone.Danger, size = 48.dp)
