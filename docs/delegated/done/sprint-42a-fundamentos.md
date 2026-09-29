@@ -268,3 +268,79 @@ Ejecuta y pega la salida **real** en tu informe:
 1. Archivos creados/modificados (lista). 2. Versiones usadas de Inter y de Lucide. 3. Salidas reales de §7.
 4. Iconos con nombre distinto al de la lista (tabla). 5. Acciones de auditoría no listadas (si las hay).
 6. Pendientes, sin adornos. 7. Preguntas `[PREGUNTA PARA CLAUDE]`. No simules ninguna salida.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados / modificados
+
+**Creados — `{pkg}/ui/theme/`**: `Color.kt`, `Type.kt`, `Shape.kt`, `Elevation.kt`, `Tone.kt`, `Theme.kt`.
+**Creados — `{pkg}/ui/icons/`**: `NpIcons.kt`.
+**Creados — `{pkg}/ui/format/`**: `RelativeTime.kt`, `Durations.kt`, `DayGrouping.kt`, `Clock.kt`, `AlertLabels.kt`, `RuleLabels.kt`, `CategoryLabels.kt`, `AuditLabels.kt`, `DeviceStatusLabels.kt`.
+**Creados — `{res}/font/`**: `inter_regular.ttf`, `inter_medium.ttf`, `inter_semibold.ttf`, `inter_bold.ttf`.
+**Creados — `{res}/drawable/`**: 52 `ic_*.xml` (Lucide) + `ic_google_g.xml`.
+**Creados — `{res}/drawable-nodpi/`**: `logo_shield.png`, `logo_full.png`.
+**Creados — `{res}/mipmap-anydpi-v26/`**: `ic_launcher.xml`, `ic_launcher_round.xml`.
+**Creados — `{res}/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/`**: `ic_launcher_foreground.png` (5).
+**Creados — `{res}/values/`**: `ic_launcher_background.xml`.
+**Creados — `mobile/third_party_licenses/`**: `INTER-OFL.txt`, `LUCIDE-ISC.txt`, `README.md`.
+**Creados — tests** (`{test}/ui/format/`, `{test}/ui/theme/`): `RelativeTimeTest.kt`, `DurationsTest.kt`, `DayGroupingTest.kt`, `ClockTest.kt`, `LabelsTest.kt`, `ColorTokensTest.kt`.
+**Modificado**: `mobile/app/src/main/AndroidManifest.xml` (solo `android:icon` + `android:roundIcon`; +2 líneas).
+
+### 2. Versiones usadas
+
+- **Inter**: v4.1 (release de `github.com/rsms/inter`; `.ttf` estáticos de `extras/ttf/`).
+- **Lucide**: 1.48.0 (`github.com/lucide-icons/lucide`, carpeta `icons/`).
+
+### 3. Salidas reales (§7)
+
+`cd mobile && ./gradlew --console=plain test assembleDebug lintDebug` → **BUILD SUCCESSFUL** (26 s, 86 tasks).
+
+Conteo de tests JVM (`app/build/test-results/testDebugUnitTest/*.xml`), todos con 0 fallos/errores:
+
+| Clase | tests |
+|---|---|
+| `ui.format.ClockTest` | 1 |
+| `ui.format.DayGroupingTest` | 1 |
+| `ui.format.DurationsTest` | 5 |
+| `ui.format.LabelsTest` | 10 |
+| `ui.format.RelativeTimeTest` | 8 |
+| `ui.theme.ColorTokensTest` | 6 |
+
+(pre-existentes, también en verde: `TokenSessionTest` 13, `RuleEvaluatorTest` 34, `NavStackTest` 12, `ExampleUnitTest` 1).
+
+`lintDebug`: **0 errores, 28 avisos**. Los avisos **nuevos** (introducidos por este encargo) son 3, todos del icono de lanzador:
+- `MonochromeLauncherIcon` ×2 — `res/mipmap-anydpi-v26/ic_launcher.xml:2` y `ic_launcher_round.xml:2` (el `<adaptive-icon>` no lleva capa `<monochrome>`; §5.5 no la pide).
+- `ObsoleteSdkInt` ×1 — carpeta `res/mipmap-anydpi-v26/` (`-v26` es redundante con `minSdk 26`; es la carpeta que pide §5.5).
+
+El resto (25) son pre-existentes (`GradleDependency` 9, `UseKtx` 11, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 1, `DataExtractionRules` 1). El plan daba "base: 26"; yo mido 25 pre-existentes + 3 nuevos = 28. Ningún aviso en `ui/theme`, `ui/icons` ni `ui/format`.
+
+`grep -rnE "Color\(0x" mobile/app/src/main/java` (excluido `ui/theme/Color.kt`) → solo en `feature/**` pre-existentes (no míos); **ninguno** en mis archivos.
+
+`git status --short` / `git diff --stat`: solo archivos de §5 (la lista del punto 1); `AndroidManifest.xml` +2 líneas. Sin commits ni push; `GIT_OPTIONAL_LOCKS=0` en todo `git`.
+
+### 4. Iconos con nombre distinto al de la lista
+
+| Nombre de la lista | Nombre real (Lucide 1.48.0) | Archivo generado |
+|---|---|---|
+| `trash-2` | `trash` | `ic_trash_2.xml` |
+| `history` | `rotate-ccw-clock` | `ic_history.xml` |
+| `bar-chart-3` | `chart-column` | `ic_bar_chart_3.xml` |
+| `home` | `house` | `ic_home.xml` |
+| `building-2` | `building-complex` | `ic_building_2.xml` |
+| `more-horizontal` | `ellipsis` | `ic_more_horizontal.xml` |
+
+Los 46 restantes conservan el nombre de la lista. Todos son de trazo (`fillColor="#00000000"`), salvo `ic_google_g.xml` (4 colores, relleno).
+
+### 5. Acciones de auditoría no listadas
+
+**Ninguna.** Las 25 de §5.6 son exactamente las que emite el backend: 20 literales `action="…"` en `record_audit_event` + 5 de `_audit_action_for` (vista remota). No hay acciones extra que etiquetar.
+
+### 6. Pendientes
+
+- **Instalación en dispositivo/emulador**: `adb devices` no devuelve ningún dispositivo conectado, así que no pude instalar el APK ni comprobar en pantalla que el icono de lanzador es el escudo. **PENDIENTE**.
+
+### 7. Preguntas para Claude
+
+Ninguna.
