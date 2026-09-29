@@ -32,6 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.netprotect.app.core.auth.TokenSession
+import com.netprotect.app.core.auth.authorized
+import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.DeviceIdentity
 import com.netprotect.app.core.auth.LinkedDeviceStore
@@ -67,7 +70,7 @@ private sealed interface SupervisedState {
 @Composable
 fun SupervisedScreen(
     baseUrl: String,
-    accessToken: String,
+    session: TokenSession,
     onSignOut: suspend () -> Unit,
     onSwitchMode: () -> Unit,
 ) {
@@ -101,7 +104,7 @@ fun SupervisedScreen(
         val data = result.data
         val deviceId = LinkedDeviceStore.read(context)?.deviceId
         if (result.resultCode == android.app.Activity.RESULT_OK && data != null && deviceId != null) {
-            ScreenShareService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId, data)
+            ScreenShareService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId, data)
         } else {
             // The system dialog was dismissed. The tutor is still waiting on a "yes" that will
             // now never produce a stream, so say so rather than leaving them watching a spinner.
@@ -154,7 +157,7 @@ fun SupervisedScreen(
     LaunchedEffect(Unit) {
         val cached = LinkedDeviceStore.read(context)
         state = try {
-            val mine = deviceClient.getMyDevice(accessToken)
+            val mine = session.authorized { token -> deviceClient.getMyDevice(token) }
             val tutorLabel = mine?.tutorLabel
             // The device row can outlive every tutor link (all of them unlinked): /devices/me
             // still answers 200 in that case, with an empty tutor list. That is not "linked" —
@@ -183,18 +186,20 @@ fun SupervisedScreen(
         val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
         while (true) {
             runCatching {
-                deviceClient.sendHeartbeat(
-                    accessToken,
-                    deviceId,
-                    Build.VERSION.RELEASE,
-                    BuildConfig.VERSION_NAME,
-                    java.util.TimeZone.getDefault().id,
-                    // Sprint 20: read fresh on every beat, never cached — the whole point is
-                    // noticing the moment one of them changes (see app/services/tamper.py).
-                    usageAccessGranted = UsageAccessPermission.isGranted(context),
-                    serviceActive = EnforcementLiveness.isRecentlyActive(context),
-                    deviceTime = Instant.now(),
-                )
+                session.authorized { token ->
+                    deviceClient.sendHeartbeat(
+                        token,
+                        deviceId,
+                        Build.VERSION.RELEASE,
+                        BuildConfig.VERSION_NAME,
+                        java.util.TimeZone.getDefault().id,
+                        // Sprint 20: read fresh on every beat, never cached — the whole point is
+                        // noticing the moment one of them changes (see app/services/tamper.py).
+                        usageAccessGranted = UsageAccessPermission.isGranted(context),
+                        serviceActive = EnforcementLiveness.isRecentlyActive(context),
+                        deviceTime = Instant.now(),
+                    )
+                }
             }
             delay(HEARTBEAT_INTERVAL_MS)
         }
@@ -210,13 +215,15 @@ fun SupervisedScreen(
         val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
         while (true) {
             runCatching {
-                applicationsClient.syncApplications(
-                    accessToken = accessToken,
-                    deviceId = deviceId,
-                    usageDate = AppInventoryCollector.todayDateString(),
-                    installedApps = AppInventoryCollector.collectInstalledApps(context),
-                    dailyUsage = AppInventoryCollector.collectTodayUsage(context),
-                )
+                session.authorized { token ->
+                    applicationsClient.syncApplications(
+                        accessToken = token,
+                        deviceId = deviceId,
+                        usageDate = AppInventoryCollector.todayDateString(),
+                        installedApps = AppInventoryCollector.collectInstalledApps(context),
+                        dailyUsage = AppInventoryCollector.collectTodayUsage(context),
+                    )
+                }
             }
             delay(APP_SYNC_INTERVAL_MS)
         }
@@ -231,7 +238,7 @@ fun SupervisedScreen(
         val linked = state as? SupervisedState.Linked
         val deviceId = LinkedDeviceStore.read(context)?.deviceId
         if (linked != null && hasUsageAccess && deviceId != null) {
-            RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
+            RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
         }
         onDispose { RuleEnforcementService.stop(context) }
     }
@@ -245,7 +252,7 @@ fun SupervisedScreen(
         val linked = state as? SupervisedState.Linked
         val deviceId = LinkedDeviceStore.read(context)?.deviceId
         if (linked != null && hasLocationPermission && deviceId != null) {
-            LocationReportingService.start(context, BuildConfig.API_BASE_URL, accessToken, deviceId)
+            LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
         }
         onDispose { LocationReportingService.stop(context) }
     }
@@ -264,13 +271,19 @@ fun SupervisedScreen(
 
         val client = RealtimeClient(BuildConfig.API_BASE_URL)
         screenShareSignaling = client
-        client.connect(deviceId, accessToken) { event, _ ->
-            when (event) {
-                "screen_share_request" -> screenShareRequested = true
-                "screen_share_stop" -> screenShareRequested = false
+        // Sprint 41: the socket authenticates once, with its first frame — so it must get a valid
+        // token, not the last one this screen happened to see (possibly expired or empty).
+        val connecting = scope.launch {
+            val token = runCatching { session.validAccessToken() }.getOrNull() ?: return@launch
+            client.connect(deviceId, token) { event, _ ->
+                when (event) {
+                    "screen_share_request" -> screenShareRequested = true
+                    "screen_share_stop" -> screenShareRequested = false
+                }
             }
         }
         onDispose {
+            connecting.cancel()
             client.disconnect()
             screenShareSignaling = null
         }
@@ -335,20 +348,22 @@ fun SupervisedScreen(
                             onClick = {
                                 scope.launch {
                                     try {
-                                        val result = pairingClient.redeem(
-                                            accessToken = accessToken,
-                                            code = codeInput,
-                                            deviceInstanceId = deviceInstanceId,
-                                            deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
-                                            osVersion = Build.VERSION.RELEASE,
-                                            appVersion = BuildConfig.VERSION_NAME,
-                                        )
+                                        val result = session.authorized { token ->
+                                            pairingClient.redeem(
+                                                accessToken = token,
+                                                code = codeInput,
+                                                deviceInstanceId = deviceInstanceId,
+                                                deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
+                                                osVersion = Build.VERSION.RELEASE,
+                                                appVersion = BuildConfig.VERSION_NAME,
+                                            )
+                                        }
                                         val label = result.tutor.displayName ?: result.tutor.email
                                         LinkedDeviceStore.write(context, result.deviceId, label)
                                         state = SupervisedState.Linked(label)
                                     } catch (exception: Exception) {
                                         state = SupervisedState.EnteringCode(
-                                            exception.message ?: "No se pudo vincular"
+                                            exception.toUiError().message
                                         )
                                     }
                                 }

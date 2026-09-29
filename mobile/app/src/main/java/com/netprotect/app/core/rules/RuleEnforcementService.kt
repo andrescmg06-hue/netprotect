@@ -70,7 +70,9 @@ class RuleEnforcementService : Service() {
         // Comfortably under access_token_ttl_minutes (15 on the backend): this service can run
         // for hours between app opens, so it has to renew its own token instead of 401ing
         // silently forever after the first 15 minutes of any session (Sprint 19).
-        private const val TOKEN_REFRESH_INTERVAL_MS = 10 * 60_000L
+        // Sprint 41: only a cheap "is it near expiry?" check against the shared TokenSession —
+        // the network renewal happens there, once for the whole process, when actually due.
+        private const val TOKEN_REFRESH_INTERVAL_MS = 15_000L
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             // Sprint 20: stamped here, synchronously, and not only from the poll loop below.
@@ -129,7 +131,9 @@ class RuleEnforcementService : Service() {
         val database = NetProtectDatabase.getInstance(applicationContext)
         val rulesCacheStore = RulesCacheStore(database)
         val pendingEventStore = PendingRuleEventStore(database)
-        var accessToken = initialAccessToken
+        // Sprint 41: the token handed over by the screen may already be stale (or empty); the
+        // realtime connect below uses it once, so start from the shared session's valid one.
+        var accessToken = BackgroundTokenRefresher.refresh(applicationContext) ?: initialAccessToken
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
@@ -181,7 +185,7 @@ class RuleEnforcementService : Service() {
             EnforcementLiveness.markActive(applicationContext)
 
             if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
-                BackgroundTokenRefresher.refresh(applicationContext, baseUrl)?.let { accessToken = it }
+                BackgroundTokenRefresher.refresh(applicationContext)?.let { accessToken = it }
                 lastTokenRefreshAt = now
             }
 
