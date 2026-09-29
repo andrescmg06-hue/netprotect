@@ -12,6 +12,19 @@ import com.netprotect.app.feature.tutor.apps.AppsScreen
 import com.netprotect.app.feature.tutor.geofences.GeofencesScreen
 import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.sections.geofencesView
+import com.netprotect.app.core.network.AlertsClient
+import com.netprotect.app.core.network.HistoryClient
+import com.netprotect.app.core.network.StatisticsClient
+import com.netprotect.app.feature.tutor.alerts.AlertsScreen
+import com.netprotect.app.feature.tutor.history.HistoryScreen
+import com.netprotect.app.feature.tutor.sections.AlertsController
+import com.netprotect.app.feature.tutor.sections.AlertsData
+import com.netprotect.app.feature.tutor.sections.StatisticsController
+import com.netprotect.app.feature.tutor.sections.alertItems
+import com.netprotect.app.feature.tutor.sections.appLabels
+import com.netprotect.app.feature.tutor.sections.historyDays
+import com.netprotect.app.feature.tutor.sections.statisticsView
+import com.netprotect.app.feature.tutor.statistics.StatisticsScreen
 import com.netprotect.app.feature.tutor.sections.locationView
 import com.netprotect.app.ui.state.Loader
 import java.time.ZoneId
@@ -301,6 +314,89 @@ private fun DeviceSectionRoute(
                 onBack = onBack,
             )
         }
+        DeviceSection.History -> {
+            val client = remember { HistoryClient(baseUrl) }
+            val appsClient = remember { ApplicationsClient(baseUrl) }
+            val history = remember(deviceId) {
+                Loader {
+                    val events = session.authorized { token -> client.listHistory(token, deviceId) }
+                    historyDays(events, loadAppLabels(appsClient, session, deviceId), today, ZoneId.systemDefault())
+                }
+            }
+            LaunchedEffect(deviceId) { history.refresh() }
+            HistoryScreen(
+                device = device,
+                history = history.state,
+                now = now,
+                onRefresh = { scope.launch { history.refresh() } },
+                onBack = onBack,
+            )
+        }
+        DeviceSection.Statistics -> {
+            val client = remember { StatisticsClient(baseUrl) }
+            val appsClient = remember { ApplicationsClient(baseUrl) }
+            val statistics = remember(deviceId) {
+                StatisticsController { period ->
+                    val stats = session.authorized { token -> client.getStatistics(token, deviceId, period.apiValue) }
+                    statisticsView(stats, loadAppLabels(appsClient, session, deviceId))
+                }
+            }
+            LaunchedEffect(deviceId) { statistics.refresh() }
+            StatisticsScreen(
+                device = device,
+                period = statistics.period,
+                statistics = statistics.state,
+                now = now,
+                onSelectPeriod = { scope.launch { statistics.select(it) } },
+                onRefresh = { scope.launch { statistics.refresh() } },
+                onBack = onBack,
+            )
+        }
+        DeviceSection.Alerts -> {
+            val client = remember { AlertsClient(baseUrl) }
+            val appsClient = remember { ApplicationsClient(baseUrl) }
+            val alerts = remember(deviceId) {
+                AlertsController(
+                    load = {
+                        AlertsData(
+                            alerts = session.authorized { token -> client.listAlerts(token, deviceId) },
+                            // Only used to replace "Silenciar" with "Silenciada"; without it the
+                            // button stays and silencing again is harmless (the backend upserts).
+                            silences = runCatching {
+                                session.authorized { token -> client.listSilences(token, deviceId) }
+                            }.getOrDefault(emptyList()),
+                            labels = loadAppLabels(appsClient, session, deviceId),
+                        )
+                    },
+                    markReadRequest = { alertId -> session.authorized { token -> client.markRead(token, deviceId, alertId) } },
+                    silenceRequest = { alertId -> session.authorized { token -> client.silence(token, deviceId, alertId, days = null) } },
+                )
+            }
+            LaunchedEffect(deviceId) { alerts.refresh() }
+            val items = when (val state = alerts.state) {
+                is LoadState.Loaded -> LoadState.Loaded(
+                    alertItems(state.value.alerts, state.value.silences, state.value.labels, now, ZoneId.systemDefault()),
+                )
+                is LoadState.Failed -> state
+                LoadState.Loading -> LoadState.Loading
+            }
+            AlertsScreen(
+                device = device,
+                alerts = items,
+                filter = alerts.filter,
+                busyAlertId = alerts.busyId,
+                actionError = alerts.actionError,
+                silenceTarget = (items as? LoadState.Loaded)?.value?.firstOrNull { it.id == alerts.silenceTarget },
+                now = now,
+                onSelectFilter = { alerts.filter = it },
+                onMarkRead = { alertId -> scope.launch { alerts.markRead(alertId) } },
+                onAskSilence = { alertId -> alerts.askSilence(alertId) },
+                onConfirmSilence = { scope.launch { alerts.confirmSilence() } },
+                onDismissSilence = { alerts.dismissSilence() },
+                onRefresh = { scope.launch { alerts.clearActionError(); alerts.refresh() } },
+                onBack = onBack,
+            )
+        }
         else -> LegacyDeviceSectionScreen(
             section = route.section,
             deviceId = deviceId,
@@ -309,3 +405,10 @@ private fun DeviceSectionRoute(
         )
     }
 }
+
+/** App names for history, statistics and alerts. Optional: if the list can't be loaded the
+ * screens show package names instead of failing. */
+private suspend fun loadAppLabels(client: ApplicationsClient, session: TokenSession, deviceId: String): Map<String, String> =
+    runCatching { session.authorized { token -> client.getApplications(token, deviceId) } }
+        .map(::appLabels)
+        .getOrDefault(emptyMap())
