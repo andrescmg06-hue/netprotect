@@ -39,6 +39,15 @@ class TutorNavigationTest {
     }
 
     @Test
+    fun leavingAnUnlinkedDeviceOnlyClosesThatDevice() {
+        val onA = start().push(TutorRoute.Detail("a")).push(TutorRoute.Section("a", DeviceSection.Apps))
+        assertEquals(listOf<TutorRoute>(TutorRoute.Home), onA.leave(TutorRoute.Detail("a")).entries)
+        // The tutor went back and opened device B while A was being unlinked: B stays open.
+        val onB = start().push(TutorRoute.Detail("b"))
+        assertEquals(onB, onB.leave(TutorRoute.Detail("a")))
+    }
+
+    @Test
     fun everyRouteSurvivesSavingAndRestoring() {
         val routes = listOf(
             TutorRoute.Home, TutorRoute.Devices, TutorRoute.Activity, TutorRoute.More,

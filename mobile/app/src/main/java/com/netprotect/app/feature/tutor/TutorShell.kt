@@ -37,6 +37,7 @@ import com.netprotect.app.ui.components.NpBottomBar
 import com.netprotect.app.ui.components.NpBottomItem
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.navigation.rememberNavStack
+import com.netprotect.app.ui.state.LoadState
 import com.netprotect.app.ui.theme.NpColors
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -149,6 +150,9 @@ fun TutorShell(
                         )
                     }
                     LaunchedEffect(deviceId) { detail.refresh() }
+                    // A device that turned out to be gone (404) must also drop off the lists.
+                    val gone = (detail.device as? LoadState.Failed)?.notFound == true
+                    LaunchedEffect(gone) { if (gone) home.refreshDevices() }
                     DeviceDetailScreen(
                         device = detail.device,
                         now = now,
@@ -169,7 +173,9 @@ fun TutorShell(
                         onConfirmUnlink = {
                             scope.launch {
                                 if (detail.unlink()) {
-                                    stack.value = stack.value.pop()
+                                    // Leave the detail of *this* device, even if the tutor already
+                                    // navigated elsewhere while the request was in flight.
+                                    stack.value = stack.value.leave(TutorRoute.Detail(deviceId))
                                     home.refreshDevices()
                                 }
                             }

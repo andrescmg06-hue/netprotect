@@ -39,6 +39,11 @@ fun NavStack<TutorRoute>.back(): NavStack<TutorRoute>? = when {
     else -> null
 }
 
+/** Removes [route] and everything above it, if it is on the stack; otherwise leaves the stack as
+ * it is (the tutor already navigated away from it). */
+fun NavStack<TutorRoute>.leave(route: TutorRoute): NavStack<TutorRoute> =
+    if (route in entries && entries.first() != route) popTo { it == route }.pop() else this
+
 fun encodeTutorRoute(route: TutorRoute): String = when (route) {
     TutorRoute.Home -> "home"
     TutorRoute.Devices -> "devices"
