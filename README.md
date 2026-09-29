@@ -608,3 +608,11 @@ actividad. Las secciones del dispositivo conservan su aspecto anterior hasta los
 
 El detalle está en `docs/sprint-44.md`.
 
+## Alcance del Sprint 45
+
+Las secciones Apps, Ubicación y Geocercas del modo tutor de la app Android se rediseñan según los mockups 5–7. Apps gana
+buscador, iconos y la fecha real del uso; Ubicación muestra la última lectura con su precisión y solo dice «Dentro de
+«zona»» cuando es seguro; Geocercas muestra el último evento de cada zona y el historial. No se muestran coordenadas, nombre
+de lugar ni mapa: el mapa se abre en la aplicación del teléfono solo al tocar.
+
+El detalle está en `docs/sprint-45.md`.

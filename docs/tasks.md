@@ -53,8 +53,8 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-09 | P3 | done | Cuenta atrás real del código de vinculación (`expires_in_seconds`) — S44 |
 | G-10 | P3 | done | `os_version`/`app_version` no se leen en `DeviceClient` — S44 |
 | G-11 | P2 | done | Desvincular sin confirmación; fallos silenciados — S44 |
-| G-12 | P3 | todo | Apps: búsqueda, fecha real del uso, iconos (D-07 = icono local o monograma) — S45 |
-| G-13 | P2 | todo | Ubicación/geocercas con textos de retraso y sin datos inventados (D-05) — S45 |
+| G-12 | P3 | done | Apps: búsqueda, fecha real del uso, iconos (D-07 = icono local o monograma) — S45 |
+| G-13 | P2 | done | Ubicación/geocercas con textos de retraso y sin datos inventados (D-05) — S45 |
 | G-14 | P3 | todo | Historial agrupado por día con nombre de app — S46 |
 | G-15 | P3 | todo | Estadísticas con la semántica real de cumplimiento (días dentro del límite) — S46 |
 | G-16 | P2 | todo | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
