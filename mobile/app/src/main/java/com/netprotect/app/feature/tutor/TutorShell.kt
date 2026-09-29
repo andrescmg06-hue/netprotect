@@ -58,7 +58,6 @@ import com.netprotect.app.feature.tutor.home.PairingUi
 import com.netprotect.app.feature.tutor.home.TutorHomeController
 import com.netprotect.app.feature.tutor.home.TutorHomeScreen
 import com.netprotect.app.feature.tutor.legacy.LegacyActivityScreen
-import com.netprotect.app.feature.tutor.legacy.LegacyDeviceSectionScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
 import com.netprotect.app.ui.components.NpBottomBar
 import com.netprotect.app.ui.components.NpBottomItem
@@ -397,12 +396,6 @@ private fun DeviceSectionRoute(
                 onBack = onBack,
             )
         }
-        else -> LegacyDeviceSectionScreen(
-            section = route.section,
-            deviceId = deviceId,
-            baseUrl = baseUrl,
-            session = session,
-        )
     }
 }
 
