@@ -1,7 +1,5 @@
 package com.netprotect.app.feature.tutor.legacy
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,26 +23,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.netprotect.app.core.auth.TokenSession
 import com.netprotect.app.core.auth.authorized
 import com.netprotect.app.core.network.AlertsClient
-import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.AuditClient
 import com.netprotect.app.core.network.AuditLogEntry
 import com.netprotect.app.core.network.DeviceAlert
-import com.netprotect.app.core.network.DeviceApplicationSummary
 import com.netprotect.app.core.network.DeviceStatistics
-import com.netprotect.app.core.network.Geofence
-import com.netprotect.app.core.network.GeofenceClient
-import com.netprotect.app.core.network.GeofenceEvent
 import com.netprotect.app.core.network.HistoryClient
 import com.netprotect.app.core.network.HistoryEvent
-import com.netprotect.app.core.network.LocationClient
-import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.network.StatisticsClient
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.feature.tutor.DeviceSection
@@ -58,30 +48,6 @@ import java.time.format.FormatStyle
  * same dark look — so splitting the monolith loses nothing. Only the loaders at the bottom are new:
  * they run on navigation what the old screen ran when a section was expanded. Sprints 45–47 replace
  * these sections one by one with the redesigned screens and delete them from this file. */
-
-private sealed interface AppsState {
-    data object Loading : AppsState
-    data class Loaded(val apps: List<DeviceApplicationSummary>) : AppsState
-    data class Error(val message: String) : AppsState
-}
-
-private sealed interface LocationState {
-    data object Loading : LocationState
-    // report == null means the device has never reported a location, or every report has aged
-    // out of the backend's retention window (backend/app/schemas/location.py) — both look the
-    // same to a tutor and are shown with the same "sin ubicación reciente" message.
-    data class Loaded(val report: LocationReport?) : LocationState
-    data class Error(val message: String) : LocationState
-}
-
-private sealed interface GeofenceState {
-    data object Loading : GeofenceState
-    // Read-only here — creating/editing a geofence is web-only (Sprint 14), same split already
-    // established for reglas/categorías (Sprint 8-10): this screen only shows what the tutor
-    // already configured on the web panel, plus the ENTER/EXIT history detected server-side.
-    data class Loaded(val geofences: List<Geofence>, val events: List<GeofenceEvent>) : GeofenceState
-    data class Error(val message: String) : GeofenceState
-}
 
 private sealed interface HistoryState {
     data object Loading : HistoryState
@@ -115,108 +81,6 @@ private sealed interface AuditState {
     // live only in the web panel.
     data class Loaded(val logs: List<AuditLogEntry>) : AuditState
     data class Error(val message: String) : AuditState
-}
-
-/** Text-only by design: this project's Android client never embeds a map view (no Maps SDK
- * dependency, no GOOGLE_MAPS_ANDROID_API_KEY) — see docs/sprint-13.md. "Abrir en mapa" hands the
- * coordinates to whatever map app is already installed via a plain geo: intent, which needs no
- * API key of its own. The web panel is the one that renders an embedded map, since a browser has
- * no equivalent app to delegate to.
- */
-@Composable
-private fun LocationSection(state: LocationState?) {
-    val context = LocalContext.current
-    when (state) {
-        null, LocationState.Loading -> Text("Cargando ubicación…", color = Color(0xFFABB5C4), fontSize = 13.sp)
-        is LocationState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
-        is LocationState.Loaded -> {
-            val report = state.report
-            if (report == null) {
-                Text(
-                    "Todavía no hay ubicación reciente de este dispositivo.",
-                    color = Color(0xFFABB5C4),
-                    fontSize = 13.sp,
-                )
-            } else {
-                Column {
-                    Text(
-                        "Lat ${"%.5f".format(report.latitude)}, Lng ${"%.5f".format(report.longitude)}" +
-                            " (±${report.accuracyMeters.toInt()} m)",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                    )
-                    Text(
-                        "Capturada: ${formatCapturedAt(report.capturedAt)}",
-                        color = Color(0xFF7D899A),
-                        fontSize = 11.sp,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextButton(
-                        onClick = {
-                            val uri = Uri.parse("geo:${report.latitude},${report.longitude}?q=${report.latitude},${report.longitude}")
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                        },
-                    ) {
-                        Text("Abrir en mapa")
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Read-only, same reasoning as the file-level GeofenceState docstring: creating/editing a
- * geofence happens on the web panel only. Shows the zones the tutor already configured there,
- * plus the ENTER/EXIT history the backend detected from consecutive location reports.
- */
-@Composable
-private fun GeofenceSection(state: GeofenceState?) {
-    when (state) {
-        null, GeofenceState.Loading -> Text("Cargando geocercas…", color = Color(0xFFABB5C4), fontSize = 13.sp)
-        is GeofenceState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
-        is GeofenceState.Loaded -> {
-            Column {
-                if (state.geofences.isEmpty()) {
-                    Text(
-                        "Todavía no hay geocercas. Créalas desde el panel web.",
-                        color = Color(0xFFABB5C4),
-                        fontSize = 13.sp,
-                    )
-                } else {
-                    state.geofences.forEach { geofence ->
-                        Text(
-                            "${geofence.name} · radio ${geofence.radiusMeters.toInt()} m",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Historial de entradas/salidas", color = Color(0xFF7D899A), fontSize = 11.sp)
-                if (state.events.isEmpty()) {
-                    Text(
-                        "Todavía no se detectó ninguna entrada o salida.",
-                        color = Color(0xFFABB5C4),
-                        fontSize = 13.sp,
-                    )
-                } else {
-                    state.events.forEach { event -> GeofenceEventRow(event) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GeofenceEventRow(event: GeofenceEvent) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        val verb = if (event.eventType == "ENTER") "Entró a" else "Salió de"
-        Text("$verb ${event.geofenceName}", color = Color.White, fontSize = 13.sp)
-        Text(formatCapturedAt(event.occurredAt), color = Color(0xFF7D899A), fontSize = 11.sp)
-    }
 }
 
 /** Sprint 15, read-only: a single chronological list merging what were already two separate
@@ -436,60 +300,6 @@ private fun formatCapturedAt(isoInstant: String): String = runCatching {
         .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM))
 }.getOrDefault(isoInstant)
 
-@Composable
-private fun AppsList(state: AppsState?) {
-    when (state) {
-        null, AppsState.Loading -> Text("Cargando apps…", color = Color(0xFFABB5C4), fontSize = 13.sp)
-        is AppsState.Error -> Text(state.message, color = Color(0xFFFFB4AB), fontSize = 13.sp)
-        is AppsState.Loaded -> {
-            if (state.apps.isEmpty()) {
-                Text(
-                    "Todavía no se sincronizó ninguna app desde este dispositivo.",
-                    color = Color(0xFFABB5C4),
-                    fontSize = 13.sp,
-                )
-            } else {
-                val sorted = state.apps.sortedByDescending { it.latestUsageSeconds ?: -1 }
-                Column {
-                    sorted.forEach { app -> AppUsageRow(app) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AppUsageRow(app: DeviceApplicationSummary) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column {
-            Text(app.appLabel, color = Color.White, fontSize = 14.sp)
-            if (app.uninstalledAt != null) {
-                Text("Desinstalada", color = Color(0xFF7D899A), fontSize = 11.sp)
-            }
-        }
-        Text(
-            text = app.latestUsageSeconds?.let(::formatUsageDuration) ?: "Sin datos de uso",
-            color = Color(0xFFABB5C4),
-            fontSize = 12.sp,
-        )
-    }
-}
-
-private fun formatUsageDuration(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return when {
-        hours > 0 -> "${hours} h ${minutes} min"
-        minutes > 0 -> "$minutes min"
-        else -> "< 1 min"
-    }
-}
-
 
 // ---------------------------------------------------------------------------------------------
 // Sprint 44: loaders for the sections above. Each one is the exact load the old TutorScreen did
@@ -522,45 +332,8 @@ fun LegacyDeviceSectionScreen(
     session: TokenSession,
 ) {
     when (section) {
-        DeviceSection.Apps -> {
-            val client = remember { ApplicationsClient(baseUrl) }
-            var state by remember(deviceId) { mutableStateOf<AppsState>(AppsState.Loading) }
-            LaunchedEffect(deviceId) {
-                state = try {
-                    AppsState.Loaded(session.authorized { token -> client.getApplications(token, deviceId) })
-                } catch (exception: Exception) {
-                    AppsState.Error(exception.toUiError().message)
-                }
-            }
-            LegacyFrame("Apps") { AppsList(state) }
-        }
-        DeviceSection.Location -> {
-            val client = remember { LocationClient(baseUrl) }
-            var state by remember(deviceId) { mutableStateOf<LocationState>(LocationState.Loading) }
-            LaunchedEffect(deviceId) {
-                state = try {
-                    LocationState.Loaded(session.authorized { token -> client.getLatestLocation(token, deviceId) })
-                } catch (exception: Exception) {
-                    LocationState.Error(exception.toUiError().message)
-                }
-            }
-            LegacyFrame("Ubicación") { LocationSection(state) }
-        }
-        DeviceSection.Geofences -> {
-            val client = remember { GeofenceClient(baseUrl) }
-            var state by remember(deviceId) { mutableStateOf<GeofenceState>(GeofenceState.Loading) }
-            LaunchedEffect(deviceId) {
-                state = try {
-                    GeofenceState.Loaded(
-                        geofences = session.authorized { token -> client.listGeofences(token, deviceId) },
-                        events = session.authorized { token -> client.listGeofenceEvents(token, deviceId) },
-                    )
-                } catch (exception: Exception) {
-                    GeofenceState.Error(exception.toUiError().message)
-                }
-            }
-            LegacyFrame("Geocercas") { GeofenceSection(state) }
-        }
+        // Sprint 45: rediseñadas; TutorShell las enruta a sus pantallas.
+        DeviceSection.Apps, DeviceSection.Location, DeviceSection.Geofences -> Unit
         DeviceSection.History -> {
             val client = remember { HistoryClient(baseUrl) }
             var state by remember(deviceId) { mutableStateOf<HistoryState>(HistoryState.Loading) }
