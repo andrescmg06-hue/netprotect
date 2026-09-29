@@ -568,3 +568,15 @@ lo que la app hace hoy (`docs/android-redesign/INVENTARIO.md`) y se configura Op
 `frontend/` ni `infra/`.
 
 El detalle está en `docs/sprint-40.md`.
+
+## Alcance del Sprint 41
+
+La app Android ya no deja de funcionar a los 15 minutos: un único dueño de los tokens por proceso
+(`TokenSession`) renueva una sola vez para todas las pantallas, servicios y workers, conserva la sesión
+sin red y vuelve al login solo si el backend rechaza la renovación. Los errores se muestran en español
+por categoría. La ubicación del supervisado, que dejaba de enviarse tras el primer reporte, vuelve a
+llegar. En el backend se corrigió que los latidos dieran 500 cuando dos reportes simultáneos creaban
+alertas duplicadas. Probado en un teléfono real con tokens de 1 minuto.
+
+El detalle está en `docs/sprint-41.md`.
+

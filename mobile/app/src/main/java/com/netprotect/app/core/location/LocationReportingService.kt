@@ -12,6 +12,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.permissions.LocationPermission
 import java.time.Instant
@@ -106,9 +107,12 @@ class LocationReportingService : Service() {
         while (serviceScope.isActive) {
             val location = runCatching { fetchCurrentLocation() }.getOrNull()
             if (location != null) {
+                // Sprint 41: the token handed over at start() was never renewed, so every report
+                // after its 15-minute lifetime failed silently with 401. Ask the shared session.
+                val token = BackgroundTokenRefresher.refresh(applicationContext) ?: accessToken
                 runCatching {
                     client.reportLocation(
-                        accessToken = accessToken,
+                        accessToken = token,
                         deviceId = deviceId,
                         latitude = location.latitude,
                         longitude = location.longitude,

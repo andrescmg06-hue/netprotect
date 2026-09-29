@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,11 +31,15 @@ import androidx.compose.ui.unit.sp
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.AuthRepository
+import com.netprotect.app.core.auth.RestoreResult
+import com.netprotect.app.core.auth.authorized
 import com.netprotect.app.core.auth.RolePreference
 import com.netprotect.app.core.network.CurrentUser
 import com.netprotect.app.core.network.InfrastructureHealth
 import com.netprotect.app.core.network.InfrastructureHealthClient
 import com.netprotect.app.core.network.RoleClient
+import com.netprotect.app.core.network.UiError
+import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.feature.supervised.SupervisedScreen
 import com.netprotect.app.feature.tutor.TutorScreen
 import kotlinx.coroutines.launch
@@ -105,17 +110,13 @@ fun HomeScreen() {
     }
 
     fun selectRole(user: CurrentUser, roleCode: String) {
-        val accessToken = authRepository.accessToken ?: run {
-            state = HomeState.SignedOut()
-            return
-        }
         scope.launch {
             state = try {
-                roleClient.selectRole(accessToken, roleCode)
+                authRepository.session.authorized { token -> roleClient.selectRole(token, roleCode) }
                 RolePreference.write(context, roleCode)
                 if (roleCode == ROLE_TUTOR) HomeState.InTutorMode(user) else HomeState.InSupervisedMode(user)
             } catch (exception: Exception) {
-                HomeState.SelectingRole(user, exception.message ?: "No se pudo guardar el modo")
+                HomeState.SelectingRole(user, exception.toUiError().message)
             }
         }
     }
@@ -125,8 +126,23 @@ fun HomeScreen() {
         state = HomeState.SelectingRole(user)
     }
 
-    LaunchedEffect(Unit) {
-        state = authRepository.restoreSession()?.let(::stateAfterSignIn) ?: HomeState.SignedOut()
+    suspend fun restore() {
+        state = when (val result = authRepository.restoreSession()) {
+            is RestoreResult.Restored -> stateAfterSignIn(result.user)
+            RestoreResult.NoSession -> HomeState.SignedOut()
+            RestoreResult.Unreachable -> HomeState.SignedOut(UiError.Offline.message)
+        }
+    }
+
+    LaunchedEffect(Unit) { restore() }
+
+    // Sprint 41: the session ended by itself (refresh token rejected — revoked, or expired after
+    // its lifetime), from any screen or background service. Back to login, with the reason.
+    val sessionExpired by authRepository.session.expired.collectAsState()
+    LaunchedEffect(sessionExpired) {
+        if (sessionExpired && state !is HomeState.SignedOut && state !is HomeState.Loading) {
+            state = HomeState.SignedOut(UiError.SessionExpired.message)
+        }
     }
 
     // Only worth checking (and showing) while the user is stuck at the sign-in screen: it's
@@ -135,7 +151,11 @@ fun HomeScreen() {
     LaunchedEffect(state) {
         if (state is HomeState.SignedOut) {
             infraState = try {
-                InfraState.Ready(healthClient.check())
+                InfraState.Ready(healthClient.check()).also {
+                    // Sprint 41: a session kept while the backend was unreachable at startup
+                    // resumes on its own once the backend answers again.
+                    if (authRepository.session.hasStoredSession()) restore()
+                }
             } catch (exception: Exception) {
                 InfraState.Error(exception.message ?: "No fue posible contactar la API")
             }
@@ -159,13 +179,13 @@ fun HomeScreen() {
             )
             is HomeState.InTutorMode -> TutorScreen(
                 baseUrl = BuildConfig.API_BASE_URL,
-                accessToken = authRepository.accessToken.orEmpty(),
+                session = authRepository.session,
                 onSignOut = ::signOut,
                 onSwitchMode = { switchMode(current.user) },
             )
             is HomeState.InSupervisedMode -> SupervisedScreen(
                 baseUrl = BuildConfig.API_BASE_URL,
-                accessToken = authRepository.accessToken.orEmpty(),
+                session = authRepository.session,
                 onSignOut = ::signOut,
                 onSwitchMode = { switchMode(current.user) },
             )

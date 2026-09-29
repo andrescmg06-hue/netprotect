@@ -8,6 +8,9 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | B-01 | P2 | todo | Dispositivos duplicados en `GET /devices/me` | `docs/sprint-29.md` |
 | B-02 | P2 | todo | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
 | B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado | Sprints 28–29 |
+| B-04 | P1 | done | Latidos con 500: alertas duplicadas por reportes simultáneos (`MultipleResultsFound`) | `docs/sprint-41.md` |
+| B-05 | P2 | todo | Panel web: el sondeo de alertas no renueva el token caducado (401 cada minuto) | `docs/sprint-41-evidence.md` |
+| B-06 | P3 | todo | Android: con letra grande, los botones de texto se aplastan en vertical (pantallas actuales; lo cubre el rediseño) | `docs/sprint-41.md` |
 
 ## Pendiente de un humano
 | Id | Estado | Descripción | Origen |
@@ -39,9 +42,9 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 
 | Id | Prioridad | Estado | Descripción — sprint |
 |---|---|---|---|
-| G-01 | P1 | todo | Token de la UI caduca a los 15 min sin renovarse — S41 |
-| G-02 | P1 | todo | Posible carrera entre refresh concurrentes (verificar; puede revocar la familia de tokens) — S41 |
-| G-03 | P2 | todo | Sin modelo de errores: se muestran `HTTP 401` crudos o se tragan (`runCatching`) — S41 |
+| G-01 | P1 | done | Token de la UI caduca a los 15 min sin renovarse — S41 |
+| G-02 | P1 | done | Posible carrera entre refresh concurrentes (verificar; puede revocar la familia de tokens) — S41 |
+| G-03 | P2 | done | Sin modelo de errores: se muestran `HTTP 401` crudos o se tragan (`runCatching`) — S41 |
 | G-04 | P1 | todo | Sin tema, tipografía, iconos, logo ni icono de lanzador — S42 |
 | G-05 | P1 | todo | Sin componentes compartidos (tarjeta, badge, estados vacío/carga/error, fila…) — S42 |
 | G-06 | P1 | todo | Sin navegación ni "atrás" del sistema (D-01 = rutas propias) — S42/S44/S48 |
@@ -66,7 +69,7 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-25 | P2 | todo | Registro de estado de servicios (pantalla 17) — S50 |
 | G-26 | P2 | todo | B-02 reconexión del canal realtime — S50 |
 | G-27 | P2 | todo | Accesibilidad, rotación, sin conexión, build release, código muerto — S51 |
-| L-01 | P1 | todo | `AuthRepository.kt:32`: `CredentialManager.getCredential` sin capturar `NoCredentialException` (lint CredentialManagerMisuse); revisar con `security-reviewer` — S41 |
+| L-01 | P1 | done | `AuthRepository.kt:32`: `CredentialManager.getCredential` sin capturar `NoCredentialException` (lint CredentialManagerMisuse); revisar con `security-reviewer` — S41 |
 | L-02 | P2 | todo | `AndroidManifest.xml:62`: `allowBackup` obsoleto y falta `dataExtractionRules` (lint DataExtractionRules); privacidad de datos de menores — S51 |
 | L-03 | P2 | todo | `AndroidManifest.xml:61`: falta `android:icon` explícito (lint MissingApplicationIcon); lo cubre G-04 — S42 |
 | L-04 | P3 | todo | 11 avisos UseKtx (`SharedPreferences.edit`, `String.toUri`) y 13 de dependencias/AGP desactualizados (lint); actualizar aparte, no durante el rediseño |

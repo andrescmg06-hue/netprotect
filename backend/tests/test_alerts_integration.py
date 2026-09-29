@@ -295,3 +295,88 @@ def test_reading_alerts_for_a_nonexistent_device_is_404(client) -> None:
     response = _list_alerts(client, tutor_token, str(uuid.uuid4()))
 
     assert response.status_code == 404
+
+
+# Sprint 41: found live — the supervised app's foreground heartbeat and SyncWorker report the same
+# tamper signal at the same moment, both saw "no open alert", both inserted one, and from then on
+# every heartbeat of that device failed with MultipleResultsFound (HTTP 500).
+
+
+async def test_two_simultaneous_reports_of_one_signal_open_a_single_alert(client) -> None:
+    import asyncio
+
+    from sqlalchemy import func, select
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import settings
+    from app.models.alert import Alert
+    from app.services.alerts import record_alert_for_tamper_signal
+
+    _, _, device_id = _setup_linked_device(client)
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+
+    async def report() -> None:
+        async with factory() as session:
+            await record_alert_for_tamper_signal(
+                session, uuid.UUID(device_id), "PERMISSION_REVOKED", "HIGH", datetime.now(UTC)
+            )
+            await asyncio.sleep(0.2)  # hold the transaction open, as a slow request would
+            await session.commit()
+
+    try:
+        await asyncio.gather(*(report() for _ in range(5)))
+        async with factory() as session:
+            rows = (
+                await session.execute(
+                    select(func.count(), func.sum(Alert.occurrence_count)).where(
+                        Alert.device_id == uuid.UUID(device_id),
+                        Alert.dedup_key == "PERMISSION_REVOKED",
+                    )
+                )
+            ).one()
+    finally:
+        await engine.dispose()
+
+    assert rows == (1, 5)
+
+
+async def test_duplicate_open_alerts_left_by_the_old_race_no_longer_break_new_reports(
+    client, db_session
+) -> None:
+    from sqlalchemy import select
+
+    from app.models.alert import Alert
+    from app.services.alerts import record_alert_for_tamper_signal
+
+    tutor_token, _, device_id = _setup_linked_device(client)
+    earlier = datetime.now(UTC) - timedelta(minutes=5)
+    for offset in (0, 1):
+        db_session.add(
+            Alert(
+                device_id=uuid.UUID(device_id),
+                level="HIGH",
+                alert_type="PERMISSION_REVOKED",
+                dedup_key="PERMISSION_REVOKED",
+                occurrence_count=1,
+                first_occurred_at=earlier + timedelta(seconds=offset),
+                last_occurred_at=earlier + timedelta(seconds=offset),
+            )
+        )
+    await db_session.commit()
+
+    await record_alert_for_tamper_signal(
+        db_session, uuid.UUID(device_id), "PERMISSION_REVOKED", "HIGH", datetime.now(UTC)
+    )
+    await db_session.commit()
+
+    counts = sorted(
+        (
+            await db_session.execute(
+                select(Alert.occurrence_count).where(Alert.device_id == uuid.UUID(device_id))
+            )
+        ).scalars()
+    )
+    assert counts == [1, 2]  # folded into the oldest open alert, nothing new inserted
+    assert _list_alerts(client, tutor_token, device_id).status_code == 200

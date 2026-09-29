@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.netprotect.app.core.auth.TokenSession
+import com.netprotect.app.core.auth.authorized
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.AuditClient
 import com.netprotect.app.core.network.AuditLogEntry
@@ -53,6 +55,7 @@ import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.network.PairingCode
 import com.netprotect.app.core.network.DeviceStatistics
 import com.netprotect.app.core.network.StatisticsClient
+import com.netprotect.app.core.network.toUiError
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -126,7 +129,7 @@ private sealed interface AuditState {
 @Composable
 fun TutorScreen(
     baseUrl: String,
-    accessToken: String,
+    session: TokenSession,
     onSignOut: suspend () -> Unit,
     onSwitchMode: () -> Unit,
 ) {
@@ -145,6 +148,8 @@ fun TutorScreen(
     var devicesState by remember { mutableStateOf<DevicesState>(DevicesState.Loading) }
     var activeCode by remember { mutableStateOf<PairingCode?>(null) }
     var codeError by remember { mutableStateOf<String?>(null) }
+    // Sprint 41: renombrar/desvincular used to swallow failures; this is where they show up.
+    var deviceActionError by remember { mutableStateOf<String?>(null) }
     var renamingDeviceId by remember { mutableStateOf<String?>(null) }
     var renameText by remember { mutableStateOf("") }
     var expandedAppsDeviceId by remember { mutableStateOf<String?>(null) }
@@ -165,9 +170,9 @@ fun TutorScreen(
 
     suspend fun reloadDevices() {
         devicesState = try {
-            DevicesState.Loaded(deviceClient.listDevices(accessToken))
+            DevicesState.Loaded(session.authorized { token -> deviceClient.listDevices(token) })
         } catch (exception: Exception) {
-            DevicesState.Error(exception.message ?: "No se pudo cargar la lista")
+            DevicesState.Error(exception.toUiError().message)
         }
     }
 
@@ -180,9 +185,9 @@ fun TutorScreen(
         appsStateByDevice[deviceId] = AppsState.Loading
         scope.launch {
             appsStateByDevice[deviceId] = try {
-                AppsState.Loaded(applicationsClient.getApplications(accessToken, deviceId))
+                AppsState.Loaded(session.authorized { token -> applicationsClient.getApplications(token, deviceId) })
             } catch (exception: Exception) {
-                AppsState.Error(exception.message ?: "No se pudo cargar la lista de apps")
+                AppsState.Error(exception.toUiError().message)
             }
         }
     }
@@ -196,9 +201,9 @@ fun TutorScreen(
         locationStateByDevice[deviceId] = LocationState.Loading
         scope.launch {
             locationStateByDevice[deviceId] = try {
-                LocationState.Loaded(locationClient.getLatestLocation(accessToken, deviceId))
+                LocationState.Loaded(session.authorized { token -> locationClient.getLatestLocation(token, deviceId) })
             } catch (exception: Exception) {
-                LocationState.Error(exception.message ?: "No se pudo cargar la ubicación")
+                LocationState.Error(exception.toUiError().message)
             }
         }
     }
@@ -213,11 +218,11 @@ fun TutorScreen(
         scope.launch {
             geofenceStateByDevice[deviceId] = try {
                 GeofenceState.Loaded(
-                    geofences = geofenceClient.listGeofences(accessToken, deviceId),
-                    events = geofenceClient.listGeofenceEvents(accessToken, deviceId),
+                    geofences = session.authorized { token -> geofenceClient.listGeofences(token, deviceId) },
+                    events = session.authorized { token -> geofenceClient.listGeofenceEvents(token, deviceId) },
                 )
             } catch (exception: Exception) {
-                GeofenceState.Error(exception.message ?: "No se pudieron cargar las geocercas")
+                GeofenceState.Error(exception.toUiError().message)
             }
         }
     }
@@ -231,9 +236,9 @@ fun TutorScreen(
         historyStateByDevice[deviceId] = HistoryState.Loading
         scope.launch {
             historyStateByDevice[deviceId] = try {
-                HistoryState.Loaded(historyClient.listHistory(accessToken, deviceId))
+                HistoryState.Loaded(session.authorized { token -> historyClient.listHistory(token, deviceId) })
             } catch (exception: Exception) {
-                HistoryState.Error(exception.message ?: "No se pudo cargar el historial")
+                HistoryState.Error(exception.toUiError().message)
             }
         }
     }
@@ -243,9 +248,9 @@ fun TutorScreen(
         statisticsStateByDevice[deviceId] = StatisticsState.Loading
         scope.launch {
             statisticsStateByDevice[deviceId] = try {
-                StatisticsState.Loaded(period, statisticsClient.getStatistics(accessToken, deviceId, period))
+                StatisticsState.Loaded(period, session.authorized { token -> statisticsClient.getStatistics(token, deviceId, period) })
             } catch (exception: Exception) {
-                StatisticsState.Error(exception.message ?: "No se pudieron cargar las estadísticas")
+                StatisticsState.Error(exception.toUiError().message)
             }
         }
     }
@@ -268,9 +273,9 @@ fun TutorScreen(
         alertsStateByDevice[deviceId] = AlertsState.Loading
         scope.launch {
             alertsStateByDevice[deviceId] = try {
-                AlertsState.Loaded(alertsClient.listAlerts(accessToken, deviceId))
+                AlertsState.Loaded(session.authorized { token -> alertsClient.listAlerts(token, deviceId) })
             } catch (exception: Exception) {
-                AlertsState.Error(exception.message ?: "No se pudieron cargar las alertas")
+                AlertsState.Error(exception.toUiError().message)
             }
         }
     }
@@ -284,9 +289,9 @@ fun TutorScreen(
         auditState = AuditState.Loading
         scope.launch {
             auditState = try {
-                AuditState.Loaded(auditClient.listMyAuditLog(accessToken))
+                AuditState.Loaded(session.authorized { token -> auditClient.listMyAuditLog(token) })
             } catch (exception: Exception) {
-                AuditState.Error(exception.message ?: "No se pudo cargar la auditoría")
+                AuditState.Error(exception.toUiError().message)
             }
         }
     }
@@ -327,9 +332,9 @@ fun TutorScreen(
                             scope.launch {
                                 codeError = null
                                 try {
-                                    activeCode = pairingClient.generateCode(accessToken)
+                                    activeCode = session.authorized { token -> pairingClient.generateCode(token) }
                                 } catch (exception: Exception) {
-                                    codeError = exception.message ?: "No se pudo generar el código"
+                                    codeError = exception.toUiError().message
                                 }
                             }
                         },
@@ -351,8 +356,13 @@ fun TutorScreen(
                     Row {
                         TextButton(onClick = {
                             scope.launch {
-                                runCatching { pairingClient.revokeCurrentCode(accessToken) }
-                                activeCode = null
+                                codeError = null
+                                try {
+                                    session.authorized { token -> pairingClient.revokeCurrentCode(token) }
+                                    activeCode = null
+                                } catch (exception: Exception) {
+                                    codeError = exception.toUiError().message
+                                }
                             }
                         }) { Text("Revocar", color = Color(0xFFFFB4AB)) }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -391,6 +401,9 @@ fun TutorScreen(
             Text("Dispositivos vinculados", color = Color.White, fontWeight = FontWeight.Bold)
             TextButton(onClick = { scope.launch { reloadDevices() } }) { Text("Actualizar") }
         }
+        deviceActionError?.let {
+            Text(it, color = Color(0xFFFFB4AB), fontSize = 13.sp)
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         when (val state = devicesState) {
@@ -413,18 +426,28 @@ fun TutorScreen(
                                 },
                                 onConfirmRename = {
                                     scope.launch {
-                                        runCatching {
-                                            deviceClient.renameDevice(accessToken, device.id, renameText)
+                                        deviceActionError = null
+                                        try {
+                                            session.authorized { token ->
+                                                deviceClient.renameDevice(token, device.id, renameText)
+                                            }
+                                            renamingDeviceId = null
+                                            reloadDevices()
+                                        } catch (exception: Exception) {
+                                            deviceActionError = exception.toUiError().message
                                         }
-                                        renamingDeviceId = null
-                                        reloadDevices()
                                     }
                                 },
                                 onCancelRename = { renamingDeviceId = null },
                                 onUnlink = {
                                     scope.launch {
-                                        runCatching { pairingClient.unlinkDevice(accessToken, device.id) }
-                                        reloadDevices()
+                                        deviceActionError = null
+                                        try {
+                                            session.authorized { token -> pairingClient.unlinkDevice(token, device.id) }
+                                            reloadDevices()
+                                        } catch (exception: Exception) {
+                                            deviceActionError = exception.toUiError().message
+                                        }
                                     }
                                 },
                                 isAppsExpanded = expandedAppsDeviceId == device.id,

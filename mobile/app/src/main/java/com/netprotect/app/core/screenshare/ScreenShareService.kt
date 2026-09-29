@@ -156,7 +156,7 @@ class ScreenShareService : Service() {
         // and it is never renewed: after 15 minutes with the app open it is expired, and both the
         // config fetch and this service's socket would be rejected. Same fix the other background
         // components already use (Sprint 19).
-        val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
+        val accessToken = BackgroundTokenRefresher.refresh(applicationContext)
             ?: screenAccessToken
 
         // Asked of the backend rather than hardcoded, so the TURN relay and its per-request
