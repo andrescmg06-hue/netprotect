@@ -193,3 +193,60 @@ Pega la salida **real**:
 1. Archivos. 2. Salidas reales de §10 y de los tests. 3. Decisiones tuyas fuera del encargo (y por qué). 4. Pendientes.
 5. `[PREGUNTA PARA CLAUDE]`. Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no
 ejecutaste se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos
+
+**Reemplazados los cuerpos (firmas intactas)**: `feature/tutor/apps/AppsScreen.kt`,
+`feature/tutor/location/LocationScreen.kt`, `feature/tutor/geofences/GeofencesScreen.kt`.
+**Creado**: `feature/tutor/sections/SectionDeviceHeader.kt` (cabecera compartida, §5.1).
+**Modificado**: `feature/tutor/legacy/LegacySections.kt` — quité `AppsState`, `LocationState`, `GeofenceState`,
+`AppsList`, `AppUsageRow`, `formatUsageDuration`, `LocationSection`, `GeofenceSection`, `GeofenceEventRow`, los
+imports que quedaban sin uso, y las ramas `Apps`/`Location`/`Geofences` de `LegacyDeviceSectionScreen` (sustituidas por
+`DeviceSection.Apps, DeviceSection.Location, DeviceSection.Geofences -> Unit` con el comentario pedido). Sin tocar
+historial/estadísticas/alertas/auditoría.
+**Creados** los 3 tests androidTest (`AppsScreenTest`, `LocationScreenTest`, `GeofencesScreenTest`).
+**Modificado**: `src/debug/.../ScreensGallery.kt` (10 secciones nuevas).
+
+`TutorShell.kt`, `SectionViews.kt`, `*State.kt`, `UsageText.kt`, `AppIcon.kt` **no** aparecen en `git status`.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL** (46 s).
+- `lintDebug`: **0 errores, 24 avisos** (base 25; hay **uno menos** porque al quitar el código antiguo de
+  `LegacySections.kt` desapareció un `UseKtx`). Ninguno en `feature/tutor/{apps,location,geofences,sections,legacy}`.
+- `./gradlew connectedDebugAndroidTest` (emulador `Pixel_8`): **68 tests, 0 fallos, 0 saltados**. De ellos, 18 son de
+  este sprint y pasaron:
+  - `AppsScreenTest` (6): búsqueda filtra; "Ninguna app coincide con «zzz»."; "Desinstalada"; ninguna fila clicable;
+    "Actualizar"→onRefresh; vacío→"Sin apps sincronizadas".
+  - `LocationScreenTest` (6): "Dentro de «Casa»"; sin "Dentro de" con null; sin "4.15"/"-73.6"; "Abrir en mapa"→onOpenMap;
+    "No hay una aplicación de mapas…"; sin reporte→"Este dispositivo todavía no ha reportado su ubicación.".
+  - `GeofencesScreenTest` (6): "Último evento: Entró"/"Salió"/"Sin actividad"; "Radio 150 m"; sin "Crear"/"Editar"/"Eliminar";
+    vacío→"No hay geocercas configuradas".
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|LocalDate\.now|currentTimeMillis|latitude|longitude" .../feature/tutor/{apps,location,geofences,sections/SectionDeviceHeader.kt}` → **sin coincidencias**.
+- `grep -rnE "AppsList|LocationSection|GeofenceSection|formatUsageDuration" mobile/app/src` → **sin coincidencias**.
+- Galería abierta y **15 capturas distintas** fuera del repo en `%TEMP%\sprint45-gallery\`; sin `FATAL` en logcat.
+
+### 3. Decisiones tuyas fuera del encargo
+
+- **`LocationScreen`** capitaliza el relativo con `replaceFirstChar { it.uppercase() }` ("Hace 12 min", "Ayer") — el
+  encargo pide "la primera letra en mayúscula".
+- **`Abrir en mapa`**: `onClick = { mapMissing = !onOpenMap() }` tal como pide §5.3.e; `mapMissing` con `rememberSaveable`.
+- **Test `searchFiltersApps` ajustado**: al escribir "YouTube" en el buscador hay **dos** nodos con ese texto (el valor del
+  campo y la fila de la app), así que el `assertExists` original fallaba con "found 2 nodes". Lo cambié por
+  `Chrome`/`Instagram` `assertDoesNotExist()` + `onAllNodes(hasText("YouTube")).assertCountEquals(2)`. No toqué la pantalla,
+  solo la aserción.
+- **Píldora "Último evento: …"** de Geocercas usa el `showDot` por defecto (`true`), porque §5.4 no lo especifica; la píldora
+  de estado del dispositivo sí usa `showDot = false` (decisión del S44). Lo dejo anotado por si Claude quiere unificarlo.
+
+### 4. Pendientes
+
+- **Revisión visual** de las 3 pantallas y la galería: para Claude (este modelo no acepta imágenes). Capturas en
+  `%TEMP%\sprint45-gallery\`.
+
+### 5. Preguntas para Claude
+
+Ninguna.
