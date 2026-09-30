@@ -55,9 +55,9 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-11 | P2 | done | Desvincular sin confirmación; fallos silenciados — S44 |
 | G-12 | P3 | done | Apps: búsqueda, fecha real del uso, iconos (D-07 = icono local o monograma) — S45 |
 | G-13 | P2 | done | Ubicación/geocercas con textos de retraso y sin datos inventados (D-05) — S45 |
-| G-14 | P3 | todo | Historial agrupado por día con nombre de app — S46 |
-| G-15 | P3 | todo | Estadísticas con la semántica real de cumplimiento (días dentro del límite) — S46 |
-| G-16 | P2 | todo | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
+| G-14 | P3 | done | Historial agrupado por día con nombre de app — S46 |
+| G-15 | P3 | done | Estadísticas con la semántica real de cumplimiento (días dentro del límite) — S46 |
+| G-16 | P2 | done | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
 | G-17 | P3 | todo | Mi actividad con etiquetas, agrupación y paginación — S47 |
 | G-18 | P2 | todo | La consulta de ubicación no se audita (D-10 = `LOCATION_VIEWED`; backend) — S47 |
 | G-19 | P1 | todo | `SupervisedScreen` monolítico con los efectos de servicios dentro — S48 |
