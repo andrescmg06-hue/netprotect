@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -54,12 +55,13 @@ fun PermissionCard(
                 Text(text = description, style = NpText.Body, color = NpColors.SlateMuted)
                 if (!granted) {
                     Spacer(Modifier.height(12.dp))
-                    NpButton(text = actionLabel, onClick = onAction)
+                    NpButton(text = actionLabel, onClick = onAction, modifier = Modifier.fillMaxWidth())
                     if (secondaryLabel != null && onSecondary != null) {
                         Spacer(Modifier.height(4.dp))
                         NpButton(
                             text = secondaryLabel,
                             onClick = onSecondary,
+                            modifier = Modifier.fillMaxWidth(),
                             variant = NpButtonVariant.Text,
                         )
                     }
