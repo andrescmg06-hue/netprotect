@@ -320,3 +320,64 @@ Pega la salida **real** de cada comprobación:
 
 Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no hayas ejecutado
 se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados y modificados
+
+**Reemplazados los cuerpos (firmas intactas)**: `feature/tutor/history/HistoryScreen.kt`,
+`feature/tutor/statistics/StatisticsScreen.kt`, `feature/tutor/alerts/AlertsScreen.kt`.
+**Modificado** `feature/tutor/legacy/LegacySections.kt`: quité `HistoryState`, `StatisticsState`, `AlertsState`,
+`HistorySection`, `HistoryEventRow`, `STATISTICS_PERIODS`, `formatSeconds`, `StatisticsSection`, `alertLabel`,
+`AlertsSection` y la función entera `LegacyDeviceSectionScreen`; quedan solo `AuditState`, `AuditSection`,
+`formatCapturedAt`, `LegacyFrame` y `LegacyActivityScreen` (se retiran en el S47). Actualicé el comentario de cabecera y
+quité los imports sin uso.
+**Modificado** `src/debug/.../ScreensGallery.kt`: 12 frames del S46 puestos **al principio** (§7).
+**Creados** los 3 tests androidTest (`HistoryScreenTest`, `StatisticsScreenTest`, `AlertsScreenTest`).
+
+`ActivityViews.kt`, `ActivityState.kt`, `TutorShell.kt`, `TutorRoute.kt` **no** aparecen en `git status`.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL**.
+- `lintDebug`: **0 errores, 24 avisos** (base 24; **0 nuevos**). Ninguno en `feature/tutor/{history,statistics,alerts,legacy}`.
+- `./gradlew connectedDebugAndroidTest` (emulador `Pixel_8`): **86 tests, 0 fallos, 0 saltados**. De ellos, 18 son de este
+  sprint y pasaron:
+  - `HistoryScreenTest` (3): "Hoy"/"29 de septiembre de 2026"/"Bloqueo de app · YouTube"/"Motivo: Límite diario"; vacío;
+    error→"Reintentar"→onRefresh.
+  - `StatisticsScreenTest` (4): "Días dentro del límite en este periodo." sin "Porcentaje" ni "%"; "5 de 7 días"; "30 días"→
+    onSelectPeriod(Month); los tres vacíos.
+  - `AlertsScreenTest` (11): "Marcar como leída"→onMarkRead y ausente en leída; "Silenciar"→onAskSilence; "Silenciada" sin
+    botón; busy→deshabilitado; silenceTarget→mensaje D-09 + confirm/cancel; filtro "Críticas"; actionError; vacío; sin
+    "CRITICAL"/"HIGH"/"WARNING".
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|LocalDate\.now|currentTimeMillis|packageName|CRITICAL|WARNING|\"HIGH\"" .../{history,statistics,alerts}` (case-sensitive, como `grep -E`) → **una sola coincidencia**:
+  `StatisticsScreen.kt:191 AppIcon(packageName = row.packageName, …)` — la excepción documentada del propio encargo.
+- `grep -rnE "HistorySection|StatisticsSection|AlertsSection|LegacyDeviceSectionScreen|formatSeconds" mobile/app/src` → **sin coincidencias**.
+- Capturas en `%TEMP%\sprint46-gallery\` (ver §4).
+
+### 3. Decisiones / hallazgos fuera del encargo
+
+- **Contradicción en la cabecera de Alertas** (la digo, no la elijo en silencio): la regla común de §5 dice que si
+  `lastSeenAt` es null «la línea es «Datos sincronizados periódicamente»», pero §5.3.1 dice que el texto de Alertas es
+  «Última actualización: {relativo}» con *fallback* «Sin comunicación registrada todavía.». Seguí **§5.3.1** (la regla
+  específica de la pantalla).
+- **El frame "AlertsScreen · silenceTarget" rompe la galería**: `ConfirmDialog` es un `Dialog` modal y, como la galería
+  usa `Column(verticalScroll)` (composición **eager** de todos los frames), el diálogo se muestra desde el arranque y
+  tapa toda la galería; además no se puede cerrar (en la galería `onDismissSilence = {}` y `silenceTarget` es fijo).
+  Lo dejé tal como pide §7 («diálogo abierto») y lo anoto aquí: para revisar el resto de frames hay que hacer
+  `adb shell am force-stop com.netprotect.app` o, si Claude prefiere una galería navegable, cambiar a `LazyColumn` o
+  quitar este frame. El comportamiento del diálogo en sí está cubierto por `AlertsScreenTest.silenceTargetShowsDialogAndCallbacksWork`.
+- **`now` del S46**: usé `Instant.parse("2026-09-29T20:00:00Z")` (como pide §7), distinto del `galleryNow` del S44/S45
+  ("15:00:00Z").
+
+### 4. Pendientes
+
+- **Revisión visual** de las 3 pantallas: para Claude (este modelo no acepta imágenes). Por el problema del diálogo
+  (§3), las capturas en `%TEMP%\sprint46-gallery\` muestran el diálogo de silenciar, no los frames: no pude capturar los
+  frames porque el `Dialog` modal los tapa desde el arranque.
+
+### 5. Preguntas para Claude
+
+Ninguna.
