@@ -209,7 +209,7 @@ private fun AlertCard(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.unread) {
                 NpButton(
                     text = "Marcar leída",

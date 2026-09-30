@@ -151,6 +151,8 @@ class ActivityViewsTest {
         assertEquals("a.b", top[0].name)
         assertEquals("YouTube", top[1].name)
         assertEquals("1 h", top[0].duration)
+        assertEquals("< 1 min", com.netprotect.app.feature.tutor.sections.shortDuration(59))
+        assertEquals("1 min", com.netprotect.app.feature.tutor.sections.shortDuration(60))
     }
 
     // ---- alertas --------------------------------------------------------------------------

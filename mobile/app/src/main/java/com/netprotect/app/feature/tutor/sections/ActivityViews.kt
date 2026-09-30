@@ -139,7 +139,7 @@ fun statisticsView(stats: DeviceStatistics, labels: Map<String, String>): Statis
             TopAppRow(
                 packageName = it.packageName,
                 name = it.appLabel?.takeIf { label -> label.isNotBlank() } ?: appName(it.packageName, labels),
-                duration = Durations.format(it.totalSeconds.toLong()),
+                duration = shortDuration(it.totalSeconds),
                 fraction = if (maxSeconds == null) 0f else it.totalSeconds.toFloat() / maxSeconds,
             )
         },
@@ -171,6 +171,10 @@ fun statisticsView(stats: DeviceStatistics, labels: Map<String, String>): Statis
         },
     )
 }
+
+/** The bar's label has a fixed width; "menos de 1 min" doesn't fit there, "< 1 min" does. */
+fun shortDuration(totalSeconds: Int): String =
+    if (totalSeconds < 60) "< 1 min" else Durations.format(totalSeconds.toLong())
 
 fun complianceDays(compliant: Int, evaluated: Int): String = when (evaluated) {
     0 -> NO_USAGE_IN_PERIOD
