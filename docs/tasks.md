@@ -5,7 +5,7 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 ## Bugs
 | Id | Prioridad | Estado | Descripción | Origen |
 |---|---|---|---|---|
-| B-01 | P2 | todo | Dispositivos duplicados en `GET /devices/me` | `docs/sprint-29.md` |
+| B-01 | P2 | done | Dispositivos duplicados en `GET /devices/me` | `docs/sprint-29.md` |
 | B-02 | P2 | todo | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
 | B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado. **Hallazgo S43:** `POST /users/me/roles` concede cualquier rol sin condiciones (`roles.py`), así que no hay error que mostrar en la app; hace falta un cambio de backend (p. ej. rechazar el canje en `pairing.py` cuando el tutor del código es la misma cuenta) | Sprints 28–29, `docs/sprint-43.md` |
 | B-04 | P1 | done | Latidos con 500: alertas duplicadas por reportes simultáneos (`MultipleResultsFound`) | `docs/sprint-41.md` |
@@ -60,10 +60,10 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-16 | P2 | done | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
 | G-17 | P3 | done | Mi actividad con etiquetas, agrupación y paginación — S47 |
 | G-18 | P2 | done | La consulta de ubicación no se audita (D-10 = `LOCATION_VIEWED`; backend) — S47 |
-| G-19 | P1 | todo | `SupervisedScreen` monolítico con los efectos de servicios dentro — S48 |
-| G-20 | P3 | todo | Vincular con entrada de 6 casillas y errores claros — S48 |
-| G-21 | P3 | todo | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
-| G-22 | P2 | todo | B-01 dispositivos duplicados en `GET /devices/me` — S48 |
+| G-19 | P1 | done | `SupervisedScreen` monolítico con los efectos de servicios dentro — S48 |
+| G-20 | P3 | done | Vincular con entrada de 6 casillas y errores claros — S48 |
+| G-21 | P3 | done | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
+| G-22 | P2 | done | B-01 dispositivos duplicados en `GET /devices/me` — S48 |
 | G-23 | P2 | todo | Pantalla de bloqueo: 7 variantes con icono y categoría reales (D-11) — S49 |
 | G-24 | P2 | todo | Pantalla de consentimiento completa con textos verdaderos (D-12) — S50 |
 | G-25 | P2 | todo | Registro de estado de servicios (pantalla 17) — S50 |

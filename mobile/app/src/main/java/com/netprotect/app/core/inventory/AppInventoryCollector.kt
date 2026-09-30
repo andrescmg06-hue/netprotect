@@ -22,7 +22,7 @@ data class AppUsageInfo(
 
 /** Reads what's installed and how long each app has run in the foreground today. Both are
  * read fresh on every call — there is no caching or background scheduling here, matching the
- * rest of this project's "no scheduler yet, foreground-only" approach (see SupervisedScreen).
+ * rest of this project's "no scheduler yet, foreground-only" approach (see SupervisedShell).
  */
 object AppInventoryCollector {
 

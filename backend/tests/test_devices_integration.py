@@ -368,3 +368,91 @@ def test_devices_me_drops_a_tutor_after_they_unlink(client) -> None:
 
     assert mine.status_code == 200
     assert mine.json()["tutors"] == []
+
+
+# ------------------------------------------------------------ B-01 (Sprint 48): several devices
+
+
+def _redeem(
+    client: TestClient, tutor_token: str, supervised_token: str, instance_id: str, name: str
+) -> str:
+    code = client.post("/api/v1/pairing/codes", headers=_auth(tutor_token)).json()["code"]
+    redeemed = client.post(
+        "/api/v1/pairing/redeem",
+        json={
+            "code": code,
+            "device_instance_id": instance_id,
+            "device_name": name,
+            "platform": "ANDROID",
+            "os_version": "16",
+            "app_version": "0.1.0",
+        },
+        headers=_auth(supervised_token),
+    )
+    assert redeemed.status_code == 200, redeemed.text
+    return redeemed.json()["device_id"]
+
+
+def test_devices_me_with_two_installs_answers_for_the_one_asking(client) -> None:
+    """B-01: a reinstall (new device_instance_id) left the account with two device rows and
+    /devices/me crashed with a 500 (MultipleResultsFound)."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    old_install, new_install = uuid.uuid4().hex, uuid.uuid4().hex
+    old_device = _redeem(client, tutor_token, supervised_token, old_install, "Instalación vieja")
+    client.delete(f"/api/v1/devices/{old_device}/link", headers=_auth(tutor_token))
+    new_device = _redeem(client, tutor_token, supervised_token, new_install, "Instalación nueva")
+
+    cases = ((new_install, new_device, 1), (old_install, old_device, 0))
+    for instance_id, expected, tutors in cases:
+        mine = client.get(
+            "/api/v1/devices/me",
+            params={"device_instance_id": instance_id},
+            headers=_auth(supervised_token),
+        )
+        assert mine.status_code == 200, mine.text
+        assert mine.json()["device_id"] == expected
+        assert len(mine.json()["tutors"]) == tutors
+
+
+def test_devices_me_without_an_install_id_prefers_the_linked_device(client) -> None:
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    linked = _redeem(client, tutor_token, supervised_token, uuid.uuid4().hex, "Vinculado")
+    newer = _redeem(client, tutor_token, supervised_token, uuid.uuid4().hex, "Más nuevo")
+    client.delete(f"/api/v1/devices/{newer}/link", headers=_auth(tutor_token))
+
+    mine = client.get("/api/v1/devices/me", headers=_auth(supervised_token))
+
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["device_id"] == linked
+
+
+def test_devices_me_for_an_unknown_install_is_404(client) -> None:
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    _link_a_device(client, tutor_token, supervised_token)
+
+    mine = client.get(
+        "/api/v1/devices/me",
+        params={"device_instance_id": uuid.uuid4().hex},
+        headers=_auth(supervised_token),
+    )
+
+    assert mine.status_code == 404
+
+
+def test_devices_me_never_answers_with_another_accounts_install(client) -> None:
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_a, _ = _make_account(client, "SUPERVISADO")
+    supervised_b, _ = _make_account(client, "SUPERVISADO")
+    instance_of_a = uuid.uuid4().hex
+    _redeem(client, tutor_token, supervised_a, instance_of_a, "De A")
+
+    mine = client.get(
+        "/api/v1/devices/me",
+        params={"device_instance_id": instance_of_a},
+        headers=_auth(supervised_b),
+    )
+
+    assert mine.status_code == 404

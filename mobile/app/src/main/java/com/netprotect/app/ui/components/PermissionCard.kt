@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -18,7 +19,7 @@ import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
 import com.netprotect.app.ui.theme.NpTone
 
-/** Tarjeta de permiso: `IconTile` + título + descripción + `StatusPill` ("Concedido"/"Pendiente") y,
+/** Tarjeta de permiso: `IconTile` + título + descripción + `StatusPill` ("Configurado"/"Pendiente") y,
  * si no está concedido, botón Primary y acción secundaria opcional. */
 @Composable
 fun PermissionCard(
@@ -45,7 +46,7 @@ fun PermissionCard(
                         modifier = Modifier.weight(1f),
                     )
                     StatusPill(
-                        text = if (granted) "Concedido" else "Pendiente",
+                        text = if (granted) "Configurado" else "Pendiente",
                         tone = if (granted) NpTone.Success else NpTone.Warning,
                         showDot = false,
                     )
@@ -54,12 +55,13 @@ fun PermissionCard(
                 Text(text = description, style = NpText.Body, color = NpColors.SlateMuted)
                 if (!granted) {
                     Spacer(Modifier.height(12.dp))
-                    NpButton(text = actionLabel, onClick = onAction)
+                    NpButton(text = actionLabel, onClick = onAction, modifier = Modifier.fillMaxWidth())
                     if (secondaryLabel != null && onSecondary != null) {
                         Spacer(Modifier.height(4.dp))
                         NpButton(
                             text = secondaryLabel,
                             onClick = onSecondary,
+                            modifier = Modifier.fillMaxWidth(),
                             variant = NpButtonVariant.Text,
                         )
                     }

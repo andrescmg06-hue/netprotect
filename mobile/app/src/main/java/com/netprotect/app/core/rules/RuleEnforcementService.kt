@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 /** Foreground service that keeps sondeando (polling) which app is in the foreground and blocks
  * it locally when a rule says to — this has to keep running while the supervised device uses
  * OTHER apps, i.e. while this app itself is not on screen, which a plain Compose LaunchedEffect
- * (tied to SupervisedScreen's composition) cannot do.
+ * (tied to SupervisedShell's composition) cannot do.
  *
  * Requires a persistent notification: not a choice, but a requirement of Android itself for any
  * foreground service (since API 26), independent of the Play anti-stalkerware policy — see
@@ -76,7 +76,7 @@ class RuleEnforcementService : Service() {
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             // Sprint 20: stamped here, synchronously, and not only from the poll loop below.
-            // startForegroundService() is asynchronous, and SupervisedScreen's heartbeat loop
+            // startForegroundService() is asynchronous, and SupervisedShell's heartbeat loop
             // starts in the same composition — without this, the session's first heartbeat could
             // read a marker the service hadn't stamped yet and report a SERVICE_INACTIVE that
             // never happened.
@@ -180,7 +180,7 @@ class RuleEnforcementService : Service() {
             val now = System.currentTimeMillis()
 
             // Sprint 20: the only thing that proves this service is still alive to anything
-            // outside its process (SyncWorker, SupervisedScreen's heartbeat loop). Stamped every
+            // outside its process (SyncWorker, SupervisedShell's heartbeat loop). Stamped every
             // cycle so a stale marker means the service really stopped — see EnforcementLiveness.
             EnforcementLiveness.markActive(applicationContext)
 

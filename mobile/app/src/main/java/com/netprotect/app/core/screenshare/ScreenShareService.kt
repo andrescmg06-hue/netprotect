@@ -48,12 +48,12 @@ import org.webrtc.VideoTrack
  * this (docs/android/capability-matrix.md, Sprint 23): one MediaProjection is good for exactly one
  * createVirtualDisplay() call, and reusing the Intent from createScreenCaptureIntent() throws
  * SecurityException. So this service is handed a *fresh* projection result every time, obtained by
- * the supervised user tapping through the system dialog in SupervisedScreen — there is no stored
+ * the supervised user tapping through the system dialog in SupervisedShell — there is no stored
  * grant this service could quietly reuse later, by design of the platform and of this feature.
  *
  * It holds its own WebSocket rather than sharing RuleEnforcementService's: that one is gated on
  * usage-access permission (which has nothing to do with screen sharing), and this one must outlive
- * SupervisedScreen going to the background, which a Compose effect cannot.
+ * SupervisedShell going to the background, which a Compose effect cannot.
  */
 class ScreenShareService : Service() {
 
@@ -152,7 +152,7 @@ class ScreenShareService : Service() {
         deviceId: String,
         resultData: Intent,
     ) {
-        // The token handed over by SupervisedScreen is whatever that screen got when it opened,
+        // The token handed over by SupervisedShell is whatever that screen got when it opened,
         // and it is never renewed: after 15 minutes with the app open it is expired, and both the
         // config fetch and this service's socket would be rejected. Same fix the other background
         // components already use (Sprint 19).

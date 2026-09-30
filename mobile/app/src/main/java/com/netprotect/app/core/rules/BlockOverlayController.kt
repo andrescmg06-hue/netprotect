@@ -50,7 +50,7 @@ object BlockOverlayController {
      * calls this from its polling coroutine (Dispatchers.Default), which crashed the process the
      * first time this was tried (verified live: IllegalStateException "Method addObserver must
      * be called on the main thread"). Runs synchronously if already on the main thread so callers
-     * that are (SupervisedScreen, some day) don't pay a post() round-trip for nothing.
+     * that are (SupervisedShell, some day) don't pay a post() round-trip for nothing.
      */
     fun show(context: Context, appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
         runOnMainThread { showOnMainThread(context, appLabel, reason, onGoHome) }
