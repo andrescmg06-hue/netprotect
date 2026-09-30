@@ -32,7 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * exists as a service rather than a plain Compose effect.
  *
  * Declared with foregroundServiceType="location" (AndroidManifest.xml) and started only from a
- * foreground Activity (SupervisedScreen's DisposableEffect, exactly like RuleEnforcementService)
+ * foreground Activity (SupervisedShell's DisposableEffect, exactly like RuleEnforcementService)
  * — never from a background context. That combination is deliberate, not incidental: per
  * Android's own docs (see docs/android/capability-matrix.md, Sprint 13), an app running a
  * `location`-typed foreground service already counts as "in the foreground" for the location

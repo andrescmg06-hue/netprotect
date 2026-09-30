@@ -41,7 +41,7 @@ import com.netprotect.app.core.network.InfrastructureHealthClient
 import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.network.toUiError
-import com.netprotect.app.feature.supervised.SupervisedScreen
+import com.netprotect.app.feature.supervised.SupervisedShell
 import com.netprotect.app.feature.tutor.TutorShell
 import kotlinx.coroutines.launch
 
@@ -196,7 +196,7 @@ fun HomeScreen() {
                 onSignOut = ::signOut,
                 onSwitchMode = { switchMode(current.user) },
             )
-            is HomeState.InSupervisedMode -> SupervisedScreen(
+            is HomeState.InSupervisedMode -> SupervisedShell(
                 baseUrl = BuildConfig.API_BASE_URL,
                 session = authRepository.session,
                 onSignOut = ::signOut,
