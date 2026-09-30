@@ -1,8 +1,12 @@
 package com.netprotect.app.feature.supervised.permissions
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -12,13 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.feature.supervised.PermissionsUi
-import com.netprotect.app.ui.components.NpButton
-import com.netprotect.app.ui.components.NpButtonVariant
+import com.netprotect.app.ui.components.InfoBanner
+import com.netprotect.app.ui.components.NpTopBar
+import com.netprotect.app.ui.components.PermissionCard
+import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
 
-/** INTERIM (Sprint 48, Claude): plain but complete. DeepSeek replaces this body; the signature is
- * final. The shell re-reads every permission when the app comes back from Settings. */
+/** Pantalla «Permisos del dispositivo» del modo supervisado. Solo llama a los callbacks. */
 @Composable
 fun PermissionsScreen(
     permissions: PermissionsUi,
@@ -32,33 +37,73 @@ fun PermissionsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(NpColors.SkyGround),
     ) {
-        NpButton("Atrás", onBack, variant = NpButtonVariant.Text)
-        Text("Permisos del dispositivo", style = NpText.Display, color = NpColors.ShieldNavy)
-        Row("Acceso al uso de apps", permissions.usageAccess)
-        if (!permissions.usageAccess) {
-            NpButton("Abrir Ajustes", onOpenUsageAccessSettings)
-            NpButton("Ya lo activé, verificar de nuevo", onRecheckUsageAccess, variant = NpButtonVariant.Text)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            NpTopBar(onBack = onBack)
+            Text(text = "Permisos del dispositivo", style = NpText.Display, color = NpColors.ShieldNavy)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Para que NetProtect funcione correctamente en este dispositivo, se requieren los siguientes permisos.",
+                style = NpText.Body,
+                color = NpColors.SlateMuted,
+            )
+            Spacer(Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                PermissionCard(
+                    icon = NpIcons.LayoutGrid,
+                    title = "Acceso al uso de apps",
+                    description = "Permite conocer cuánto tiempo se usan las aplicaciones y aplicar las reglas de tu tutor. Android exige activarlo en Ajustes.",
+                    granted = permissions.usageAccess,
+                    actionLabel = "Abrir Ajustes",
+                    onAction = onOpenUsageAccessSettings,
+                    secondaryLabel = "Ya lo activé, verificar de nuevo",
+                    onSecondary = onRecheckUsageAccess,
+                )
+                PermissionCard(
+                    icon = NpIcons.MapPin,
+                    title = "Ubicación aproximada",
+                    description = "Permite reportar la última ubicación conocida y detectar geocercas con información aproximada. No se usa la ubicación precisa.",
+                    granted = permissions.location,
+                    actionLabel = "Permitir ubicación aproximada",
+                    onAction = onRequestLocation,
+                    secondaryLabel = "Ya lo activé, verificar de nuevo",
+                    onSecondary = onRecheckLocation,
+                )
+                PermissionCard(
+                    icon = NpIcons.Monitor,
+                    title = "Mostrar sobre otras apps",
+                    description = "Necesario para mostrar la pantalla de bloqueo cuando corresponda, también con el teléfono en uso.",
+                    granted = permissions.overlay,
+                    actionLabel = "Abrir Ajustes",
+                    onAction = onRequestOverlay,
+                    secondaryLabel = "Ya lo activé, verificar de nuevo",
+                    onSecondary = onRecheckOverlay,
+                )
+                PermissionCard(
+                    icon = NpIcons.Shield,
+                    title = "Protección contra desinstalación",
+                    description = "Permite avisar al tutor si se intenta desinstalar NetProtect; no elimina el dispositivo ni cambia contraseñas.",
+                    granted = permissions.deviceAdmin,
+                    actionLabel = "Activar protección",
+                    onAction = onRequestDeviceAdmin,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            InfoBanner(
+                title = "Información importante",
+                text = "Solo solicitamos los permisos necesarios para las funciones de NetProtect. Puedes revocarlos en cualquier momento desde los ajustes del dispositivo.",
+            )
+            Spacer(Modifier.height(24.dp))
         }
-        Row("Ubicación aproximada", permissions.location)
-        if (!permissions.location) {
-            NpButton("Permitir ubicación aproximada", onRequestLocation)
-            NpButton("Ya lo activé, verificar de nuevo", onRecheckLocation, variant = NpButtonVariant.Text)
-        }
-        Row("Mostrar sobre otras apps", permissions.overlay)
-        if (!permissions.overlay) {
-            NpButton("Abrir Ajustes", onRequestOverlay)
-            NpButton("Ya lo activé, verificar de nuevo", onRecheckOverlay, variant = NpButtonVariant.Text)
-        }
-        Row("Protección contra desinstalación", permissions.deviceAdmin)
-        if (!permissions.deviceAdmin) NpButton("Activar protección", onRequestDeviceAdmin)
     }
-}
-
-@Composable
-private fun Row(title: String, granted: Boolean) {
-    Text("$title — ${if (granted) "Configurado" else "Pendiente"}", style = NpText.BodyStrong)
 }

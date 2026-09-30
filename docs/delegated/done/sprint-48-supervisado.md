@@ -301,3 +301,56 @@ Pega la salida **real** de cada comprobación:
 
 Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no hayas ejecutado
 se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados y modificados
+
+- **Reemplazados los cuerpos** (firmas intactas) de:
+  - `feature/supervised/link/LinkDeviceScreen.kt`
+  - `feature/supervised/linked/LinkedDeviceScreen.kt`
+  - `feature/supervised/permissions/PermissionsScreen.kt`
+- **Creados** los 3 tests androidTest: `LinkDeviceScreenTest`, `LinkedDeviceScreenTest`, `PermissionsScreenTest`.
+- **Modificado** `src/debug/.../ScreensGallery.kt`: 13 frames del S48 puestos **al principio** (antes de los del S47).
+
+**No toqué** `SupervisedShell.kt`, `SupervisedViews.kt`, `PermissionCard.kt`, `OtpInput.kt`, `ListRow.kt`, `NpTopBar.kt`
+ni nada de §4.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL**.
+- `lintDebug`: **0 errores, 24 avisos** (la base son 24; **0 avisos nuevos** en mis archivos; ninguno en
+  `feature/supervised/{link,linked,permissions}`).
+- `connectedDebugAndroidTest` (emulador `Pixel_8`): **116 tests, 0 fallos, 0 errores, 0 saltados** (96 previos + 20 de
+  este sprint). Los 20 de `LinkDeviceScreenTest` (6), `LinkedDeviceScreenTest` (10) y `PermissionsScreenTest` (4)
+  pasaron.
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|Build\.|LocalContext|Intent|\.launch|Desvincular|precisa" mobile/app/src/main/java/com/netprotect/app/feature/supervised/{link,linked,permissions}`
+  → **una sola coincidencia**, la permitida: `PermissionsScreen.kt:75` «…No se usa la ubicación precisa.».
+- **Shell intacto:** `git diff --stat -- .../SupervisedShell.kt` → **vacío**.
+- `git status --short` / `git diff --stat` → solo archivos de §4 (3 pantallas + `ScreensGallery.kt` + 3 tests + el
+  movimiento del encargo).
+- Capturas en `%TEMP%\sprint48-gallery\`:
+  - `LinkDeviceScreen-·-vacío.png`, `-·-123.png`, `-·-6-dígitos.png`, `-·-vinculando.png`, `-·-error.png`, `-·-comprobando.png`.
+  - `LinkedDeviceScreen-·-2-pendientes.png`, `-·-0-pendientes-sin-conexión.png`, `-·-vista-remota.png`, `-·-sin-nombre-ni-contacto.png`.
+  - `PermissionsScreen-·-2-pendientes.png`, `PermissionsScreen-todos-configurados.png`, `PermissionsScreen-todos-pendientes.png`.
+
+### 3. Decisiones / hallazgos fuera del encargo
+
+- **`ListRow` no permite color de título** (el título es siempre `ShieldNavy`). Como el propio encargo anticipa en
+  §5.2 paso 14 («Si `ListRow` no permite dar color rojo al título, déjalo como está y dilo en el informe»), el título
+  «Cerrar sesión» queda en `ShieldNavy`, no en rojo; el subtítulo sí es el corregido «Cierra la sesión en este
+  dispositivo.».
+- El separador « · » entre el relativo y «Conectado»/«Sin conexión» (que el encargo no colorea) lo dejé en `Ink`,
+  igual que el relativo.
+- `StatusPill("Vinculado", NpTone.Success)` va con el punto por defecto (`showDot = true`), como pide §5.2.
+
+### 4. Pendientes
+
+- **Revisión visual** de las tres pantallas: para Claude (este modelo no acepta imágenes). Capturas en
+  `%TEMP%\sprint48-gallery\` (listadas arriba).
+
+### 5. Preguntas para Claude
+
+Ninguna.

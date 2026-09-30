@@ -37,6 +37,10 @@ import com.netprotect.app.feature.tutor.home.PairingUi
 import com.netprotect.app.feature.tutor.home.TutorHomeScreen
 import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
+import com.netprotect.app.feature.supervised.PermissionsUi
+import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
+import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.tutor.activity.ActivityDay
 import com.netprotect.app.feature.tutor.activity.ActivityRow
 import com.netprotect.app.feature.tutor.activity.MyActivityScreen
@@ -79,6 +83,98 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 48 (al principio para las capturas) ----
+        ScreenFrame("LinkDeviceScreen · vacío") {
+            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · 123") {
+            LinkDeviceScreen(code = "123", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · 6 dígitos") {
+            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · vinculando") {
+            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = true, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · error") {
+            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = false, error = "El código no es válido o ya venció.", rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · comprobando") {
+            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = true, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkedDeviceScreen · 2 pendientes") {
+            LinkedDeviceScreen(
+                deviceName = "Tablet de Sofía",
+                androidVersion = "13",
+                tutors = listOf("Andrés Mosquera", "María Pérez"),
+                lastContact = galleryNowS48.minusSeconds(120),
+                reachable = true,
+                now = galleryNowS48,
+                pendingPermissions = 2,
+                screenShareRequested = false,
+                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("LinkedDeviceScreen · 0 pendientes sin conexión") {
+            LinkedDeviceScreen(
+                deviceName = "Tablet de Sofía",
+                androidVersion = "13",
+                tutors = listOf("Andrés Mosquera"),
+                lastContact = galleryNowS48.minusSeconds(120),
+                reachable = false,
+                now = galleryNowS48,
+                pendingPermissions = 0,
+                screenShareRequested = false,
+                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("LinkedDeviceScreen · vista remota") {
+            LinkedDeviceScreen(
+                deviceName = "Tablet de Sofía",
+                androidVersion = "13",
+                tutors = listOf("Andrés Mosquera"),
+                lastContact = galleryNowS48.minusSeconds(120),
+                reachable = true,
+                now = galleryNowS48,
+                pendingPermissions = 0,
+                screenShareRequested = true,
+                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("LinkedDeviceScreen · sin nombre ni contacto") {
+            LinkedDeviceScreen(
+                deviceName = null,
+                androidVersion = "13",
+                tutors = listOf("Andrés Mosquera"),
+                lastContact = null,
+                reachable = false,
+                now = galleryNowS48,
+                pendingPermissions = 2,
+                screenShareRequested = false,
+                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("PermissionsScreen · 2 pendientes") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = false, location = false, overlay = true, deviceAdmin = true),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+            )
+        }
+        ScreenFrame("PermissionsScreen · todos configurados") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = true),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+            )
+        }
+        ScreenFrame("PermissionsScreen · todos pendientes") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = false, location = false, overlay = false, deviceAdmin = false),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+            )
+        }
         // ---- Sprint 47 (al principio para las capturas) ----
         ScreenFrame("MyActivityScreen · dos días") {
             MyActivityScreen(
@@ -541,6 +637,7 @@ private val galleryGeofenceEvents = listOf(
 )
 
 private val galleryNowS46: Instant = Instant.parse("2026-09-29T20:00:00Z")
+private val galleryNowS48: Instant = Instant.parse("2026-09-30T15:00:00Z")
 
 private val galleryHistory = listOf(
     HistoryDay(
