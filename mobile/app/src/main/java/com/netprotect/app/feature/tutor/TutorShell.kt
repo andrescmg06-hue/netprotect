@@ -57,7 +57,10 @@ import com.netprotect.app.feature.tutor.devices.DevicesScreen
 import com.netprotect.app.feature.tutor.home.PairingUi
 import com.netprotect.app.feature.tutor.home.TutorHomeController
 import com.netprotect.app.feature.tutor.home.TutorHomeScreen
-import com.netprotect.app.feature.tutor.legacy.LegacyActivityScreen
+import com.netprotect.app.core.network.AuditClient
+import com.netprotect.app.feature.tutor.activity.MyActivityController
+import com.netprotect.app.feature.tutor.activity.MyActivityScreen
+import com.netprotect.app.feature.tutor.activity.activityDays
 import com.netprotect.app.feature.tutor.more.MoreScreen
 import com.netprotect.app.ui.components.NpBottomBar
 import com.netprotect.app.ui.components.NpBottomItem
@@ -156,7 +159,30 @@ fun TutorShell(
                     onRefresh = { scope.launch { home.refreshDevices() } },
                     onOpenDevice = { open(TutorRoute.Detail(it)) },
                 )
-                TutorRoute.Activity -> LegacyActivityScreen(baseUrl = baseUrl, session = session)
+                TutorRoute.Activity -> {
+                    val auditClient = remember { AuditClient(baseUrl) }
+                    val activity = remember {
+                        MyActivityController { offset -> session.authorized { token -> auditClient.listMyAuditLog(token, offset) } }
+                    }
+                    // Reloaded each time the tab is opened: the log is what the tutor just did.
+                    LaunchedEffect(Unit) { activity.refresh() }
+                    val zone = ZoneId.systemDefault()
+                    val deviceNames = (home.devices as? LoadState.Loaded)?.value?.associate { it.id to it.name }.orEmpty()
+                    MyActivityScreen(
+                        activity = when (val state = activity.state) {
+                            is LoadState.Loaded -> LoadState.Loaded(
+                                activityDays(state.value, deviceNames, now.atZone(zone).toLocalDate(), zone),
+                            )
+                            is LoadState.Failed -> state
+                            LoadState.Loading -> LoadState.Loading
+                        },
+                        hasMore = activity.hasMore,
+                        loadingMore = activity.loadingMore,
+                        moreError = activity.moreError,
+                        onLoadMore = { scope.launch { activity.loadMore() } },
+                        onRefresh = { scope.launch { activity.refresh() } },
+                    )
+                }
                 TutorRoute.More -> MoreScreen(
                     appVersion = BuildConfig.VERSION_NAME,
                     onSwitchMode = onSwitchMode,
