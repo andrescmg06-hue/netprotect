@@ -280,3 +280,88 @@ def test_purge_never_touches_another_devices_rows(client) -> None:
     )
     assert other_history.status_code == 200, other_history.text
     assert len(other_history.json()["reports"]) == 1
+
+
+# ------------------------------------------------------------------ audit of reads (Sprint 47)
+
+
+def _my_audit(client: TestClient, token: str, action: str) -> list[dict]:
+    response = client.get(
+        "/api/v1/users/me/audit", params={"action": action, "limit": 100}, headers=_auth(token)
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["logs"]
+
+
+def test_reading_the_latest_location_is_audited_once_without_location_data(client) -> None:
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+    _report_location(client, supervised_token, device_id, latitude=4.151234, longitude=-73.634567)
+
+    response = client.get(
+        f"/api/v1/devices/{device_id}/location/latest", headers=_auth(tutor_token)
+    )
+    assert response.status_code == 200, response.text
+
+    logs = _my_audit(client, tutor_token, "LOCATION_VIEWED")
+    assert len(logs) == 1
+    entry = logs[0]
+    assert entry["resource_type"] == "device"
+    assert entry["resource_id"] == device_id
+    # Invariant 7: the audit log is not a second copy of the location.
+    serialized = str(entry)
+    for leaked in ("4.15", "-73.63", "1500", "latitude", "longitude", "accuracy"):
+        assert leaked not in serialized
+
+
+def test_every_read_is_one_row_even_when_nothing_was_reported(client) -> None:
+    tutor_token, _, device_id = _setup_linked_device(client)
+
+    for _ in range(2):
+        response = client.get(
+            f"/api/v1/devices/{device_id}/location/latest", headers=_auth(tutor_token)
+        )
+        assert response.status_code == 200
+        assert response.json()["report"] is None
+
+    assert len(_my_audit(client, tutor_token, "LOCATION_VIEWED")) == 2
+
+
+def test_a_rejected_read_leaves_no_audit_row(client) -> None:
+    _, supervised_token, device_id = _setup_linked_device(client)
+    _report_location(client, supervised_token, device_id)
+    stranger_token, _ = _make_account(client, "TUTOR")
+
+    for path in ("latest", "history"):
+        response = client.get(
+            f"/api/v1/devices/{device_id}/location/{path}", headers=_auth(stranger_token)
+        )
+        assert response.status_code == 404
+    response = client.get(
+        f"/api/v1/devices/{uuid.uuid4()}/location/latest", headers=_auth(stranger_token)
+    )
+    assert response.status_code == 404
+
+    assert _my_audit(client, stranger_token, "LOCATION_VIEWED") == []
+    assert _my_audit(client, stranger_token, "LOCATION_HISTORY_VIEWED") == []
+
+
+def test_reading_the_location_history_is_audited_separately(client) -> None:
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+    _report_location(client, supervised_token, device_id)
+
+    response = client.get(
+        f"/api/v1/devices/{device_id}/location/history", headers=_auth(tutor_token)
+    )
+    assert response.status_code == 200, response.text
+
+    logs = _my_audit(client, tutor_token, "LOCATION_HISTORY_VIEWED")
+    assert [(log["resource_type"], log["resource_id"]) for log in logs] == [("device", device_id)]
+    assert _my_audit(client, tutor_token, "LOCATION_VIEWED") == []
+
+
+def test_the_device_reporting_its_location_is_not_audited(client) -> None:
+    _, supervised_token, device_id = _setup_linked_device(client)
+
+    assert _report_location(client, supervised_token, device_id).status_code == 200
+
+    assert _my_audit(client, supervised_token, "LOCATION_VIEWED") == []

@@ -1,15 +1,17 @@
 # Progreso — NetProtect
-_Actualizado: 2026-09-29 · Sprint actual: 46_
+_Actualizado: 2026-09-30 · Sprint actual: 47_
 
 ## En curso
 - Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
   trabajo) para que el contexto por área cargue solo según la ruta tocada.
 
 ## Siguiente paso
-- S47 (Mi actividad, pantalla 11, y auditar la consulta de ubicación, D-10): incluye un cambio de backend.
-  Plan: `docs/android-redesign/sprints/S47-*.md`.
+- S48 (modo supervisado: vincular, vinculado y permisos, pantallas 12–14).
+  Plan: `docs/android-redesign/sprints/S48-supervisado-vincular-y-permisos.md`.
 
 ## Terminado recientemente
+- Sprint 47: Mi actividad rediseñada con paginación; cada consulta de ubicación queda auditada
+  (`LOCATION_VIEWED`, sin coordenadas); etiquetas de auditoría en español también en el web — `docs/sprint-47.md`
 - Sprint 46: Historial, Estadísticas y Alertas rediseñadas; «Marcar leída» y «Silenciar» desde el móvil,
   verificados contra el panel web — `docs/sprint-46.md`
 - Sprint 45: Apps, Ubicación y Geocercas rediseñadas sin coordenadas ni lugar; "Dentro de" solo con certeza —

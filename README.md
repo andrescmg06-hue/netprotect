@@ -625,3 +625,12 @@ panel web). El historial se agrupa por día con el nombre de la app, las estadí
 dentro del límite («5 de 7 días») y las alertas se filtran por no leídas, críticas o advertencias.
 
 El detalle está en `docs/sprint-46.md`.
+
+## Alcance del Sprint 47
+
+La pestaña Actividad del modo tutor en Android muestra el registro de auditoría del propio tutor como una línea de tiempo
+por día, con etiquetas en español y «Cargar más». Cada vez que un tutor consulta la ubicación de un dispositivo, desde la
+app o desde el panel web, queda registrado como «Ubicación consultada», guardando solo la acción y el dispositivo, nunca
+coordenadas. El panel web también muestra ahora las acciones de Mi actividad en español.
+
+El detalle está en `docs/sprint-47.md`.
