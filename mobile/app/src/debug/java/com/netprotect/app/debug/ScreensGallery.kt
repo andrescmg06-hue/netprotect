@@ -37,6 +37,9 @@ import com.netprotect.app.feature.tutor.home.PairingUi
 import com.netprotect.app.feature.tutor.home.TutorHomeScreen
 import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
+import com.netprotect.app.feature.tutor.activity.ActivityDay
+import com.netprotect.app.feature.tutor.activity.ActivityRow
+import com.netprotect.app.feature.tutor.activity.MyActivityScreen
 import com.netprotect.app.feature.tutor.sections.LocationView
 import com.netprotect.app.feature.tutor.sections.geofencesView
 import com.netprotect.app.feature.tutor.alerts.AlertsScreen
@@ -53,6 +56,7 @@ import com.netprotect.app.feature.tutor.sections.StatsPeriod
 import com.netprotect.app.feature.tutor.sections.StatisticsView
 import com.netprotect.app.feature.tutor.sections.TopAppRow
 import com.netprotect.app.feature.tutor.statistics.StatisticsScreen
+import com.netprotect.app.ui.format.AuditLabels
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.state.LoadState
 import com.netprotect.app.ui.theme.NpColors
@@ -75,6 +79,57 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 47 (al principio para las capturas) ----
+        ScreenFrame("MyActivityScreen · dos días") {
+            MyActivityScreen(
+                activity = LoadState.Loaded(galleryActivityDays),
+                hasMore = true,
+                loadingMore = false,
+                moreError = null,
+                onLoadMore = {},
+                onRefresh = {},
+            )
+        }
+        ScreenFrame("MyActivityScreen · loadingMore") {
+            MyActivityScreen(
+                activity = LoadState.Loaded(galleryActivityDays),
+                hasMore = true,
+                loadingMore = true,
+                moreError = null,
+                onLoadMore = {},
+                onRefresh = {},
+            )
+        }
+        ScreenFrame("MyActivityScreen · moreError") {
+            MyActivityScreen(
+                activity = LoadState.Loaded(galleryActivityDays),
+                hasMore = true,
+                loadingMore = false,
+                moreError = "Sin conexión con el servidor.",
+                onLoadMore = {},
+                onRefresh = {},
+            )
+        }
+        ScreenFrame("MyActivityScreen · vacío") {
+            MyActivityScreen(
+                activity = LoadState.Loaded(emptyList()),
+                hasMore = false,
+                loadingMore = false,
+                moreError = null,
+                onLoadMore = {},
+                onRefresh = {},
+            )
+        }
+        ScreenFrame("MyActivityScreen · error") {
+            MyActivityScreen(
+                activity = LoadState.Failed("Sin conexión con el servidor."),
+                hasMore = false,
+                loadingMore = false,
+                moreError = null,
+                onLoadMore = {},
+                onRefresh = {},
+            )
+        }
         // ---- Sprint 46 (al principio para las capturas) ----
         ScreenFrame("HistoryScreen · dos días") {
             HistoryScreen(device = galleryTablet, history = LoadState.Loaded(galleryHistory), now = galleryNowS46, onRefresh = {}, onBack = {})
@@ -535,6 +590,44 @@ private val galleryAlerts = listOf(
     AlertItem("a3", "WARNING", "Se alcanzó el límite de tiempo de Instagram", "Ayer, 6:40 p. m.", null, unread = false, silenced = true),
     AlertItem("a4", "INFO", "Salió de Casa", "Ayer, 9:15 a. m.", null, unread = false, silenced = false),
     AlertItem("a5", "INFO", "Entró a Casa", "24 de septiembre de 2026, 8:12 a. m.", null, unread = true, silenced = false),
+)
+
+private fun galleryActivityRow(id: String, action: String, subtitle: String?, time: String): ActivityRow {
+    val family = AuditLabels.family(action)
+    return ActivityRow(
+        id = id,
+        icon = family.icon,
+        tone = family.tone,
+        title = AuditLabels.auditActionLabel(action),
+        subtitle = subtitle,
+        time = time,
+    )
+}
+
+private val galleryActivityDays = listOf(
+    ActivityDay(
+        date = LocalDate.of(2026, 9, 29),
+        title = "Hoy",
+        subtitle = "29 de septiembre de 2026",
+        rows = listOf(
+            galleryActivityRow("a1", "LOCATION_VIEWED", "Tablet de Sofía", "3:42 p. m."),
+            galleryActivityRow("a2", "ALERT_SILENCED", "Alerta", "3:10 p. m."),
+            galleryActivityRow("a3", "APP_RULE_UPDATED", "Regla de app", "2:05 p. m."),
+            galleryActivityRow("a4", "TOKEN_REFRESH", null, "11:30 a. m."),
+            galleryActivityRow("a5", "DEVICE_RENAMED", "Tablet de Sofía", "9:15 a. m."),
+        ),
+    ),
+    ActivityDay(
+        date = LocalDate.of(2026, 9, 28),
+        title = "Ayer",
+        subtitle = "28 de septiembre de 2026",
+        rows = listOf(
+            galleryActivityRow("a6", "GEOFENCE_CREATED", "Geocerca", "6:40 p. m."),
+            galleryActivityRow("a7", "SCREEN_SHARE_REQUESTED", null, "4:22 p. m."),
+            galleryActivityRow("a8", "LOGIN", null, "8:05 a. m."),
+            galleryActivityRow("a9", "ALERT_READ", "Alerta", "7:50 a. m."),
+        ),
+    ),
 )
 
 @Composable

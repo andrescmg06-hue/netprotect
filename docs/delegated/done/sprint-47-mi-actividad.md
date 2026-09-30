@@ -174,3 +174,56 @@ Pega la salida **real** de cada comprobación:
 
 Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no hayas ejecutado
 se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados y modificados
+
+- **Reemplazado el cuerpo** de `feature/tutor/activity/MyActivityScreen.kt` (firma intacta, sin botón de volver) + dos
+  composables `private` (`DayCard`, `ActivityRowView`).
+- **Creado** `mobile/app/src/androidTest/java/com/netprotect/app/ui/MyActivityScreenTest.kt` (10 tests).
+- **Modificado** `src/debug/.../ScreensGallery.kt`: 5 frames del S47 puestos **al principio** (antes de los del S46),
+  con datos `galleryActivityDays` + helper `galleryActivityRow` que usa `AuditLabels.family(...)`/`auditActionLabel(...)`.
+
+No toqué `MyActivityState.kt`, `TutorShell.kt`, `TutorRoute.kt` ni nada fuera de §4.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL**.
+- `lintDebug`: **0 errores, 25 avisos**. La base es 24; el **único aviso nuevo** está en un archivo que **no es mío** y que
+  no me corresponde tocar: `AutoboxingStateCreation @ .../feature/tutor/activity/MyActivityState.kt:75`
+  (`var total: Int by mutableStateOf(0)`; sugeriría `mutableIntStateOf(0)`). **Mis archivos** (`MyActivityScreen.kt`,
+  `ScreensGallery.kt`, el test) no añaden ningún aviso.
+- `connectedDebugAndroidTest` (emulador `Pixel_8`): **96 tests, 0 fallos, 0 errores, 0 saltados** (86 previos + 10 de este
+  sprint). Los 10 de `MyActivityScreenTest` pasaron: dos días («Hoy», «Ubicación consultada», «Tablet de Sofía»);
+  `subtitle = null` sin nodo `"null"`; «Cargar más» → `onLoadMore` y ausente con `hasMore = false`; `loadingMore` deshabilita;
+  `moreError` visible; vacío; error → «Reintentar» → `onRefresh`; sin «Exportar»/«Borrar»/«Eliminar»/«Editar»; se ve
+  «(app y panel web)» y **no** «solo las acciones que tú realizas en la app».
+- `grep -nE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|LocalDate\.now|currentTimeMillis|resourceId|resourceType|auditActionLabel|Clock\.format" .../MyActivityScreen.kt`
+  → **sin coincidencias**.
+- `git status --short` / `git diff --stat` → solo `MyActivityScreen.kt`, `ScreensGallery.kt`, `MyActivityScreenTest.kt`
+  (nuevo) y el movimiento del encargo (pending→active). Ningún archivo de «no tocar».
+- Capturas en `%TEMP%\sprint47-gallery\`:
+  - `s47-01-dos-dias.png` → «MyActivityScreen · dos días» (hasMore).
+  - `s47-02-loadingMore.png` → «MyActivityScreen · loadingMore».
+  - `s47-03-moreError.png` → «MyActivityScreen · moreError».
+  - `s47-04-vacio.png` → «MyActivityScreen · vacío».
+  - `s47-05-error.png` → «MyActivityScreen · error».
+
+### 3. Decisiones / hallazgos fuera del encargo
+
+- Ninguna decisión fuera del encargo: la pantalla sigue §5 al pie de la letra (estructura `MoreScreen`, textos exactos,
+  `time` con ancho fijo 72 dp, `IconTile` 40 dp, `Cargar más` con `loading`/`enabled`, `InfoBanner` siempre visible).
+- Hallazgo (no lo arreglo porque no es mi archivo): el aviso de lint `AutoboxingStateCreation` es de
+  `MyActivityState.kt:75` (código de Claude, en la lista de «no tocar»). Lo dejo aquí por si Claude quiere corregirlo.
+
+### 4. Pendientes
+
+- **Revisión visual** de la pantalla: para Claude (este modelo no acepta imágenes). Las capturas están en
+  `%TEMP%\sprint47-gallery\` (listadas arriba).
+
+### 5. Preguntas para Claude
+
+Ninguna.
