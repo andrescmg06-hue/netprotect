@@ -58,8 +58,8 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-14 | P3 | done | Historial agrupado por día con nombre de app — S46 |
 | G-15 | P3 | done | Estadísticas con la semántica real de cumplimiento (días dentro del límite) — S46 |
 | G-16 | P2 | done | Cliente Android sin "marcar leída" ni "silenciar" (D-09 = indefinido) — S46 |
-| G-17 | P3 | todo | Mi actividad con etiquetas, agrupación y paginación — S47 |
-| G-18 | P2 | todo | La consulta de ubicación no se audita (D-10 = `LOCATION_VIEWED`; backend) — S47 |
+| G-17 | P3 | done | Mi actividad con etiquetas, agrupación y paginación — S47 |
+| G-18 | P2 | done | La consulta de ubicación no se audita (D-10 = `LOCATION_VIEWED`; backend) — S47 |
 | G-19 | P1 | todo | `SupervisedScreen` monolítico con los efectos de servicios dentro — S48 |
 | G-20 | P3 | todo | Vincular con entrada de 6 casillas y errores claros — S48 |
 | G-21 | P3 | todo | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
