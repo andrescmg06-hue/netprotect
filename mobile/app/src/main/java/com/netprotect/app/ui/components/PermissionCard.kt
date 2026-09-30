@@ -18,7 +18,7 @@ import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
 import com.netprotect.app.ui.theme.NpTone
 
-/** Tarjeta de permiso: `IconTile` + título + descripción + `StatusPill` ("Concedido"/"Pendiente") y,
+/** Tarjeta de permiso: `IconTile` + título + descripción + `StatusPill` ("Configurado"/"Pendiente") y,
  * si no está concedido, botón Primary y acción secundaria opcional. */
 @Composable
 fun PermissionCard(
@@ -45,7 +45,7 @@ fun PermissionCard(
                         modifier = Modifier.weight(1f),
                     )
                     StatusPill(
-                        text = if (granted) "Concedido" else "Pendiente",
+                        text = if (granted) "Configurado" else "Pendiente",
                         tone = if (granted) NpTone.Success else NpTone.Warning,
                         showDot = false,
                     )
