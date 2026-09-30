@@ -634,3 +634,14 @@ app o desde el panel web, queda registrado como «Ubicación consultada», guard
 coordenadas. El panel web también muestra ahora las acciones de Mi actividad en español.
 
 El detalle está en `docs/sprint-47.md`.
+
+## Alcance del Sprint 48
+
+El modo supervisado de la app Android se reorganiza en un contenedor que mantiene en marcha, sin interrupciones, el
+latido, el bloqueo de apps, la ubicación, la sincronización y la vista remota mientras se navega entre pantallas. Se
+rediseñan Vincular (código de 6 casillas, errores claros), Dispositivo vinculado (todos los tutores, última
+comunicación, resumen de permisos, «Cerrar sesión» que ya no dice que desvincula) y Permisos (estado actualizado al
+volver de Ajustes). En el backend, `GET /devices/me` deja de fallar cuando una cuenta supervisada tiene más de un
+dispositivo registrado.
+
+El detalle está en `docs/sprint-48.md`; para continuar el rediseño, `docs/android-redesign/CONTINUAR.md`.

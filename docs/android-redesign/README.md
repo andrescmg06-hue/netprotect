@@ -2,7 +2,7 @@
 
 Todo lo necesario para que Claude Code (planifica, implementa lo sensible y revisa) y DeepSeek V4 Pro
 en OpenCode (implementa encargos cerrados) lleven la app Android a los 17 mockups, sin perder
-funcionalidades ni mostrar datos que no existen. Nada de esto está implementado todavía.
+funcionalidades ni mostrar datos que no existen. **Estado y cómo continuar: `CONTINUAR.md`** (S40–S48 hechos).
 
 ## Qué hay aquí
 
