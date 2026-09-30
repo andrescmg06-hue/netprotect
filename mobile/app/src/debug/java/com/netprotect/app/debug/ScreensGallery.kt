@@ -144,19 +144,8 @@ fun ScreensGallery() {
                 onRefresh = {}, onBack = {},
             )
         }
-        ScreenFrame("AlertsScreen · silenceTarget") {
-            AlertsScreen(
-                device = galleryTablet,
-                alerts = LoadState.Loaded(galleryAlerts),
-                filter = AlertFilter.All,
-                busyAlertId = null,
-                actionError = null,
-                silenceTarget = galleryAlerts[1],
-                now = galleryNowS46,
-                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
-                onRefresh = {}, onBack = {},
-            )
-        }
+        // No "silenceTarget" frame: ConfirmDialog is a modal window and would cover the whole
+        // gallery. The dialog is covered by AlertsScreenTest.
         ScreenFrame("AlertsScreen · actionError") {
             AlertsScreen(
                 device = galleryTablet,

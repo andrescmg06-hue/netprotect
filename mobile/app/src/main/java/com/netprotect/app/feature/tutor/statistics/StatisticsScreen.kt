@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.core.network.DeviceSummary
@@ -205,7 +206,15 @@ private fun TopAppRowView(row: TopAppRow) {
             contentDescription = "${row.name}: ${row.duration}",
         )
         Spacer(Modifier.width(12.dp))
-        Text(text = row.duration, style = NpText.BodyStrong, color = NpColors.Ink)
+        // Fixed width so every bar ends at the same x, whatever the duration's length.
+        Text(
+            text = row.duration,
+            style = NpText.BodyStrong,
+            color = NpColors.Ink,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.width(92.dp),
+        )
     }
 }
 

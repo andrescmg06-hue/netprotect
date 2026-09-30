@@ -212,14 +212,16 @@ private fun AlertCard(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (item.unread) {
                 NpButton(
-                    text = "Marcar como leída",
+                    text = "Marcar leída",
                     onClick = { onMarkRead(item.id) },
                     modifier = Modifier.weight(1f),
                     variant = NpButtonVariant.Secondary,
                     icon = NpIcons.Check,
                     small = true,
+                    // No spinner: while any action is sent every button is disabled, and the
+                    // controller doesn't say which action is running (a spinner here would also
+                    // spin while silencing).
                     enabled = busyAlertId == null,
-                    loading = busyAlertId == item.id && !item.silenced,
                 )
             }
             if (item.silenced) {

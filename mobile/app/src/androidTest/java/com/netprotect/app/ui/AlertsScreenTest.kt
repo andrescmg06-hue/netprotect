@@ -80,14 +80,14 @@ class AlertsScreenTest {
     fun markReadCallsOnMarkRead() {
         var marked: String? = null
         set(onMarkRead = { marked = it })
-        composeRule.onNodeWithText("Marcar como leída").performScrollTo().performClick()
+        composeRule.onNodeWithText("Marcar leída").performScrollTo().performClick()
         assertEquals("a1", marked)
     }
 
     @Test
     fun readAlertHasNoMarkRead() {
         set(alerts = LoadState.Loaded(listOf(read)))
-        composeRule.onNodeWithText("Marcar como leída").assertDoesNotExist()
+        composeRule.onNodeWithText("Marcar leída").assertDoesNotExist()
     }
 
     @Test
@@ -108,7 +108,7 @@ class AlertsScreenTest {
     @Test
     fun busyDisablesButtons() {
         set(busyAlertId = "a1")
-        composeRule.onNodeWithText("Marcar como leída").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithText("Marcar leída").performScrollTo().assertIsNotEnabled()
         composeRule.onAllNodesWithText("Silenciar")[0].performScrollTo().assertIsNotEnabled()
     }
 
