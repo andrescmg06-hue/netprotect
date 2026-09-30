@@ -1,6 +1,7 @@
 package com.netprotect.app.feature.tutor.activity
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.netprotect.app.core.network.AuditLogEntry
@@ -72,7 +73,7 @@ fun activityDays(
 class MyActivityController(private val loadPage: suspend (offset: Int) -> AuditPage) {
     var state: LoadState<List<AuditLogEntry>> by mutableStateOf(LoadState.Loading)
         private set
-    var total: Int by mutableStateOf(0)
+    var total: Int by mutableIntStateOf(0)
         private set
     var loadingMore: Boolean by mutableStateOf(false)
         private set
