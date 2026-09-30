@@ -616,3 +616,12 @@ buscador, iconos y la fecha real del uso; Ubicación muestra la última lectura 
 de lugar ni mapa: el mapa se abre en la aplicación del teléfono solo al tocar.
 
 El detalle está en `docs/sprint-45.md`.
+
+## Alcance del Sprint 46
+
+Las secciones Historial, Estadísticas y Alertas del modo tutor de la app Android se rediseñan según los mockups 8–10. Desde
+el móvil ya se puede marcar una alerta como leída y silenciarla (silencio indefinido, con confirmación; se quita desde el
+panel web). El historial se agrupa por día con el nombre de la app, las estadísticas muestran el cumplimiento como días
+dentro del límite («5 de 7 días») y las alertas se filtran por no leídas, críticas o advertencias.
+
+El detalle está en `docs/sprint-46.md`.

@@ -39,10 +39,26 @@ import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
 import com.netprotect.app.feature.tutor.sections.LocationView
 import com.netprotect.app.feature.tutor.sections.geofencesView
+import com.netprotect.app.feature.tutor.alerts.AlertsScreen
+import com.netprotect.app.feature.tutor.history.HistoryScreen
+import com.netprotect.app.feature.tutor.sections.AlertFilter
+import com.netprotect.app.feature.tutor.sections.AlertItem
+import com.netprotect.app.feature.tutor.sections.BlockReasonItem
+import com.netprotect.app.feature.tutor.sections.ComplianceRow
+import com.netprotect.app.feature.tutor.sections.HistoryDay
+import com.netprotect.app.feature.tutor.sections.HistoryKind
+import com.netprotect.app.feature.tutor.sections.HistoryRow
+import com.netprotect.app.feature.tutor.sections.NO_USAGE_IN_PERIOD
+import com.netprotect.app.feature.tutor.sections.StatsPeriod
+import com.netprotect.app.feature.tutor.sections.StatisticsView
+import com.netprotect.app.feature.tutor.sections.TopAppRow
+import com.netprotect.app.feature.tutor.statistics.StatisticsScreen
+import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.state.LoadState
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
 import com.netprotect.app.ui.theme.NpText
+import com.netprotect.app.ui.theme.NpTone
 import java.time.Instant
 import java.time.LocalDate
 
@@ -59,6 +75,116 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 46 (al principio para las capturas) ----
+        ScreenFrame("HistoryScreen · dos días") {
+            HistoryScreen(device = galleryTablet, history = LoadState.Loaded(galleryHistory), now = galleryNowS46, onRefresh = {}, onBack = {})
+        }
+        ScreenFrame("HistoryScreen · vacío") {
+            HistoryScreen(device = galleryTablet, history = LoadState.Loaded(emptyList()), now = galleryNowS46, onRefresh = {}, onBack = {})
+        }
+        ScreenFrame("HistoryScreen · error") {
+            HistoryScreen(device = galleryTablet, history = LoadState.Failed("Sin conexión con el servidor."), now = galleryNowS46, onRefresh = {}, onBack = {})
+        }
+        ScreenFrame("StatisticsScreen · 7 días") {
+            StatisticsScreen(
+                device = galleryTablet,
+                period = StatsPeriod.Week,
+                statistics = LoadState.Loaded(galleryStatistics),
+                now = galleryNowS46,
+                onSelectPeriod = {},
+                onRefresh = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("StatisticsScreen · Hoy vacío") {
+            StatisticsScreen(
+                device = galleryTablet,
+                period = StatsPeriod.Today,
+                statistics = LoadState.Loaded(StatisticsView(emptyList(), emptyList(), emptyList())),
+                now = galleryNowS46,
+                onSelectPeriod = {},
+                onRefresh = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("StatisticsScreen · error") {
+            StatisticsScreen(
+                device = galleryTablet,
+                period = StatsPeriod.Week,
+                statistics = LoadState.Failed("Sin conexión con el servidor."),
+                now = galleryNowS46,
+                onSelectPeriod = {},
+                onRefresh = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("AlertsScreen · 5 alertas") {
+            AlertsScreen(
+                device = galleryTablet,
+                alerts = LoadState.Loaded(galleryAlerts),
+                filter = AlertFilter.All,
+                busyAlertId = null,
+                actionError = null,
+                silenceTarget = null,
+                now = galleryNowS46,
+                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
+                onRefresh = {}, onBack = {},
+            )
+        }
+        ScreenFrame("AlertsScreen · busyAlertId") {
+            AlertsScreen(
+                device = galleryTablet,
+                alerts = LoadState.Loaded(galleryAlerts),
+                filter = AlertFilter.All,
+                busyAlertId = galleryAlerts.first().id,
+                actionError = null,
+                silenceTarget = null,
+                now = galleryNowS46,
+                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
+                onRefresh = {}, onBack = {},
+            )
+        }
+        // No "silenceTarget" frame: ConfirmDialog is a modal window and would cover the whole
+        // gallery. The dialog is covered by AlertsScreenTest.
+        ScreenFrame("AlertsScreen · actionError") {
+            AlertsScreen(
+                device = galleryTablet,
+                alerts = LoadState.Loaded(galleryAlerts),
+                filter = AlertFilter.All,
+                busyAlertId = null,
+                actionError = "Sin conexión con el servidor.",
+                silenceTarget = null,
+                now = galleryNowS46,
+                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
+                onRefresh = {}, onBack = {},
+            )
+        }
+        ScreenFrame("AlertsScreen · vacía") {
+            AlertsScreen(
+                device = galleryTablet,
+                alerts = LoadState.Loaded(emptyList()),
+                filter = AlertFilter.All,
+                busyAlertId = null,
+                actionError = null,
+                silenceTarget = null,
+                now = galleryNowS46,
+                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
+                onRefresh = {}, onBack = {},
+            )
+        }
+        ScreenFrame("AlertsScreen · error") {
+            AlertsScreen(
+                device = galleryTablet,
+                alerts = LoadState.Failed("Sin conexión con el servidor."),
+                filter = AlertFilter.All,
+                busyAlertId = null,
+                actionError = null,
+                silenceTarget = null,
+                now = galleryNowS46,
+                onSelectFilter = {}, onMarkRead = {}, onAskSilence = {}, onConfirmSilence = {}, onDismissSilence = {},
+                onRefresh = {}, onBack = {},
+            )
+        }
         ScreenFrame("LoadingScreen") {
             LoadingScreen()
         }
@@ -357,6 +483,58 @@ private val galleryGeofenceEvents = listOf(
     GeofenceEvent("e3", "Colegio", "EXIT", galleryNow.minusSeconds(10800).toString(), "g2"),
     GeofenceEvent("e4", "Casa", "ENTER", galleryNow.minusSeconds(14400).toString(), "g1"),
     GeofenceEvent("e5", "Colegio", "ENTER", galleryNow.minusSeconds(18000).toString(), "g2"),
+)
+
+private val galleryNowS46: Instant = Instant.parse("2026-09-29T20:00:00Z")
+
+private val galleryHistory = listOf(
+    HistoryDay(
+        date = LocalDate.of(2026, 9, 29),
+        title = "Hoy",
+        subtitle = "29 de septiembre de 2026",
+        rows = listOf(
+            HistoryRow("h1", HistoryKind.Block, "Bloqueo de app · YouTube", "Motivo: Límite diario", "DAILY_LIMIT", "3:42 p. m."),
+            HistoryRow("h2", HistoryKind.Enter, "Entró · Casa", null, null, "2:10 p. m."),
+            HistoryRow("h3", HistoryKind.Block, "Bloqueo de app · Instagram", "Motivo: Bloquear", "BLOCK", "11:05 a. m."),
+            HistoryRow("h4", HistoryKind.Exit, "Salió · Colegio", null, null, "8:30 a. m."),
+        ),
+    ),
+    HistoryDay(
+        date = LocalDate.of(2026, 9, 28),
+        title = "Ayer",
+        subtitle = "28 de septiembre de 2026",
+        rows = listOf(
+            HistoryRow("h5", HistoryKind.Block, "Bloqueo de app · YouTube", "Motivo: Horario", "SCHEDULE", "9:15 p. m."),
+            HistoryRow("h6", HistoryKind.Enter, "Entró · Parque", null, null, "4:00 p. m."),
+            HistoryRow("h7", HistoryKind.Exit, "Salió · Parque", null, null, "3:30 p. m."),
+        ),
+    ),
+)
+
+private val galleryStatistics = StatisticsView(
+    topApps = listOf(
+        TopAppRow("com.google.android.youtube", "YouTube", "3 h 24 min", 1f),
+        TopAppRow("com.android.chrome", "Chrome", "1 h 12 min", 0.35f),
+        TopAppRow("com.instagram.android", "Instagram", "48 min", 0.23f),
+        TopAppRow("com.whatsapp", "WhatsApp", "30 min", 0.15f),
+    ),
+    blocks = listOf(
+        BlockReasonItem("BLOCK", "Bloquear", NpIcons.Ban, NpTone.Danger, 12),
+        BlockReasonItem("DAILY_LIMIT", "Límite diario", NpIcons.Calendar, NpTone.Danger, 7),
+        BlockReasonItem("SCHEDULE", "Horario", NpIcons.Clock, NpTone.Warning, 3),
+    ),
+    compliance = listOf(
+        ComplianceRow("YouTube", "Límite: 60 min/día", 0.71f, "5 de 7 días"),
+        ComplianceRow("Instagram", "Límite: 30 min/día", null, NO_USAGE_IN_PERIOD),
+    ),
+)
+
+private val galleryAlerts = listOf(
+    AlertItem("a1", "CRITICAL", "Se intentó desactivar la protección contra desinstalación", "Hoy, 3:42 p. m.", "Repetido 3 veces", unread = true, silenced = false),
+    AlertItem("a2", "HIGH", "Se bloqueó YouTube", "Hoy, 2:10 p. m.", null, unread = true, silenced = false),
+    AlertItem("a3", "WARNING", "Se alcanzó el límite de tiempo de Instagram", "Ayer, 6:40 p. m.", null, unread = false, silenced = true),
+    AlertItem("a4", "INFO", "Salió de Casa", "Ayer, 9:15 a. m.", null, unread = false, silenced = false),
+    AlertItem("a5", "INFO", "Entró a Casa", "24 de septiembre de 2026, 8:12 a. m.", null, unread = true, silenced = false),
 )
 
 @Composable

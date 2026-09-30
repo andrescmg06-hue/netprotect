@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,8 +40,10 @@ fun TimelineItem(
     subtitle: String? = null,
     isLast: Boolean = false,
 ) {
-    Row(modifier = modifier) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    // The connector fills the row's own height (IntrinsicSize.Min) instead of a fixed 48 dp, so a
+    // one-line entry is not followed by a tall gap (seen in Geocercas, Sprint 45 review).
+    Row(modifier = modifier.height(IntrinsicSize.Min)) {
+        Column(modifier = Modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -56,13 +61,13 @@ fun TimelineItem(
                 Box(
                     modifier = Modifier
                         .width(1.dp)
-                        .height(48.dp)
+                        .weight(1f)
                         .background(NpColors.Hairline),
                 )
             }
         }
         Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = if (isLast) 0.dp else 20.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(
                     text = title,
