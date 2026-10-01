@@ -40,3 +40,51 @@ No aplica (cambio de una línea de configuración). La comprobación es la secci
 ## 9. Informe final
 Añade `## Informe de DeepSeek` al final de este archivo y muévelo a `docs/delegated/done/`.
 No hagas commit.
+
+## Informe de DeepSeek
+
+### Qué hice
+- **Archivo modificado: `Makefile`** (único permitido). Cambié la receta del target `android-check` de
+  `cd mobile && gradle test assembleDebug` a `cd mobile && ./gradlew test assembleDebug`.
+- No toqué ningún otro target, ni la línea `.PHONY`, ni añadí `chmod`/variables/objetivos.
+
+### Verificación (salida real)
+
+**1. `git diff -- Makefile`** — exactamente 1 línea quitada y 1 añadida:
+```
+diff --git a/Makefile b/Makefile
+index a3ca975..29040de 100644
+--- a/Makefile
++++ b/Makefile
+@@ -30,4 +30,4 @@ frontend-check:
+ 	cd frontend && npm run lint && npm run build
+ 
+ android-check:
+-	cd mobile && gradle test assembleDebug
++	cd mobile && ./gradlew test assembleDebug
+```
+
+**2. Verificación del TAB de la receta.** El comando literal `cat -A Makefile | sed -n '30,34p'` no
+corre en esta máquina: PowerShell aliasa `cat` a `Get-Content`, que no acepta `-A` (falla con
+`NamedParameterNotFound`). Verifiqué el carácter con un equivalente en PowerShell:
+```
+PS> $line = (Get-Content Makefile)[32]
+PS> [int][char]$line[0]
+9
+PS> ($line -replace "`t","<TAB>")
+<TAB>cd mobile && ./gradlew test assembleDebug
+```
+`char code = 9` es TAB (`^I` en `cat -A`). La receta empieza con un único TAB y ningún espacio.
+
+**3. `cd mobile && ./gradlew test assembleDebug`** — terminó correctamente:
+```
+BUILD SUCCESSFUL in 21s
+76 actionable tasks: 76 up-to-date
+```
+
+### Preguntas / desviaciones
+- Ninguna. Sin `[PREGUNTA PARA CLAUDE]`.
+
+### Nota de entorno (no bloqueante)
+- `make` no está instalado (ya previsto en el encargo); no lo intenté.
+- `cat -A` no existe en PowerShell; la comprobación del TAB se hizo con `[int][char]` sobre la línea (código 9 = TAB).

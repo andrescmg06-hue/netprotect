@@ -30,4 +30,4 @@ frontend-check:
 	cd frontend && npm run lint && npm run build
 
 android-check:
-	cd mobile && gradle test assembleDebug
+	cd mobile && ./gradlew test assembleDebug
