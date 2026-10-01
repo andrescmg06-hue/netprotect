@@ -16,6 +16,7 @@ import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
 import com.netprotect.app.core.storage.RulesCacheStore
 import com.netprotect.app.feature.supervised.BlockScreenActivity
+import com.netprotect.app.ui.format.CategoryLabels
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
@@ -279,9 +280,13 @@ class RuleEnforcementService : Service() {
         val exemptReasons = setOf(BlockReason.DEFAULT_POLICY, BlockReason.SCHOOL_MODE)
         if (exemptFromDefaultPolicy && reason in exemptReasons) return
 
+        // Sprint 49: only the display changes — which app is blocked, when and why is decided above.
+        // The category shown is the real assigned one (never invented), or none.
+        val categoryLabel = categoryAssignments.find { it.packageName == foregroundPackage }
+            ?.let { CategoryLabels.categoryLabel(it.category.wireValue) }
         if (OverlayPermission.isGranted(applicationContext)) {
             val appLabel = resolveAppLabel(foregroundPackage)
-            BlockOverlayController.show(applicationContext, appLabel, reason) {
+            BlockOverlayController.show(applicationContext, foregroundPackage, appLabel, categoryLabel, reason) {
                 BlockOverlayController.hide(applicationContext)
                 startActivity(
                     Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
@@ -293,7 +298,7 @@ class RuleEnforcementService : Service() {
             // while the device is locked (see launchBlockScreen's docstring) — better than
             // nothing, but the tutor should still be told to grant the overlay permission for
             // this to work while the device is unlocked and in active use.
-            launchBlockScreen(foregroundPackage, reason)
+            launchBlockScreen(foregroundPackage, categoryLabel, reason)
         }
         val occurredAt = Instant.now()
         val reported = runCatching {
@@ -314,7 +319,7 @@ class RuleEnforcementService : Service() {
      * IMPORTANCE_HIGH channel: the ongoing "service is running" notification is deliberately
      * IMPORTANCE_LOW/silent, and reusing it would make every block silent too.
      */
-    private fun launchBlockScreen(foregroundPackage: String, reason: BlockReason) {
+    private fun launchBlockScreen(foregroundPackage: String, categoryLabel: String?, reason: BlockReason) {
         val manager = getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(BLOCK_CHANNEL_ID) == null) {
             manager.createNotificationChannel(
@@ -329,6 +334,7 @@ class RuleEnforcementService : Service() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
             .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
+            .putExtra(BlockScreenActivity.EXTRA_CATEGORY_LABEL, categoryLabel)
         val pendingIntent = android.app.PendingIntent.getActivity(
             this,
             BLOCK_NOTIFICATION_ID,

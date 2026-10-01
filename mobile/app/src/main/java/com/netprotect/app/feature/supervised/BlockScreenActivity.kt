@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.netprotect.app.core.rules.BlockReason
+import com.netprotect.app.feature.supervised.block.BLOCK_COVER_NOTE
+import com.netprotect.app.feature.supervised.block.blockPresentation
+import com.netprotect.app.ui.theme.NetProtectTheme
 
 /** Full-screen cover shown over a blocked app. Launched by RuleEnforcementService with
  * FLAG_ACTIVITY_NEW_TASK from outside any activity context.
@@ -39,6 +41,8 @@ class BlockScreenActivity : ComponentActivity() {
     companion object {
         const val EXTRA_PACKAGE_NAME = "package_name"
         const val EXTRA_REASON = "reason"
+        /** Sprint 49: the real assigned category's Spanish name, absent if the app has none. */
+        const val EXTRA_CATEGORY_LABEL = "category_label"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,11 +55,14 @@ class BlockScreenActivity : ComponentActivity() {
             ?.let { wire -> BlockReason.entries.find { it.wireValue == wire } }
             ?: BlockReason.BLOCK
         val appLabel = resolveAppLabel(packageName)
+        val categoryLabel = intent.getStringExtra(EXTRA_CATEGORY_LABEL)
 
         setContent {
-            MaterialTheme {
+            NetProtectTheme {
                 BlockScreenContent(
+                    packageName = packageName,
                     appLabel = appLabel,
+                    categoryLabel = categoryLabel,
                     reason = reason,
                     onGoHome = {
                         startActivity(
@@ -74,23 +81,19 @@ class BlockScreenActivity : ComponentActivity() {
         }.getOrDefault(packageName)
 }
 
-/** Shared with BlockOverlayController, which renders this same content as a window overlay
- * instead of an Activity when the overlay permission is available — see that class's docstring.
- */
-fun reasonText(reason: BlockReason): String = when (reason) {
-    BlockReason.BLOCK -> "Tu tutor bloqueó esta app."
-    BlockReason.DAILY_LIMIT -> "Ya usaste el tiempo diario permitido para esta app."
-    BlockReason.WEEKLY_LIMIT -> "Ya usaste el tiempo semanal permitido para esta app."
-    BlockReason.SCHEDULE -> "Esta app está bloqueada en este horario."
-    BlockReason.CATEGORY -> "Tu tutor bloqueó la categoría a la que pertenece esta app."
-    BlockReason.SCHOOL_MODE ->
-        "Es horario escolar y esta app no está aprobada para este momento."
-    BlockReason.DEFAULT_POLICY ->
-        "Este dispositivo sólo permite las apps que tu tutor aprobó, y ésta no está aprobada."
-}
 
 @Composable
-fun BlockScreenContent(appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
+/** INTERIM (Sprint 49, Claude): shared with BlockOverlayController, which renders this same content
+ * as a window overlay when the overlay permission is available. Plain but complete (every reason,
+ * the real category, "Ir al inicio"); DeepSeek replaces this body with the mockup 16 design and
+ * moves it to block/BlockScreenContent.kt. The signature is final. */
+fun BlockScreenContent(
+    packageName: String,
+    appLabel: String,
+    categoryLabel: String?,
+    reason: BlockReason,
+    onGoHome: () -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF090B10)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 48.dp),
@@ -110,15 +113,17 @@ fun BlockScreenContent(appLabel: String, reason: BlockReason, onGoHome: () -> Un
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(reasonText(reason), color = Color(0xFFABB5C4), fontSize = 16.sp, lineHeight = 22.sp)
+            val presentation = blockPresentation(reason, categoryLabel)
+            categoryLabel?.let { Text(it, color = Color(0xFFABB5C4), fontSize = 14.sp) }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(presentation.message, color = Color(0xFFABB5C4), fontSize = 16.sp, lineHeight = 22.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(presentation.hint, color = Color(0xFFFFB4AB), fontSize = 14.sp, lineHeight = 20.sp)
 
             Spacer(modifier = Modifier.height(28.dp))
             Surface(color = Color(0xFF121722), shape = RoundedCornerShape(16.dp)) {
                 Text(
-                    "Este bloqueo cubre la pantalla, pero no puede impedir que la app siga " +
-                        "abierta de fondo ni que alguien con conocimientos técnicos lo evada " +
-                        "(por ejemplo, revocando el acceso a uso en Ajustes). NetProtect no " +
-                        "tiene privilegios de administrador de dispositivo.",
+                    BLOCK_COVER_NOTE,
                     color = Color(0xFF7D899A),
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
