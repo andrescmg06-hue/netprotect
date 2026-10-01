@@ -86,7 +86,7 @@ fun ScreenShareConsentScreen(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text(text = "¿Cuándo se puede usar?", style = NpText.Headline, color = NpColors.ShieldNavy)
+            Text(text = "¿Cuándo se puede usar?", style = NpText.Title, color = NpColors.ShieldNavy)
             Spacer(Modifier.height(8.dp))
             NpCard {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -111,7 +111,7 @@ fun ScreenShareConsentScreen(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text(text = "Tu consentimiento", style = NpText.Headline, color = NpColors.ShieldNavy)
+            Text(text = "Tu consentimiento", style = NpText.Title, color = NpColors.ShieldNavy)
             Spacer(Modifier.height(8.dp))
             NpCard {
                 Row(

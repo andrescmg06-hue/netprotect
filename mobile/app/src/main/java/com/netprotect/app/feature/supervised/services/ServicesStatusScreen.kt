@@ -61,7 +61,6 @@ fun ServicesStatusScreen(
                 .padding(horizontal = 20.dp),
         ) {
             NpTopBar(onBack = onBack)
-            Spacer(Modifier.height(24.dp))
             Text(text = "Estado de NetProtect", style = NpText.Display, color = NpColors.ShieldNavy)
             Spacer(Modifier.height(8.dp))
             Text(
