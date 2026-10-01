@@ -1,15 +1,18 @@
 # Progreso — NetProtect
-_Actualizado: 2026-09-30 · Sprint actual: 48_
+_Actualizado: 2026-10-01 · Sprint actual: 49_
 
 ## En curso
 - Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
   trabajo) para que el contexto por área cargue solo según la ruta tocada.
 
 ## Siguiente paso
-- S49 (App bloqueada, pantalla 16, 7 variantes). Plan: `docs/android-redesign/sprints/S49-supervisado-app-bloqueada.md`.
+- S50 (Consentimiento de vista remota y Servicios, pantallas 15 y 17, + reconexión del canal realtime B-02):
+  riesgo técnico alto, conviene Opus. Plan: `docs/android-redesign/sprints/S50-supervisado-consentimiento-y-servicios.md`.
   **Para retomar el trabajo (otra persona o sesión nueva): `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
+- Sprint 49: pantalla «App bloqueada» en sus 7 variantes, con la categoría real y solo textos verdaderos;
+  verificada con bloqueos reales de YouTube en el emulador — `docs/sprint-49.md`
 - Sprint 48: modo supervisado con shell que conserva los servicios al navegar; Vincular, Vinculado y
   Permisos rediseñadas; B-01 (`/devices/me` con varios dispositivos) corregido — `docs/sprint-48.md`
 - Sprint 47: Mi actividad rediseñada con paginación; cada consulta de ubicación queda auditada

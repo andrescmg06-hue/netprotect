@@ -1,4 +1,4 @@
-# Cómo continuar el rediseño Android (estado al 30/09/2026, tras el Sprint 48)
+# Cómo continuar el rediseño Android (estado al 01/10/2026, tras el Sprint 49)
 
 Para quien retome el trabajo. Complementa `CLAUDE_CODE_HANDOFF.md` (el proceso) con **dónde estamos**, **cómo preparar
 el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
@@ -9,8 +9,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 |---|---|---|
 | S40–S47 | Base, sesión, diseño, login, todo el modo tutor (mockups 1–11) | ✅ Hechos, fusionados en `android-redesign` |
 | S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
-| **S49** | **App bloqueada, 7 variantes (16)** | ⏭️ **Siguiente.** Plan: `sprints/S49-supervisado-app-bloqueada.md` |
-| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | Pendiente. Riesgo técnico alto: conviene Opus |
+| S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
+| **S50** | **Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02)** | ⏭️ **Siguiente.** Plan: `sprints/S50-supervisado-consentimiento-y-servicios.md`. Riesgo técnico alto: conviene Opus |
 | S51 | Endurecimiento, `lintDebug` en CI y PR `android-redesign` → `main` | Pendiente |
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
@@ -83,6 +83,13 @@ Nada se hace commit ni push sin el OK del dueño.
   `ui/theme/Color.kt` y la firma del componente). DeepSeek no puede inventar lo que falta y se queda bloqueado.
 - DeepSeek **no ve imágenes**: la revisión visual siempre la hace Claude.
 - Le pasa a menudo que los nombres de sus capturas no coinciden con el contenido. Revísalas abriéndolas.
+
+**Probar de verdad un bloqueo (S49):** para ver cada pantalla de bloqueo en el emulador no hace falta crear reglas a
+mano en el panel web. `docs/sprint-49-evidence.md` §3 describe la técnica: insertar una regla de prueba en la base de
+desarrollo (`app_rules`, `category_rules` + `app_category_assignments`, o los campos de política y horario escolar de
+`devices`), esperar ≈ 70 s a que el servicio la descargue (sondea cada minuto), abrir la app y esperar a que aparezca
+una fila nueva en `app_rule_events`. Para los límites diario y semanal hay que abrir antes la app ≈ 80 s para tener
+uso registrado (el mínimo del límite es 1 minuto). Se borra todo al final y se comprueba con un `count`.
 
 **En el código:**
 - **Modo supervisado:** `SupervisedShell.kt` tiene los servicios.

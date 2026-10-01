@@ -645,3 +645,13 @@ volver de Ajustes). En el backend, `GET /devices/me` deja de fallar cuando una c
 dispositivo registrado.
 
 El detalle está en `docs/sprint-48.md`; para continuar el rediseño, `docs/android-redesign/CONTINUAR.md`.
+
+## Alcance del Sprint 49
+
+La pantalla que ve el menor cuando una app queda bloqueada se rediseña según el mockup 16, en sus siete variantes: bloqueo
+del tutor, límite diario, límite semanal, horario, categoría, horario escolar y «solo apps aprobadas». Muestra el icono
+y el nombre reales de la app, su categoría real si tiene una asignada y una explicación que solo promete lo que es
+verdad (por ejemplo, que el tiempo se reinicia mañana o el lunes solo en los dos límites). No se muestran horas concretas
+ni hay opción de desbloquear. La pantalla y la ventana superpuesta usan ahora el tema de la app.
+
+El detalle está en `docs/sprint-49.md`.
