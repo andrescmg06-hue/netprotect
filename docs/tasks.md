@@ -64,7 +64,7 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-20 | P3 | done | Vincular con entrada de 6 casillas y errores claros — S48 |
 | G-21 | P3 | done | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
 | G-22 | P2 | done | B-01 dispositivos duplicados en `GET /devices/me` — S48 |
-| G-23 | P2 | todo | Pantalla de bloqueo: 7 variantes con icono y categoría reales (D-11) — S49 |
+| G-23 | P2 | done | Pantalla de bloqueo: 7 variantes con icono y categoría reales (D-11) — S49 |
 | G-24 | P2 | todo | Pantalla de consentimiento completa con textos verdaderos (D-12) — S50 |
 | G-25 | P2 | todo | Registro de estado de servicios (pantalla 17) — S50 |
 | G-26 | P2 | todo | B-02 reconexión del canal realtime — S50 |

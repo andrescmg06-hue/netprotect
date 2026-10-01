@@ -5,7 +5,6 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
@@ -19,7 +18,8 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.netprotect.app.feature.supervised.BlockScreenContent
+import com.netprotect.app.feature.supervised.block.BlockScreenContent
+import com.netprotect.app.ui.theme.NetProtectTheme
 
 /** Draws the block screen as a window overlay (TYPE_APPLICATION_OVERLAY) instead of starting
  * BlockScreenActivity directly.
@@ -52,8 +52,15 @@ object BlockOverlayController {
      * be called on the main thread"). Runs synchronously if already on the main thread so callers
      * that are (SupervisedShell, some day) don't pay a post() round-trip for nothing.
      */
-    fun show(context: Context, appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
-        runOnMainThread { showOnMainThread(context, appLabel, reason, onGoHome) }
+    fun show(
+        context: Context,
+        packageName: String,
+        appLabel: String,
+        categoryLabel: String?,
+        reason: BlockReason,
+        onGoHome: () -> Unit,
+    ) {
+        runOnMainThread { showOnMainThread(context, packageName, appLabel, categoryLabel, reason, onGoHome) }
     }
 
     fun hide(context: Context) {
@@ -64,7 +71,14 @@ object BlockOverlayController {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
     }
 
-    private fun showOnMainThread(context: Context, appLabel: String, reason: BlockReason, onGoHome: () -> Unit) {
+    private fun showOnMainThread(
+        context: Context,
+        packageName: String,
+        appLabel: String,
+        categoryLabel: String?,
+        reason: BlockReason,
+        onGoHome: () -> Unit,
+    ) {
         hideOnMainThread(context)
 
         val owner = OverlayLifecycleOwner()
@@ -78,8 +92,15 @@ object BlockOverlayController {
             setViewTreeSavedStateRegistryOwner(owner)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                MaterialTheme {
-                    BlockScreenContent(appLabel = appLabel, reason = reason, onGoHome = onGoHome)
+                // Sprint 49: the overlay now draws with the app's theme, like the Activity.
+                NetProtectTheme {
+                    BlockScreenContent(
+                        packageName = packageName,
+                        appLabel = appLabel,
+                        categoryLabel = categoryLabel,
+                        reason = reason,
+                        onGoHome = onGoHome,
+                    )
                 }
             }
         }
