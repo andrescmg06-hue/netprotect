@@ -655,3 +655,13 @@ verdad (por ejemplo, que el tiempo se reinicia mañana o el lunes solo en los do
 ni hay opción de desbloquear. La pantalla y la ventana superpuesta usan ahora el tema de la app.
 
 El detalle está en `docs/sprint-49.md`.
+
+## Alcance del Sprint 50
+
+Cuando el tutor pide ver la pantalla del dispositivo supervisado, la app Android muestra ahora una pantalla completa de
+consentimiento con información verdadera: qué permite, que es solo para esa sesión y cómo detenerla. Hay que marcar una
+casilla para continuar, y después Android pide su propia confirmación. Mientras se comparte, una banda azul en la app
+permite detenerla. Una nueva pantalla, «Estado de NetProtect», muestra qué funciones están activas de verdad. El canal
+por el que llegan esas peticiones se reconecta solo tras un corte de red, de modo que ya no se pierden.
+
+El detalle está en `docs/sprint-50.md`.

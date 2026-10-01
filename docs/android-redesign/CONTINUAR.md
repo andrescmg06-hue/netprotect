@@ -1,4 +1,4 @@
-# Cómo continuar el rediseño Android (estado al 01/10/2026, tras el Sprint 49)
+# Cómo continuar el rediseño Android (estado al 01/10/2026, tras el Sprint 50)
 
 Para quien retome el trabajo. Complementa `CLAUDE_CODE_HANDOFF.md` (el proceso) con **dónde estamos**, **cómo preparar
 el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
@@ -10,8 +10,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S40–S47 | Base, sesión, diseño, login, todo el modo tutor (mockups 1–11) | ✅ Hechos, fusionados en `android-redesign` |
 | S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
 | S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
-| **S50** | **Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02)** | ⏭️ **Siguiente.** Plan: `sprints/S50-supervisado-consentimiento-y-servicios.md`. Riesgo técnico alto: conviene Opus |
-| S51 | Endurecimiento, `lintDebug` en CI y PR `android-redesign` → `main` | Pendiente |
+| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho en local (rama `sprint-50-consentimiento`); **falta push + PR** y H-02 |
+| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | ⏭️ **Siguiente.** Plan: `sprints/S51-endurecimiento-y-cierre.md`. Conviene Opus |
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
   para empezar.
