@@ -18,7 +18,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.netprotect.app.feature.supervised.BlockScreenContent
+import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.ui.theme.NetProtectTheme
 
 /** Draws the block screen as a window overlay (TYPE_APPLICATION_OVERLAY) instead of starting
