@@ -24,6 +24,7 @@ import com.netprotect.app.core.network.DeviceSummary
 import com.netprotect.app.core.network.Geofence
 import com.netprotect.app.core.network.GeofenceEvent
 import com.netprotect.app.core.network.LocationReport
+import com.netprotect.app.core.rules.BlockReason
 import com.netprotect.app.feature.home.LoadingScreen
 import com.netprotect.app.feature.home.LoginScreen
 import com.netprotect.app.feature.home.RoleSelectionScreen
@@ -38,6 +39,7 @@ import com.netprotect.app.feature.tutor.home.TutorHomeScreen
 import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
+import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
@@ -83,6 +85,34 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 49 (al principio para las capturas) ----
+        ScreenFrame("BlockScreenContent · BLOCK") {
+            BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DAILY_LIMIT") {
+            BlockScreenContent(packageName = "com.google.android.youtube", appLabel = "YouTube", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · WEEKLY_LIMIT") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = "Redes sociales", reason = BlockReason.WEEKLY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHEDULE") {
+            BlockScreenContent(packageName = "com.discord", appLabel = "Discord", categoryLabel = "Comunicación", reason = BlockReason.SCHEDULE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY") {
+            BlockScreenContent(packageName = "com.netflix.mediaclient", appLabel = "Netflix", categoryLabel = "Streaming", reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHOOL_MODE") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.SCHOOL_MODE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DEFAULT_POLICY") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.DEFAULT_POLICY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY sin categoría") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = null, reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · nombre largo") {
+            BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
         // ---- Sprint 48 (al principio para las capturas) ----
         ScreenFrame("LinkDeviceScreen · vacío") {
             LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})

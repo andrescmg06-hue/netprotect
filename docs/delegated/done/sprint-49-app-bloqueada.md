@@ -186,3 +186,57 @@ Pega la salida **real** de cada comprobación:
 
 Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no hayas ejecutado
 se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados y modificados
+
+- **Reemplazado el cuerpo** de `feature/supervised/block/BlockScreenContent.kt` (firma intacta): ilustración del candado
+  con distintivo, título/mensaje, tarjeta de app (`AppIcon`), tarjeta de pista, «Ir al inicio» y `BLOCK_COVER_NOTE`, todo
+  desde `presentation = blockPresentation(reason, categoryLabel)`.
+- **Creado** `mobile/app/src/androidTest/java/com/netprotect/app/ui/BlockScreenContentTest.kt` (8 tests).
+- **Modificado** `src/debug/.../ScreensGallery.kt`: 9 frames del S49 puestos **al principio**.
+
+No toqué `BlockPresentation.kt`, `BlockScreenActivity.kt`, `SupervisedShell.kt` ni nada de §4.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL**.
+- `lintDebug`: **0 errores, 24 avisos** (la base son 24; **0 avisos nuevos**; ninguno en `feature/supervised/block`).
+- `connectedDebugAndroidTest` (emulador `Pixel_8`): **124 tests, 0 fallos, 0 errores, 0 saltados** (116 previos + 8 de
+  este sprint). Los 8 de `BlockScreenContentTest` pasaron (las 7 variantes + categoría + `BLOCK_COVER_NOTE` + límites
+  mañana/lunes + prohibidos).
+- `grep -nE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Build\.|Intent|PackageManager|Activity|Window|statusBarsPadding|Desbloquear|Pedir|Solicitar" .../feature/supervised/block/BlockScreenContent.kt`
+  → **sin coincidencias**.
+- `git status --short` / `git diff --stat` → solo archivos de §4 (`BlockScreenContent.kt`, `ScreensGallery.kt`,
+  `BlockScreenContentTest.kt` y el movimiento del encargo).
+- Capturas en `%TEMP%\sprint49-gallery\`:
+  - `BlockScreenContent-BLOCK.png` (Instagram · «Redes sociales»).
+  - `BlockScreenContent-·-DAILY_LIMIT.png` (YouTube · «Streaming»).
+  - `BlockScreenContent-·-WEEKLY_LIMIT.png` (TikTok · «Redes sociales»).
+  - `BlockScreenContent-·-SCHEDULE.png` (Discord · «Comunicación»).
+  - `BlockScreenContent-·-CATEGORY.png` (Netflix · «Streaming»).
+  - `BlockScreenContent-·-SCHOOL_MODE.png` (Chrome · sin categoría).
+  - `BlockScreenContent-·-DEFAULT_POLICY.png` (Chrome · sin categoría).
+  - `BlockScreenContent-·-CATEGORY-sin-categoría.png`.
+  - `BlockScreenContent-·-nombre-largo.png` (etiqueta larga con recorte).
+
+### 3. Decisiones / hallazgos fuera del encargo
+
+- **Los dos tests de bucle** («cada motivo» y «ningún otro motivo») no podían llamar `setContent` una vez por motivo:
+  con `createComposeRule` (v2) la actividad ya tiene contenido y un segundo `setContent` lanza
+  «has already set content». Lo resolví renderizando **una vez** `BlockScreenContent` con un `reason` en un
+  `mutableStateOf` y mutándolo con `composeRule.runOnIdle { ... }` por cada valor de `BlockReason.entries`.
+- El comentario de cabecera original mencionaba `statusBarsPadding()` (explicando por qué no se usa) y hacía saltar el
+  `grep` de §10. Lo reescribí para no nombrar el patrón prohibido; el código nunca lo usó.
+
+### 4. Pendientes
+
+- **Revisión visual** de las 7 variantes: para Claude (este modelo no acepta imágenes). Capturas en
+  `%TEMP%\sprint49-gallery\` (listadas arriba).
+
+### 5. Preguntas para Claude
+
+Ninguna.
