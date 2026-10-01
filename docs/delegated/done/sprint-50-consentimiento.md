@@ -249,3 +249,55 @@ Pega la salida **real** de cada comprobación:
 
 Si una instrucción contradice a otra o al código, **dilo** en lugar de elegir en silencio. Lo que no hayas ejecutado
 se declara PENDIENTE.
+
+---
+
+## Informe de DeepSeek
+
+### 1. Archivos creados y modificados
+
+- **Reemplazados los cuerpos** (firmas intactas) de:
+  - `feature/supervised/consent/ScreenShareConsentScreen.kt` (casilla con `rememberSaveable` que empieza desmarcada;
+    «Continuar» solo con la casilla marcada).
+  - `feature/supervised/services/ServicesStatusScreen.kt` (5 tarjetas + píldora por estado + caja azul de reporte/vista
+    remota + lista de notificaciones).
+  - `ui/components/ActiveShareBanner.kt` (banda azul con su propio `statusBarsPadding()`).
+- **Creados** los 3 tests: `ScreenShareConsentScreenTest`, `ServicesStatusScreenTest`, `ActiveShareBannerTest`.
+- **Modificado** `src/debug/.../ScreensGallery.kt`: 6 frames del S50 puestos **al principio**.
+
+No toqué `SupervisedShell.kt`, `SupervisedViews.kt`, `ServiceStatusRegistry.kt`, `LinkedDeviceScreen.kt` ni nada de §4.
+
+### 2. Salidas reales (§10 y tests)
+
+- `./gradlew --console=plain test assembleDebug assembleDebugAndroidTest lintDebug` → **BUILD SUCCESSFUL**.
+- `lintDebug`: **0 errores, 24 avisos** (la base son 24; **0 avisos nuevos**; ninguno en `consent`, `services` ni
+  `ActiveShareBanner`).
+- `connectedDebugAndroidTest` (emulador `Pixel_8`): **138 tests, 0 fallos, 0 errores, 0 saltados** (124 previos + 14 de
+  este sprint). Los 14 pasaron: `ScreenShareConsentScreenTest` (5), `ServicesStatusScreenTest` (8),
+  `ActiveShareBannerTest` (1).
+- `grep -rnE "Color\(0x|fontSize\s*=|RoundedCornerShape\(|Instant\.now|LocalContext|Intent|JSONObject|\.send\(|ajustes|revoc|redirig|Cerrar sesión" .../{consent,services} .../ActiveShareBanner.kt`
+  → **sin coincidencias**.
+- **Shell/core intactos:** `git diff --stat -- .../SupervisedShell.kt .../core` → **vacío**.
+- `git status --short` / `git diff --stat` → solo archivos de §4.
+- Capturas en `%TEMP%\sprint50-gallery\`:
+  - `ScreenShareConsentScreen.png`.
+  - `ServicesStatusScreen-·-todo-activo.png`, `-·-control-sin-confirmar.png`, `-·-vista-remota.png`,
+    `-·-reporte-sin-confirmar.png`.
+  - `ActiveShareBanner.png`.
+
+### 3. Decisiones / hallazgos fuera del encargo
+
+- **Espaciado tras `NpTopBar` en «Estado de NetProtect»**: la estructura común dice «BrandHeader, 24 dp, título», y §5.2
+  dice «`NpTopBar` en lugar de `BrandHeader`», así que conservé el «24 dp» entre `NpTopBar` y el título (lectura literal).
+  El modelo `PermissionsScreen` (S48) no deja ese hueco tras `NpTopBar`; si prefieres quitarlo aquí, es un cambio de una
+  línea. Lo dejo dicho por si acaso.
+- Las píldoras usan `StatusPill` con `showDot` por defecto (el encargo no lo fija), igual que «En curso».
+
+### 4. Pendientes
+
+- **Revisión visual** de las tres piezas: para Claude (este modelo no acepta imágenes). Capturas en
+  `%TEMP%\sprint50-gallery\` (listadas arriba).
+
+### 5. Preguntas para Claude
+
+Ninguna.

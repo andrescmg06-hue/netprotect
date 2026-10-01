@@ -25,6 +25,8 @@ import com.netprotect.app.core.network.Geofence
 import com.netprotect.app.core.network.GeofenceEvent
 import com.netprotect.app.core.network.LocationReport
 import com.netprotect.app.core.rules.BlockReason
+import com.netprotect.app.core.status.ServiceState
+import com.netprotect.app.core.status.ServicesView
 import com.netprotect.app.feature.home.LoadingScreen
 import com.netprotect.app.feature.home.LoginScreen
 import com.netprotect.app.feature.home.RoleSelectionScreen
@@ -40,9 +42,11 @@ import com.netprotect.app.feature.tutor.location.LocationScreen
 import com.netprotect.app.feature.tutor.more.MoreScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
+import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
+import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.tutor.activity.ActivityDay
 import com.netprotect.app.feature.tutor.activity.ActivityRow
 import com.netprotect.app.feature.tutor.activity.MyActivityScreen
@@ -63,6 +67,7 @@ import com.netprotect.app.feature.tutor.sections.StatisticsView
 import com.netprotect.app.feature.tutor.sections.TopAppRow
 import com.netprotect.app.feature.tutor.statistics.StatisticsScreen
 import com.netprotect.app.ui.format.AuditLabels
+import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.state.LoadState
 import com.netprotect.app.ui.theme.NpColors
@@ -85,6 +90,75 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 50 (al principio para las capturas) ----
+        ScreenFrame("ScreenShareConsentScreen") {
+            ScreenShareConsentScreen(onContinue = {}, onDecline = {})
+        }
+        ScreenFrame("ServicesStatusScreen · todo activo") {
+            ServicesStatusScreen(
+                view = ServicesView(
+                    report = ServiceState.Active,
+                    lastReport = galleryNowS50.minusSeconds(60),
+                    appControl = ServiceState.Active,
+                    location = ServiceState.Active,
+                    screenShareActive = false,
+                    screenShareSince = null,
+                ),
+                now = galleryNowS50,
+                onStopScreenShare = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("ServicesStatusScreen · control sin confirmar") {
+            ServicesStatusScreen(
+                view = ServicesView(
+                    report = ServiceState.Active,
+                    lastReport = galleryNowS50.minusSeconds(60),
+                    appControl = ServiceState.Unconfirmed,
+                    location = ServiceState.Inactive,
+                    screenShareActive = false,
+                    screenShareSince = null,
+                ),
+                now = galleryNowS50,
+                onStopScreenShare = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("ServicesStatusScreen · vista remota") {
+            ServicesStatusScreen(
+                view = ServicesView(
+                    report = ServiceState.Active,
+                    lastReport = galleryNowS50.minusSeconds(60),
+                    appControl = ServiceState.Active,
+                    location = ServiceState.Active,
+                    screenShareActive = true,
+                    screenShareSince = galleryNowS50.minusSeconds(30),
+                ),
+                now = galleryNowS50,
+                onStopScreenShare = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("ServicesStatusScreen · reporte sin confirmar") {
+            ServicesStatusScreen(
+                view = ServicesView(
+                    report = ServiceState.Unconfirmed,
+                    lastReport = null,
+                    appControl = ServiceState.Active,
+                    location = ServiceState.Active,
+                    screenShareActive = false,
+                    screenShareSince = null,
+                ),
+                now = galleryNowS50,
+                onStopScreenShare = {},
+                onBack = {},
+            )
+        }
+        ScreenFrame("ActiveShareBanner") {
+            Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                ActiveShareBanner(onStop = {})
+            }
+        }
         // ---- Sprint 49 (al principio para las capturas) ----
         ScreenFrame("BlockScreenContent · BLOCK") {
             BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
@@ -652,6 +726,7 @@ private val galleryGeofenceEvents = listOf(
 
 private val galleryNowS46: Instant = Instant.parse("2026-09-29T20:00:00Z")
 private val galleryNowS48: Instant = Instant.parse("2026-09-30T15:00:00Z")
+private val galleryNowS50: Instant = Instant.parse("2026-10-01T15:00:00Z")
 
 private val galleryHistory = listOf(
     HistoryDay(
