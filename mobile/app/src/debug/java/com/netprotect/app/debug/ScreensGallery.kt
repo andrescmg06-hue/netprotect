@@ -141,8 +141,7 @@ fun ScreensGallery() {
                 reachable = true,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                screenShareRequested = false,
-                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · 0 pendientes sin conexión") {
@@ -154,21 +153,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 0,
-                screenShareRequested = false,
-                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
-            )
-        }
-        ScreenFrame("LinkedDeviceScreen · vista remota") {
-            LinkedDeviceScreen(
-                deviceName = "Tablet de Sofía",
-                androidVersion = "13",
-                tutors = listOf("Andrés Mosquera"),
-                lastContact = galleryNowS48.minusSeconds(120),
-                reachable = true,
-                now = galleryNowS48,
-                pendingPermissions = 0,
-                screenShareRequested = true,
-                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · sin nombre ni contacto") {
@@ -180,8 +165,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                screenShareRequested = false,
-                onAcceptScreenShare = {}, onDeclineScreenShare = {}, onOpenPermissions = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
             )
         }
         ScreenFrame("PermissionsScreen · 2 pendientes") {

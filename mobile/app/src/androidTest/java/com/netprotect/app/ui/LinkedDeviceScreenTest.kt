@@ -25,9 +25,7 @@ class LinkedDeviceScreenTest {
         lastContact: Instant? = now.minusSeconds(120),
         reachable: Boolean = true,
         pendingPermissions: Int = 2,
-        screenShareRequested: Boolean = false,
-        onAcceptScreenShare: () -> Unit = {},
-        onDeclineScreenShare: () -> Unit = {},
+        onOpenServices: () -> Unit = {},
         onOpenPermissions: () -> Unit = {},
         onSwitchMode: () -> Unit = {},
         onSignOut: () -> Unit = {},
@@ -42,9 +40,7 @@ class LinkedDeviceScreenTest {
                     reachable = reachable,
                     now = now,
                     pendingPermissions = pendingPermissions,
-                    screenShareRequested = screenShareRequested,
-                    onAcceptScreenShare = onAcceptScreenShare,
-                    onDeclineScreenShare = onDeclineScreenShare,
+                    onOpenServices = onOpenServices,
                     onOpenPermissions = onOpenPermissions,
                     onSwitchMode = onSwitchMode,
                     onSignOut = onSignOut,
@@ -88,25 +84,18 @@ class LinkedDeviceScreenTest {
     }
 
     @Test
-    fun screenShareRequestedButtonsCallCallbacks() {
-        var accepted = false
-        var declined = false
-        set(
-            screenShareRequested = true,
-            onAcceptScreenShare = { accepted = true },
-            onDeclineScreenShare = { declined = true },
-        )
-        composeRule.onNodeWithText("Aceptar").performScrollTo().performClick()
-        assertTrue(accepted)
-        composeRule.onNodeWithText("Ahora no").performScrollTo().performClick()
-        assertTrue(declined)
+    fun servicesRowOpensServices() {
+        var opened = false
+        set(onOpenServices = { opened = true })
+        composeRule.onNodeWithText("Estado de NetProtect").performScrollTo().performClick()
+        assertTrue(opened)
     }
 
     @Test
-    fun noScreenShareHidesButtons() {
-        set(screenShareRequested = false)
+    fun theConsentIsNoLongerACardHere() {
+        set()
         composeRule.onNodeWithText("Aceptar").assertDoesNotExist()
-        composeRule.onNodeWithText("Ahora no").assertDoesNotExist()
+        composeRule.onNodeWithText("Tu tutor quiere ver esta pantalla").assertDoesNotExist()
     }
 
     @Test

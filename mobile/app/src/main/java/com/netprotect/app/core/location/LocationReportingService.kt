@@ -1,5 +1,6 @@
 package com.netprotect.app.core.location
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -94,10 +95,13 @@ class LocationReportingService : Service() {
         val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
 
         reportingJob = serviceScope.launch { runReportingLoop(baseUrl, accessToken, deviceId) }
+        // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
+        ServiceStatusRegistry.locationRunning(true)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.locationRunning(false)
         serviceJob.cancel()
         super.onDestroy()
     }

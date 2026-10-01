@@ -50,10 +50,8 @@ fun LinkedDeviceScreen(
     reachable: Boolean,
     now: Instant,
     pendingPermissions: Int,
-    screenShareRequested: Boolean,
-    onAcceptScreenShare: () -> Unit,
-    onDeclineScreenShare: () -> Unit,
     onOpenPermissions: () -> Unit,
+    onOpenServices: () -> Unit,
     onSwitchMode: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -80,40 +78,6 @@ fun LinkedDeviceScreen(
                 color = NpColors.SlateMuted,
             )
             Spacer(Modifier.height(20.dp))
-            if (screenShareRequested) {
-                NpCard(containerColor = NpColors.BlueWash) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconTile(icon = NpIcons.Monitor, tone = NpTone.Info, size = 48.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = "Tu tutor quiere ver esta pantalla",
-                            style = NpText.Title,
-                            color = NpColors.ShieldNavy,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Si aceptas, Android te pedirá confirmarlo otra vez y verás un aviso permanente mientras dure la transmisión. Puedes detenerla en cualquier momento desde ese aviso.",
-                        style = NpText.Body,
-                        color = NpColors.Ink,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    NpButton(
-                        text = "Aceptar",
-                        onClick = onAcceptScreenShare,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    NpButton(
-                        text = "Ahora no",
-                        onClick = onDeclineScreenShare,
-                        modifier = Modifier.fillMaxWidth(),
-                        variant = NpButtonVariant.Secondary,
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-            }
             NpCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconTile(icon = NpIcons.Smartphone, tone = NpTone.Info, size = 72.dp)
@@ -238,6 +202,23 @@ fun LinkedDeviceScreen(
                     onClick = onOpenPermissions,
                     modifier = Modifier.fillMaxWidth(),
                     icon = NpIcons.Settings,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            // Sprint 50: the screen-share consent is its own screen now (SupervisedShell routes to it);
+            // from here the supervised person can always check what is running on this phone.
+            NpCard(onClick = onOpenServices) {
+                ListRow(
+                    title = "Estado de NetProtect",
+                    subtitle = "Qué funciones están activas en este dispositivo.",
+                    leading = { IconTile(icon = NpIcons.ShieldCheck, tone = NpTone.Success, size = 44.dp) },
+                    trailing = {
+                        Icon(
+                            painter = painterResource(NpIcons.ChevronRight),
+                            contentDescription = null,
+                            tint = NpColors.SlateMuted,
+                        )
+                    },
                 )
             }
             Spacer(Modifier.height(12.dp))
