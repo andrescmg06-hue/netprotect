@@ -10,8 +10,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S40–S47 | Base, sesión, diseño, login, todo el modo tutor (mockups 1–11) | ✅ Hechos, fusionados en `android-redesign` |
 | S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
 | S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
-| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho; **PR #12 abierto** (CI verde), falta merge y H-02 |
-| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | 🔄 **En curso** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`). Hecho T1–T9 + seguridad; faltan T10 (Galaxy) y T11. Ver `docs/sprint-51.md`. Opus |
+| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho (PR #12 fusionado el 02/10/2026); falta H-02 en el teléfono real (se cubre en T10 del S51) |
+| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | 🔄 **En curso** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`, ya con `android-redesign` fusionada). Hecho T1–T9 + seguridad; **T10 aplazado a propósito hasta tener el Galaxy S25 FE** (checklist en `docs/sprint-51.md`) y T11 después. Opus |
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
   para empezar.

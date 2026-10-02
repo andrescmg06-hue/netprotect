@@ -70,10 +70,27 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
     envía `screen_share_stop`, pero la auditoría registra un «sí» momentáneo. No es un bypass; queda como deuda.
   - Preexistente (S41): el access token viaja en extras de Intent a servicios propios no exportados. No empeoró, y
     `ScreenShareService` ya renueva el token por su cuenta. Queda como deuda.
-  - Sin comprobar: que las tres plantillas `.env.*.example` declaren `TURN_SHARED_SECRET`, `TURN_URLS` y
-    `TURN_CREDENTIAL_TTL_SECONDS`. Los archivos `.env*` están bloqueados para Claude por permisos.
-- [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
+  - Plantillas `.env.*.example` (comprobado el 02/10/2026, solo nombres de variable): `development` declara las tres
+    variables TURN; `test` no declara `TURN_CREDENTIAL_TTL_SECONDS`; `production` no declara `TURN_SHARED_SECRET` ni
+    el TTL. **No es un hueco:** en producción el secreto llega como Compose secret
+    (`secrets/turn_shared_secret.txt` → `TURN_SHARED_SECRET_FILE`, `compose.prod.yaml`) y `config.py` aborta el
+    arranque si queda el valor de desarrollo; el TTL tiene valor por defecto de 3600 s (`config.py`, D3 de
+    `plan-turn.md`). Los `.env*` y `secrets/` siguen bloqueados para Claude por permisos.
+- [ ] T10 — Pruebas humanas en el Galaxy S25 FE. **Aplazado a propósito: se hace con el teléfono real.**
+  Pendiente, en este orden:
+  1. Build `minified` (release con R8) instalada en el Galaxy, con el backend local (`make dev`; el teléfono ve la
+     PC por la IP de la red, no por `10.0.2.2`).
+  2. TalkBack: recorrer las 17 pantallas; comprobar orden de foco, etiquetas y áreas táctiles de 48 dp
+     (Accessibility Scanner).
+  3. Fuente al 130 % y al 200 % en el teléfono.
+  4. **H-02:** vista remota real de extremo a extremo con R8 activo (cierra WebRTC bajo R8 y el T5).
+  5. Capturas 01, 02, 12, 14, 15 y 16 (las otras 11 ya están en `docs/sprint-51-evidence.md`).
+  El emulador `Pixel_8` sirve para los puntos 1, 3 y 5; los puntos 2 y 4 solo cuentan como válidos en el teléfono.
+- [ ] T5 — se cierra con el punto 4 de T10 (H-02): hasta entonces R8 solo está verificado de forma estática.
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
+  Pendiente tras T10: cerrar G-01…G-27 en `tasks.md` y lecciones en `.claude/rules/android.md` (mecánico, apto
+  para DeepSeek); `/cerrar-sprint 51`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` → `main`
+  (el merge es del dueño).
 
 ## Hallazgos de la auditoría (fase 1)
 

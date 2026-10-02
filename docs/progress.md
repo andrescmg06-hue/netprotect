@@ -6,13 +6,18 @@ _Actualizado: 2026-10-02 · Sprint actual: 51_
   con push). Hecho: T1–T9 y la revisión de seguridad (0 ALTA). Detalle y commits: `docs/sprint-51.md`.
 
 ## Siguiente paso
-1. **Dueño:** fusionar PR #12 (S50) y PR #13 (entorno Gentle AI + D-05) en `android-redesign`; comprobar que las
-   tres `.env.*.example` tienen `TURN_SHARED_SECRET`, `TURN_URLS` y `TURN_CREDENTIAL_TTL_SECONDS`.
-2. **T10 en el Galaxy S25 FE** (con el dueño): la build `minified` (release con R8), TalkBack, fuente 130/200 %, H-02 (vista
-   remota real, cierra WebRTC con R8) y capturas 01, 02, 12, 14, 15, 16.
-3. **Resto de T11:** PR `sprint-51-cierre` → `android-redesign`; cerrar G-01…G-27 en `tasks.md`; lecciones en
-   `.claude/rules/android.md`; `/cerrar-sprint 51`; PR `android-redesign` → `main` (merge del dueño).
-   **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
+Hecho el 02/10/2026: PR #12 (S50) y PR #13 (entorno + D-05) fusionados en `android-redesign` (`d0724b0`); esa rama ya
+está fusionada dentro de `sprint-51-cierre`; plantillas `.env.*.example` comprobadas (sin hueco, ver `docs/sprint-51.md`).
+
+1. **T10 con el Galaxy S25 FE real** (con el dueño), checklist completa en `docs/sprint-51.md`: build `minified`,
+   TalkBack, fuente 130/200 %, **H-02** (vista remota real con R8; cierra T5) y capturas 01, 02, 12, 14, 15, 16.
+   Opus. Aplazado a propósito hasta tener el teléfono.
+2. **Resto de T11:** cerrar G-01…G-27 en `tasks.md` y lecciones en `.claude/rules/android.md` (apto para DeepSeek);
+   `/cerrar-sprint 51`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` → `main` (merge del dueño).
+3. **Después del S51:** el proyecto solo corre en demo local (backend en la PC). Para presentarlo sin la PC falta el
+   Paso 25 (dominio, hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real) y firma de release.
+
+**Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
 - Sprint 51 (en curso): bug «todas las apps Desinstalada» (`optString` y JSON null) corregido; selecciones del
