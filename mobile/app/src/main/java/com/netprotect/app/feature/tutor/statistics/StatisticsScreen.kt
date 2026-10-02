@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -206,14 +207,13 @@ private fun TopAppRowView(row: TopAppRow) {
             contentDescription = "${row.name}: ${row.duration}",
         )
         Spacer(Modifier.width(12.dp))
-        // Fixed width so every bar ends at the same x, whatever the duration's length.
+        // Min width keeps bars aligned at 100% font; at large font scales it grows instead of clipping.
         Text(
             text = row.duration,
             style = NpText.BodyStrong,
             color = NpColors.Ink,
             textAlign = TextAlign.End,
-            maxLines = 1,
-            modifier = Modifier.width(92.dp),
+            modifier = Modifier.widthIn(min = 92.dp),
         )
     }
 }
