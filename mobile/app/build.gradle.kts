@@ -149,3 +149,15 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+// 'minified' is debug-signed with a cleartext exception: no APK or bundle of it may come out of
+// CI, where it could be mistaken for a release (S51 security review). Its unit tests may still run.
+gradle.taskGraph.whenReady {
+    // Only the tasks that produce the final APK/AAB: unit tests depend on internal
+    // package*/bundle* tasks of the variant (resources, class jars) and must keep running.
+    val artifactTasks = setOf("assembleMinified", "packageMinified", "bundleMinified", "packageMinifiedBundle")
+    val packagesMinified = allTasks.any { it.project == project && it.name in artifactTasks }
+    if (System.getenv("CI") != null && packagesMinified) {
+        throw GradleException("The 'minified' build type is for local testing only and cannot be packaged in CI.")
+    }
+}
