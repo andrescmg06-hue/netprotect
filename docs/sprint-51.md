@@ -39,6 +39,24 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   misma pantalla. `am kill` no mata el proceso porque los servicios en primer plano lo mantienen vivo, así que en
   el supervisado la muerte del proceso real no ocurre con la app en uso. **Falta el modo tutor**, que es donde
   los datos se recargan al girar (sin ViewModel).
+- **Modo tutor (emulador, `minified`)**, con un supervisado de prueba vinculado por API (`backend/scripts/
+  seed_test_session.py` pasado por stdin al contenedor; código real generado en la app) y datos de apps, uso y
+  ubicación cargados por API:
+  - **Bug encontrado y corregido** (`07d8525`): en Android `optString` devuelve el texto «null» para un JSON
+    null, así que **todas** las apps salían «Desinstalada», y el nombre, la zona horaria o la última conexión
+    podían mostrarse como «null». Un ayudante `optStringOrNull` cubre todos los campos anulables, con test
+    instrumentado (el `org.json` de escritorio devuelve «» y ocultaría el bug). Verificado en pantalla tras el
+    arreglo.
+  - Sin red: el detalle del dispositivo y Ubicación recargadas muestran «Sin conexión con el servidor…» con
+    «Reintentar». Si la app arranca en frío sin red, el tutor con sesión ve el login con el error y «Reintentar»,
+    y la sesión se retoma al volver la red (decisión del Sprint 41; no se cambia aquí).
+  - Rotación: se conserva la pantalla y la búsqueda de Apps, pero **el periodo de Estadísticas («7 días») vuelve
+    a «Hoy»**: los filtros viven en los state holders (`ActivityState`…) creados con `remember`. Lo decide el
+    dueño (D-02).
+  - Fuente 200 %: la duración de Estadísticas ya no se corta (T4 verificado), pero **`StatusPill` se corta**
+    («Desconectado» → «Des») y **las etiquetas de la barra inferior se parten a mitad de palabra**
+    («Dispositi/vos»).
+  - Menor: tras vincular, el código ya usado sigue visible con su cuenta atrás hasta salir de Inicio.
 - [ ] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md` y capturas de las 17 pantallas.
 - [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
