@@ -108,7 +108,7 @@ fun SupervisedShell(
     val deviceInstanceId = remember { DeviceIdentity.getOrCreate(context) }
 
     var state by remember { mutableStateOf<SupervisedState>(SupervisedState.CheckingLink) }
-    var codeInput by remember { mutableStateOf("") }
+    var codeInput by rememberSaveable { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
     var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }

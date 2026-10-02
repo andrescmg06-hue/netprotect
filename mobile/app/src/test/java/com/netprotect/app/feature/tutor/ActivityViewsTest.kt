@@ -285,4 +285,28 @@ class ActivityViewsTest {
         assertEquals(StatsPeriod.Week, controller.period)
         assertEquals(LoadState.Loaded(week), controller.state)
     }
+
+    @Test
+    fun aRestoredPeriodLoadsThatPeriodNotTheDefault() = runBlocking {
+        val requested = mutableListOf<StatsPeriod>()
+        val controller = StatisticsController(initialPeriod = StatsPeriod.Month) { period ->
+            requested += period
+            StatisticsView(emptyList(), emptyList(), emptyList())
+        }
+        assertEquals(StatsPeriod.Month, controller.period)
+        controller.refresh()
+        assertEquals(listOf(StatsPeriod.Month), requested)
+        assertTrue(controller.state is LoadState.Loaded)
+    }
+
+    @Test
+    fun aRestoredAlertFilterIsKept() {
+        val controller = AlertsController(
+            initialFilter = AlertFilter.Critical,
+            load = { data() },
+            markReadRequest = {},
+            silenceRequest = {},
+        )
+        assertEquals(AlertFilter.Critical, controller.filter)
+    }
 }

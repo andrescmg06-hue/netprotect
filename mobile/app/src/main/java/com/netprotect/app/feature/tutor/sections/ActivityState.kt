@@ -28,13 +28,14 @@ data class AlertsData(
  * - Authorization is the backend's (a foreign alert is a 404); nothing is decided here.
  */
 class AlertsController(
+    initialFilter: AlertFilter = AlertFilter.All,
     private val load: suspend () -> AlertsData,
     private val markReadRequest: suspend (alertId: String) -> Unit,
     private val silenceRequest: suspend (alertId: String) -> Unit,
 ) {
     var state: LoadState<AlertsData> by mutableStateOf(LoadState.Loading)
         private set
-    var filter: AlertFilter by mutableStateOf(AlertFilter.All)
+    var filter: AlertFilter by mutableStateOf(initialFilter)
     var busyId: String? by mutableStateOf(null)
         private set
     var actionError: String? by mutableStateOf(null)
@@ -112,9 +113,15 @@ const val ALERT_GONE_MESSAGE = "Esta alerta ya no existe o no tienes acceso. Act
  * Sprint 46 (D-02): Estadísticas with its period selector. Each period is a fresh load; a slow
  * answer for a period the tutor already left is discarded (tapping Hoy → 7 días quickly must not
  * end up showing "Hoy" under the "7 días" tab).
+ *
+ * [initialPeriod] is the selection restored after a rotation (kept by the caller with
+ * `rememberSaveable`); the first [refresh] loads that period, not the default.
  */
-class StatisticsController(private val load: suspend (StatsPeriod) -> StatisticsView) {
-    var period: StatsPeriod by mutableStateOf(StatsPeriod.Today)
+class StatisticsController(
+    initialPeriod: StatsPeriod = StatsPeriod.Today,
+    private val load: suspend (StatsPeriod) -> StatisticsView,
+) {
+    var period: StatsPeriod by mutableStateOf(initialPeriod)
         private set
     var state: LoadState<StatisticsView> by mutableStateOf(LoadState.Loading)
         private set
