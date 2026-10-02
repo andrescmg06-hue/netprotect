@@ -65,7 +65,19 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // Sprint 51: the release build (R8 on) pointed at the local backend and signed with the debug
+        // key, so the minified app can be installed and exercised end to end. Never distributed.
+        create("minified") {
+            initWith(getByName("release"))
+            buildConfigField("String", "API_BASE_URL", debugApiBaseUrl.asBuildConfigString())
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
+
+    // Same cleartext exception as debug (10.0.2.2 and localhost only), without the debug gallery.
+    sourceSets.getByName("minified").res.srcDir("src/debug/res")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
