@@ -59,7 +59,7 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
     («Desconectado» → «Des») y la barra inferior partía palabras («Dispositi/vos»). **Corregido** (`9c7eb73`):
     la píldora baja entera a su propia línea y las etiquetas usan «…». Verificado al 200 %.
   - Menor: tras vincular, el código ya usado sigue visible con su cuenta atrás hasta salir de Inicio.
-- [ ] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md` y capturas de las 17 pantallas.
+- [x] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md`: 0 puntos perdidos; detalle en `docs/sprint-51-evidence.md`. Capturas de 11 de las 17 pantallas; el resto en T10.
 - [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
 
