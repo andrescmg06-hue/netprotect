@@ -27,7 +27,6 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | D-02 | P2 | `lintDebug` no corre en CI; es el único que detecta APIs > minSdk 26 |
 | D-03 | P3 | Sesión web en `sessionStorage` en vez de cookie HttpOnly |
 | D-04 | P3 | Sin *type checking* en Python (no hay mypy) |
-| D-05 | P3 | `make android-check` usa `gradle`; CI usa `./gradlew` |
 | D-06 | P3 | `TutorScreen.kt` (963 líneas) y `apiClient.ts` (889) concentran demasiado |
 | D-07 | P3 | Sin medición de cobertura |
 
