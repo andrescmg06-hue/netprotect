@@ -1,5 +1,6 @@
 package com.netprotect.app.core.screenshare
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -96,6 +97,12 @@ class ScreenShareService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, ScreenShareService::class.java))
         }
+
+        /** Sprint 50: the in-app banner's "Detener" — exactly what the notification's own action
+         * sends, so the tutor is told the supervised person stopped it (supervised_stopped). */
+        fun requestStop(context: Context) {
+            context.startService(Intent(context, ScreenShareService::class.java).setAction(ACTION_STOP))
+        }
     }
 
     private val serviceJob = Job()
@@ -128,6 +135,8 @@ class ScreenShareService : Service() {
         val resultData = getResultData(intent) ?: return START_NOT_STICKY
 
         sessionStarted = true
+        // Sprint 50: drives the in-app banner and "Estado de NetProtect"; the session itself is unchanged.
+        ServiceStatusRegistry.screenShareStarted(java.time.Instant.now())
         serviceScope.launch { startSession(baseUrl, accessToken, deviceId, resultData) }
         return START_NOT_STICKY
     }
@@ -141,6 +150,7 @@ class ScreenShareService : Service() {
         }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.screenShareStopped()
         releaseEverything()
         serviceJob.cancel()
         super.onDestroy()

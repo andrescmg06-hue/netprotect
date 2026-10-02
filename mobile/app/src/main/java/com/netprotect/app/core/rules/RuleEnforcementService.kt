@@ -1,5 +1,6 @@
 package com.netprotect.app.core.rules
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -116,10 +117,13 @@ class RuleEnforcementService : Service() {
         val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
 
         pollingJob = serviceScope.launch { runPollingLoop(baseUrl, accessToken, deviceId) }
+        // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
+        ServiceStatusRegistry.enforcementRunning(true)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.enforcementRunning(false)
         BlockOverlayController.hide(applicationContext)
         realtimeClient?.disconnect()
         serviceJob.cancel()

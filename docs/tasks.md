@@ -6,7 +6,7 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | Id | Prioridad | Estado | Descripción | Origen |
 |---|---|---|---|---|
 | B-01 | P2 | done | Dispositivos duplicados en `GET /devices/me` | `docs/sprint-29.md` |
-| B-02 | P2 | todo | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
+| B-02 | P2 | done | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
 | B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado. **Hallazgo S43:** `POST /users/me/roles` concede cualquier rol sin condiciones (`roles.py`), así que no hay error que mostrar en la app; hace falta un cambio de backend (p. ej. rechazar el canje en `pairing.py` cuando el tutor del código es la misma cuenta) | Sprints 28–29, `docs/sprint-43.md` |
 | B-04 | P1 | done | Latidos con 500: alertas duplicadas por reportes simultáneos (`MultipleResultsFound`) | `docs/sprint-41.md` |
 | B-05 | P2 | todo | Panel web: el sondeo de alertas no renueva el token caducado (401 cada minuto) | `docs/sprint-41-evidence.md` |
@@ -65,9 +65,9 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | G-21 | P3 | done | Vinculado: última comunicación, varios tutores, resumen de permisos — S48 |
 | G-22 | P2 | done | B-01 dispositivos duplicados en `GET /devices/me` — S48 |
 | G-23 | P2 | done | Pantalla de bloqueo: 7 variantes con icono y categoría reales (D-11) — S49 |
-| G-24 | P2 | todo | Pantalla de consentimiento completa con textos verdaderos (D-12) — S50 |
-| G-25 | P2 | todo | Registro de estado de servicios (pantalla 17) — S50 |
-| G-26 | P2 | todo | B-02 reconexión del canal realtime — S50 |
+| G-24 | P2 | done | Pantalla de consentimiento completa con textos verdaderos (D-12) — S50 |
+| G-25 | P2 | done | Registro de estado de servicios (pantalla 17) — S50 |
+| G-26 | P2 | done | B-02 reconexión del canal realtime — S50 |
 | G-27 | P2 | todo | Accesibilidad, rotación, sin conexión, build release, código muerto — S51 |
 | L-01 | P1 | done | `AuthRepository.kt:32`: `CredentialManager.getCredential` sin capturar `NoCredentialException` (lint CredentialManagerMisuse); revisar con `security-reviewer` — S41 |
 | L-02 | P2 | todo | `AndroidManifest.xml:62`: `allowBackup` obsoleto y falta `dataExtractionRules` (lint DataExtractionRules); privacidad de datos de menores — S51 |

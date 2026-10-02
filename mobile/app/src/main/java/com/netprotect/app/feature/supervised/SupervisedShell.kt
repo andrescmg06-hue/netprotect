@@ -7,11 +7,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +39,7 @@ import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.MyDeviceInfo
 import com.netprotect.app.core.network.PairingClient
-import com.netprotect.app.core.network.RealtimeClient
+import com.netprotect.app.core.network.ReconnectingRealtimeChannel
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationPermission
@@ -44,7 +49,12 @@ import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.rules.RuleEnforcementService
 import com.netprotect.app.core.screenshare.ScreenCapture
 import com.netprotect.app.core.screenshare.ScreenShareService
+import com.netprotect.app.core.status.ServiceStatusRegistry
+import com.netprotect.app.core.status.servicesView
 import com.netprotect.app.core.sync.SyncWorker
+import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
+import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
+import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
@@ -57,6 +67,10 @@ import org.json.JSONObject
 
 private const val HEARTBEAT_INTERVAL_MS = 60_000L
 private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
+
+/** Sprint 50: a request nobody answers closes by itself — the backend doesn't tell the device when
+ * the tutor just closes the tab. Nothing is sent: a "no" is never sent on the child's behalf. */
+private const val CONSENT_TIMEOUT_MS = 2 * 60_000L
 
 private sealed interface SupervisedState {
     data object CheckingLink : SupervisedState
@@ -102,7 +116,7 @@ fun SupervisedShell(
     // Sprint 23: set from the signalling socket's callback (OkHttp's thread) and read by the
     // composition — a Compose state, so the recomposition happens on its own.
     var screenShareRequested by remember { mutableStateOf(false) }
-    var screenShareSignaling by remember { mutableStateOf<RealtimeClient?>(null) }
+    var screenShareSignaling by remember { mutableStateOf<ReconnectingRealtimeChannel?>(null) }
 
     // Sprint 48 — display-only state. Never used as an effect key (see the class comment).
     var route by rememberSaveable { mutableStateOf(SupervisedRoute.Linked) }
@@ -242,7 +256,10 @@ fun SupervisedShell(
             }.isSuccess
             // Sprint 48: only what "Última comunicación" shows — not a key of any effect.
             now = Instant.now()
-            if (sent) lastHeartbeatOk = now
+            if (sent) {
+                lastHeartbeatOk = now
+                ServiceStatusRegistry.heartbeatSucceeded(now)
+            }
             heartbeatFailing = !sent
             delay(HEARTBEAT_INTERVAL_MS)
         }
@@ -297,31 +314,32 @@ fun SupervisedShell(
         onDispose { LocationReportingService.stop(context) }
     }
 
-    // Sprint 23: a second, short-lived WebSocket, open only while the shell is composed, whose
-    // single job is hearing the tutor ask to see the screen. Separate from RuleEnforcementService's
-    // connection on purpose (that one is gated on usage access). Once the supervised person
-    // accepts, ScreenShareService opens its own connection for the session itself.
+    // Sprint 23: a second WebSocket, open only while the shell is composed, whose single job is
+    // hearing the tutor ask to see the screen. Separate from RuleEnforcementService's connection on
+    // purpose (that one is gated on usage access). Once the supervised person accepts,
+    // ScreenShareService opens its own connection for the session itself.
+    // Sprint 50 (B-02): it now reconnects by itself (growing waits up to 30 s, a fresh valid token
+    // as the first frame each time), so a request sent after a network drop is no longer lost.
     DisposableEffect(state) {
         val linked = state as? SupervisedState.Linked
         val deviceId = LinkedDeviceStore.read(context)?.deviceId
         if (linked == null || deviceId == null) return@DisposableEffect onDispose { }
 
-        val client = RealtimeClient(BuildConfig.API_BASE_URL)
-        screenShareSignaling = client
-        // Sprint 41: the socket authenticates once, with its first frame — so it must get a valid
-        // token, not the last one this screen happened to see (possibly expired or empty).
-        val connecting = scope.launch {
-            val token = runCatching { session.validAccessToken() }.getOrNull() ?: return@launch
-            client.connect(deviceId, token) { event, _ ->
-                when (event) {
-                    "screen_share_request" -> screenShareRequested = true
-                    "screen_share_stop" -> screenShareRequested = false
-                }
+        val channel = ReconnectingRealtimeChannel(
+            baseUrl = BuildConfig.API_BASE_URL,
+            deviceId = deviceId,
+            tokenProvider = { session.validAccessToken() },
+            onConnectedChange = ServiceStatusRegistry::realtimeConnected,
+        ) { event, _ ->
+            when (event) {
+                "screen_share_request" -> screenShareRequested = true
+                "screen_share_stop" -> screenShareRequested = false
             }
         }
+        screenShareSignaling = channel
+        channel.start(scope)
         onDispose {
-            connecting.cancel()
-            client.disconnect()
+            channel.stop()
             screenShareSignaling = null
         }
     }
@@ -338,13 +356,33 @@ fun SupervisedShell(
         onDispose { SyncWorker.cancel(context) }
     }
 
-    // Sprint 48: a screen-share request must be seen — it lives on "Dispositivo vinculado".
+    // Sprint 50: a pending request opens the consent screen, wherever the person is; answering it,
+    // the tutor cancelling (screen_share_stop) or CONSENT_TIMEOUT_MS of silence brings them back.
     LaunchedEffect(screenShareRequested) {
-        if (screenShareRequested) route = SupervisedRoute.Linked
+        if (screenShareRequested) {
+            route = SupervisedRoute.Consent
+            delay(CONSENT_TIMEOUT_MS)
+            screenShareRequested = false
+        } else if (route == SupervisedRoute.Consent) {
+            route = SupervisedRoute.Linked
+        }
     }
-    BackHandler(enabled = state is SupervisedState.Linked && route == SupervisedRoute.Permissions) {
-        route = SupervisedRoute.Linked
+    BackHandler(enabled = state is SupervisedState.Linked && route != SupervisedRoute.Linked) {
+        if (route == SupervisedRoute.Consent) {
+            // Back is not an answer: only the buttons send one. Leaving just hides the request.
+            screenShareRequested = false
+        } else {
+            route = SupervisedRoute.Linked
+        }
     }
+    // Sprint 50: "Estado de NetProtect" shows minutes since the last report; refresh while it's open.
+    LaunchedEffect(route) {
+        while (route == SupervisedRoute.Services) {
+            now = Instant.now()
+            delay(15_000L)
+        }
+    }
+    val serviceStatus by ServiceStatusRegistry.status.collectAsState()
 
     val permissions = PermissionsUi(
         usageAccess = hasUsageAccess,
@@ -353,7 +391,16 @@ fun SupervisedShell(
         deviceAdmin = hasDeviceAdmin,
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(NpColors.SkyGround)) {
+    Column(modifier = Modifier.fillMaxSize().background(NpColors.SkyGround)) {
+    // Sprint 50: visible on every supervised screen while a share really runs, besides Android's
+    // own notification. It takes the status bar inset, so the screen below must not add it again.
+    val sharing = serviceStatus.screenShareActive
+    if (sharing) ActiveShareBanner(onStop = { ScreenShareService.requestStop(context) })
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .then(if (sharing) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier),
+    ) {
         when (val current = state) {
             SupervisedState.CheckingLink ->
                 LoadingState(modifier = Modifier.statusBarsPadding(), label = "Comprobando vínculo…")
@@ -421,20 +468,8 @@ fun SupervisedShell(
                     reachable = !heartbeatFailing,
                     now = now,
                     pendingPermissions = permissions.pending,
-                    screenShareRequested = screenShareRequested,
-                    onAcceptScreenShare = {
-                        screenShareSignaling?.send(
-                            JSONObject().put("type", "screen_share_consent").put("granted", true)
-                        )
-                        screenCaptureLauncher.launch(ScreenCapture.consentIntent(context))
-                    },
-                    onDeclineScreenShare = {
-                        screenShareRequested = false
-                        screenShareSignaling?.send(
-                            JSONObject().put("type", "screen_share_consent").put("granted", false)
-                        )
-                    },
                     onOpenPermissions = { route = SupervisedRoute.Permissions },
+                    onOpenServices = { route = SupervisedRoute.Services },
                     onSwitchMode = onSwitchMode,
                     onSignOut = { scope.launch { onSignOut() } },
                 )
@@ -452,7 +487,31 @@ fun SupervisedShell(
                     onRequestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) },
                     onBack = { route = SupervisedRoute.Linked },
                 )
+
+                SupervisedRoute.Consent -> ScreenShareConsentScreen(
+                    // Exactly what the Sprint 23 card sent, then Android's own capture dialog.
+                    onContinue = {
+                        screenShareSignaling?.send(
+                            JSONObject().put("type", "screen_share_consent").put("granted", true)
+                        )
+                        screenCaptureLauncher.launch(ScreenCapture.consentIntent(context))
+                    },
+                    onDecline = {
+                        screenShareRequested = false
+                        screenShareSignaling?.send(
+                            JSONObject().put("type", "screen_share_consent").put("granted", false)
+                        )
+                    },
+                )
+
+                SupervisedRoute.Services -> ServicesStatusScreen(
+                    view = servicesView(serviceStatus, EnforcementLiveness.isRecentlyActive(context), now),
+                    now = now,
+                    onStopScreenShare = { ScreenShareService.requestStop(context) },
+                    onBack = { route = SupervisedRoute.Linked },
+                )
             }
         }
+    }
     }
 }
