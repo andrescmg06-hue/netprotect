@@ -1,5 +1,8 @@
 package com.netprotect.app.feature.tutor.sections
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +23,7 @@ import com.netprotect.app.ui.theme.NpText
 import com.netprotect.app.ui.theme.NpTone
 
 /** Cabecera compacta del dispositivo dentro de una sección (sin tarjeta, sobre el fondo). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SectionDeviceHeader(
     device: DeviceSummary,
@@ -32,13 +36,17 @@ fun SectionDeviceHeader(
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = device.name, style = NpText.Title, color = NpColors.ShieldNavy)
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // FlowRow: at large font scales the pill moves to its own line instead of being clipped.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = device.osVersion?.let { "Android $it" } ?: "Android",
                     style = NpText.Body,
                     color = NpColors.SlateMuted,
                 )
-                Spacer(Modifier.width(8.dp))
                 StatusPill(text = statusLabel, tone = statusTone, showDot = false)
             }
             lines.forEach { line ->

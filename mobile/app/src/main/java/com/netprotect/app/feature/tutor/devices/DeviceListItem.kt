@@ -1,6 +1,8 @@
 package com.netprotect.app.feature.tutor.devices
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +46,7 @@ private fun platformLabel(device: DeviceSummary): String =
     device.osVersion?.let { "Android $it" } ?: "Android"
 
 /** Un dispositivo en la lista (compartido por Inicio y Dispositivos). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DeviceListItem(
     device: DeviceSummary,
@@ -58,9 +61,13 @@ fun DeviceListItem(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = device.name, style = NpText.Title, color = NpColors.ShieldNavy)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // FlowRow: at large font scales the pill moves to its own line instead of being clipped.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(text = platformLabel(device), style = NpText.Body, color = NpColors.SlateMuted)
-                    Spacer(Modifier.width(8.dp))
                     StatusPill(text = statusLabel, tone = statusTone, showDot = false)
                 }
                 Text(
