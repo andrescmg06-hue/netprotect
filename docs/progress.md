@@ -1,17 +1,23 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-01 · Sprint actual: 50_
+_Actualizado: 2026-10-02 · Sprint actual: 51_
 
 ## En curso
-- Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
-  trabajo) para que el contexto por área cargue solo según la ruta tocada.
+- **S51 (endurecimiento y cierre del rediseño Android)**, rama `sprint-51-cierre` (worktree `C:/Users/andre/np-s51`,
+  con push). Hecho: T1–T9 y la revisión de seguridad (0 ALTA). Detalle y commits: `docs/sprint-51.md`.
 
 ## Siguiente paso
-- S50 cerrado en local, en la rama `sprint-50-consentimiento` (commits locales; el PR está pendiente de que el dueño lo pida),
-  con H-02 pendiente. Después: S51 (endurecimiento, accesibilidad, regresión y PR `android-redesign` → `main`).
-  Plan: `docs/android-redesign/sprints/S51-endurecimiento-y-cierre.md`.
-  **Para retomar el trabajo (otra persona o sesión nueva): `docs/android-redesign/CONTINUAR.md`.**
+1. **Dueño:** fusionar PR #12 (S50) y PR #13 (entorno Gentle AI + D-05) en `android-redesign`; comprobar que las
+   tres `.env.*.example` tienen `TURN_SHARED_SECRET`, `TURN_URLS` y `TURN_CREDENTIAL_TTL_SECONDS`.
+2. **T10 en el Galaxy S25 FE** (con el dueño): la build `minified` (release con R8), TalkBack, fuente 130/200 %, H-02 (vista
+   remota real, cierra WebRTC con R8) y capturas 01, 02, 12, 14, 15, 16.
+3. **Resto de T11:** PR `sprint-51-cierre` → `android-redesign`; cerrar G-01…G-27 en `tasks.md`; lecciones en
+   `.claude/rules/android.md`; `/cerrar-sprint 51`; PR `android-redesign` → `main` (merge del dueño).
+   **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
+- Sprint 51 (en curso): bug «todas las apps Desinstalada» (`optString` y JSON null) corregido; selecciones del
+  tutor sobreviven al giro (D-02 revisada); textos al 200 %; `lintDebug` en CI; build `minified` para probar R8;
+  regresión del inventario sin pérdidas — `docs/sprint-51.md`
 - Sprint 50: consentimiento de vista remota como pantalla propia, «Estado de NetProtect» y reconexión del
   canal realtime (B-02) — `docs/sprint-50.md`
 - Sprint 49: pantalla «App bloqueada» en sus 7 variantes, con la categoría real y solo textos verdaderos;

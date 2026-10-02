@@ -10,8 +10,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S40–S47 | Base, sesión, diseño, login, todo el modo tutor (mockups 1–11) | ✅ Hechos, fusionados en `android-redesign` |
 | S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
 | S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
-| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho en local (rama `sprint-50-consentimiento`); **falta push + PR** y H-02 |
-| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | ⏭️ **Siguiente.** Plan: `sprints/S51-endurecimiento-y-cierre.md`. Conviene Opus |
+| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho; **PR #12 abierto** (CI verde), falta merge y H-02 |
+| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | 🔄 **En curso** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`). Hecho T1–T9 + seguridad; faltan T10 (Galaxy) y T11. Ver `docs/sprint-51.md`. Opus |
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
   para empezar.
@@ -122,4 +122,4 @@ uso registrado (el mínimo del límite es 1 minuto). Se borra todo al final y se
 - **B-03:** una misma cuenta puede ser tutor y supervisado sin aviso claro (backend).
 - **B-05:** el panel web consulta alertas cada minuto con un token caducado y recibe 401. Se ve en los logs del
   backend si queda una pestaña abierta.
-- **B-06:** con letra grande, algunos botones se aplastan. Lo revisa el S51.
+- **B-06:** con letra grande, algunos botones se aplastan. S51 corrigió la píldora de estado y la barra inferior (`9c7eb73`); falta revisar el resto en el Galaxy (T10).
