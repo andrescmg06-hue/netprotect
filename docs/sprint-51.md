@@ -60,6 +60,18 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
     la píldora baja entera a su propia línea y las etiquetas usan «…». Verificado al 200 %.
   - Menor: tras vincular, el código ya usado sigue visible con su cuenta atrás hasta salir de Inicio.
 - [x] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md`: 0 puntos perdidos; detalle en `docs/sprint-51-evidence.md`. Capturas de 11 de las 17 pantallas; el resto en T10.
+- **Revisión de seguridad** (parte de T11): `security-reviewer` del proyecto sobre `main...sprint-51-cierre`, 371
+  archivos. **0 ALTA, 0 MEDIA, 3 BAJA.**
+  - `minified` (firmado con la clave de debug y con excepción de cleartext) podía salir de un `assemble` genérico
+    en CI. **Corregido:** Gradle falla si se empaqueta `minified` con `CI` definido, y sus tests unitarios siguen
+    corriendo. Verificado: `CI=true ./gradlew test assembleDebug lintDebug` pasa y `CI=true ./gradlew
+    assembleMinified` falla.
+  - Preexistente (S23): «Continuar» envía `granted=true` antes del diálogo de Android. Si el menor lo cancela se
+    envía `screen_share_stop`, pero la auditoría registra un «sí» momentáneo. No es un bypass; queda como deuda.
+  - Preexistente (S41): el access token viaja en extras de Intent a servicios propios no exportados. No empeoró, y
+    `ScreenShareService` ya renueva el token por su cuenta. Queda como deuda.
+  - Sin comprobar: que las tres plantillas `.env.*.example` declaren `TURN_SHARED_SECRET`, `TURN_URLS` y
+    `TURN_CREDENTIAL_TTL_SECONDS`. Los archivos `.env*` están bloqueados para Claude por permisos.
 - [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
 
