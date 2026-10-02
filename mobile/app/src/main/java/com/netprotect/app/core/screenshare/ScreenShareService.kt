@@ -17,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.WebRtcConfigClient
+import com.netprotect.app.core.network.optStringOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -291,7 +292,7 @@ class ScreenShareService : Service() {
                 if (candidate.isNotEmpty()) {
                     peerConnection?.addIceCandidate(
                         IceCandidate(
-                            body.optString("sdp_mid"),
+                            body.optStringOrNull("sdp_mid"),
                             body.optInt("sdp_m_line_index", 0),
                             candidate,
                         )

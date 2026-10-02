@@ -50,8 +50,8 @@ class AuthClient(
             CurrentUser(
                 id = payload.getString("id"),
                 email = payload.getString("email"),
-                displayName = payload.optString("display_name").takeIf { it.isNotBlank() },
-                avatarUrl = payload.optString("avatar_url").takeIf { it.isNotBlank() },
+                displayName = payload.optStringOrNull("display_name"),
+                avatarUrl = payload.optStringOrNull("avatar_url"),
             )
         } finally {
             connection.disconnect()

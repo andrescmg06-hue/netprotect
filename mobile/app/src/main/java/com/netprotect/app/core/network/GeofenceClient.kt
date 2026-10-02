@@ -47,7 +47,7 @@ class GeofenceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
                 geofenceName = event.getString("geofence_name"),
                 eventType = event.getString("event_type"),
                 occurredAt = event.getString("occurred_at"),
-                geofenceId = event.optString("geofence_id").takeIf { it.isNotBlank() && it != "null" },
+                geofenceId = event.optStringOrNull("geofence_id"),
             )
         }
     }

@@ -69,7 +69,7 @@ class AlertsClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         occurrenceCount = getInt("occurrence_count"),
         lastOccurredAt = getString("last_occurred_at"),
         readAt = optNullableString("read_at"),
-        dedupKey = optString("dedup_key", ""),
+        dedupKey = optStringOrNull("dedup_key") ?: "",
     )
 
     private fun JSONObject.toAlertSilence() = AlertSilence(

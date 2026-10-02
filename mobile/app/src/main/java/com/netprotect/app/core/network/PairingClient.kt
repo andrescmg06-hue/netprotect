@@ -54,7 +54,7 @@ class PairingClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             deviceId = payload.getString("device_id"),
             deviceName = payload.getString("device_name"),
             tutor = LinkedTutor(
-                displayName = tutor.optString("display_name").takeIf { it.isNotBlank() },
+                displayName = tutor.optStringOrNull("display_name"),
                 email = tutor.getString("email"),
             ),
         )
