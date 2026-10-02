@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -166,9 +166,8 @@ fun HomeScreen() {
         }
     }
 
-    // The Surface keeps the old dark colour only for the Tutor/Supervised screens that have not been
-    // redesigned yet (S44/S48); the three screens below paint their own light background.
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF090B10)) {
+    // Theme background (Sky Ground) behind every screen; the login/loading/role screens paint their own.
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (val current = state) {
             HomeState.Loading -> LoadingScreen()
             is HomeState.SignedOut -> LoginScreen(
