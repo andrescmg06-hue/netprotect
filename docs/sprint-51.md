@@ -19,7 +19,10 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   WorkManager traen las suyas en el AAR; el JSON se lee con `JSONObject` por nombre de clave (inmune a la
   ofuscación). Para probarla en ejecución, tipo de build `minified` (`5c33ff1`): la release con R8, firmada con la
   clave de debug y apuntando al backend local. La galería de depuración no está ni en `release` ni en `minified`
-  (comprobado en el manifest de cada APK). **Falta:** instalar `minified` y recorrer la app (T10).
+  (comprobado en el manifest de cada APK). En el emulador, `minified` instalada sobre la debug (misma clave,
+  conserva la sesión) arranca sin errores en logcat. En modo supervisado lee el JSON del backend: nombre del
+  tutor y «Conectado». Los tres servicios (reporte, control de apps, ubicación) aparecen «Activo». **Falta:** el
+  modo tutor y la vista remota (WebRTC) con `minified` (T10, H-02).
 - [x] T6 — Accesibilidad estática. Inline. Las 39 apariciones de `contentDescription = null` son decorativas: cada
   icono tiene al lado un texto que dice lo mismo, o va dentro de una tarjeta pulsable con texto (incluido
   `AppIcon`, con el nombre de la app al lado). Único arreglo: la marca, que TalkBack leía «Net», «Protect», ahora
@@ -27,7 +30,15 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   amplía el área táctil de un `clickable` a 48 dp; se comprueba con Accessibility Scanner en T10. **No hay
   encargo para DeepSeek:** la lista mecánica quedó en una sola línea y delegarla costaba más que hacerla.
 - [ ] T7 — Sin conexión: modo avión en Inicio del tutor y pantallas del supervisado (las otras 9 ya usan `ErrorState`).
-- [ ] T8 — Rotación y muerte del proceso; D-02 se revisa con esa evidencia.
+  **Supervisado, hecho (emulador, `minified`):** Dispositivo vinculado pasa a «Sin conexión» en rojo. En Estado
+  de NetProtect, el reporte sigue «Activo» hasta 3 min sin envíos y luego pasa a «Sin confirmar»
+  (`REPORT_STALE_AFTER_SECONDS`); control de apps y ubicación siguen «Activo», que es verdad sin red. Al volver la
+  red, el reporte se recupera solo. **Falta el modo tutor**: el emulador está vinculado como supervisado.
+- [ ] T8 — Rotación y muerte del proceso; D-02 se revisa con esa evidencia. **Supervisado, hecho:** al girar se
+  conserva la pantalla y el horizontal se ve bien. Con «No conservar actividades» la actividad se recrea en la
+  misma pantalla. `am kill` no mata el proceso porque los servicios en primer plano lo mantienen vivo, así que en
+  el supervisado la muerte del proceso real no ocurre con la app en uso. **Falta el modo tutor**, que es donde
+  los datos se recargan al girar (sin ViewModel).
 - [ ] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md` y capturas de las 17 pantallas.
 - [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
