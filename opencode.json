@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "implementer",
   "instructions": [
     ".claude/rules/android.md",
     "docs/android-redesign/mockups/README.md"
