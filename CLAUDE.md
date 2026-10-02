@@ -43,12 +43,33 @@ persona aceptando la captura de pantalla) se declara pendiente, explícitamente.
 4. **Revisar seguridad con `security-reviewer`** si se tocó auth, pairing, realtime, location,
    audit, `deps.py`, infra o secretos.
 5. **Actualizar `docs/progress.md`** al terminar algo significativo. Cierre de sprint: `/cerrar-sprint NN`.
+6. **Delegar implementación acotada en DeepSeek** (OpenCode, agente `implementer`) con la skill
+   `delegar-opencode`: encargo en `docs/delegated/pending/`, Claude revisa, verifica y hace el commit.
+   No se delega: `backend/`, auth, pairing, `core/` sensible, migraciones ni decisiones abiertas.
+
+## Flujo (ODD de Gentle AI, adaptado)
+
+- **Documento de seguimiento = `docs/sprint-NN.md`**, no `odd/tasks/`. Para un trabajo sustancial se crea
+  o actualiza el sprint antes del primer cambio de código; su espejo en Engram usa `topic_key`
+  `odd/sprint-NN/tasks`. Lo pequeño y entendido va directo, sin documento.
+- **SDD** (`/gentle-sdd-new`) solo si se pide o para una función nueva con decisiones de diseño abiertas.
+- **Commits**: uno por unidad de trabajo en la rama del sprint (skill `work-unit-commits`), mensaje en
+  español explicando el porqué. **Nunca push, merge ni PR sin que se pida.**
+
+## Memoria (Engram)
+
+- Este archivo y `.claude/rules/` son el contrato estable (versionado); Engram es lo **aprendido**.
+  No dupliques en Engram lo que ya dicen las reglas; si una lección es permanente, va a la regla del área.
+- Guardar (`mem_save`, What/Why/Where/Learned, `topic_key` estable): decisiones con su porqué, causa raíz
+  de bugs, trampas del entorno (Windows/OneDrive/emulador), hallazgos de DeepSeek revisados.
+- No guardar: resúmenes de sesión como hallazgo, salidas de comandos, lo que ya está en `docs/sprint-NN.md`.
+- Al reanudar trabajo previo: `mem_search` antes de releer el repositorio.
 
 ## Reglas globales
 
 - Secretos: nunca leer `.env` ni `secrets/`. Cada secreto con su propia variable, documentada en los tres `.env.*.example`.
-- Git: todos los comandos con `GIT_OPTIONAL_LOCKS=0` (el repo está en OneDrive). No hacer commit ni push sin que se pida.
-  Mensajes de commit explicando el *por qué*.
+- Git: todos los comandos con `GIT_OPTIONAL_LOCKS=0` (el repo está en OneDrive). Commits locales por unidad
+  de trabajo en la rama del sprint, sí; push/merge/PR solo si se pide. Mensajes explicando el *por qué*.
 - Skills y agentes `impeccable*`, `animate`, etc. son de terceros: no editarlos (se reinstalan).
 - `frontend/AGENTS.md` lo regenera `next dev`: no editarlo.
 - Windows: `export MSYS_NO_PATHCONV=1` antes de cualquier `docker` con rutas de contenedor.

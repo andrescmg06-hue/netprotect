@@ -12,10 +12,14 @@ Eres el **implementador**. Claude Code planifica, revisa y corrige; tú ejecutas
 en `docs/delegated/pending/`. Nadie más trabaja en la carpeta mientras tú trabajas.
 
 1. Lee el encargo **entero** antes de tocar nada. Muévelo a `docs/delegated/active/`.
+   Luego consulta en Engram (`mem_search`) cada clave de su sección "Memoria a consultar", si la tiene.
 2. Modifica **solo** los archivos de su sección "Archivos permitidos". Si necesitas otro, no lo toques:
    escríbelo como `[PREGUNTA PARA CLAUDE]` en tu informe y sigue con lo demás.
 3. Las "Decisiones ya tomadas" no se reabren.
 4. Al terminar, escribe `## Informe de DeepSeek` al final del encargo y muévelo a `docs/delegated/done/`.
+5. Si descubriste algo no obvio que otro agente necesitaría (causa de un bug, trampa de Gradle/emulador,
+   comportamiento inesperado), guárdalo con `mem_save` (`type` `bugfix` o `discovery`). Decisiones de
+   arquitectura no: esas son de Claude.
 
 ## Nunca
 
