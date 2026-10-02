@@ -33,6 +33,11 @@ vuelve a pedir los datos.
 **Recomendación: (a)** ahora; revisarlo en S51 con evidencia (si la recarga molesta de verdad).
 Estado: **Resuelta** — (a) Mantener la regla: sin ViewModel; revisar en S51 — 2026-09-28 (dueño del proyecto, S40)
 
+**Revisión S51 (2026-10-02, dueño del proyecto):** se mantiene (a). Evidencia en el emulador: la pantalla, la
+pila y la búsqueda de Apps ya sobrevivían a la rotación, y la recarga de datos es rápida; lo que se perdía eran
+las **selecciones** (periodo de Estadísticas, filtro de Alertas, código de vinculación a medio escribir). Ahora
+son `rememberSaveable` y los datos se recargan para la selección restaurada (`fa63aeb`). Sin ViewModel.
+
 ## D-03 · Iconos — bloquea S42
 
 - **(a) SVG de Lucide convertidos a `VectorDrawable`** en `res/drawable/ic_*.xml`, solo los usados

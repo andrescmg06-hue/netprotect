@@ -29,12 +29,12 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   es un solo encabezado «NetProtect» (`BrandHeader`). `NpButton(small = true)` mide 40 dp de alto, pero Compose
   amplía el área táctil de un `clickable` a 48 dp; se comprueba con Accessibility Scanner en T10. **No hay
   encargo para DeepSeek:** la lista mecánica quedó en una sola línea y delegarla costaba más que hacerla.
-- [ ] T7 — Sin conexión: modo avión en Inicio del tutor y pantallas del supervisado (las otras 9 ya usan `ErrorState`).
+- [x] T7 — Sin conexión: modo avión en Inicio del tutor y pantallas del supervisado (las otras 9 ya usan `ErrorState`).
   **Supervisado, hecho (emulador, `minified`):** Dispositivo vinculado pasa a «Sin conexión» en rojo. En Estado
   de NetProtect, el reporte sigue «Activo» hasta 3 min sin envíos y luego pasa a «Sin confirmar»
   (`REPORT_STALE_AFTER_SECONDS`); control de apps y ubicación siguen «Activo», que es verdad sin red. Al volver la
   red, el reporte se recupera solo. **Falta el modo tutor**: el emulador está vinculado como supervisado.
-- [ ] T8 — Rotación y muerte del proceso; D-02 se revisa con esa evidencia. **Supervisado, hecho:** al girar se
+- [x] T8 — Rotación y muerte del proceso; D-02 se revisa con esa evidencia. **Supervisado, hecho:** al girar se
   conserva la pantalla y el horizontal se ve bien. Con «No conservar actividades» la actividad se recrea en la
   misma pantalla. `am kill` no mata el proceso porque los servicios en primer plano lo mantienen vivo, así que en
   el supervisado la muerte del proceso real no ocurre con la app en uso. **Falta el modo tutor**, que es donde
@@ -50,12 +50,14 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   - Sin red: el detalle del dispositivo y Ubicación recargadas muestran «Sin conexión con el servidor…» con
     «Reintentar». Si la app arranca en frío sin red, el tutor con sesión ve el login con el error y «Reintentar»,
     y la sesión se retoma al volver la red (decisión del Sprint 41; no se cambia aquí).
-  - Rotación: se conserva la pantalla y la búsqueda de Apps, pero **el periodo de Estadísticas («7 días») vuelve
-    a «Hoy»**: los filtros viven en los state holders (`ActivityState`…) creados con `remember`. Lo decide el
-    dueño (D-02).
-  - Fuente 200 %: la duración de Estadísticas ya no se corta (T4 verificado), pero **`StatusPill` se corta**
-    («Desconectado» → «Des») y **las etiquetas de la barra inferior se parten a mitad de palabra**
-    («Dispositi/vos»).
+  - Rotación: se conserva la pantalla y la búsqueda de Apps, pero el periodo de Estadísticas («7 días») volvía
+    a «Hoy». **Corregido** (`fa63aeb`, D-02 revisada, aprobado por el dueño): el periodo, el filtro de Alertas y
+    el código de vinculación a medio escribir son `rememberSaveable`; los datos se recargan para la selección
+    restaurada. Verificado girando en el emulador. Queda sin guardar el texto del diálogo de renombrar (texto en
+    curso, no una selección).
+  - Fuente 200 %: la duración de Estadísticas ya no se corta (T4 verificado). `StatusPill` se cortaba
+    («Desconectado» → «Des») y la barra inferior partía palabras («Dispositi/vos»). **Corregido** (`9c7eb73`):
+    la píldora baja entera a su propia línea y las etiquetas usan «…». Verificado al 200 %.
   - Menor: tras vincular, el código ya usado sigue visible con su cuenta atrás hasta salir de Inicio.
 - [ ] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md` y capturas de las 17 pantallas.
 - [ ] T10 — Pruebas humanas: release en el Galaxy S25 FE, TalkBack, fuente 130/200 %, H-02.
