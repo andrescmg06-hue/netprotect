@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -25,6 +26,8 @@ from app.schemas.auth import (
 )
 from app.services.audit import record_audit_event
 from app.services.google_auth import InvalidGoogleTokenError, verify_google_id_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,6 +92,9 @@ async def login_with_google(
     try:
         identity = verify_google_id_token(payload.id_token)
     except InvalidGoogleTokenError as exc:
+        # The reason (wrong audience, expired token, unverified email...) is otherwise invisible: the
+        # client only ever sees 401 invalid_google_token. It never contains the token itself.
+        logger.warning("Google ID token rejected: %s", exc)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, detail="invalid_google_token"
         ) from exc
