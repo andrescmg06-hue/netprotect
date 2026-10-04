@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, ShieldCheck, ShieldOff } from "lucide-react";
+import { Check, GraduationCap, ShieldCheck, ShieldOff } from "lucide-react";
 import { useState } from "react";
 
-import { DayPicker, Field, Input, Switch, describeDays } from "@/components/ui";
+import { ScheduleBar } from "@/components/ui/ScheduleBar";
+import { Button, DayPicker, Field, Input, StatusBadge, Switch, describeDays } from "@/components/ui";
 import {
   ApiError,
   type DefaultAppPolicy,
@@ -17,47 +18,43 @@ import { useDeviceRulesRealtime } from "@/lib/useDeviceRulesRealtime";
 import styles from "./DevicePolicyPanel.module.css";
 
 const ALL_DAYS_MASK = 0b111_1111;
+const DEFAULT_START = "07:00";
+const DEFAULT_END = "14:00";
 
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** A 24-hour bar with the configured window highlighted — purely a visual summary of real
- * numbers already on screen (start/end minute, days), never a clock or a live indicator. Handles
- * a window that crosses midnight (e.g. 22:00–06:00) as two segments. */
-function DayTimeline({ startMinute, endMinute }: { startMinute: number; endMinute: number }) {
-  const toPercent = (minutes: number) => (minutes / 1440) * 100;
-  const segments =
-    startMinute <= endMinute
-      ? [{ left: startMinute, width: endMinute - startMinute }]
-      : [
-          { left: startMinute, width: 1440 - startMinute },
-          { left: 0, width: endMinute },
-        ];
-
-  return (
-    <div className={styles.timeline}>
-      {segments.map((segment, index) => (
-        <span
-          key={index}
-          className={styles.timelineHighlight}
-          style={{ left: `${toPercent(segment.left)}%`, width: `${toPercent(segment.width)}%` }}
-        />
-      ))}
-      <div className={styles.timelineTicks}>
-        <span>0:00</span>
-        <span>6:00</span>
-        <span>12:00</span>
-        <span>18:00</span>
-        <span>24:00</span>
-      </div>
-    </div>
-  );
-}
+const POLICY_OPTIONS: {
+  value: DefaultAppPolicy;
+  title: string;
+  description: string;
+  icon: typeof ShieldCheck;
+}[] = [
+  {
+    value: "ALLOW",
+    title: "Todo permitido salvo lo bloqueado",
+    description: "Una app sin regla funciona normalmente.",
+    icon: ShieldCheck,
+  },
+  {
+    value: "BLOCK",
+    title: "Sólo apps aprobadas",
+    description:
+      "Una app sin regla queda bloqueada. La pantalla de inicio, el teléfono y Ajustes nunca se bloquean.",
+    icon: ShieldOff,
+  },
+];
 
 /** Sprint 24: split out of DeviceRulesPanel (Sprints 8/9/12) — this half is device-level settings
  * (default policy and school mode), the other half (AppRulesPanel) is per-app rule management.
  * Both read/write the same backend endpoints as before; nothing changed there.
+ *
+ * Sprint 56 (mockup 05): two open sections. School mode is edited on one 24 h ScheduleBar (the
+ * API holds ONE window and ONE days mask, so there are no per-day rows, templates or "copy to
+ * all"); the time inputs stay as the exact, keyboard-first alternative. Local state is seeded
+ * from props once and re-seeded by the per-device remount after every policy change — saving a
+ * changed window while school mode is on calls the same enable handler with the same payload.
  */
 export function DevicePolicyPanel({
   accessToken,
@@ -74,10 +71,10 @@ export function DevicePolicyPanel({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [schoolModeStart, setSchoolModeStart] = useState(
-    schoolMode.start_minute !== null ? minutesToTimeString(schoolMode.start_minute) : "07:00"
+    schoolMode.start_minute !== null ? minutesToTimeString(schoolMode.start_minute) : DEFAULT_START
   );
   const [schoolModeEnd, setSchoolModeEnd] = useState(
-    schoolMode.end_minute !== null ? minutesToTimeString(schoolMode.end_minute) : "14:00"
+    schoolMode.end_minute !== null ? minutesToTimeString(schoolMode.end_minute) : DEFAULT_END
   );
   const [schoolModeDaysMask, setSchoolModeDaysMask] = useState(schoolMode.days_mask ?? ALL_DAYS_MASK);
   const [busy, setBusy] = useState(false);
@@ -139,93 +136,168 @@ export function DevicePolicyPanel({
       });
   }
 
-  const inAllowlistMode = defaultAppPolicy === "BLOCK";
+  function handleScheduleBarChange(start: number, end: number) {
+    setSchoolModeStart(minutesToTimeString(start));
+    setSchoolModeEnd(minutesToTimeString(end));
+  }
+
+  function handleDiscardChanges() {
+    setError(null);
+    setSchoolModeStart(
+      schoolMode.start_minute !== null ? minutesToTimeString(schoolMode.start_minute) : DEFAULT_START
+    );
+    setSchoolModeEnd(schoolMode.end_minute !== null ? minutesToTimeString(schoolMode.end_minute) : DEFAULT_END);
+    setSchoolModeDaysMask(schoolMode.days_mask ?? ALL_DAYS_MASK);
+  }
+
+  const startMinute = timeStringToMinutes(schoolModeStart);
+  const endMinute = timeStringToMinutes(schoolModeEnd);
+  const crossesMidnight = startMinute !== null && endMinute !== null && endMinute < startMinute;
+  const unsavedWhileOn =
+    schoolMode.enabled &&
+    (startMinute !== schoolMode.start_minute ||
+      endMinute !== schoolMode.end_minute ||
+      schoolModeDaysMask !== schoolMode.days_mask);
 
   return (
-    <div className={styles.stack}>
-      <section className={styles.card}>
-        <h3 className={styles.cardTitle}>Modo por defecto</h3>
-        <p className={styles.cardSubtitle}>Qué pasa con una app que no tiene ninguna regla propia.</p>
-        <div className={styles.optionGrid}>
-          <button
-            type="button"
-            className={!inAllowlistMode ? `${styles.option} ${styles.optionSelected}` : styles.option}
-            onClick={() => handlePolicyChange("ALLOW")}
-            disabled={busy}
-          >
-            {!inAllowlistMode && (
-              <span className={styles.optionCheck}>
-                <Check size={14} strokeWidth={3} aria-hidden="true" />
-              </span>
-            )}
-            <ShieldCheck size={26} strokeWidth={1.7} className={styles.optionIcon} aria-hidden="true" />
-            <strong>Todo permitido salvo lo bloqueado</strong>
-            <span>Una app sin regla funciona normalmente.</span>
-          </button>
-          <button
-            type="button"
-            className={inAllowlistMode ? `${styles.option} ${styles.optionSelected}` : styles.option}
-            onClick={() => handlePolicyChange("BLOCK")}
-            disabled={busy}
-          >
-            {inAllowlistMode && (
-              <span className={styles.optionCheck}>
-                <Check size={14} strokeWidth={3} aria-hidden="true" />
-              </span>
-            )}
-            <ShieldOff size={26} strokeWidth={1.7} className={styles.optionIcon} aria-hidden="true" />
-            <strong>Sólo apps aprobadas</strong>
-            <span>
-              Una app sin regla queda bloqueada. La pantalla de inicio, el teléfono y Ajustes nunca
-              se bloquean.
-            </span>
-          </button>
+    <div className={styles.page}>
+      <section className={styles.section} aria-labelledby="policy-default-title">
+        <header className={styles.sectionHead}>
+          <h2 id="policy-default-title" className={styles.title}>
+            Modo por defecto
+          </h2>
+          <p className={styles.lead}>Qué pasa con una app que no tiene ninguna regla propia.</p>
+        </header>
+
+        <div className={styles.options} role="group" aria-label="Modo por defecto">
+          {POLICY_OPTIONS.map((option) => {
+            const selected = option.value === defaultAppPolicy;
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={selected}
+                className={selected ? `${styles.option} ${styles.optionSelected}` : styles.option}
+                onClick={() => handlePolicyChange(option.value)}
+                disabled={busy}
+              >
+                <Icon size={24} strokeWidth={1.6} className={styles.optionIcon} aria-hidden="true" />
+                <span className={styles.optionText}>
+                  <strong className={styles.optionTitle}>{option.title}</strong>
+                  <span className={styles.optionDescription}>{option.description}</span>
+                </span>
+                <span className={styles.optionCheck} aria-hidden="true">
+                  {selected && <Check size={14} strokeWidth={3} />}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <section className={styles.card}>
-        <div className={styles.schoolHead}>
-          <div>
-            <h3 className={styles.cardTitle}>Horario escolar</h3>
-            <p className={styles.cardSubtitle}>
-              {schoolMode.enabled
-                ? "En esa franja, todo lo no aprobado queda bloqueado automáticamente."
-                : "Bloquea automáticamente lo no aprobado durante una franja horaria fija, sin tocar tus reglas."}
+      <section className={styles.section} aria-labelledby="policy-school-title">
+        <header className={styles.schoolHead}>
+          <div className={styles.sectionHead}>
+            <h2 id="policy-school-title" className={styles.title}>
+              Horario escolar
+            </h2>
+            <p className={styles.lead}>
+              Bloquea automáticamente lo no aprobado durante una franja horaria fija, sin tocar tus
+              reglas.
             </p>
           </div>
-          <Switch checked={schoolMode.enabled} onChange={handleToggleSchoolMode} label="Horario escolar" />
-        </div>
+          <div className={styles.toggle}>
+            <Switch
+              checked={schoolMode.enabled}
+              onChange={handleToggleSchoolMode}
+              label="Horario escolar"
+              disabled={busy}
+            />
+            {schoolMode.enabled ? (
+              <StatusBadge tone="success" dot>
+                Activado
+              </StatusBadge>
+            ) : (
+              <StatusBadge tone="neutral" dot>
+                Desactivado
+              </StatusBadge>
+            )}
+          </div>
+        </header>
 
-        {schoolMode.enabled ? (
-          <>
+        <div className={styles.scheduleGrid}>
+          <div className={styles.barColumn}>
             <p className={styles.summary}>
-              Activo de <strong>{minutesToTimeString(schoolMode.start_minute ?? 0)}</strong> a{" "}
-              <strong>{minutesToTimeString(schoolMode.end_minute ?? 0)}</strong>,{" "}
-              {describeDays(schoolMode.days_mask ?? 0).toLowerCase()}.
+              {startMinute !== null && endMinute !== null ? (
+                <>
+                  De <strong>{schoolModeStart}</strong> a <strong>{schoolModeEnd}</strong>
+                  {crossesMidnight ? " del día siguiente" : ""}
+                  {schoolModeDaysMask !== 0 ? `, ${describeDays(schoolModeDaysMask).toLowerCase()}` : ""}.
+                </>
+              ) : (
+                "Indica una hora de inicio y de fin."
+              )}
             </p>
-            <DayTimeline startMinute={schoolMode.start_minute ?? 0} endMinute={schoolMode.end_minute ?? 0} />
-          </>
-        ) : (
-          <div className={styles.scheduleForm}>
+            <ScheduleBar
+              startMinute={startMinute ?? 0}
+              endMinute={endMinute ?? 0}
+              onChange={handleScheduleBarChange}
+              disabled={busy}
+            />
+            <Field label="Días" hint={describeDays(schoolModeDaysMask) || "Ningún día seleccionado"}>
+              {() => <DayPicker value={schoolModeDaysMask} onChange={setSchoolModeDaysMask} disabled={busy} />}
+            </Field>
+          </div>
+
+          <div className={styles.exactColumn}>
             <div className={styles.timeRow}>
               <Field label="Hora de inicio">
-                {(id) => <Input id={id} type="time" value={schoolModeStart} onChange={(e) => setSchoolModeStart(e.target.value)} />}
+                {(id) => (
+                  <Input id={id} type="time" value={schoolModeStart} onChange={(e) => setSchoolModeStart(e.target.value)} />
+                )}
               </Field>
               <Field label="Hora de fin">
-                {(id) => <Input id={id} type="time" value={schoolModeEnd} onChange={(e) => setSchoolModeEnd(e.target.value)} />}
+                {(id) => (
+                  <Input id={id} type="time" value={schoolModeEnd} onChange={(e) => setSchoolModeEnd(e.target.value)} />
+                )}
               </Field>
             </div>
-            <Field label="Días" hint={describeDays(schoolModeDaysMask)}>
-              {() => <DayPicker value={schoolModeDaysMask} onChange={setSchoolModeDaysMask} />}
-            </Field>
-            <DayTimeline
-              startMinute={timeStringToMinutes(schoolModeStart) ?? 0}
-              endMinute={timeStringToMinutes(schoolModeEnd) ?? 0}
-            />
+
+            {unsavedWhileOn ? (
+              <div className={styles.pending}>
+                <p className={styles.pendingText}>Hay cambios sin guardar en la franja.</p>
+                <div className={styles.pendingActions}>
+                  <Button variant="primary" size="sm" loading={busy} onClick={() => handleToggleSchoolMode(true)}>
+                    Guardar horario
+                  </Button>
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={handleDiscardChanges}>
+                    Descartar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              !schoolMode.enabled && (
+                <p className={styles.hint}>Al activar el interruptor se guarda esta franja con estos días.</p>
+              )
+            )}
           </div>
+        </div>
+
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
         )}
 
-        {error && <p className={styles.error}>{error}</p>}
+        <aside className={styles.note}>
+          <GraduationCap size={20} strokeWidth={1.6} className={styles.noteIcon} aria-hidden="true" />
+          <p className={styles.noteText}>
+            Durante la franja se bloquea todo lo que no esté aprobado. Una app con la regla «Permitir»
+            sigue disponible, y las demás reglas se aplican igual que siempre. Si la hora de fin es
+            anterior a la de inicio, la franja cruza la medianoche.
+          </p>
+        </aside>
       </section>
     </div>
   );

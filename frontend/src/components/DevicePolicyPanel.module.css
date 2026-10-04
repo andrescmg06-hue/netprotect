@@ -1,47 +1,57 @@
-.stack {
+/* Sprint 56 (mockup 05): two open sections on the page, divided by one stone line. No card
+   chrome: the default-mode choice is two quiet rows, the schedule is the 24 h bar. */
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--color-border);
 }
 
-.card {
-  padding: var(--space-6);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+.section:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
-.cardTitle {
-  margin: 0 0 2px;
-  color: var(--color-navy);
-  font-size: var(--text-lg);
-  font-weight: 600;
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.cardSubtitle {
-  margin: 0 0 var(--space-5);
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.lead {
+  max-width: 60ch;
+  margin: 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
-.optionGrid {
+/* Default mode: two rows side by side; the selected one gets a blue line and a check. */
+.options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
 .option {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 22px;
+  align-items: start;
+  gap: var(--space-4);
   padding: var(--space-5);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
   text-align: left;
-  cursor: pointer;
   transition:
     border-color var(--duration-fast) var(--ease),
     background var(--duration-fast) var(--ease);
@@ -49,6 +59,7 @@
 
 .option:hover:not(:disabled) {
   border-color: var(--color-border-strong);
+  background: var(--color-primary-softer);
 }
 
 .option:disabled {
@@ -56,114 +67,193 @@
   opacity: 0.7;
 }
 
-.optionSelected {
+.optionSelected,
+.optionSelected:hover:not(:disabled) {
   border-color: var(--color-primary);
-  background: var(--color-primary-softer);
+  background: var(--color-surface);
 }
 
 .optionIcon {
+  color: var(--color-text-muted);
+}
+
+.optionSelected .optionIcon {
   color: var(--color-primary-text);
 }
 
-.option strong {
-  color: var(--color-navy);
-  font-size: var(--text-base);
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.option span {
+.optionTitle {
+  color: var(--color-navy);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.optionDescription {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
 .optionCheck {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-surface);
 }
 
+.optionSelected .optionCheck {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+/* School mode. */
 .schoolHead {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-6);
+}
+
+.toggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.barColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
 }
 
 .summary {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   color: var(--color-text);
-  font-size: var(--text-base);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
 }
 
-.scheduleForm {
+.summary strong {
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.exactColumn {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-top: var(--space-2);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--color-border);
 }
 
 .timeRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-3);
-  max-width: 360px;
 }
 
-.timeline {
-  position: relative;
-  height: 28px;
-  margin-top: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-soft);
-  overflow: hidden;
-}
-
-.timelineHighlight {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: var(--color-primary);
-  opacity: 0.85;
-}
-
-.timelineTicks {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6px;
+.hint {
+  margin: 0;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
+}
+
+.pending {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.pendingText {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: 600;
-  pointer-events: none;
-  mix-blend-mode: multiply;
+}
+
+.pendingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .error {
-  margin: var(--space-3) 0 0;
+  margin: 0;
   color: var(--color-danger-text);
   font-size: var(--text-sm);
 }
 
-@media (max-width: 640px) {
-  .optionGrid {
-    grid-template-columns: 1fr;
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 72ch;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-soft);
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.noteText {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 1100px) {
+  .scheduleGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .exactColumn {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .timeRow {
-    grid-template-columns: 1fr;
-    max-width: none;
+    grid-template-columns: 1fr 1fr;
+    max-width: 420px;
+  }
+}
+
+@media (max-width: 720px) {
+  .options {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .schoolHead {
     flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .section {
+    padding: var(--space-6) 0;
+  }
+
+  .timeRow {
+    max-width: none;
   }
 }

@@ -1,77 +1,310 @@
-.columns {
+/* Sprint 56: open composition on the page â€” the rules as ruled rows on the left, the form in a
+   narrower column separated by a single vertical line. No cards, no metric strip. */
+.layout {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+  gap: var(--space-10);
   align-items: start;
 }
 
-.cardHead {
-  padding: var(--space-5) var(--space-6) 0;
-}
-
-.emptyWrap {
-  padding: var(--space-4) var(--space-6) var(--space-6);
-}
-
-.error {
-  margin: 0;
-  padding: 0 var(--space-6) var(--space-4);
-  color: var(--color-danger-text);
-}
-
-.appCell {
+.rulesColumn {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
 }
 
-.appPackage {
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-left: var(--space-10);
+  border-left: 1px solid var(--color-border);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.lead {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Type filter: quiet text buttons with the type's colour marker and a tabular count; the active
+   one is underlined in ink, not filled, so blue stays for the one primary action. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition:
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+.filter:hover {
+  color: var(--color-text);
+}
+
+.filterActive {
+  border-bottom-color: var(--color-navy);
+  color: var(--color-navy);
+}
+
+.filterCount {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.marker {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.danger {
+  background: var(--color-danger);
+}
+
+.success {
+  background: var(--color-success);
+}
+
+.warning {
+  background: var(--color-warning);
+}
+
+.purple {
+  background: var(--color-purple);
+}
+
+.info {
+  background: var(--color-primary);
+}
+
+.neutral {
+  background: var(--color-border-strong);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.appName {
   overflow: hidden;
   color: var(--color-navy);
-  font-weight: 500;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ruleCell {
+.appPackage {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruleInfo {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
 }
 
 .ruleDetail {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
-.historyToggle {
-  padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--color-border);
+.rowAction {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.historyEmpty {
+.stateWrap {
+  padding: var(--space-6) 0;
+}
+
+.quiet {
   margin: 0;
-  padding: 0 var(--space-6) var(--space-5);
+  padding: var(--space-4) 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.events {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.eventTime {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.eventApp {
+  overflow: hidden;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventType {
+  color: var(--color-text-muted);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
+  margin-top: var(--space-4);
 }
 
-@media (max-width: 1024px) {
-  .columns {
-    grid-template-columns: 1fr;
+/* Empty state drawing: a thin shield with a block and a limit beside it. */
+.illustration {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 84px;
+}
+
+.illusShield {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  color: var(--color-text-muted);
+}
+
+.illusBlock {
+  position: absolute;
+  left: 4px;
+  bottom: 6px;
+  color: var(--color-danger-text);
+}
+
+.illusLimit {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  color: var(--color-warning-text);
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+
+  .formColumn {
+    padding-top: var(--space-8);
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
   }
 }
 
-@media (max-width: 720px) {
-  .ruleCell {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+/* Phones: the row becomes icon + name on top, the rule underneath, the delete action on the side. */
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon name action"
+      "icon rule action";
+    row-gap: var(--space-2);
+    align-items: start;
+  }
+
+  .row > :first-child {
+    grid-area: icon;
+  }
+
+  .identity {
+    grid-area: name;
+  }
+
+  .ruleInfo {
+    grid-area: rule;
+  }
+
+  .rowAction {
+    grid-area: action;
+  }
+
+  .event {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .eventTime {
+    grid-column: 1 / -1;
   }
 }

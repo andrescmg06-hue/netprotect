@@ -1,6 +1,10 @@
-import { ALL_DAYS_MASK, DayPicker, Field, Input, Select, describeDays } from "@/components/ui";
+import { Check } from "lucide-react";
+import { useId } from "react";
+
+import { ScheduleBar } from "@/components/ui/ScheduleBar";
+import { ALL_DAYS_MASK, DayPicker, Field, Input, describeDays } from "@/components/ui";
 import type { RuleType } from "@/lib/apiClient";
-import { timeStringToMinutes } from "@/lib/ruleFormatting";
+import { minutesToTimeString, ruleTypeTone, timeStringToMinutes } from "@/lib/ruleFormatting";
 
 import styles from "./RuleTypeFields.module.css";
 
@@ -22,12 +26,13 @@ export const DEFAULT_RULE_TYPE_FIELDS: RuleTypeFieldsValue = {
   scheduleDaysMask: ALL_DAYS_MASK,
 };
 
-const RULE_TYPE_OPTIONS: { value: RuleType; label: string }[] = [
-  { value: "BLOCK", label: "Bloquear" },
-  { value: "ALLOW", label: "Permitir" },
-  { value: "DAILY_LIMIT", label: "Límite diario" },
-  { value: "WEEKLY_LIMIT", label: "Límite semanal" },
-  { value: "SCHEDULE", label: "Horario" },
+/** The five real rule types, each with the one line a parent needs to choose between them. */
+const RULE_TYPE_OPTIONS: { value: RuleType; label: string; meaning: string }[] = [
+  { value: "BLOCK", label: "Bloquear", meaning: "No se puede abrir en ningún momento." },
+  { value: "ALLOW", label: "Permitir", meaning: "Aprobada: disponible también en horario escolar." },
+  { value: "DAILY_LIMIT", label: "Límite diario", meaning: "Unos minutos al día; después se bloquea." },
+  { value: "WEEKLY_LIMIT", label: "Límite semanal", meaning: "Minutos por semana, contados desde el lunes." },
+  { value: "SCHEDULE", label: "Horario", meaning: "Bloqueada durante una franja y unos días." },
 ];
 
 export type RuleTypeExtras = {
@@ -72,7 +77,11 @@ export function validateRuleTypeFields(value: RuleTypeFieldsValue): { error: str
 
 /** The part of "crear/editar regla" that's identical whether the rule targets an app or a whole
  * category: type of rule, then whichever extra fields that type needs. The caller owns the target
- * field (a package name or a category select) and the submit button. */
+ * field (a package name or a category select) and the submit button.
+ *
+ * Sprint 56: the type is a list of native radios (keyboard and screen reader behaviour for free),
+ * each with its colour marker and what it does; a schedule is edited on the same 24 h ScheduleBar
+ * as school mode, with the exact time inputs kept as the precise alternative. */
 export function RuleTypeFields({
   value,
   onChange,
@@ -80,23 +89,41 @@ export function RuleTypeFields({
   value: RuleTypeFieldsValue;
   onChange: (patch: Partial<RuleTypeFieldsValue>) => void;
 }) {
+  const groupName = useId();
+  const scheduleStart = timeStringToMinutes(value.scheduleStart) ?? 22 * 60;
+  const scheduleEnd = timeStringToMinutes(value.scheduleEnd) ?? 6 * 60;
+
   return (
     <>
-      <Field label="Tipo de regla">
-        {(id) => (
-          <Select
-            id={id}
-            value={value.ruleType}
-            onChange={(event) => onChange({ ruleType: event.target.value as RuleType })}
-          >
-            {RULE_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
+      <fieldset className={styles.types}>
+        <legend className={styles.legend}>Tipo de regla</legend>
+        {RULE_TYPE_OPTIONS.map((option) => {
+          const selected = option.value === value.ruleType;
+          return (
+            <label
+              key={option.value}
+              className={selected ? `${styles.type} ${styles.typeSelected}` : styles.type}
+            >
+              <input
+                type="radio"
+                name={groupName}
+                value={option.value}
+                checked={selected}
+                onChange={() => onChange({ ruleType: option.value })}
+                className={styles.radio}
+              />
+              <span className={`${styles.marker} ${styles[ruleTypeTone(option.value)]}`} aria-hidden="true" />
+              <span className={styles.typeText}>
+                <span className={styles.typeLabel}>{option.label}</span>
+                <span className={styles.typeMeaning}>{option.meaning}</span>
+              </span>
+              <span className={styles.typeCheck} aria-hidden="true">
+                {selected && <Check size={16} strokeWidth={2.25} />}
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
 
       {value.ruleType === "DAILY_LIMIT" && (
         <Field label="Minutos por día">
@@ -127,7 +154,18 @@ export function RuleTypeFields({
       )}
 
       {value.ruleType === "SCHEDULE" && (
-        <>
+        <div className={styles.schedule}>
+          <ScheduleBar
+            startMinute={scheduleStart}
+            endMinute={scheduleEnd}
+            onChange={(start, end) =>
+              onChange({ scheduleStart: minutesToTimeString(start), scheduleEnd: minutesToTimeString(end) })
+            }
+            startLabel="Inicio del bloqueo"
+            endLabel="Fin del bloqueo"
+            activeLabel="Bloqueada"
+            idleLabel="Disponible"
+          />
           <div className={styles.timeRow}>
             <Field label="Hora de inicio">
               {(id) => (
@@ -158,7 +196,7 @@ export function RuleTypeFields({
               />
             )}
           </Field>
-        </>
+        </div>
       )}
     </>
   );
