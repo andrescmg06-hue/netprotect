@@ -62,3 +62,28 @@ la sesión sembrada es de un solo uso: cada `page.goto` de Playwright que recarg
   cancelar), de modo que cada `setState` quede dentro de un callback de promesa ya resuelta, nunca de
   forma síncrona ni delegado a un helper. Ver `frontend/src/app/page.tsx` (patrón ya existente desde
   el Sprint 3) o `frontend/src/components/DevicesPanel.tsx` (Sprint 6) como referencia.
+
+**Lecciones del Sprint 60, válidas para cualquier cambio futuro en `frontend/`** (evidencia en
+`docs/sprint-60-evidence.md`):
+
+- **Anillo de foco.** El `:focus-visible` global (especificidad 0,1,0) lo pierde cualquier componente que
+  declare su propio `box-shadow` con una clase (0,1,0), porque las hojas de módulo cargan después: pasaba con
+  `Button.primary` y con la fila seleccionada de Alertas. Un componente con sombra propia necesita su
+  `.x:focus-visible` (0,2,0) que la repita junto al anillo. En modo de alto contraste de Windows el
+  `box-shadow` desaparece: `globals.css` tiene un `outline` dentro de `@media (forced-colors: active)`.
+- **Probar el foco en e2e.** Llegar con `Tab` (no `locator.focus()`, que no garantiza `:focus-visible`) y leer
+  `getComputedStyle(el).boxShadow` con `expect.poll`: `Button` anima `box-shadow` 0,15 s y una lectura inmediata
+  devuelve el inicio de la transición. La sombra de reposo se serializa como `oklab(…)`/`color(srgb …)`, no `rgba`.
+  Sirve de test de regresión solo si falla con el CSS anterior: se comprobó con un worktree en `d42997c`.
+- **`networkidle` no sirve en esta SPA:** se resuelve en 2–8 ms al cambiar de sección, así que no espera a las
+  peticiones del panel. Usar una espera acotada o esperar a un elemento concreto. El build de CI no lleva
+  `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`: el login sale sin botón de Google (aviso «Falta configurar…»); un e2e del login no
+  puede afirmarlo.
+- **Imágenes.** Next 16 solo admite `quality` 75 por defecto y redondea cualquier otro valor en silencio: si un
+  `<Image quality={90}>` ha de surtir efecto, declararlo en `images.qualities` de `next.config.ts`. `/_next/image` es el
+  mismo origen (`img-src 'self'` ya lo cubre) y sin `remotePatterns` no puede usarse de proxy; no hace falta tocar la CSP
+  para pasar un asset local por el optimizador.
+- **Texto sobre cristal translúcido** (login): el contraste se mide con la foto real, desenfocada y aclarada, en el peor
+  píxel detrás de cada texto, no se estima. Un velo fino exige texto en `--color-navy` pleno; `--color-text-muted` sobre
+  el cristal daba 3,35:1. Sobre fondos oscuros (aquí, los árboles de `study.jpg`) un panel solo más transparente sale
+  gris: se aclara el fondo con `brightness()` dentro del `backdrop-filter`.
