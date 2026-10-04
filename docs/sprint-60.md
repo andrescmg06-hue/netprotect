@@ -30,12 +30,20 @@ Lectura estática del código; lo marcado «inferido» hay que probarlo en naveg
 Ruta de cada tarea: inline, o delegada si se dispara un disparador (4+ ficheros a entender, 2+ ficheros no triviales a
 escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con evidencia observada.
 
-- [ ] T1 — Documentación de S54–S59 al día: cerrar `sprint-54.md` (T5/T6), crear `sprint-55..59.md` y sus `-evidence.md`
+- [x] T1 — Documentación de S54–S59 al día: cerrar `sprint-54.md` (T5/T6), crear `sprint-55..59.md` y sus `-evidence.md`
   a partir de `docs/redesign/s59/LEEME.md` y del historial de Cristian, actualizar `docs/progress.md` y
   `docs/redesign/CONTINUAR.md` §1, `## Alcance del Sprint 54..59` en el README y corregir el del 53 (Newsreader).
-  Ruta: delegada (preparación de escritura sobre 10+ ficheros).
-- [ ] T2 — Contraste: contador del sidebar (`--color-danger-text`), `.signOut`, bordes de controles que solo se
-  distinguen por `--color-border`. Ruta: inline.
+  Ruta: delegada (preparación de escritura sobre 10+ ficheros). Commit `c307652`. Revisado: todas las capturas
+  citadas existen, T5 de S54 sigue sin marcar y no hay atribución de IA en las líneas añadidas.
+  Fuera de alcance, queda abierto: `CONTINUAR.md` §5 «Cómo empezar» aún habla de arrancar el S52.
+- [x] T2 — Contraste. Cambiado: contador del sidebar (`Sidebar.module.css`, blanco sobre `--color-danger-text`: 3,76 → 5,75:1)
+  y pista de `ScheduleBar` (borde a `--color-border-strong`: 3,64:1 sobre blanco, 3,23:1 sobre su relleno). Ruta: inline.
+  Revisados y **sin cambio**, con motivo: `.signOut` (el texto, 7,87:1, identifica el botón), `DayPicker` (lleva texto y el
+  estado activo cambia de relleno), `DeviceSelector` (tarjeta con icono, texto y sombra), `DevicePolicyPanel` (la selección
+  la marca un check además del borde). Los puntos de estado de 8 px (`#16b364` 2,74:1, `#f79009` 2,35:1) no llevan texto
+  encima y no son el único portador del estado: se revisan en la pasada de teclado y contraste de T7 (no hay medición automática todavía).
+  Evidencia: razones calculadas con la fórmula de luminancia WCAG. **Pendiente:** build y revisión visual de los dos cambios
+  (se reconstruye el web una sola vez al cerrar T6, para no interrumpir tu revisión en el navegador).
 - [ ] T3 — Foco: probar con Tab en navegador el anillo en `Button.primary` y fila seleccionada de Alertas; corregir
   prioridad si se pierde; fallback `forced-colors`. Ruta: inline.
 - [ ] T4 — Favicon: `favicon.ico`, icono cuadrado y `apple-icon` desde `logo-shield`. Ruta: inline.
