@@ -14,25 +14,25 @@ que medir el estado real: qué hay, qué se puede reutilizar y qué muestra cada
 
 Ruta: **inline** = quien lidera directo; **delegado** = un explorador/escritor acotado, con el motivo.
 
-- [ ] T1 — Arquitectura del frontend: rutas, `DashboardShell`, estado compartido, `AuthContext`, dependencias.
+- [x] T1 — Arquitectura del frontend: rutas, `DashboardShell`, estado compartido, `AuthContext`, dependencias.
   Delegado (mapeo de 4+ archivos).
-- [ ] T2 — Sistema de estilos actual: `globals.css`, `DESIGN.md`, CSS Modules, `components/ui/*` y qué variables usa
+- [x] T2 — Sistema de estilos actual: `globals.css`, `DESIGN.md`, CSS Modules, `components/ui/*` y qué variables usa
   cada componente. Delegado (mismo mapeo que T1).
-- [ ] T3 — Componentes repetidos e inconsistencias entre los 16 paneles + login. Delegado.
-- [ ] T4 — Assets: `public/brand/` y `public/login/` frente a `docs/redesign/assets/` (peso, formato, qué falta).
+- [x] T3 — Componentes repetidos e inconsistencias entre los 16 paneles + login. Delegado.
+- [x] T4 — Assets: `public/brand/` y `public/login/` frente a `docs/redesign/assets/` (peso, formato, qué falta).
   Inline.
-- [ ] T5 — Matriz por vista: datos reales del backend (`lib/apiClient.ts`, `docs/planning/plan-frontend.md`) frente a
+- [x] T5 — Matriz por vista: datos reales del backend (`lib/apiClient.ts`, `docs/planning/plan-frontend.md`) frente a
   lo que muestra el mockup → lista de omisiones y sustituciones. Delegado; el resultado se revisa contra
   `03_VISTAS.md`.
-- [ ] T6 — Propuesta de design system: qué variables de `:root` cambian de valor (sin renombrar), cuáles son nuevas y qué
+- [x] T6 — Propuesta de design system: qué variables de `:root` cambian de valor (sin renombrar), cuáles son nuevas y qué
   componentes pasan a ser globales (`PageHeader` con banda, `Timeline`, `ScheduleBar`, `StatusBadge`, `EmptyState` con
   ilustración, `Field`, `DataTable`). Inline (decisión de diseño).
-- [ ] T7 — Riesgos: contraste, CSP de fuentes (`font-src 'self'`), rendimiento de imágenes, e2e de Playwright existente.
+- [x] T7 — Riesgos: contraste, CSP de fuentes (`font-src 'self'`), rendimiento de imágenes, e2e de Playwright existente.
   Inline.
 - [ ] T8 — Capturas base de las 16 vistas + login a 1440 y 390 px en `docs/redesign/baseline/`. Necesita backend y una
   sesión de tutor (`docs/redesign/CONTINUAR.md` §3); si no se puede, se declara pendiente y el S53 las toma antes de
   cambiar tokens.
-- [ ] T9 — Redactar `docs/redesign/fase-0-informe.md` (T1–T7) con las decisiones abiertas: tipografía serif definitiva,
+- [x] T9 — Redactar `docs/redesign/fase-0-informe.md` (T1–T7) con las decisiones abiertas: tipografía serif definitiva,
   assets faltantes, orden de vistas. **Detenerse y esperar aprobación del dueño.**
 - [ ] T10 — Cierre: `docs/sprint-52-evidence.md`, `docs/progress.md`, `/cerrar-sprint 52`.
 
@@ -46,3 +46,14 @@ completa y el dueño lo aprueba por escrito. Ninguna línea de `frontend/src/` c
 - Fuente serif definitiva (hoy Playfair Display, una aproximación a los mockups).
 - Assets faltantes: isotipo blanco monocromo, SVG limpio, ilustraciones de Reglas, Auditoría y Silenciadas.
 - Si el S51 se fusiona en `main` antes de cerrar el S52: actualizar `web-redesign` desde `main`.
+
+## Estado (04/10/2026)
+
+- T1–T7 y T9 hechas: el informe está en `docs/redesign/fase-0-informe.md`. Rutas: T1–T3 y T5 por tres exploradores de
+  solo lectura (mapeo de 4+ archivos cada uno); T4, T6 y T7 inline. Los contrastes de T7 se calcularon, no se supusieron.
+- **T8 pendiente**: sin capturas base. Necesitan backend y una sesión de tutor; el S53 las toma antes de cambiar tokens
+  (ver informe §8).
+- **T9 incompleta hasta la aprobación del dueño**: el informe termina en 10 decisiones abiertas (informe §9). No se
+  avanza al S53 sin ellas.
+- T10 (`sprint-52-evidence.md`, `docs/progress.md`, `/cerrar-sprint 52`) queda para después de la aprobación.
+- Verificado: ninguna línea de `frontend/`, `backend/` ni `mobile/` cambió en esta rama (ver el comando en la evidencia).
