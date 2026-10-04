@@ -6,6 +6,10 @@ _Actualizado: 2026-10-02 · Sprint actual: 51_
   con push). Hecho: T1–T9 y la revisión de seguridad (0 ALTA). Detalle y commits: `docs/sprint-51.md`.
 
 ## Siguiente paso
+**Rediseño editorial del panel web (S52–S60), rama `web-redesign`:** plan en `docs/redesign/PLAN_SPRINTS.md`; para
+retomar, `docs/redesign/CONTINUAR.md`. Empieza el **S52 (Fase 0, sin código)** — `docs/sprint-52.md`. Es independiente
+del cierre del S51 de abajo.
+
 Hecho el 02/10/2026: PR #12 (S50) y PR #13 (entorno + D-05) fusionados en `android-redesign` (`d0724b0`); esa rama ya
 está fusionada dentro de `sprint-51-cierre`; plantillas `.env.*.example` comprobadas (sin hueco, ver `docs/sprint-51.md`).
 
