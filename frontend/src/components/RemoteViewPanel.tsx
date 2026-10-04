@@ -3,8 +3,9 @@
 import { Check, PhoneOff, ScreenShare, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Button, Card, CardHeader, Spinner } from "@/components/ui";
-import { ApiError, deviceRealtimeWebSocketUrl, fetchWebRtcConfig } from "@/lib/apiClient";
+import { deviceSubtitle } from "@/components/shell/deviceStatus";
+import { Button, Card, Spinner } from "@/components/ui";
+import { ApiError, type Device, deviceRealtimeWebSocketUrl, fetchWebRtcConfig } from "@/lib/apiClient";
 
 import styles from "./RemoteViewPanel.module.css";
 
@@ -37,6 +38,22 @@ function currentStep(state: ViewerState): StepKey | null {
     case "ended":
       return null;
   }
+}
+
+/** What the status column says about the connection, derived only from the viewer state. */
+const CONNECTION_LABEL: Record<ViewerState["kind"], string> = {
+  idle: "Sin solicitar",
+  requesting: "Esperando respuesta",
+  connecting: "Conectando",
+  streaming: "Conectado",
+  ended: "Desconectado",
+};
+
+/** The quiet caption inside the dark phone screen while there is no picture to show. */
+function screenCaption(kind: ViewerState["kind"]): string {
+  if (kind === "requesting" || kind === "connecting") return "Esperando la transmisión";
+  if (kind === "ended") return "Transmisión terminada";
+  return "Sin transmisión";
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -77,13 +94,21 @@ function describeStopReason(reason: unknown): string {
  * can actually tell apart: "consentimiento" and "negociando" are both the same `connecting`
  * state internally (the `detail` text tells them apart, shown under "Conectando"), because the
  * signalling protocol never reports which of the two is in progress separately.
+ *
+ * Sprint 59 (editorial recomposition): the phone frame is always drawn and holds the same,
+ * always-mounted <video>; a calm status column sits beside it (below it on phones). `device` is
+ * optional and display-only — when the shell passes the active device, its name and Android
+ * version are shown; nothing here fetches it. Battery, network, rotate and fullscreen from the
+ * mockup are omitted: no model carries them and the signalling channel has no command for them.
  */
 export function RemoteViewPanel({
   accessToken,
   deviceId,
+  device,
 }: {
   accessToken: string;
   deviceId: string;
+  device?: Pick<Device, "name" | "platform" | "os_version">;
 }) {
   const [state, setState] = useState<ViewerState>({ kind: "idle" });
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -294,95 +319,126 @@ export function RemoteViewPanel({
   const activeIndex = step ? STEPS.findIndex((item) => item.key === step) : -1;
 
   return (
-    <Card>
-      <CardHeader
-        icon={ScreenShare}
-        title="Vista remota"
-        actions={
-          isActive && (
-            <Button variant="danger" icon={PhoneOff} onClick={stop}>
-              Detener
-            </Button>
-          )
-        }
-      />
-
-      <div className={styles.notice}>
-        <ShieldCheck size={18} aria-hidden="true" />
-        <p>
-          La transmisión sólo empieza si la persona supervisada acepta, ella la ve mientras dure y
-          puede cortarla cuando quiera. No se graba nada: el video se muestra aquí y no se guarda.
-        </p>
+    <Card padding="none" className={styles.panel}>
+      <div className={styles.status}>
+        <div className={styles.statusHead}>
+          <h2 className={styles.title}>Transmisión</h2>
+          {state.kind === "streaming" && (
+            <span className={styles.live}>
+              <span className={styles.liveDot} aria-hidden="true" />
+              <span className="eyebrow">En vivo</span>
+              <span className={`tabular ${styles.elapsed}`}>
+                <span className={styles.srOnly}>Tiempo transcurrido: </span>
+                {formatDuration(elapsedSeconds)}
+              </span>
+            </span>
+          )}
+        </div>
+        <dl className={styles.facts}>
+          <div className={styles.fact}>
+            <dt>Conexión</dt>
+            <dd>{CONNECTION_LABEL[state.kind]}</dd>
+          </div>
+          {device && (
+            <div className={styles.fact}>
+              <dt>Dispositivo</dt>
+              <dd>
+                {device.name}
+                <span className={styles.factMeta}>{deviceSubtitle(device.platform, device.os_version)}</span>
+              </dd>
+            </div>
+          )}
+        </dl>
       </div>
 
-      {activeIndex >= 0 && (
-        <ol className={styles.stepper} aria-label="Progreso de la solicitud">
-          {STEPS.map((item, index) => {
-            const status = index < activeIndex ? "done" : index === activeIndex ? "active" : "pending";
-            return (
-              <li
-                key={item.key}
-                className={styles.step}
-                data-status={status}
-                aria-current={status === "active" ? "step" : undefined}
-              >
-                <span className={styles.stepDot} aria-hidden="true">
-                  {status === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}
-                </span>
-                <span className={styles.stepLabel}>{item.label}</span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-
-      {state.kind === "idle" && (
-        <div className={styles.idle}>
-          <p className={styles.idleText}>Todavía no has pedido ver la pantalla de este dispositivo.</p>
-          <Button variant="primary" icon={ScreenShare} onClick={start}>
-            Solicitar ver pantalla
-          </Button>
+      <div className={styles.stage}>
+        <div className={styles.phone}>
+          <span className={styles.camera} aria-hidden="true" />
+          <div className={styles.screen}>
+            {state.kind !== "streaming" && (
+              <div className={styles.screenIdle}>
+                <ScreenShare size={28} strokeWidth={1.5} aria-hidden="true" />
+                <span>{screenCaption(state.kind)}</span>
+              </div>
+            )}
+            {/* Always mounted — never conditionally rendered — so the single DOM node the
+                peer's "track" listener attaches srcObject to survives every state transition.
+                Only the phone around it is decorative; the element, its ref and its attributes
+                are exactly the ones Sprint 23 shipped. */}
+            <video
+              ref={videoRef}
+              className={state.kind === "streaming" ? styles.video : undefined}
+              autoPlay
+              playsInline
+              muted
+              hidden={state.kind !== "streaming"}
+            />
+          </div>
         </div>
-      )}
+      </div>
 
-      {state.kind === "requesting" && (
-        <div className={styles.waiting}>
-          <Spinner label="Esperando respuesta en el dispositivo…" />
+      <div className={styles.details}>
+        <div className={styles.notice}>
+          <ShieldCheck size={20} strokeWidth={1.75} aria-hidden="true" />
+          <p>
+            La transmisión solo empieza si la persona supervisada acepta, ella la ve mientras dure y
+            puede cortarla cuando quiera. No se graba nada: el video se muestra aquí y no se guarda.
+          </p>
         </div>
-      )}
 
-      {state.kind === "connecting" && (
-        <div className={styles.waiting}>
-          <Spinner label={state.detail} />
-        </div>
-      )}
+        {activeIndex >= 0 && (
+          <ol className={styles.stepper} aria-label="Progreso de la solicitud">
+            {STEPS.map((item, index) => {
+              const status = index < activeIndex ? "done" : index === activeIndex ? "active" : "pending";
+              return (
+                <li
+                  key={item.key}
+                  className={styles.step}
+                  data-status={status}
+                  aria-current={status === "active" ? "step" : undefined}
+                >
+                  <span className={styles.stepDot} aria-hidden="true">
+                    {status === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}
+                  </span>
+                  <span className={styles.stepLabel}>{item.label}</span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
 
-      {state.kind === "ended" && (
-        <div className={styles.ended}>
-          <p className={styles.endedMessage} role="status">
+        {state.kind === "idle" && (
+          <p className={styles.message}>Todavía no has pedido ver la pantalla de este dispositivo.</p>
+        )}
+
+        {state.kind === "requesting" && (
+          <div className={styles.waiting}>
+            <Spinner label="Esperando respuesta en el dispositivo…" />
+          </div>
+        )}
+
+        {state.kind === "connecting" && (
+          <div className={styles.waiting}>
+            <Spinner label={state.detail} />
+          </div>
+        )}
+
+        {state.kind === "ended" && (
+          <p className={styles.message} role="status">
             {state.message}
           </p>
-          <Button variant="primary" icon={ScreenShare} onClick={start}>
-            Solicitar ver pantalla
-          </Button>
-        </div>
-      )}
+        )}
 
-      {/* Always mounted — never conditionally rendered — so the single DOM node the
-          peer's "track" listener attaches srcObject to survives every state transition. Only
-          its wrapper's class (and the phone bezel around it) changes with `state.kind`. */}
-      <div className={state.kind === "streaming" ? styles.streamingWrap : styles.videoHidden}>
-        {state.kind === "streaming" && <span className={styles.duration}>{formatDuration(elapsedSeconds)}</span>}
-        <div className={state.kind === "streaming" ? styles.phoneFrame : undefined}>
-          {state.kind === "streaming" && <div className={styles.phoneNotch} />}
-          <video
-            ref={videoRef}
-            className={state.kind === "streaming" ? styles.video : undefined}
-            autoPlay
-            playsInline
-            muted
-            hidden={state.kind !== "streaming"}
-          />
+        <div className={styles.actions}>
+          {isActive ? (
+            <Button variant="danger" icon={PhoneOff} fullWidth onClick={stop}>
+              Finalizar vista remota
+            </Button>
+          ) : (
+            <Button variant="primary" icon={ScreenShare} fullWidth onClick={start}>
+              Solicitar ver pantalla
+            </Button>
+          )}
         </div>
       </div>
     </Card>

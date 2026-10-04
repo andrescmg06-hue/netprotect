@@ -1,42 +1,76 @@
-.cardHead {
-  padding: var(--space-5) var(--space-6) 0;
+/* Sprint 59: a serious register. One open panel, divided by stone lines: title, filters, the
+   table and the pagination, with no box inside the box. */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.headText {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-}
-
-.filters > :first-child,
-.filters > :nth-child(2) {
-  min-width: 200px;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .error {
   margin: 0;
-  padding: 0 var(--space-6) var(--space-4);
+  padding: var(--space-4) var(--space-6);
   color: var(--color-danger-text);
 }
 
+.loading {
+  padding: var(--space-8) var(--space-6);
+}
+
 .emptyWrap {
-  padding: var(--space-4) var(--space-6) var(--space-6);
+  padding: var(--space-8) var(--space-6) var(--space-10);
+}
+
+.table {
+  padding: 0 var(--space-2);
 }
 
 .action {
   color: var(--color-navy);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .resource {
   color: var(--color-text);
 }
 
+.resourceName {
+  color: var(--color-text);
+}
+
 .resourceId {
   color: var(--color-text-muted);
   font-size: var(--text-xs);
+}
+
+.ip {
+  color: var(--color-text-muted);
 }
 
 .pagination {
@@ -52,4 +86,80 @@
 .pageInfo {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empty-state drawing: two documents and a lens on a ground line, all from the token palette.
+   The fill masks the back sheet behind the front one, so the strokes never cross. */
+.illustration {
+  position: relative;
+  display: block;
+  width: 140px;
+  height: 104px;
+}
+
+.docBack,
+.docFront,
+.docLens {
+  position: absolute;
+  fill: var(--color-surface-muted);
+}
+
+.docBack {
+  top: var(--space-4);
+  left: var(--space-4);
+  color: var(--color-border-strong);
+}
+
+.docFront {
+  top: 0;
+  left: 44px;
+  color: var(--color-text-muted);
+}
+
+.docLens {
+  right: var(--space-2);
+  bottom: var(--space-3);
+  color: var(--color-navy);
+}
+
+.docGround {
+  position: absolute;
+  right: 0;
+  bottom: var(--space-1);
+  left: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Phones: the filters become a column and the export spans the width; DataTable already turns
+   each entry into a stacked row below 720px. */
+@media (max-width: 720px) {
+  .head {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+  }
+
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+  }
+
+  .filters .export {
+    width: 100%;
+  }
+
+  .error,
+  .pagination {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .loading,
+  .emptyWrap {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .table {
+    padding: 0 var(--space-4);
+  }
 }

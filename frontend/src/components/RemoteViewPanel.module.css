@@ -1,12 +1,185 @@
+/* Sprint 59: one open panel. The phone is the protagonist on the left; a calm status column on the
+   right, split from it by a single stone line. Phones reorder it: status, then the phone, then the
+   notice, the steps and the one action. */
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "stage status"
+    "stage details";
+  overflow: hidden;
+}
+
+.status {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+}
+
+.statusHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-success-text);
+}
+
+.liveDot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-success);
+}
+
+.elapsed {
+  margin-left: var(--space-1);
+  color: var(--color-navy);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.fact dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.fact dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.factMeta {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* --- The phone ---------------------------------------------------------------------------- */
+
+.stage {
+  grid-area: stage;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-6);
+}
+
+/* The one place outside the 4-8px radius scale and the flat-by-default rule: this draws a
+   phone, it is not a panel, so it keeps a device-like corner and its own soft shadow. */
+.phone {
+  position: relative;
+  width: min(300px, 100%);
+  aspect-ratio: 9 / 19.5;
+  padding: var(--space-3);
+  background: var(--color-navy-900);
+  border-radius: 44px;
+  box-shadow: var(--shadow-pop);
+}
+
+.camera {
+  position: absolute;
+  top: var(--space-5);
+  left: 50%;
+  z-index: 1;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-navy-700);
+  transform: translateX(-50%);
+}
+
+.screen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-navy-950);
+  border-radius: 34px;
+}
+
+.screenIdle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-sidebar-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* Only applied while streaming (see the JSX): the `hidden` attribute keeps hiding it otherwise,
+   because this class is the only rule that could override the browser's [hidden] display. */
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-navy-950);
+}
+
+/* --- Notice, steps, messages and the action ------------------------------------------------ */
+
+.details {
+  grid-area: details;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-left: 1px solid var(--color-border);
+}
+
 .notice {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  margin: var(--space-4) 0;
-  padding: var(--space-4);
-  color: var(--color-primary-text);
-  background: var(--color-primary-softer);
-  border-radius: var(--radius-lg);
+  padding-bottom: var(--space-5);
+  color: var(--color-navy);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .notice svg {
@@ -16,14 +189,13 @@
 
 .notice p {
   margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  color: var(--color-text);
+  font-size: var(--text-base);
 }
 
 .stepper {
   display: flex;
-  align-items: center;
-  margin: var(--space-5) 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -34,35 +206,32 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   text-align: center;
 }
 
 .step:not(:last-child)::after {
   content: "";
   position: absolute;
-  top: 15px;
-  left: 50%;
-  z-index: 0;
-  width: 100%;
-  height: 2px;
+  top: 12px;
+  left: calc(50% + 16px);
+  width: calc(100% - 32px);
+  height: 1px;
   background: var(--color-border);
 }
 
 .stepDot {
-  position: relative;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: 600;
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
 }
 
 .stepLabel {
@@ -71,7 +240,7 @@
 }
 
 .step[data-status="active"] .stepDot {
-  color: #fff;
+  color: var(--color-surface);
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
@@ -82,80 +251,53 @@
 }
 
 .step[data-status="done"] .stepDot {
-  color: var(--color-success);
-  background: var(--color-success-soft);
-  border-color: var(--color-success);
-}
-
-.idle,
-.waiting,
-.ended {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-}
-
-.idleText {
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
-.endedMessage {
-  margin: 0;
-  max-width: 480px;
-  color: var(--color-text-muted);
-}
-
-.streamingWrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-}
-
-.videoHidden {
-  display: none;
-}
-
-.duration {
-  padding: 4px 12px;
   color: var(--color-navy);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  background: var(--color-neutral-soft);
-  border-radius: var(--radius-pill);
+  border-color: var(--color-navy);
 }
 
-.phoneFrame {
-  position: relative;
-  width: 260px;
-  aspect-ratio: 9 / 19.5;
-  padding: 14px 10px;
-  background: var(--color-navy);
-  border-radius: 32px;
-  box-shadow: var(--shadow-pop);
+.waiting {
+  display: flex;
 }
 
-.phoneNotch {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  z-index: 1;
-  width: 70px;
-  height: 14px;
-  background: var(--color-navy);
-  border-radius: var(--radius-pill);
-  transform: translateX(-50%);
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
 }
 
-.video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #000;
-  border-radius: 20px;
+.actions {
+  margin-top: auto;
+}
+
+/* Narrower content (rail layout with a wide device column) and phones: reinterpret, not shrink. */
+@media (max-width: 899px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "status"
+      "stage"
+      "details";
+  }
+
+  .status,
+  .details {
+    border-left: 0;
+  }
+
+  .status {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+  }
+
+  .stage {
+    padding: var(--space-8) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .phone {
+    width: min(260px, 72vw);
+  }
+
+  .details {
+    padding: var(--space-5) var(--space-4);
+  }
 }

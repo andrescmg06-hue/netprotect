@@ -1,20 +1,42 @@
 "use client";
 
-import { Globe, KeyRound, Languages, LogOut, Mail, ShieldCheck, User as UserIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Globe, KeyRound, Languages, LogOut, type LucideIcon, MonitorSmartphone } from "lucide-react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 
 import { Avatar } from "@/components/shell/Avatar";
-import { Button, Card, CardHeader, StatusBadge } from "@/components/ui";
+import { Button, StatusBadge } from "@/components/ui";
 import type { CurrentUser } from "@/lib/apiClient";
 
 import styles from "./AccountPanel.module.css";
 
-function Field({ icon: Icon, label, value }: { icon: typeof UserIcon; label: string; value: string }) {
+/** A read-only label/value pair of the settings list. Named `Fact`, not `Field`, so it no longer
+ * collides with the form primitive `Field` exported by `@/components/ui`. */
+function Fact({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  aside,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  detail?: string;
+  aside?: ReactNode;
+}) {
   return (
-    <div className={styles.field}>
-      <Icon size={18} strokeWidth={1.8} className={styles.fieldIcon} aria-hidden="true" />
-      <span className={styles.fieldLabel}>{label}</span>
-      <span className={styles.fieldValue}>{value}</span>
+    <div className={styles.fact}>
+      <dt className={styles.factLabel}>
+        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className={styles.factValue}>
+        <span className={styles.factText}>
+          {value}
+          {detail && <span className={styles.factDetail}>{detail}</span>}
+        </span>
+        {aside}
+      </dd>
     </div>
   );
 }
@@ -26,10 +48,19 @@ function Field({ icon: Icon, label, value }: { icon: typeof UserIcon; label: str
  * there is no endpoint for either. Read only after mount so server and client render the same
  * "—" placeholder first, avoiding a hydration mismatch. Account creation date and last-login
  * time are not shown: CurrentUser carries neither.
+ *
+ * Sprint 59: recomposed as a settings page — sections divided by lines, a title and a sentence on
+ * the left, the facts on the right — instead of floating cards. The mockup's "Editar perfil",
+ * photo upload, active-sessions list and "Cerrar todas las sesiones" are omitted: the API has no
+ * profile editing and the session is only this browser's Google sign-in.
  */
 export function AccountPanel({ user, onSignOut }: { user: CurrentUser; onSignOut: () => void }) {
   const [timezone, setTimezone] = useState<string | null>(null);
   const [language, setLanguage] = useState<string | null>(null);
+  const accountTitleId = useId();
+  const securityTitleId = useId();
+  const preferencesTitleId = useId();
+  const sessionTitleId = useId();
 
   // Sprint 19/24 pattern (see CLAUDE.md): react-hooks/set-state-in-effect rejects a synchronous
   // setState in the effect body, even for a pure browser read — chaining .then() on an already-
@@ -46,61 +77,69 @@ export function AccountPanel({ user, onSignOut }: { user: CurrentUser; onSignOut
   const displayName = user.display_name ?? user.email;
 
   return (
-    <>
-      <div className={styles.columns}>
-        <Card>
-          <CardHeader icon={UserIcon} title="Información de la cuenta" />
-
-          <div className={styles.profile}>
-            <Avatar name={displayName} src={user.avatar_url} size={64} />
-            <div className={styles.profileText}>
-              <span className={styles.profileName}>{displayName}</span>
-              <span className={styles.profileEmail}>{user.email}</span>
-            </div>
-            <StatusBadge tone="info">Cuenta de Google</StatusBadge>
+    <div className={styles.settings}>
+      <section className={styles.section} aria-labelledby={accountTitleId}>
+        <div className={styles.intro}>
+          <h2 id={accountTitleId} className={styles.sectionTitle}>
+            Cuenta
+          </h2>
+          <p className={styles.sectionText}>Tu nombre, tu correo y tu foto vienen de tu cuenta de Google.</p>
+        </div>
+        <div className={styles.identity}>
+          <Avatar name={displayName} src={user.avatar_url} size={72} />
+          <div className={styles.identityText}>
+            <span className={styles.name}>{displayName}</span>
+            <span className={styles.email}>{user.email}</span>
           </div>
+          <StatusBadge tone="neutral">Cuenta de Google</StatusBadge>
+        </div>
+      </section>
 
-          <div className={styles.fields}>
-            <Field icon={UserIcon} label="Nombre completo" value={displayName} />
-            <Field icon={Mail} label="Correo electrónico" value={user.email} />
-            <Field icon={KeyRound} label="Tipo de cuenta" value="Cuenta de Google" />
-            <Field icon={Globe} label="Zona horaria" value={timezone ?? "—"} />
-            <Field icon={Languages} label="Idioma" value={language ?? "—"} />
-          </div>
-        </Card>
+      <section className={styles.section} aria-labelledby={securityTitleId}>
+        <div className={styles.intro}>
+          <h2 id={securityTitleId} className={styles.sectionTitle}>
+            Seguridad
+          </h2>
+          <p className={styles.sectionText}>Entras con Google, sin una contraseña propia de NetProtect que proteger.</p>
+        </div>
+        <dl className={styles.facts}>
+          <Fact
+            icon={KeyRound}
+            label="Acceso"
+            value="Autenticación con Google"
+            detail="Google OAuth 2.0"
+            aside={<StatusBadge tone="success">Activa</StatusBadge>}
+          />
+          <Fact icon={MonitorSmartphone} label="Sesión" value="Sesión abierta solo en este navegador" />
+        </dl>
+      </section>
 
-        <Card>
-          <CardHeader icon={ShieldCheck} title="Seguridad de la cuenta" subtitle="Tu cuenta está protegida con Google OAuth." />
+      <section className={styles.section} aria-labelledby={preferencesTitleId}>
+        <div className={styles.intro}>
+          <h2 id={preferencesTitleId} className={styles.sectionTitle}>
+            Preferencias
+          </h2>
+          <p className={styles.sectionText}>Se toman de la configuración de este navegador.</p>
+        </div>
+        <dl className={styles.facts}>
+          <Fact icon={Globe} label="Zona horaria" value={timezone ?? "—"} />
+          <Fact icon={Languages} label="Idioma" value={language ?? "—"} />
+        </dl>
+      </section>
 
-          <div className={styles.securityRow}>
-            <span className={`${styles.securityIcon} ${styles.securityOk}`}>
-              <ShieldCheck size={20} aria-hidden="true" />
-            </span>
-            <div className={styles.securityText}>
-              <strong>Cuenta segura</strong>
-              <span>Estás autenticado mediante Google, sin contraseña propia que proteger.</span>
-            </div>
-          </div>
-
-          <div className={styles.securityRow}>
-            <span className={styles.securityIcon}>
-              <KeyRound size={20} aria-hidden="true" />
-            </span>
-            <div className={styles.securityText}>
-              <strong>Autenticación</strong>
-              <span>Google OAuth 2.0</span>
-            </div>
-            <StatusBadge tone="success">Activa</StatusBadge>
-          </div>
-
-          <div className={styles.signOutBlock}>
-            <Button variant="danger" icon={LogOut} fullWidth onClick={onSignOut}>
-              Cerrar sesión
-            </Button>
-            <p className={styles.signOutHint}>Se cerrará tu sesión en este navegador.</p>
-          </div>
-        </Card>
-      </div>
-    </>
+      <section className={styles.section} aria-labelledby={sessionTitleId}>
+        <div className={styles.intro}>
+          <h2 id={sessionTitleId} className={styles.sectionTitle}>
+            Cerrar sesión
+          </h2>
+          <p className={styles.sectionText}>Se cerrará tu sesión en este navegador.</p>
+        </div>
+        <div className={styles.signOut}>
+          <Button variant="danger" icon={LogOut} onClick={onSignOut} className={styles.signOutButton}>
+            Cerrar sesión
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }

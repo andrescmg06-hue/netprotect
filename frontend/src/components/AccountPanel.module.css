@@ -1,148 +1,148 @@
-.columns {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--space-6);
-  align-items: start;
-}
-
-.profile {
+/* Sprint 59: a settings page on the cream paper, not floating cards. Each section is a row split
+   by a stone line: a serif title and one sentence on the left, the facts on the right. Phones
+   stack the title above its facts and each label above its value. */
+.settings {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  padding-bottom: var(--space-5);
-  margin-bottom: var(--space-5);
+  flex-direction: column;
+  max-width: 1040px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.profileText {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.section {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.intro {
   min-width: 0;
 }
 
-.profileName {
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.sectionText {
+  margin: var(--space-2) 0 0;
+  max-width: 32ch;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+
+.identityText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.name {
   color: var(--color-navy);
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.profileEmail {
+.email {
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
 }
 
-.fields {
+.facts {
   display: flex;
   flex-direction: column;
+  margin: 0;
 }
 
-.field {
+.fact {
   display: grid;
-  grid-template-columns: 24px 160px 1fr;
+  grid-template-columns: 180px minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
-.field:last-child {
-  border-bottom: 0;
+.fact:first-child {
+  padding-top: 0;
+}
+
+.fact:last-child {
   padding-bottom: 0;
+  border-bottom: 0;
 }
 
-.fieldIcon {
-  color: var(--color-text-muted);
-}
-
-.fieldLabel {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.fieldValue {
-  overflow: hidden;
-  color: var(--color-text);
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.securityRow {
+.factLabel {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.securityIcon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-neutral-soft);
-  color: var(--color-text-muted);
-}
-
-.securityOk {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.securityText {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  gap: 1px;
-}
-
-.securityText strong {
-  color: var(--color-navy);
-  font-size: var(--text-base);
-}
-
-.securityText span {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
-.signOutBlock {
-  padding-top: var(--space-4);
+.factLabel svg {
+  flex-shrink: 0;
 }
 
-.signOutHint {
-  margin: var(--space-2) 0 0;
+.factValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  min-width: 0;
+}
+
+.factText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--color-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.factDetail {
   color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 400;
 }
 
-@media (max-width: 900px) {
-  .columns {
-    grid-template-columns: 1fr;
+.signOut {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    padding: var(--space-6) 0;
   }
 
-  .field {
-    grid-template-columns: 20px 1fr;
-    grid-template-areas: "icon label" ". value";
-    row-gap: 2px;
+  .sectionText {
+    max-width: none;
   }
 
-  .fieldIcon {
-    grid-area: icon;
+  .fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
   }
 
-  .fieldLabel {
-    grid-area: label;
-  }
-
-  .fieldValue {
-    grid-area: value;
-    white-space: normal;
+  .signOut .signOutButton {
+    width: 100%;
   }
 }
