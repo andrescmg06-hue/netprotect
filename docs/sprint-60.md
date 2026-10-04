@@ -42,8 +42,9 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   estado activo cambia de relleno), `DeviceSelector` (tarjeta con icono, texto y sombra), `DevicePolicyPanel` (la selección
   la marca un check además del borde). Los puntos de estado de 8 px (`#16b364` 2,74:1, `#f79009` 2,35:1) no llevan texto
   encima y no son el único portador del estado: se revisan en la pasada de teclado y contraste de T7 (no hay medición automática todavía).
-  Evidencia: razones calculadas con la fórmula de luminancia WCAG. **Pendiente:** build y revisión visual de los dos cambios
-  (se reconstruye el web una sola vez al cerrar T6, para no interrumpir tu revisión en el navegador).
+  Evidencia: razones calculadas con la fórmula de luminancia WCAG. Build: la imagen `web` se reconstruyó con éxito y el CSS
+  servido por el contenedor contiene `.Sidebar…count{background:var(--color-danger-text)}`. **Pendiente:** revisión visual
+  de los dos cambios (la hace el dueño).
 - [x] T3 — Foco (cambio hecho; **sin comprobación visual**). Ruta: inline. `Button.primary` y `.rowSelected` de Alertas
   fijaban su propio `box-shadow` con la misma especificidad (0,1,0) que el `:focus-visible` global, y las hojas de módulo
   cargan después: el anillo se perdía por orden de cascada. Se añadió `.primary:focus-visible` (0,2,0) y
@@ -51,6 +52,8 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   no por orden. Además, un bloque `@media (forced-colors: active)` en `globals.css` da un `outline` real, porque el modo de
   alto contraste de Windows elimina los `box-shadow`. Revisados el resto de `box-shadow` propios: son sombras de
   ventanas emergentes o la bolita del Switch, no el elemento enfocable.
+  Comprobado en el CSS que sirve el contenedor reconstruido: contiene `.Button…primary:focus-visible{box-shadow:var(--focus-ring)}`,
+  `.AlertsPanel…rowSelected:focus-visible{box-shadow:inset 2px 0 0 …, var(--focus-ring)}` y el bloque `forced-colors`.
   **No se pudo probar con Tab en un navegador:** la extensión de Chrome no estaba conectada y `/design-system` da 404 en el
   build de producción. Pendiente: Tab sobre un botón primario y una fila seleccionada (la hace el dueño), y probar el
   modo de alto contraste de Windows.
@@ -71,8 +74,11 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   **Decididos sin cambio:** `card-twilight.jpg` (147 KB, sin uso) se conserva: es un asset del paquete de diseño y S54
   decidió no usar la tarjeta de foto del pie del sidebar; borrarlo es decisión del dueño. La banda sigue `eager`: va sobre
   el pliegue en cada vista y el optimizador ya la reduce.
-  **Pendiente:** tras reconstruir, medir el peso de los logos servidos y mirarlos a 1× y 2× (si el texto se ve blando,
-  subir a 100 o volver a `unoptimized`).
+  **Medido tras reconstruir el `web` (desde `np-s54`):** `logo-full.png` de 103 981 B pasa a 8 263 B (`w=256`) y 29 480 B
+  (`w=640`), ambos `200 image/png`, con `q=90` aceptado. Los iconos de T4 se sirven: `/icon.png` 5 339 B, `/favicon.ico`
+  7 134 B, `/apple-icon.png` 15 945 B (todos `200`) y el HTML trae los tres `<link rel>` con sus `sizes`.
+  **Pendiente (a la vista, del dueño):** mirar los logos a 1× y 2×; si el texto se ve blando, subir a 100 o volver a
+  `unoptimized`.
 - [x] T6 — Estados vacíos: **revisado, sin cambios de código** (decisión deliberada). Ruta: inline. El mapeo marcaba cinco
   `<p>` sueltos frente a `EmptyState`; leídos en el código, cuatro son notas compactas dentro de secciones secundarias de
   una tarjeta (`AppRulesPanel.tsx:272` filtro sin resultados, `GeofencePanel.tsx:554` y `DeviceLocationPanel.tsx:328`
