@@ -1,18 +1,21 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-04 · Sprint actual: 60 (rediseño web, cierre)_
+_Actualizado: 2026-10-04 · Sprint actual: 60 (rediseño web, cierre; verificado en local, falta CI)_
 
 ## En curso
 - **S60 (rediseño del panel web, cierre)**, rama `sprint-60-rediseno-web-cierre`, creada desde `fix/s54-auth-log-sin-pii`
   (`e9e4f69`). Cadena de ramas real: `sprint-52…` → `sprint-53…` → `sprint-54…` → `fix/s54-auth-log-sin-pii` → `sprint-60…`.
-  T1 (documentación de S54–S59) escrita, pendiente de revisión y commit. Falta accesibilidad (contraste, foco, favicon), imágenes, estados vacíos,
-  e2e y verificación (T2–T8). Detalle: `docs/sprint-60.md`.
+  Trabajo hecho y verificado en local (T1–T9; `make test` 295 passed, `ruff`, `lint`, `tsc`, `next build` y e2e 2 passed,
+  con control negativo del test del foco; `security-reviewer` 0 ALTA, 0 MEDIA, 1 BAJA documental corregida). **Falta:**
+  hacer push de la cadena, que pasen los 8 jobs de CI (eso cierra el sprint), y lo que solo hace una persona: revisión
+  visual con sesión real de Google (T5 de S54), login a 390 px reales y modo de alto contraste de Windows. Detalle:
+  `docs/sprint-60.md` y `docs/sprint-60-evidence.md`.
 - **S54–S59 (rediseño del panel web, marco y las 16 vistas)**: código hecho por Cristian el 04/10/2026 (`35af89d`,
   `c76ceea`, `bdfa6e8`, `8be5abd`, `7b6b117`, `7ec38c7`/`ccde5cf`, y `eb2db05` con las correcciones y el cambio de serif a
   Newsreader). Documentación al día desde el S60: `docs/sprint-54.md` … `docs/sprint-59.md` y sus `-evidence.md`; la
   evidencia visual está concentrada en `docs/redesign/s59/LEEME.md` (e2e «1 passed», 18 capturas en el repo, tomadas antes
-  de `eb2db05`). **Pendiente del dueño**: revisión visual con sesión real de Google (T5 del S54), Vista remota con un
-  teléfono real, revisión de seguridad de S57 y S59 (`security-reviewer`, sin registro), recaptura tras `eb2db05` y
-  `lint`/`tsc` de S56–S59 sin salida guardada.
+  de `eb2db05`). Cerrado en el S60: revisión de seguridad de S57 y S59 (1 BAJA aceptada, el enlace a Google Maps) y
+  `lint`/`tsc`/build/e2e con salida real. **Pendiente del dueño**: revisión visual con sesión real de Google (T5 del
+  S54), Vista remota con un teléfono real y recaptura de las 18 capturas, que son anteriores a `eb2db05`.
 - **S53 (rediseño del panel web, base visual)**, rama `sprint-53-rediseno-web-base-visual` (sale de la del S52). Hecho:
   línea base de 34 capturas, tokens nuevos, serif, primitivas con las mismas props, fotos, `DESIGN.md` reescrito y
   galería; lint, tipos y build en verde. Detalle: `docs/sprint-53.md` y `docs/sprint-53-evidence.md`. Pendiente:
@@ -26,8 +29,10 @@ _Actualizado: 2026-10-04 · Sprint actual: 60 (rediseño web, cierre)_
 
 ## Siguiente paso
 **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
-`docs/redesign/CONTINUAR.md`. S52–S59 hechos (S54–S59 con código y documentación al día); **S60 en curso**
-(`docs/sprint-60.md`). `web-redesign` solo trae los documentos del S52; el pase a `main` lo decide el dueño. Es
+`docs/redesign/CONTINUAR.md`. S52–S59 hechos (S54–S59 con código y documentación al día); **S60 hecho y verificado en
+local** (`docs/sprint-60.md`). Lo que falta: push de la cadena de ramas (`fix/s54-auth-log-sin-pii` y
+`sprint-60-rediseno-web-cierre`; el PR #15 queda redundante si se publica la cadena), CI con los 8 jobs en verde y las
+pruebas humanas de arriba. `web-redesign` solo trae los documentos del S52; el pase a `main` lo decide el dueño. Es
 independiente del cierre del S51 de abajo.
 
 Hecho el 02/10/2026: PR #12 (S50) y PR #13 (entorno + D-05) fusionados en `android-redesign` (`d0724b0`); esa rama ya
@@ -44,6 +49,10 @@ está fusionada dentro de `sprint-51-cierre`; plantillas `.env.*.example` compro
 **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
+- Sprint 60 (en local, 04/10/2026): accesibilidad (contraste AA y anillo de foco que ya no tapa la sombra del botón),
+  favicon completo, logos por el optimizador de imágenes, login con foto a pantalla completa y panel de cristal, e2e
+  ampliado (foco, 16 secciones, aviso de consentimiento en 390 px) y arreglo del log de rechazo de token de Google que
+  copiaba texto del token — `docs/sprint-60.md` (+ `docs/sprint-60-evidence.md`)
 - Sprints 54–59 (código, 04/10/2026): marco (login, sidebar navy, header, banda) y recomposición editorial de las 16
   vistas del panel web, con solo datos reales; serif Newsreader; e2e en verde sobre el conjunto —
   `docs/sprint-54.md` … `docs/sprint-59.md`

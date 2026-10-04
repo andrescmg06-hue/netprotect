@@ -726,8 +726,10 @@ El detalle está en `docs/sprint-56.md` y `docs/sprint-56-evidence.md`.
 
 ## Alcance del Sprint 57
 
-Geocercas, Ubicación e Historial recompuestos, cada uno con un protagonista y sin enviar coordenadas de un menor a
-terceros. Geocercas se centra en un mapa esquemático propio (sin teselas ni librería de mapas) con una cuadrícula de
+Geocercas, Ubicación e Historial recompuestos, cada uno con un protagonista. El mapa de Geocercas no envía coordenadas a
+ningún tercero; Ubicación sí puede hacerlo: con `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` configurada incrusta Google Maps
+Embed con la última posición (decisión del Sprint 13) y muestra siempre el enlace «Abrir en Google Maps», que solo envía
+coordenadas si la persona tutora hace clic. Geocercas se centra en un mapa esquemático propio (sin teselas ni librería de mapas) con una cuadrícula de
 distancias, escala y norte, la zona nueva dibujada en vivo y un radio de 10 m a 100 km. Ubicación indica en qué geocerca
 está el dispositivo (o «Fuera de zonas conocidas»), con precisión, antigüedad y el retraso de unos 15 min declarado; cada
 lectura sigue auditándose. Historial es una línea de tiempo agrupada por día. Queda pendiente la revisión de seguridad
@@ -752,7 +754,23 @@ teléfono, con el mismo elemento de vídeo siempre montado, y una columna con «
 el dispositivo y el aviso de consentimiento. Auditoría es un panel abierto con filtros, exportación CSV y la misma
 paginación, y con etiquetas en español. Perfil es una página de ajustes por secciones. Este sprint también reúne la
 verificación integrada de S54 a S59 con datos reales: el e2e de Playwright pasó y se guardaron 18 capturas, pero eran
-anteriores a las correcciones de defectos que se aplicaron después. Quedan pendientes la prueba de Vista remota con un
-teléfono real y la revisión de seguridad.
+anteriores a las correcciones de defectos que se aplicaron después. Queda pendiente la prueba de Vista remota con un
+teléfono real; la revisión de seguridad de S57 y S59 se hizo en el Sprint 60, sin hallazgos ALTA.
 
 El detalle está en `docs/sprint-59.md` y `docs/sprint-59-evidence.md`.
+
+## Alcance del Sprint 60
+
+Cierre del rediseño editorial del panel web, sobre el código de S54 a S59. Accesibilidad: el contador de alertas del
+sidebar y la pista del horario pasan a un contraste AA medido, y el anillo de foco ya no lo tapa la sombra propia del
+botón principal ni de la fila seleccionada de Alertas (con un contorno de reserva para el modo de alto contraste de
+Windows). Favicon cuadrado con `.ico` y `apple-icon`, y los logos pasan por el optimizador de imágenes (de unos 100 KB a
+8–29 KB). El login ocupa la pantalla con la foto y el panel como un cristal translúcido y desenfocado, con el texto medido
+sobre la foto real. También se corrigió un fallo de seguridad heredado de S54: el registro de un token de Google
+rechazado ya no copia texto del token, solo un motivo fijo. Las ampliaciones del e2e (login, foco por teclado, las 16
+secciones y el aviso de consentimiento de Vista remota a 390 px) pasan, y el test del foco falla con el CSS anterior.
+La documentación de S54 a S59 quedó al día. Quedan pendientes, porque solo los puede hacer una persona, la revisión
+visual con una sesión real de Google, el login a 390 px reales y el modo de alto contraste de Windows; y el cierre del
+sprint exige que pasen los 8 jobs de CI en GitHub Actions.
+
+El detalle está en `docs/sprint-60.md` y `docs/sprint-60-evidence.md`.

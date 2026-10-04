@@ -6,8 +6,11 @@ del mensaje y de las estadísticas de los commits y de `docs/redesign/s59/LEEME.
 
 ## Objetivo
 
-Que las tres vistas de monitoreo dejen la rejilla «métricas arriba, tarjetas abajo»: cada una con **un protagonista**,
-sin enviar coordenadas de un menor a terceros (sin teselas ni librería de mapas).
+Que las tres vistas de monitoreo dejen la rejilla «métricas arriba, tarjetas abajo»: cada una con **un protagonista**.
+El mapa de Geocercas es un esquema propio, sin teselas ni librería de mapas y sin enviar coordenadas a terceros.
+Ubicación, en cambio, **sí puede enviarlas a Google**: con `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` incrusta Google Maps Embed
+(decisión del Sprint 13) y muestra siempre el enlace «Abrir en Google Maps» (revisado por el `security-reviewer` del S60
+como BAJA y aceptado por el dueño: solo envía coordenadas si la persona tutora hace clic).
 
 ## Vistas recompuestas
 

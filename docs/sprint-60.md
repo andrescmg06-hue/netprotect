@@ -54,9 +54,10 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   ventanas emergentes o la bolita del Switch, no el elemento enfocable.
   Comprobado en el CSS que sirve el contenedor reconstruido: contiene `.Button…primary:focus-visible{box-shadow:var(--focus-ring)}`,
   `.AlertsPanel…rowSelected:focus-visible{box-shadow:inset 2px 0 0 …, var(--focus-ring)}` y el bloque `forced-colors`.
-  **No se pudo probar con Tab en un navegador:** la extensión de Chrome no estaba conectada y `/design-system` da 404 en el
-  build de producción. Pendiente: Tab sobre un botón primario y una fila seleccionada (la hace el dueño), y probar el
-  modo de alto contraste de Windows.
+  A mano no se pudo probar con Tab (la extensión de Chrome no estaba conectada y `/design-system` da 404 en el build de
+  producción), pero **después lo confirmó el e2e real en un navegador** (T7) y su control negativo falla con el CSS anterior
+  (`docs/sprint-60-evidence.md` §1). Queda sin cubrir la fila seleccionada de Alertas por teclado (el e2e solo prueba el
+  botón primario) y el modo de alto contraste de Windows (del dueño).
 - [x] T4 — Favicon. Ruta: inline. Generados desde `public/brand/logo-shield.png` (219×256, no cuadrado) con Pillow,
   escudo centrado sobre lienzo cuadrado (LANCZOS): `src/app/icon.png` 192×192, 256 colores, 54 KB → 5,3 KB (con ligero
   bandeado en el degradado a 192 px, imperceptible a tamaño de pestaña); `src/app/favicon.ico` con 16, 32 y 48 px (7 KB);
@@ -147,12 +148,29 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   dueño: dejarla original); la tarjeta móvil tapa la cara del niño (no se ajustó `object-position`). **Pendiente:** verlo
   en un teléfono o a 390 px reales. El contraste de 4,5:1 del bloque completo se midió sobre la foto, no sobre píxeles
   de pantalla en un navegador a otros zooms o con otro tamaño de fuente del sistema.
-- [ ] T8 — Verificación y cierre. **Hecho:** `npm run lint`, `tsc`, `next build` (vía `webServer` de Playwright) y e2e
-  completos y en verde, ejecutados por el `verifier` (ver T7). **Falta, y es del dueño:** lanzar `/cerrar-sprint 60`
-  (esa skill solo la puede invocar el usuario; no se replica su flujo a mano), que genera `docs/sprint-60-evidence.md` y
-  deja `docs/progress.md` y el README al día. Este documento ya recoge el estado de cada tarea para alimentarla.
-  No se ejecutaron en S60 los tests de backend (`make test`) tras el último cambio de backend de la rama, que es el arreglo
-  del log de auth (`e9e4f69`, 295 passed en su momento).
+- [x] T8 — Verificación y cierre. `/cerrar-sprint 60` lanzado por el dueño. Verificación completa del `verifier` en
+  modo completo (backend y frontend, e2e real y control negativo): `ruff` verde, `make test` 295 passed, `lint`, `tsc`,
+  `next build` y e2e 2 passed; revisión del `security-reviewer`: 0 ALTA, 0 MEDIA, 1 BAJA documental ya corregida. Todo en
+  `docs/sprint-60-evidence.md`. **No cierra el sprint hasta que CI pase los 8 jobs en GitHub Actions** (aún no hay push).
+
+## Criterios de aceptación
+
+Cumplido = hecho y con evidencia observada; pendiente = con motivo (humano si lo es). Evidencia: `docs/sprint-60-evidence.md`.
+
+| Criterio | Estado | Evidencia o motivo |
+|---|---|---|
+| Registro fiel de S54–S59 y documentación al día (T1) | Cumplido | `c307652`; capturas citadas verificadas; contradicciones anotadas en cada sprint |
+| Contraste AA (T2) | Cumplido en lo cambiado | §3: 3,76 → 5,75:1 y 3,64:1; revisión visual pendiente (humano) |
+| Foco visible y teclado (T3) | Cumplido para el botón primario | §1 (e2e + control negativo) y §2.1; fila de Alertas por teclado y alto contraste de Windows sin probar (humano) |
+| Movimiento reducido | Cumplido, ya existía | regla global `globals.css:222-230`; no se tocó |
+| Favicon completo (T4) | Cumplido | §3: `.ico`, 192 px, `apple-icon`, tres `<link rel>`; verlo en la pestaña pendiente (humano) |
+| Peso de imágenes (T5) | Cumplido | §3: logo 104 KB → 8–29 KB, medido; `card-twilight.jpg` se conserva (decisión del dueño) |
+| Estados vacíos coherentes (T6) | Cumplido por revisión, sin cambios | ninguna lista queda sin mensaje; unificar `DeviceCategoriesPanel.tsx:303` queda al diseñador |
+| e2e en verde (T7) | Cumplido | §1: 2 passed; spec con 6 steps y 16 secciones; Vista remota a 390×844 dentro del viewport |
+| Login a pantalla completa con cristal (T9) | Cumplido | §3 y capturas en `docs/redesign/s60/`; contraste ≥ 4,6:1 medido sobre la foto; verlo a 390 px reales pendiente (humano) |
+| Verificación completa y seguridad (T8) | Cumplido | §1 y §4 |
+| CI en GitHub Actions con los 8 jobs | **Pendiente** | aún no hay push; es lo que cierra el sprint |
+| Revisión visual con sesión real de Google (T5 de S54) y login real (H-01) | **Pendiente (humano)** | solo una persona puede hacerlo |
 
 ## Pendiente conocido
 
