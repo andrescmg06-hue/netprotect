@@ -116,7 +116,60 @@ bloque de contenido, texto navy pleno): escritorio ≥ 4,6:1 en 1280×720, 1366�
 - Revisiones previas de este sprint (mismo agente): S59 (Vista remota, Auditoría, Cuenta): sin hallazgos; S57 (Geocercas,
   Ubicación, Historial): 1 BAJA, el enlace a Google Maps siempre visible, **aceptado por el dueño como mejora**.
 
-## 5. No verificado
+## 5. Pruebas integradas web + emulador (T10)
+
+Emulador `Pixel_8` (Android 16, arrancado con `-gpu swiftshader_indirect`), backend y web de desarrollo reconstruidos desde
+`np-s54`, y el dueño con su login real de Google (el log del backend muestra `OPTIONS` y `POST /api/v1/auth/google` 200 desde el
+login nuevo). Las acciones ligadas a ese login las hizo el dueño en su panel; yo verifiqué el efecto.
+
+**Lo que se descartó:** vincular el emulador a un tutor sintético insertando a mano `TutorDevice` fue bloqueado por el control de
+seguridad de la sesión (se saltaría el consentimiento del código) y no se intentó por otra vía. La app ya vinculada solo ofrece
+«Cambiar de modo» y «Cerrar sesión».
+
+Acciones del dueño y su efecto (lecturas con scripts de solo lectura dentro del contenedor del backend de dev y de la caché
+Room del emulador vía `run-as`, que es depurable):
+
+```
+backend, app_rules del dispositivo del emulador (da5e6b92…):
+  com.google.android.youtube                 BLOCK        creada 19:21:50
+  com.android.chrome                         DAILY_LIMIT 30  creada 19:22:28
+  com.google.android.apps.youtube.music      SCHEDULE 360-810 máscara 31  creada 19:23:07
+emulador, cached_app_rules (netprotect.db) para ese dispositivo: las mismas tres filas
+app_rule_events: BLOCK youtube occurred_at 2026-10-04 19:26:26 (POST /rule-events 200)
+política: DEVICE_POLICY_CHANGED 19:31:43 -> devices.default_app_policy = BLOCK; la caché del emulador la recibe a las 19:31:44
+```
+
+- **YouTube bloqueado:** al abrirlo en el emulador aparece «APP BLOQUEADA · Tu tutor bloqueó esta app»
+  (`docs/redesign/s60/emu-youtube-bloqueada.jpg`).
+- **Política «Sólo apps aprobadas»:** Fotos, sin regla, muestra «Este dispositivo sólo permite las apps que tu tutor aprobó, y ésta
+  no está aprobada» (`docs/redesign/s60/emu-fotos-politica.jpg`).
+- **Alertas:** 2 marcadas como leídas (19:24:46 y 19:24:49) y 3 silencios. La alerta `APP_BLOCKED` no subió de 6 apariciones tras el
+  bloqueo nuevo: está silenciada y `services/alerts.py:100` dice que un `dedup_key` silenciado no produce nada. Es diseño, no fallo.
+  (Una primera lectura de los eventos ordenaba por la columna equivocada y parecía que faltaba el evento: se repitió ordenando por
+  `occurred_at` y el evento estaba.)
+
+**Acciones del panel con clics reales sobre un dispositivo sintético** (agente `general-purpose`, 2 pasadas completas de
+Playwright a 1440 px, usuarios `@example.com`, pareado por la API normal, datos generados con los endpoints del supervisado):
+12 de 14 escenarios pasan, con sus resultados confirmados contra la API y sin errores de consola ni respuestas ≥ 400 inesperadas.
+Cubren vinculación, dispositivos, reglas (bloquear, límite, horario; filtrar, editar, ver bloqueos, eliminar), inventario,
+política y horario escolar, categorías, geocercas (6 validaciones rechazadas, crear, editar, borrar con confirmación), ubicación,
+historial, estadísticas, auditoría (paginación y CSV sin tokens ni correos), Vista remota (sin pulsar «Solicitar»), cerrar sesión
+y desvincular. El escenario de Alertas y Silenciadas desde la pantalla no se ejercitó (error de selector del worker).
+
+**Fallo encontrado y corregido:** el regex del e2e para el botón «Alertas» no reconocía el nombre accesible con alertas sin leer,
+«Alertas , N sin leer» (espacio antes de la coma, por el `<span>` oculto de `Sidebar.tsx:85`). CI no lo veía por no tener alertas.
+Corregido a `/^Alertas(\s*,|$)/` en `2d0629e`; se probó el regex contra «Alertas», «Alertas , 2 sin leer», «Alertas, 2 sin leer»
+y «Alertas , 99+ sin leer» (coincide) y contra «Alertas silenciadas», «Silenciadas» y «Auditoría» (no coincide). No se reejecutó
+el e2e completo contra alertas reales.
+
+**Anotado sin cambiar:** el formulario «Nueva regla» no usa `noValidate` y deja visible un error viejo tras el bloqueo nativo del
+navegador (W-10); la caché de la app conserva reglas y políticas de dispositivos antiguos (W-11).
+
+**Residuos en la BD de desarrollo:** 6 usuarios sintéticos `@example.com`, sus 2 dispositivos desvinculados (`1068a251…` y
+`3e7e2857…`), alertas, eventos y auditoría (la API no ofrece borrado). Las reglas de YouTube, Chrome y YouTube Music, el modo escolar
+07:00–14:00 y la política por defecto los creó el dueño sobre su emulador.
+
+## 6. No verificado
 
 - Revisión visual del panel con sesión real de Google (T5 de S54) y el login real de Google (H-01): los hace una persona.
 - El login a 390 px reales o en un teléfono; las capturas llegan a 520 px.
@@ -127,4 +180,8 @@ bloque de contenido, texto navy pleno): escritorio ≥ 4,6:1 en 1280×720, 1366�
   3 ejecuciones completas en verde tras el arreglo (más la primera, que falló y se corrigió, §2.1).
 - `ruff` y `pytest -m "not integration"` en el host (se usó la imagen y la suite completa en contenedor); Android,
   `scripts/verify_turn.sh` e infra, fuera del alcance de S60.
+- De la prueba con emulador (§5): la vista de Alertas y Silenciadas desde la pantalla; el límite de Chrome en vivo (exige 30 min de
+  uso); el horario de YouTube Music en vivo (hoy es domingo y no se cambió el reloj del emulador); la ubicación (el emulador solo
+  tiene GPS y la app usa `NETWORK_PROVIDER`); la aceptación humana del diálogo de captura (H-02) y «Solicitar ver pantalla»; el e2e
+  completo contra alertas sin leer reales tras corregir el regex; y que la política vuelva a «Todo permitido» tras la prueba.
 - CI en GitHub Actions: el sprint no se da por cerrado hasta que pasen los 8 jobs.

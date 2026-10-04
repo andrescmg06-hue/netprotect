@@ -153,6 +153,53 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `next build` y e2e 2 passed; revisión del `security-reviewer`: 0 ALTA, 0 MEDIA, 1 BAJA documental ya corregida. Todo en
   `docs/sprint-60-evidence.md`. **No cierra el sprint hasta que CI pase los 8 jobs en GitHub Actions** (aún no hay push).
 
+- [x] T10 — Pruebas integradas web + emulador (pedido del dueño antes de publicar: «conecta la web y el emulador, genera
+  todas esas cosas y comprueba que todo esté bien»). Autorizado explícitamente por el dueño: sembrar 3 usuarios sintéticos
+  (`seed_test_session.py`, el mecanismo del propio proyecto, no su cuenta real) en la BD de **desarrollo**, vincular el
+  emulador `Pixel_8` a un tutor sintético con un código de vinculación introducido con `adb`, manejar el panel con ese
+  tutor (Playwright en `localhost:3000`), generar reglas, categorías, política, geocerca, silenciar alerta, exportar
+  auditoría y pedir vista remota, comprobar el efecto en el emulador, y al terminar **eliminar lo creado** (reglas,
+  geocerca, etc.) y desvincular al tutor sintético; los 3 usuarios sintéticos quedan en la BD (no hay API para borrarlos).
+  No se puede probar: login real de Google (humano), ubicación (el emulador solo tiene GPS y la app usa
+  `NETWORK_PROVIDER`), ni la aceptación humana del diálogo de captura (un toque de `adb` no es una persona; H-02 sigue
+  pendiente).
+
+  **Resultado (04/10/2026).** *Lo que cambió respecto al plan:* intentar vincular el emulador a un tutor sintético
+  insertando a mano la fila `TutorDevice` fue **bloqueado por el control de seguridad de la sesión** (saltaría el
+  consentimiento del código de vinculación) y no se buscó otro camino. El dueño hizo en su navegador el login real de
+  Google (el backend registró `POST /auth/google` 200 desde el login nuevo), desvinculó dos dispositivos suyos antiguos,
+  generó un código en su panel y lo canjeó en el emulador, que desde las 19:18:14 reporta como `da5e6b92` con su tutor real.
+  Las acciones que dependen de ese login las hizo él; la verificación del efecto, yo.
+  *Web + emulador, con acciones del dueño en su panel real y verificación en el emulador `Pixel_8`:* regla BLOQUEAR de
+  YouTube (19:21:50): el emulador muestra «APP BLOQUEADA · Tu tutor bloqueó esta app» y manda un evento `BLOCK` a las
+  19:26:26 que llega y se guarda. Regla `DAILY_LIMIT` de Chrome (30 min) y regla `SCHEDULE` de YouTube Music (360–810,
+  máscara 31 = lunes a viernes): están en la caché local de la app (`netprotect.db`, `cached_app_rules`) iguales que en el
+  backend. Alertas: 2 marcadas como leídas y 3 silencios; una alerta silenciada no suma apariciones por diseño
+  (`services/alerts.py:100`: «un dedup_key silenciado no produce nada»), y por eso `APP_BLOCKED` no subió de 6. Política
+  por defecto «Sólo apps aprobadas» (`DEVICE_POLICY_CHANGED` 19:31:43; el emulador la cachea a las 19:31:44): Fotos, sin
+  regla, muestra «APP BLOQUEADA · Este dispositivo sólo permite las apps que tu tutor aprobó, y ésta no está aprobada».
+  *Acciones del panel sobre un dispositivo sintético* (worker, 2 pasadas con Playwright a 1440 px, usuarios `@example.com`,
+  pareado real por API, datos generados por los endpoints del supervisado; sin errores de consola ni respuestas ≥ 400
+  inesperadas): pasan 12 de 14 escenarios y se confirma cada resultado contra la API: vinculación (código de 6 dígitos,
+  cuenta atrás, revocar), dispositivos, reglas (bloquear, límite 45 min, horario con arrastre de ratón, teclado y selector de
+  días; filtrar, editar, ver bloqueos, eliminar), inventario con búsqueda, política y horario escolar, categorías,
+  geocercas (6 validaciones rechazadas, crear, editar, cancelar y confirmar el borrado), ubicación, historial, estadísticas
+  (hoy, 7 y 30 días), auditoría (paginación y exportación del CSV sin tokens ni correos), Vista remota (estado inicial, sin
+  pulsar «Solicitar»), Perfil y sesión (cerrar sesión vuelve al login) y desvincular.
+  *Defectos:* (1) **el e2e fallaba con alertas sin leer**: el nombre accesible del botón es «Alertas , N sin leer» (espacio
+  antes de la coma) y mi regex no lo reconocía; CI no lo veía porque allí no hay alertas. Corregido en `2d0629e` y probado
+  contra los textos reales; no se reejecutó el e2e completo contra alertas reales. (2) Menor y preexistente: el formulario
+  «Nueva regla» no usa `noValidate` (el de geocercas sí), así que el bloqueo nativo del navegador deja visible un error
+  viejo y los mensajes de minutos del validador son inalcanzables (`min={1}`): anotado como W-10, sin cambiar. (3) Residuo
+  de la app: la caché local conserva reglas y políticas de dispositivos antiguos (`f911d720…`, `257382e5…`): W-11.
+  *No verificado:* la vista de Alertas y Silenciadas desde la pantalla (el worker falló un selector; el backend lo cubren las
+  acciones del dueño); el límite de Chrome (exige 30 min de uso real); el horario de YouTube Music en vivo (hoy es
+  domingo, fuera de la máscara; no se cambió el reloj del emulador para no meter fechas falsas); ubicación (el emulador
+  solo tiene GPS); la aceptación humana del diálogo de captura (H-02); «Solicitar ver pantalla».
+  *Residuos en tu BD de dev:* 6 usuarios sintéticos `@example.com` con sus dos dispositivos desvinculados, alertas,
+  eventos y auditoría (sin API de borrado). Las reglas de YouTube, Chrome y YouTube Music, el modo escolar 07:00–14:00 (activado
+  a las 19:23:58) y la política por defecto los creó el dueño sobre su emulador y siguen ahí hasta que él los cambie.
+
 ## Criterios de aceptación
 
 Cumplido = hecho y con evidencia observada; pendiente = con motivo (humano si lo es). Evidencia: `docs/sprint-60-evidence.md`.
