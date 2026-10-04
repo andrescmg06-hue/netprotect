@@ -34,6 +34,15 @@ function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/** S55: Inicio greets the tutor by first name (the h1 stays "Inicio"; the e2e reads it). Google
+ * may give no display name, so the greeting then starts with the sentence itself. */
+function overviewGreeting(user: CurrentUser): string {
+  const firstName = user.display_name?.trim().split(/\s+/)[0];
+  return firstName
+    ? `Hola, ${firstName}. Este es el estado de los dispositivos a tu cuidado.`
+    : "Este es el estado de los dispositivos a tu cuidado.";
+}
+
 /** Deep-linkable state without Next's dynamic routing: a plain URL hash
  * (#section=apps&device=<uuid>), read on mount and kept in sync with history.replaceState. This
  * avoids the Suspense-boundary requirement useSearchParams imposes on a fully client-rendered
@@ -236,7 +245,7 @@ export function DashboardShell({
           <PageHeader
             band
             title={activeDefinition.label}
-            description={activeDefinition.description}
+            description={activeSection === "overview" ? overviewGreeting(user) : activeDefinition.description}
             breadcrumb={activeSection === "overview" ? undefined : activeDefinition.label}
             aside={
               activeDefinition.perDevice && activeDevice ? (
@@ -283,7 +292,13 @@ export function DashboardShell({
           )}
 
           {activeSection === "devices" && (
-            <DevicesPanel accessToken={accessToken} state={devicesState} reload={reloadDevices} />
+            <DevicesPanel
+              accessToken={accessToken}
+              state={devicesState}
+              reload={reloadDevices}
+              onNavigate={navigate}
+              initialSelectedId={activeDeviceId}
+            />
           )}
 
           {activeSection === "pairing" && <PairingPanel accessToken={accessToken} />}

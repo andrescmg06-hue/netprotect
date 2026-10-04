@@ -1,111 +1,174 @@
+/* Sprint 55: editorial timeline. A container (not the viewport) decides the layout, so the same
+   component reads well in a wide panel and in a narrow column. */
 .timeline {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .day {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
+/* A heading, so it is serif by the global rule: the day reads like a dateline. */
 .dayLabel {
   margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: capitalize;
-  letter-spacing: 0.02em;
+  color: var(--color-navy);
+  font-size: var(--text-md);
 }
 
 .list {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  /* Column widths and the height of one text line, named once so the line, the node and the
+     time stay aligned in both layouts. --tl-time fits "10:45 p. m." in tabular figures. */
+  --tl-time: 5.25rem;
+  --tl-rail: var(--space-4);
+  --tl-gap: var(--space-3);
+  --tl-row: calc(var(--text-base) * 1.5);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.list::before {
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tl-time) var(--tl-rail) minmax(0, 1fr);
+  grid-template-areas: "time node body";
+  column-gap: var(--tl-gap);
+  padding-bottom: var(--space-5);
+}
+
+.item:last-child {
+  padding-bottom: 0;
+}
+
+/* The line: each event draws the stretch from its own node to the next one's, so it is continuous
+   within a day and never runs past the first or the last event. */
+.item:not(:last-child)::after {
   content: "";
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 13px;
-  width: 2px;
+  top: calc(var(--tl-row) / 2);
+  bottom: calc(var(--tl-row) / -2);
+  left: calc(var(--tl-time) + var(--tl-gap) + var(--tl-rail) / 2 - 0.5px);
+  width: 1px;
   background: var(--color-border);
 }
 
-.item {
-  position: relative;
+.time {
+  grid-area: time;
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--tl-row);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.marker {
+.timeDay {
+  color: var(--color-text-subtle);
+  line-height: 1.4;
+}
+
+.node {
+  grid-area: node;
   position: relative;
   z-index: 1;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid var(--color-surface);
+  height: var(--tl-row);
 }
 
-.marker.success {
-  background: var(--color-success-soft);
+.node::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+}
+
+/* The most recent event: the one blue point of the list. */
+.latest .node::before {
+  width: 11px;
+  height: 11px;
+  background: var(--color-primary);
+  outline: 3px solid var(--color-primary-soft);
+}
+
+.body {
+  grid-area: body;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-top: calc((var(--tl-row) - 15px) / 2);
+}
+
+.description {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.success {
   color: var(--color-success-text);
 }
 
-.marker.danger {
-  background: var(--color-danger-soft);
+.danger {
   color: var(--color-danger-text);
 }
 
-.marker.warning {
-  background: var(--color-warning-soft);
+.warning {
   color: var(--color-warning-text);
 }
 
-.marker.info {
-  background: var(--color-primary-soft);
+.info {
   color: var(--color-primary-text);
 }
 
-.marker.purple {
-  background: var(--color-purple-soft);
+.purple {
   color: var(--color-purple-text);
 }
 
-.marker.neutral {
-  background: var(--color-neutral-soft);
+.neutral {
   color: var(--color-text-muted);
 }
 
-.itemBody {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-top: 4px;
-}
+/* Narrow column or phone: the rail on the left, the time as a small first line above the title. */
+@container (max-width: 26rem) {
+  .item {
+    grid-template-columns: var(--tl-rail) minmax(0, 1fr);
+    grid-template-areas:
+      "node time"
+      ". body";
+  }
 
-.itemTitle {
-  color: var(--color-text);
-  font-size: var(--text-sm);
-}
+  .item:not(:last-child)::after {
+    left: calc(var(--tl-rail) / 2 - 0.5px);
+  }
 
-.itemTime {
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  white-space: nowrap;
+  .time {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
 }

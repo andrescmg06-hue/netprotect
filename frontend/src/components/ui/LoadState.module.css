@@ -1,0 +1,29 @@
+/* Sprint 55: one padding for every state, instead of four. No fill or box of its own: it sits on
+   whatever surface holds it (the cream page or an open panel). */
+.state {
+  padding: var(--space-4) 0;
+}
+
+/* A red rule on the left rather than a red box: the message is the signal, not the container. */
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-1) 0 var(--space-1) var(--space-4);
+  border-left: 2px solid var(--color-danger);
+}
+
+.message {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.quiet {
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
