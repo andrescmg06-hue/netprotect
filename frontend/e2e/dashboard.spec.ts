@@ -126,7 +126,10 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
     // so a late failed request cannot slip past it. Sections already visited by
     // the steps above (Inicio, Dispositivos, Vinculación, Reglas por aplicación) are not repeated.
     // "Alertas" is matched by prefix because its nav button gains a ", N sin leer" suffix when
-    // the device has unread alerts; every other label is matched exactly.
+    // the device has unread alerts; every other label is matched exactly. The suffix is a separate
+    // visually hidden <span>, so the computed accessible name is "Alertas , N sin leer" (a space
+    // BEFORE the comma): the regex must tolerate it. CI has no alerts, so it only ever sees the
+    // bare "Alertas"; a tutor with unread alerts (a real dev stack) hits the other branch.
     const sections: { label: string; name: string | RegExp }[] = [
       { label: "Perfil y sesión", name: "Perfil y sesión" },
       { label: "Apps del dispositivo", name: "Apps del dispositivo" },
@@ -136,7 +139,7 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
       { label: "Ubicación", name: "Ubicación" },
       { label: "Historial", name: "Historial" },
       { label: "Estadísticas", name: "Estadísticas" },
-      { label: "Alertas", name: /^Alertas(,|$)/ },
+      { label: "Alertas", name: /^Alertas(\s*,|$)/ },
       { label: "Silenciadas", name: "Silenciadas" },
       { label: "Auditoría", name: "Auditoría" },
       // Last on purpose: the next step continues on this section.
