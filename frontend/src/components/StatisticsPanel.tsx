@@ -1,40 +1,52 @@
 "use client";
 
-import { AppWindow, Ban, ChartBar, ChartPie, Clock, Gauge, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChartNoAxesColumn, RefreshCw } from "lucide-react";
+import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
 
-import {
-  AppIcon,
-  BarList,
-  Button,
-  ChartCard,
-  DonutChart,
-  MetricCard,
-  MetricGrid,
-  ProgressBar,
-  SegmentedControl,
-} from "@/components/ui";
+import { AppIcon, BarList, Button, DonutChart, EmptyState, ProgressBar, SegmentedControl, Spinner } from "@/components/ui";
 import {
   ApiError,
+  type AppliedRuleType,
   type DeviceStatisticsResponse,
   type StatisticsPeriod,
   getDeviceStatistics,
 } from "@/lib/apiClient";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categoryFormatting";
 import { chartColor } from "@/lib/chartColors";
-import { ruleTypeLabel } from "@/lib/ruleFormatting";
 
 import styles from "./StatisticsPanel.module.css";
 
+// `key` ties a result to the request that produced it ("<period>:<reloadToken>"). While it differs
+// from the current request a fetch is in flight: the panel shows a loading state instead of the
+// "sin datos" it used to flash, without a synchronous setState in the effect.
 type StatisticsState =
   | { kind: "loading" }
-  | { kind: "loaded"; data: DeviceStatisticsResponse }
-  | { kind: "error"; message: string };
+  | { kind: "loaded"; key: string; data: DeviceStatisticsResponse }
+  | { kind: "error"; key: string; message: string };
 
 const PERIOD_LABELS: Record<StatisticsPeriod, string> = {
   today: "Hoy",
   "7d": "7 días",
   "30d": "30 días",
+};
+
+const PERIOD_PHRASE: Record<StatisticsPeriod, string> = {
+  today: "hoy",
+  "7d": "en los últimos 7 días",
+  "30d": "en los últimos 30 días",
+};
+
+/** Why the device blocked an app, in the tutor's words (the shared ruleTypeLabel names the rule,
+ * which reads oddly as a reason: "Bloquear", "Sin aprobar"). */
+const BLOCK_REASON: Record<AppliedRuleType, string> = {
+  ALLOW: "Permitida",
+  BLOCK: "App bloqueada por una regla",
+  DAILY_LIMIT: "Límite diario alcanzado",
+  WEEKLY_LIMIT: "Límite semanal alcanzado",
+  SCHEDULE: "Fuera del horario permitido",
+  CATEGORY: "Regla de su categoría",
+  SCHOOL_MODE: "Horario escolar",
+  DEFAULT_POLICY: "App sin aprobar",
 };
 
 function describeError(error: unknown, fallback: string): string {
@@ -44,22 +56,43 @@ function describeError(error: unknown, fallback: string): string {
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (hours > 0) return `${hours} h ${minutes} min`;
+  if (hours > 0) return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
   if (minutes > 0) return `${minutes} min`;
-  return "< 1 min";
+  return totalSeconds > 0 ? "< 1 min" : "0 min";
+}
+
+function formatMinutes(minutes: number): string {
+  return formatDuration(minutes * 60);
 }
 
 function formatRate(rate: number | null): string {
-  return rate === null ? "sin datos" : `${Math.round(rate * 100)}%`;
+  return rate === null ? "sin datos" : `${Math.round(rate * 100)} %`;
 }
 
-/** Sprint 16 (logic), Sprint 37 (design): on-the-fly aggregates over data that already existed —
- * DeviceApplicationUsage (apps más usadas / por categoría), AppRuleEvent (bloqueos) and
- * AppRule/CategoryRule DAILY_LIMIT rows (cumplimiento) — read through GET
- * /devices/{id}/statistics. Charts are ChartCard/DonutChart/BarList/ProgressBar (T4, hand-made
- * SVG, no library): the response is already aggregated lists per period, not a time series, so
- * these three shapes cover it without needing an axis or a real charting engine.
- */
+/** range_start/range_end are server UTC dates ("YYYY-MM-DD", Sprint 16): formatted in UTC so a
+ * tutor west of Greenwich doesn't see the day before. */
+function formatRange(start: string, end: string): string {
+  const format = (value: string, withYear: boolean) =>
+    new Date(`${value}T00:00:00Z`).toLocaleDateString("es-CO", {
+      day: "numeric",
+      month: "short",
+      ...(withYear ? { year: "numeric" } : {}),
+      timeZone: "UTC",
+    });
+  return start === end ? format(end, true) : `${format(start, false)} – ${format(end, true)}`;
+}
+
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Sprint 16 (logic), Sprint 37 (charts), Sprint 58 (editorial recomposition): on-the-fly
+ * aggregates over data that already existed — DeviceApplicationUsage (apps más usadas / por
+ * categoría), AppRuleEvent (bloqueos) and DAILY_LIMIT rules (cumplimiento) — read through GET
+ * /devices/{id}/statistics. Read as a page, not a dashboard: one figure (total use, the exact sum
+ * of categories[] — top_apps stops at ten) and then four sections on a two-column rail, label on
+ * the left, data on the right, separated by hairlines. The response has no per-day or per-hour
+ * series and no previous period, so there are no time charts or comparisons. */
 export function StatisticsPanel({
   accessToken,
   deviceId,
@@ -70,20 +103,23 @@ export function StatisticsPanel({
   const [period, setPeriod] = useState<StatisticsPeriod>("today");
   const [state, setState] = useState<StatisticsState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
+  const requestKey = `${period}:${reloadToken}`;
 
   useEffect(() => {
     let cancelled = false;
+    const key = `${period}:${reloadToken}`;
 
     getDeviceStatistics(accessToken, deviceId, period)
       .then((data) => {
         if (!cancelled) {
-          setState({ kind: "loaded", data });
+          setState({ kind: "loaded", key, data });
         }
       })
       .catch((error) => {
         if (!cancelled) {
           setState({
             kind: "error",
+            key,
             message: describeError(error, "No se pudieron cargar las estadísticas"),
           });
         }
@@ -94,34 +130,37 @@ export function StatisticsPanel({
     };
   }, [accessToken, deviceId, period, reloadToken]);
 
-  const data = state.kind === "loaded" ? state.data : null;
+  const settled = state.kind !== "loading" && state.key === requestKey;
+  const data = state.kind === "loaded" && settled ? state.data : null;
 
-  const metrics = useMemo(() => {
-    if (!data) return { totalSeconds: 0, appsWithUsage: 0, totalBlocks: 0, avgCompliance: null as number | null };
+  const reading = useMemo(() => {
+    if (!data) return null;
     const totalSeconds = data.categories.reduce((sum, entry) => sum + entry.total_seconds, 0);
     const totalBlocks = data.blocks_by_reason.reduce((sum, entry) => sum + entry.count, 0);
-    const rates = data.compliance.map((entry) => entry.compliance_rate).filter((rate): rate is number => rate !== null);
-    const avgCompliance = rates.length > 0 ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length : null;
-    return { totalSeconds, appsWithUsage: data.top_apps.length, totalBlocks, avgCompliance };
+    const categories = data.categories
+      .filter((entry) => entry.total_seconds > 0)
+      .sort((a, b) => b.total_seconds - a.total_seconds)
+      .map((entry) => ({
+        key: entry.category ?? "SIN_CATEGORIA",
+        label: entry.category ? CATEGORY_LABELS[entry.category] : "Sin categoría",
+        value: entry.total_seconds,
+        // Stable colour per category (its catalogue position), whatever its rank this period.
+        color: chartColor(entry.category ? CATEGORIES.indexOf(entry.category) : CATEGORIES.length),
+      }));
+    const blocks = [...data.blocks_by_reason].sort((a, b) => b.count - a.count);
+    const appLabels = Object.fromEntries(
+      data.top_apps.map((entry) => [entry.package_name, entry.app_label ?? entry.package_name])
+    );
+    return { totalSeconds, totalBlocks, categories, blocks, appLabels };
   }, [data]);
 
-  const categorySegments = useMemo(
-    () =>
-      (data?.categories ?? []).map((entry) => {
-        const index = entry.category ? CATEGORIES.indexOf(entry.category) : CATEGORIES.length;
-        return {
-          key: entry.category ?? "SIN_CATEGORIA",
-          label: entry.category ? CATEGORY_LABELS[entry.category] : "Sin categoría",
-          value: entry.total_seconds,
-          color: chartColor(index),
-        };
-      }),
-    [data]
-  );
+  function reload() {
+    setReloadToken((current) => current + 1);
+  }
 
-  return (
-    <>
-      <div className={styles.controls}>
+  const periodControl = (
+    <div className={styles.toolbar}>
+      <div className={styles.periodGroup}>
         <SegmentedControl
           label="Periodo"
           value={period}
@@ -131,46 +170,94 @@ export function StatisticsPanel({
             label: PERIOD_LABELS[value],
           }))}
         />
-        <Button size="sm" icon={RefreshCw} onClick={() => setReloadToken((current) => current + 1)}>
-          Actualizar
-        </Button>
+        {data && <span className={styles.range}>{formatRange(data.range_start, data.range_end)}</span>}
       </div>
+      <Button size="sm" variant="ghost" icon={RefreshCw} loading={!settled && state.kind !== "loading"} onClick={reload}>
+        Actualizar
+      </Button>
+    </div>
+  );
 
-      {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
+  if (!settled) {
+    return (
+      <div className={styles.panel}>
+        {periodControl}
+        <div className={styles.status} aria-busy="true">
+          <Spinner label="Cargando estadísticas…" />
+        </div>
+      </div>
+    );
+  }
 
-      <MetricGrid>
-        <MetricCard icon={Clock} tone="info" label="Tiempo total de uso" value={formatDuration(metrics.totalSeconds)} />
-        <MetricCard icon={AppWindow} tone="purple" label="Apps con uso" value={metrics.appsWithUsage} />
-        <MetricCard icon={Ban} tone="danger" label="Bloqueos" value={metrics.totalBlocks} />
-        <MetricCard icon={Gauge} tone="success" label="Cumplimiento promedio" value={formatRate(metrics.avgCompliance)} />
-      </MetricGrid>
+  if (state.kind === "error") {
+    return (
+      <div className={styles.panel}>
+        {periodControl}
+        <div className={styles.status}>
+          <p className={styles.error}>{state.message}</p>
+          <Button size="sm" icon={RefreshCw} onClick={reload}>
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-      <div className={styles.columns}>
-        <ChartCard
-          icon={ChartPie}
-          title="Uso por categoría"
-          subtitle={PERIOD_LABELS[period]}
-          isEmpty={data ? categorySegments.every((segment) => segment.value === 0) : true}
-          emptyLabel="Sin datos de uso en este periodo"
-        >
-          <DonutChart
-            label="Uso por categoría"
-            segments={categorySegments}
-            centerValue={formatDuration(metrics.totalSeconds)}
-            centerLabel="total"
-            formatValue={formatDuration}
+  if (!data || !reading) return null;
+
+  const nothingYet =
+    reading.totalSeconds === 0 && data.top_apps.length === 0 && reading.blocks.length === 0 && data.compliance.length === 0;
+
+  if (nothingYet) {
+    return (
+      <div className={styles.panel}>
+        {periodControl}
+        <div className={styles.status}>
+          <EmptyState
+            icon={ChartNoAxesColumn}
+            title={`Sin actividad registrada ${PERIOD_PHRASE[period]}`}
+            description="Cuando el dispositivo reporte uso de apps o aplique una regla, aquí verás cuánto tiempo se usó, en qué y qué se bloqueó."
           />
-        </ChartCard>
+        </div>
+      </div>
+    );
+  }
 
-        <ChartCard
-          icon={ChartBar}
-          title="Apps más usadas"
-          subtitle={PERIOD_LABELS[period]}
-          isEmpty={!data || data.top_apps.length === 0}
-          emptyLabel="Sin datos de uso en este periodo"
-        >
+  const topCategory = reading.categories[0];
+  const topShare = topCategory && reading.totalSeconds > 0 ? Math.round((topCategory.value / reading.totalSeconds) * 100) : 0;
+
+  return (
+    <div className={styles.panel}>
+      {periodControl}
+
+      <section className={styles.lead} aria-label="Tiempo de uso">
+        <p className={`eyebrow ${styles.leadLabel}`}>Tiempo de uso</p>
+        <div className={styles.leadBody}>
+          <p className={styles.figure}>{formatDuration(reading.totalSeconds)}</p>
+          <p className={styles.sentence}>
+            {topCategory
+              ? `Usado ${PERIOD_PHRASE[period]}; la mayor parte en ${topCategory.label} (${formatDuration(topCategory.value)}).`
+              : `Sin uso reportado ${PERIOD_PHRASE[period]}.`}{" "}
+            {reading.totalBlocks === 0
+              ? "No se aplicó ningún bloqueo."
+              : `El dispositivo aplicó ${plural(reading.totalBlocks, "bloqueo", "bloqueos")}.`}
+          </p>
+        </div>
+      </section>
+
+      <RailSection
+        title="Apps más usadas"
+        description={
+          data.top_apps.length > 0
+            ? `${data.top_apps.length === 1 ? "La app" : `Las ${data.top_apps.length} apps`} con más tiempo en el periodo.`
+            : undefined
+        }
+      >
+        {data.top_apps.length === 0 ? (
+          <p className={styles.quiet}>Sin uso de apps reportado en este periodo.</p>
+        ) : (
           <BarList
-            items={(data?.top_apps ?? []).map((entry, index) => ({
+            items={data.top_apps.map((entry) => ({
               key: entry.package_name,
               label: (
                 <span className={styles.appCell}>
@@ -179,58 +266,97 @@ export function StatisticsPanel({
                 </span>
               ),
               value: entry.total_seconds,
-              color: chartColor(index),
+              color: "var(--color-navy)",
             }))}
             formatValue={formatDuration}
           />
-        </ChartCard>
-      </div>
+        )}
+      </RailSection>
 
-      <div className={styles.columns}>
-        <ChartCard
-          icon={Ban}
-          title="Bloqueos por tipo"
-          subtitle={PERIOD_LABELS[period]}
-          isEmpty={!data || data.blocks_by_reason.length === 0}
-          emptyLabel="Ningún bloqueo registrado en este periodo"
-        >
-          <BarList
-            items={(data?.blocks_by_reason ?? []).map((entry, index) => ({
-              key: entry.rule_type_applied,
-              label: ruleTypeLabel(entry.rule_type_applied),
-              value: entry.count,
-              color: chartColor(index),
-            }))}
+      <RailSection title="Por categoría" description="Todo el tiempo de uso, según la categoría de cada app.">
+        {reading.categories.length === 0 ? (
+          <p className={styles.quiet}>Sin uso de apps reportado en este periodo.</p>
+        ) : (
+          <DonutChart
+            label="Uso por categoría"
+            segments={reading.categories}
+            centerValue={`${topShare} %`}
+            centerLabel={topCategory?.label}
+            formatValue={formatDuration}
           />
-        </ChartCard>
+        )}
+      </RailSection>
 
-        <ChartCard
-          icon={Gauge}
-          title="Cumplimiento de límites diarios"
-          isEmpty={!data || data.compliance.length === 0}
-          emptyLabel="No hay reglas de límite diario configuradas"
-        >
+      <RailSection title="Bloqueos" description="Cuántas veces el dispositivo cerró una app, según el motivo.">
+        {reading.blocks.length === 0 ? (
+          <p className={styles.quiet}>Ningún bloqueo en este periodo.</p>
+        ) : (
+          <dl className={styles.ledger}>
+            {reading.blocks.map((entry) => (
+              <div key={entry.rule_type_applied} className={styles.ledgerRow}>
+                <dt>{BLOCK_REASON[entry.rule_type_applied]}</dt>
+                <dd>{entry.count}</dd>
+              </div>
+            ))}
+            <div className={`${styles.ledgerRow} ${styles.ledgerTotal}`}>
+              <dt>Total</dt>
+              <dd>{reading.totalBlocks}</dd>
+            </div>
+          </dl>
+        )}
+      </RailSection>
+
+      <RailSection
+        title="Límites diarios"
+        description="Días en que se respetó cada límite diario. Un día sin uso reportado no cuenta ni a favor ni en contra."
+      >
+        {data.compliance.length === 0 ? (
+          <p className={styles.quiet}>No hay límites diarios configurados.</p>
+        ) : (
           <div className={styles.complianceList}>
-            {(data?.compliance ?? []).map((entry) => (
+            {data.compliance.map((entry) => (
               <ProgressBar
                 key={`${entry.scope}-${entry.package_name ?? entry.category}`}
-                label={entry.scope === "APP" ? entry.package_name : entry.category ? CATEGORY_LABELS[entry.category] : "Sin categoría"}
-                detail={`${formatRate(entry.compliance_rate)} · ${entry.days_compliant}/${entry.days_evaluated} días (límite ${entry.daily_limit_minutes} min/día)`}
-                value={entry.compliance_rate}
-                tone={
-                  entry.compliance_rate === null
-                    ? "neutral"
-                    : entry.compliance_rate >= 0.8
-                      ? "success"
-                      : entry.compliance_rate >= 0.5
-                        ? "warning"
-                        : "danger"
+                label={
+                  entry.scope === "APP"
+                    ? (reading.appLabels[entry.package_name ?? ""] ?? entry.package_name ?? "App")
+                    : entry.category
+                      ? CATEGORY_LABELS[entry.category]
+                      : "Sin categoría"
                 }
+                detail={
+                  entry.compliance_rate === null
+                    ? `Sin datos · límite ${formatMinutes(entry.daily_limit_minutes)} al día`
+                    : `${formatRate(entry.compliance_rate)} · ${entry.days_compliant} de ${plural(
+                        entry.days_evaluated,
+                        "día",
+                        "días"
+                      )} · límite ${formatMinutes(entry.daily_limit_minutes)} al día`
+                }
+                value={entry.compliance_rate}
+                tone={entry.compliance_rate === null ? "neutral" : entry.compliance_rate >= 0.8 ? "success" : "warning"}
               />
             ))}
           </div>
-        </ChartCard>
+        )}
+      </RailSection>
+
+      <p className={styles.footnote}>Los periodos se cuentan en días completos según la hora UTC del servidor.</p>
+    </div>
+  );
+}
+
+function RailSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  const titleId = useId();
+  return (
+    <section className={styles.section} aria-labelledby={titleId}>
+      <div className={styles.sectionHead}>
+        <h2 id={titleId} className={styles.sectionTitle}>
+          {title}
+        </h2>
+        {description && <p className={styles.sectionDescription}>{description}</p>}
       </div>
-    </>
+      <div className={styles.sectionBody}>{children}</div>
+    </section>
   );
 }

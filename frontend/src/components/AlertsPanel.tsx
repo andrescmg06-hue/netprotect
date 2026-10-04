@@ -1,22 +1,17 @@
 "use client";
 
-import { Bell, BellOff, Check, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Bell, BellOff, Check, RefreshCw } from "lucide-react";
+import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { Button, EmptyState, Spinner, StatusBadge } from "@/components/ui";
 import {
-  Button,
-  Card,
-  CardHeader,
-  type Column,
-  DataTable,
-  EmptyState,
-  MetricCard,
-  MetricGrid,
-  SegmentedControl,
-  Spinner,
-  StatusBadge,
-} from "@/components/ui";
-import { ALERT_LEVEL_ICON, ALERT_LEVEL_LABEL, ALERT_LEVEL_TONE, alertLabel, silenceLabel } from "@/lib/alertFormatting";
+  ALERT_LEVELS,
+  ALERT_LEVEL_ICON,
+  ALERT_LEVEL_LABEL,
+  ALERT_LEVEL_TONE,
+  alertLabel,
+  silenceLabel,
+} from "@/lib/alertFormatting";
 import {
   type Alert,
   type AlertLevel,
@@ -25,6 +20,7 @@ import {
   deleteAlertSilence,
   listAlertSilences,
   listDeviceAlerts,
+  listDevices,
   listGeofences,
   markAlertRead,
   silenceAlert,
@@ -32,28 +28,71 @@ import {
 
 import styles from "./AlertsPanel.module.css";
 
+// `key` is the reloadToken the result belongs to: while it differs from the current one a
+// refresh is in flight, which lets "Actualizar" show progress without a synchronous setState
+// in the effect (react-hooks/set-state-in-effect).
 type AlertsState =
   | { kind: "loading" }
-  | { kind: "loaded"; alerts: Alert[]; silences: AlertSilence[] }
-  | { kind: "error"; message: string };
+  | { kind: "loaded"; key: number; alerts: Alert[]; silences: AlertSilence[] }
+  | { kind: "error"; key: number; message: string };
 
-const LEVELS: AlertLevel[] = ["INFO", "WARNING", "HIGH", "CRITICAL"];
+type LevelFilter = AlertLevel | "ALL";
+
+const LEVEL_CLASS: Record<AlertLevel, string> = {
+  INFO: styles.levelInfo,
+  WARNING: styles.levelWarning,
+  HIGH: styles.levelHigh,
+  CRITICAL: styles.levelCritical,
+};
 
 function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** Sprint 17 (logic), Sprint 37 (design): a tutor inbox generated from signals that already
- * existed (bloqueos de reglas, entradas/salidas de geocercas, señales de manipulación) — read
- * through GET /devices/{id}/alerts, deduplicated server-side while unread. Marking read and
- * silenciar son acciones de tutor, sólo desde el panel web.
+function formatShort(iso: string): string {
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatLong(iso: string): string {
+  return new Date(iso).toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" });
+}
+
+function timesLabel(count: number): string {
+  return count === 1 ? "1 vez" : `${count} veces`;
+}
+
+/** Light line composition for the empty states (D6: the package has no bell drawings yet): a
+ * lucide icon inside a hairline ring, with an optional small companion mark. Decorative only. */
+function BellIllustration({ off = false }: { off?: boolean }) {
+  const Icon = off ? BellOff : Bell;
+  return (
+    <span className={styles.illustration} aria-hidden="true">
+      <Icon size={36} strokeWidth={1.25} />
+      {!off && (
+        <span className={styles.illustrationMark}>
+          <Check size={12} strokeWidth={2} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Sprint 17 (logic), Sprint 37 (design), Sprint 58 (editorial recomposition): a tutor inbox
+ * generated from signals that already existed (bloqueos de reglas, entradas/salidas de geocercas,
+ * señales de manipulación) — read through GET /devices/{id}/alerts, deduplicated server-side while
+ * unread. Marking read and silenciar son acciones de tutor, sólo desde el panel web.
  *
  * `view` splits this into two dashboard sections without splitting the fetch (Sprint 24): both
  * still load in one Promise.all, since silencing an alert here needs to update the "está
- * silenciada" state on the same alert list. "inbox" is a master-detail list (no calendario de
- * silencios en el mockup — plan-frontend.md regla 1: no existe, se omite; silenciar sigue siendo
- * indefinido, como desde el Sprint 17); "silenced" resolves each dedup_key into the app/zona a
- * tutor recognizes via a small local geofence-name lookup.
+ * silenciada" state on the same alert list. "inbox" is a level strip (counts that double as the
+ * filter) over a master-detail list; "silenced" is a plain ledger of silences with when each one
+ * warns again. No calendar, no "silenced on" date and no "silence an alert" button: the API keeps
+ * no creation date and a silence only exists from a real alert (docs/redesign/fase-0-informe.md §5).
  */
 export function AlertsPanel({
   accessToken,
@@ -66,9 +105,10 @@ export function AlertsPanel({
 }) {
   const [state, setState] = useState<AlertsState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
-  const [levelFilter, setLevelFilter] = useState<AlertLevel | "ALL">("ALL");
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geofenceNames, setGeofenceNames] = useState<Record<string, string>>({});
+  const [deviceName, setDeviceName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,12 +116,17 @@ export function AlertsPanel({
     Promise.all([listDeviceAlerts(accessToken, deviceId), listAlertSilences(accessToken, deviceId)])
       .then(([alertsResponse, silencesResponse]) => {
         if (!cancelled) {
-          setState({ kind: "loaded", alerts: alertsResponse.alerts, silences: silencesResponse.silences });
+          setState({
+            kind: "loaded",
+            key: reloadToken,
+            alerts: alertsResponse.alerts,
+            silences: silencesResponse.silences,
+          });
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          setState({ kind: "error", message: describeError(error, "No se pudieron cargar las alertas") });
+          setState({ kind: "error", key: reloadToken, message: describeError(error, "No se pudieron cargar las alertas") });
         }
       });
 
@@ -109,22 +154,56 @@ export function AlertsPanel({
     };
   }, [accessToken, deviceId, view, reloadToken]);
 
-  const alerts = useMemo(() => (state.kind === "loaded" ? state.alerts : []), [state]);
-  const silences = state.kind === "loaded" ? state.silences : [];
+  // Best-effort device name for the detail pane (the panel only receives the id). A failure just
+  // leaves the row out; the device card in the page header still names the device.
+  useEffect(() => {
+    if (view !== "inbox") return;
+    let cancelled = false;
 
+    listDevices(accessToken)
+      .then(({ devices }) => {
+        if (!cancelled) {
+          setDeviceName(devices.find((device) => device.id === deviceId)?.name ?? null);
+        }
+      })
+      .catch(() => {
+        // Optional detail: nothing to report.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, deviceId, view]);
+
+  const refreshing = state.kind === "loading" || state.key !== reloadToken;
+  const alerts = useMemo(() => (state.kind === "loaded" ? state.alerts : []), [state]);
+  const silences = useMemo(() => (state.kind === "loaded" ? state.silences : []), [state]);
+
+  // "Más recientes" is the only order the mockup offers, so it is applied, not offered.
+  const sortedAlerts = useMemo(
+    () => [...alerts].sort((a, b) => Date.parse(b.last_occurred_at) - Date.parse(a.last_occurred_at)),
+    [alerts]
+  );
   const filteredAlerts = useMemo(
-    () => (levelFilter === "ALL" ? alerts : alerts.filter((alert) => alert.level === levelFilter)),
-    [alerts, levelFilter]
+    () => (levelFilter === "ALL" ? sortedAlerts : sortedAlerts.filter((alert) => alert.level === levelFilter)),
+    [sortedAlerts, levelFilter]
   );
   const selectedAlert = useMemo(
     () => filteredAlerts.find((alert) => alert.id === selectedId) ?? filteredAlerts[0] ?? null,
     [filteredAlerts, selectedId]
   );
-  const levelCounts = useMemo(() => {
-    const counts: Record<AlertLevel, number> = { INFO: 0, WARNING: 0, HIGH: 0, CRITICAL: 0 };
-    for (const alert of alerts) counts[alert.level] += 1;
-    return counts;
-  }, [alerts]);
+  const levelCounts = useMemo(
+    () =>
+      alerts.reduce<Record<AlertLevel, number>>(
+        (counts, alert) => ({ ...counts, [alert.level]: counts[alert.level] + 1 }),
+        { INFO: 0, WARNING: 0, HIGH: 0, CRITICAL: 0 }
+      ),
+    [alerts]
+  );
+  const silenceByKey = useMemo(
+    () => Object.fromEntries(silences.map((silence) => [silence.dedup_key, silence])),
+    [silences]
+  );
 
   function reload() {
     setReloadToken((current) => current + 1);
@@ -148,113 +227,154 @@ export function AlertsPanel({
       .catch(reload);
   }
 
-  if (view === "silenced") {
-    const silenceColumns: Column<AlertSilence>[] = [
-      {
-        key: "what",
-        header: "Alerta silenciada",
-        primary: true,
-        render: (silence) => silenceLabel(silence.dedup_key, geofenceNames),
-      },
-      {
-        key: "until",
-        header: "Vence",
-        render: (silence) =>
-          silence.silenced_until ? new Date(silence.silenced_until).toLocaleString("es-CO") : "Indefinido",
-      },
-      {
-        key: "actions",
-        header: "",
-        align: "right",
-        render: (silence) => (
-          <Button size="sm" variant="ghost" icon={Bell} onClick={() => handleUnsilence(silence.id)}>
-            Reactivar
-          </Button>
-        ),
-      },
-    ];
+  const refreshButton = (
+    <Button size="sm" variant="ghost" icon={RefreshCw} loading={refreshing && state.kind !== "loading"} onClick={reload}>
+      Actualizar
+    </Button>
+  );
 
+  if (state.kind === "loading") {
     return (
-      <Card padding="none">
-        <div className={styles.cardHead}>
-          <CardHeader
-            icon={BellOff}
-            title="Alertas silenciadas"
-            actions={
-              <Button size="sm" icon={RefreshCw} onClick={reload}>
-                Actualizar
-              </Button>
-            }
-          />
-        </div>
-        {state.kind === "loading" && (
-          <div className={styles.emptyWrap}>
-            <Spinner label="Cargando…" />
-          </div>
-        )}
-        {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
-        {state.kind === "loaded" && silences.length === 0 && (
-          <div className={styles.emptyWrap}>
-            <EmptyState icon={BellOff} title="No hay ninguna alerta silenciada en este dispositivo" />
-          </div>
-        )}
-        {state.kind === "loaded" && silences.length > 0 && (
-          <DataTable columns={silenceColumns} rows={silences} rowKey={(silence) => silence.id} />
-        )}
-      </Card>
+      <div className={styles.status}>
+        <Spinner label={view === "silenced" ? "Cargando alertas silenciadas…" : "Cargando alertas…"} />
+      </div>
     );
   }
 
-  return (
-    <>
-      <MetricGrid>
-        {LEVELS.map((level) => (
-          <MetricCard
-            key={level}
-            icon={ALERT_LEVEL_ICON[level]}
-            tone={ALERT_LEVEL_TONE[level]}
-            label={ALERT_LEVEL_LABEL[level]}
-            value={levelCounts[level]}
-          />
-        ))}
-      </MetricGrid>
-
-      <div className={styles.controls}>
-        <SegmentedControl
-          label="Filtrar por nivel"
-          value={levelFilter}
-          onChange={setLevelFilter}
-          options={[
-            { value: "ALL" as const, label: "Todas" },
-            ...LEVELS.map((level) => ({ value: level, label: ALERT_LEVEL_LABEL[level] })),
-          ]}
-        />
-        <Button size="sm" icon={RefreshCw} onClick={reload}>
-          Actualizar
+  if (state.kind === "error") {
+    return (
+      <div className={styles.status}>
+        <p className={styles.error}>{state.message}</p>
+        <Button size="sm" icon={RefreshCw} loading={refreshing} onClick={reload}>
+          Reintentar
         </Button>
       </div>
+    );
+  }
 
-      <div className={styles.columns}>
-        <Card padding="none">
-          <div className={styles.cardHead}>
-            <CardHeader icon={Bell} title="Bandeja" />
+  const alertsHref = `#${new URLSearchParams({ section: "alerts", device: deviceId }).toString()}`;
+
+  if (view === "silenced") {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.toolbar}>
+          <p className={styles.caption}>
+            {silences.length === 0
+              ? "Ningún aviso silenciado en este dispositivo."
+              : silences.length === 1
+                ? "1 aviso silenciado en este dispositivo."
+                : `${silences.length} avisos silenciados en este dispositivo.`}
+          </p>
+          {refreshButton}
+        </div>
+
+        {silences.length === 0 ? (
+          <div className={styles.emptyBlock}>
+            <EmptyState
+              icon={BellOff}
+              illustration={<BellIllustration off />}
+              title="No hay alertas silenciadas"
+              description="Cuando silencies un aviso desde Alertas, aparecerá aquí con la fecha en que vuelve a avisar."
+              action={
+                <a className={styles.quietLink} href={alertsHref}>
+                  Ir a Alertas
+                  <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
+                </a>
+              }
+            />
           </div>
-          {state.kind === "loading" && (
-            <div className={styles.emptyWrap}>
-              <Spinner label="Cargando…" />
+        ) : (
+          <>
+            <ul className={styles.silenceList}>
+              {silences.map((silence) => (
+                <li key={silence.id} className={styles.silenceRow}>
+                  <BellOff className={styles.silenceIcon} size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span className={styles.silenceWhat}>{silenceLabel(silence.dedup_key, geofenceNames)}</span>
+                  <span className={styles.silenceUntil}>
+                    <span className={styles.fieldLabel}>Vuelve a avisar</span>
+                    <span className={styles.fieldValue}>
+                      {silence.silenced_until ? formatLong(silence.silenced_until) : "Indefinido"}
+                    </span>
+                  </span>
+                  <span className={styles.silenceAction}>
+                    <Button size="sm" variant="ghost" icon={Bell} onClick={() => handleUnsilence(silence.id)}>
+                      Reactivar
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.footnote}>
+              Un aviso se silencia desde su detalle en Alertas.{" "}
+              <a className={styles.quietLink} href={alertsHref}>
+                Ir a Alertas
+                <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
+              </a>
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (alerts.length === 0) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.toolbar}>
+          <p className={styles.caption}>Bandeja del dispositivo</p>
+          {refreshButton}
+        </div>
+        <div className={styles.emptyBlock}>
+          <EmptyState
+            icon={Bell}
+            illustration={<BellIllustration />}
+            title="No hay alertas"
+            description="Cuando el dispositivo genere un aviso (un bloqueo, una entrada o salida de una zona o una señal de manipulación) aparecerá aquí."
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const detail = selectedAlert ? (
+    <AlertDetail
+      alert={selectedAlert}
+      deviceName={deviceName}
+      silence={silenceByKey[selectedAlert.dedup_key] ?? null}
+      onRead={() => handleRead(selectedAlert.id)}
+      onSilence={() => handleSilence(selectedAlert.id)}
+    />
+  ) : null;
+
+  return (
+    <div className={styles.panel}>
+      <LevelStrip value={levelFilter} onChange={setLevelFilter} counts={levelCounts} total={alerts.length} />
+
+      <div className={styles.toolbar}>
+        <p className={styles.caption}>Del más reciente al más antiguo</p>
+        {refreshButton}
+      </div>
+
+      <div className={styles.inbox}>
+        <div className={styles.master}>
+          {filteredAlerts.length === 0 ? (
+            <div className={styles.emptyBlock}>
+              <EmptyState
+                icon={Bell}
+                title={`Ningún aviso de nivel ${ALERT_LEVEL_LABEL[levelFilter as AlertLevel]}`}
+                action={
+                  <Button size="sm" variant="ghost" onClick={() => setLevelFilter("ALL")}>
+                    Ver todas
+                  </Button>
+                }
+              />
             </div>
-          )}
-          {state.kind === "error" && <p className={styles.error}>{state.message}</p>}
-          {state.kind === "loaded" && filteredAlerts.length === 0 && (
-            <div className={styles.emptyWrap}>
-              <EmptyState icon={Bell} title="Sin alertas para este filtro" />
-            </div>
-          )}
-          {state.kind === "loaded" && filteredAlerts.length > 0 && (
+          ) : (
             <ul className={styles.list}>
               {filteredAlerts.map((alert) => {
                 const Icon = ALERT_LEVEL_ICON[alert.level];
                 const selected = selectedAlert?.id === alert.id;
+                const unread = !alert.read_at;
                 return (
                   <li key={alert.id}>
                     <button
@@ -263,73 +383,186 @@ export function AlertsPanel({
                       aria-current={selected ? "true" : undefined}
                       onClick={() => setSelectedId(alert.id)}
                     >
-                      <span className={`${styles.rowIcon} ${styles[ALERT_LEVEL_TONE[alert.level]]}`}>
-                        <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                      <span className={`${styles.rowIcon} ${LEVEL_CLASS[alert.level]}`}>
+                        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
                       </span>
                       <span className={styles.rowBody}>
-                        <span className={styles.rowTitle}>
-                          {!alert.read_at && <span className={styles.unreadDot} aria-hidden="true" />}
+                        <span className={unread ? `${styles.rowTitle} ${styles.rowUnread}` : styles.rowTitle}>
                           {alertLabel(alert)}
                         </span>
                         <span className={styles.rowMeta}>
-                          {new Date(alert.last_occurred_at).toLocaleString("es-CO")}
-                          {alert.occurrence_count > 1 ? ` · x${alert.occurrence_count}` : ""}
+                          <span className={`${styles.levelWord} ${LEVEL_CLASS[alert.level]}`}>
+                            {ALERT_LEVEL_LABEL[alert.level]}
+                          </span>
+                          {alert.occurrence_count > 1 && <span> · {timesLabel(alert.occurrence_count)}</span>}
+                          {unread && <span> · Sin leer</span>}
                         </span>
                       </span>
+                      <span className={styles.rowTime}>
+                        {formatShort(alert.last_occurred_at)}
+                        {unread && <span className={styles.unreadDot} aria-hidden="true" />}
+                      </span>
                     </button>
+                    {selected && <div className={styles.inlineDetail}>{detail}</div>}
                   </li>
                 );
               })}
             </ul>
           )}
-        </Card>
+        </div>
 
-        <Card>
-          {selectedAlert ? (
-            <>
-              <CardHeader
-                icon={ALERT_LEVEL_ICON[selectedAlert.level]}
-                title={alertLabel(selectedAlert)}
-                actions={<StatusBadge tone={ALERT_LEVEL_TONE[selectedAlert.level]}>{ALERT_LEVEL_LABEL[selectedAlert.level]}</StatusBadge>}
-              />
-              <dl className={styles.detailList}>
-                <div className={styles.detailRow}>
-                  <dt>Primera vez</dt>
-                  <dd>{new Date(selectedAlert.first_occurred_at).toLocaleString("es-CO")}</dd>
-                </div>
-                <div className={styles.detailRow}>
-                  <dt>Última vez</dt>
-                  <dd>{new Date(selectedAlert.last_occurred_at).toLocaleString("es-CO")}</dd>
-                </div>
-                <div className={styles.detailRow}>
-                  <dt>Repeticiones</dt>
-                  <dd>{selectedAlert.occurrence_count}</dd>
-                </div>
-                <div className={styles.detailRow}>
-                  <dt>Estado</dt>
-                  <dd>
-                    {selectedAlert.read_at
-                      ? `Leída (${new Date(selectedAlert.read_at).toLocaleString("es-CO")})`
-                      : "Sin leer"}
-                  </dd>
-                </div>
-              </dl>
-              <div className={styles.detailActions}>
-                {!selectedAlert.read_at && (
-                  <Button icon={Check} onClick={() => handleRead(selectedAlert.id)}>
-                    Marcar leída
-                  </Button>
-                )}
-                <Button variant="secondary" icon={BellOff} onClick={() => handleSilence(selectedAlert.id)}>
-                  Silenciar
-                </Button>
-              </div>
-            </>
-          ) : (
-            <EmptyState icon={Bell} title="Selecciona una alerta para ver su detalle" />
+        <aside className={styles.aside} aria-label="Detalle de la alerta">
+          {detail ?? (
+            <EmptyState icon={Bell} title="Selecciona una alerta" description="Elige un aviso de la lista para ver su detalle." />
           )}
-        </Card>
+        </aside>
       </div>
-    </>
+    </div>
+  );
+}
+
+/** The level hierarchy as one quiet strip: each level's real count, and the strip is also the
+ * filter (radio-group keyboard pattern, same as SegmentedControl) — one element instead of a row
+ * of metric cards plus a row of tabs. */
+function LevelStrip({
+  value,
+  onChange,
+  counts,
+  total,
+}: {
+  value: LevelFilter;
+  onChange: (value: LevelFilter) => void;
+  counts: Record<AlertLevel, number>;
+  total: number;
+}) {
+  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const options: { value: LevelFilter; label: string; count: number }[] = [
+    { value: "ALL", label: "Todas", count: total },
+    ...ALERT_LEVELS.map((level) => ({ value: level as LevelFilter, label: ALERT_LEVEL_LABEL[level], count: counts[level] })),
+  ];
+
+  function select(index: number) {
+    const next = (index + options.length) % options.length;
+    onChange(options[next].value);
+    buttonsRef.current[next]?.focus();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const moves: Record<string, number> = {
+      ArrowRight: index + 1,
+      ArrowDown: index + 1,
+      ArrowLeft: index - 1,
+      ArrowUp: index - 1,
+      Home: 0,
+      End: options.length - 1,
+    };
+    if (event.key in moves) {
+      event.preventDefault();
+      select(moves[event.key]);
+    }
+  }
+
+  return (
+    <div className={styles.strip} role="radiogroup" aria-label="Filtrar por nivel">
+      {options.map((option, index) => {
+        const selected = option.value === value;
+        const Icon = option.value === "ALL" ? null : ALERT_LEVEL_ICON[option.value];
+        return (
+          <button
+            key={option.value}
+            ref={(element) => {
+              buttonsRef.current[index] = element;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            className={selected ? `${styles.stripOption} ${styles.stripSelected}` : styles.stripOption}
+            onClick={() => onChange(option.value)}
+            onKeyDown={(event) => handleKeyDown(event, index)}
+          >
+            <span className={styles.stripCount}>{option.count}</span>
+            <span className={styles.stripLabel}>
+              {Icon && option.value !== "ALL" && (
+                <Icon className={LEVEL_CLASS[option.value]} size={14} strokeWidth={2} aria-hidden="true" />
+              )}
+              {option.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AlertDetail({
+  alert,
+  deviceName,
+  silence,
+  onRead,
+  onSilence,
+}: {
+  alert: Alert;
+  deviceName: string | null;
+  silence: AlertSilence | null;
+  onRead: () => void;
+  onSilence: () => void;
+}) {
+  const titleId = useId();
+
+  return (
+    <article className={styles.detail} aria-labelledby={titleId}>
+      <StatusBadge tone={ALERT_LEVEL_TONE[alert.level]} icon={ALERT_LEVEL_ICON[alert.level]}>
+        {ALERT_LEVEL_LABEL[alert.level]}
+      </StatusBadge>
+      <h2 id={titleId} className={styles.detailTitle}>
+        {alertLabel(alert)}
+      </h2>
+
+      <dl className={styles.detailList}>
+        {deviceName && (
+          <div className={styles.detailRow}>
+            <dt>Dispositivo</dt>
+            <dd>{deviceName}</dd>
+          </div>
+        )}
+        <div className={styles.detailRow}>
+          <dt>Primera vez</dt>
+          <dd>{formatLong(alert.first_occurred_at)}</dd>
+        </div>
+        <div className={styles.detailRow}>
+          <dt>Última vez</dt>
+          <dd>{formatLong(alert.last_occurred_at)}</dd>
+        </div>
+        <div className={styles.detailRow}>
+          <dt>Repeticiones</dt>
+          <dd>{timesLabel(alert.occurrence_count)}</dd>
+        </div>
+        <div className={styles.detailRow}>
+          <dt>Estado</dt>
+          <dd>{alert.read_at ? `Leída el ${formatLong(alert.read_at)}` : "Sin leer"}</dd>
+        </div>
+      </dl>
+
+      <div className={styles.detailActions}>
+        {!alert.read_at && (
+          <Button variant="primary" icon={Check} onClick={onRead}>
+            Marcar como leída
+          </Button>
+        )}
+        {!silence && (
+          <Button variant="ghost" icon={BellOff} onClick={onSilence}>
+            Silenciar
+          </Button>
+        )}
+      </div>
+      <p className={styles.detailNote}>
+        {silence
+          ? `Silenciada: los avisos de este tipo no vuelven a llegar ${
+              silence.silenced_until ? `hasta el ${formatLong(silence.silenced_until)}` : "hasta que la reactives"
+            }.`
+          : "Silenciar detiene los avisos futuros de este mismo tipo (por ejemplo, todos los bloqueos de esta app), no solo este."}
+      </p>
+    </article>
   );
 }
