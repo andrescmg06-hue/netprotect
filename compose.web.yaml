@@ -1,0 +1,11 @@
+# Override to run only the web panel stack (web + backend + db + redis).
+# db and redis stay reachable inside the Docker network but are not published
+# to the host, which avoids port conflicts (e.g. 5432 reserved by Windows).
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.web.yaml up -d --build web
+services:
+  db:
+    ports: !reset []
+  redis:
+    ports: !reset []
