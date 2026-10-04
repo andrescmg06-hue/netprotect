@@ -62,15 +62,16 @@
   object-position: center 60%;
 }
 
-/* Cream on the left, fully clear on the right. The text column is capped (see .bandText) so it
-   never runs past the solid part of the veil. */
+/* Cream on the left, fully clear on the right. The text column is capped to 55% of the band (see
+   .bandText) and the solid part of the veil reaches 58%, so no line of text ever rests on the photo:
+   measured at 1440px, the description tail was 4.14:1 when the solid part stopped at 45%. */
 .veil {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to right,
     var(--color-bg) 0%,
-    var(--color-bg) 45%,
+    var(--color-bg) 58%,
     transparent 100%
   );
 }
@@ -85,7 +86,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-1);
-  max-width: min(640px, 100%);
+  max-width: min(640px, 55%);
 }
 
 .bandTitle {

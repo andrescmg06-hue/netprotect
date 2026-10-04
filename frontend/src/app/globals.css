@@ -145,6 +145,8 @@ h4 {
   color: var(--color-navy);
   font-family: var(--font-serif);
   font-weight: 600;
+  /* Playfair defaults to old-style numerals, where a 1 reads like a lowercase i. */
+  font-variant-numeric: lining-nums;
   line-height: 1.2;
 }
 
