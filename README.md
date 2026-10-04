@@ -681,10 +681,78 @@ El detalle está en `docs/sprint-52.md` y `docs/redesign/fase-0-informe.md`.
 
 Base visual del rediseño editorial del panel web, sin migrar ninguna vista. Los tokens de color, radio y sombra pasan a
 crema, piedra y navy (mismos nombres, así los 16 paneles cambian de aspecto sin tocar su JSX), los títulos usan una
-serif (Playfair Display, provisional) y el resto sigue en sans. Las primitivas evolucionan a paneles abiertos con las
+serif (hoy Newsreader, que sustituyó a Playfair Display en el Sprint 54) y el resto sigue en sans. Las primitivas evolucionan a paneles abiertos con las
 mismas props; el encabezado de página gana una banda fotográfica opcional y el estado vacío una ilustración opcional,
 ambos apagados por defecto. Se corrigieron dos pares de contraste que el paquete de diseño daba por buenos, se reescribió
 `DESIGN.md` (el anterior prohibía justo lo que el rediseño pide) y la galería `/design-system` muestra los tokens
 nuevos. Antes de cambiar nada se tomó una línea base de 34 capturas para detectar regresiones.
 
 El detalle está en `docs/sprint-53.md` y `docs/sprint-53-evidence.md`.
+
+## Alcance del Sprint 54
+
+Marco del panel web en la dirección editorial. El inicio de sesión pasa a un panel crema con el logo oficial, el título
+«Inicia sesión» en serif, «Continuar con Google» y una fotografía a sangre (banner en móvil); desaparecen la maqueta de
+dispositivos flotantes, la escena de fondo y 2 MB de imágenes. La barra lateral es navy, con secciones agrupadas y
+etiquetadas, divisores finos, ítem activo azul y los tres formatos (completa, riel y cajón); el encabezado lleva el
+buscador a la izquierda y notificaciones, configuración y perfil a la derecha; y la banda fotográfica del encabezado de
+página se enciende desde el panel, sin frases inventadas. También se añade la barra de 24 h del modo escolar, que se
+conecta en el Sprint 56. La serif definitiva pasó de Playfair Display a Newsreader, porque con datos reales los trazos
+finos de Playfair hacían desaparecer la barra de la «e» en pantallas de 1×. Queda pendiente la revisión visual con una
+sesión real de Google.
+
+El detalle está en `docs/sprint-54.md` y `docs/sprint-54-evidence.md`.
+
+## Alcance del Sprint 55
+
+Inicio, Dispositivos y Vinculación recompuestos sin la rejilla de tarjetas. Inicio muestra de un vistazo cómo están los
+dispositivos, qué necesita atención y qué pasó, con las cifras en una franja, el dispositivo principal como
+protagonista y la actividad reciente como línea de tiempo hecha con eventos reales. Dispositivos es lista a la izquierda
+y detalle a la derecha. Vinculación hace del código de seis dígitos el protagonista, con la cuenta atrás real de 180 s.
+Se omite todo lo que el backend no tiene (comparación con ayer, serie de 7 días, consejo del día, favoritos, vista de
+mapa y botón «Bloquear»). Nacen las piezas compartidas `Timeline`, `LoadState` y `ReadOnlyField`.
+
+El detalle está en `docs/sprint-55.md` y `docs/sprint-55-evidence.md`.
+
+## Alcance del Sprint 56
+
+Apps, Reglas, Política y horario y Categorías recompuestas como secciones abiertas separadas por líneas. Reglas es un
+centro de control con las cinco clases reales de regla como filas filtrables y el formulario al lado. Política y horario
+edita el modo escolar sobre una sola barra de 24 h (la API tiene una ventana y una máscara de días, así que no hay filas
+por día ni plantillas), con los campos de hora como alternativa exacta. Categorías pone primero las que tienen apps o
+regla. No cambia ninguna llamada a la API.
+
+El detalle está en `docs/sprint-56.md` y `docs/sprint-56-evidence.md`.
+
+## Alcance del Sprint 57
+
+Geocercas, Ubicación e Historial recompuestos, cada uno con un protagonista y sin enviar coordenadas de un menor a
+terceros. Geocercas se centra en un mapa esquemático propio (sin teselas ni librería de mapas) con una cuadrícula de
+distancias, escala y norte, la zona nueva dibujada en vivo y un radio de 10 m a 100 km. Ubicación indica en qué geocerca
+está el dispositivo (o «Fuera de zonas conocidas»), con precisión, antigüedad y el retraso de unos 15 min declarado; cada
+lectura sigue auditándose. Historial es una línea de tiempo agrupada por día. Queda pendiente la revisión de seguridad
+de esta familia.
+
+El detalle está en `docs/sprint-57.md` y `docs/sprint-57-evidence.md`.
+
+## Alcance del Sprint 58
+
+Estadísticas, Alertas y Silenciadas recompuestas. Estadísticas da una cifra exacta de uso (suma de categorías) y deja
+apps, categorías, bloqueos por motivo y cumplimiento del límite diario en dos columnas separadas por líneas finas.
+Alertas fusiona contadores y filtro por nivel en una tira sobre una bandeja con detalle; el rojo queda solo para las
+críticas y ningún nivel depende solo del color, porque cada uno tiene su forma de icono. Silenciadas es un libro simple
+(qué, cuándo vuelve a avisar, «Reactivar»). Se omite lo que la API no tiene, como la fecha en que se silenció.
+
+El detalle está en `docs/sprint-58.md` y `docs/sprint-58-evidence.md`.
+
+## Alcance del Sprint 59
+
+Vista remota, Auditoría y Perfil recompuestas sin cambiar su comportamiento. Vista remota dibuja siempre el marco del
+teléfono, con el mismo elemento de vídeo siempre montado, y una columna con «EN VIVO», el tiempo transcurrido, la conexión,
+el dispositivo y el aviso de consentimiento. Auditoría es un panel abierto con filtros, exportación CSV y la misma
+paginación, y con etiquetas en español. Perfil es una página de ajustes por secciones. Este sprint también reúne la
+verificación integrada de S54 a S59 con datos reales: el e2e de Playwright pasó y se guardaron 18 capturas, pero eran
+anteriores a las correcciones de defectos que se aplicaron después. Quedan pendientes la prueba de Vista remota con un
+teléfono real y la revisión de seguridad.
+
+El detalle está en `docs/sprint-59.md` y `docs/sprint-59-evidence.md`.
