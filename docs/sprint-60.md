@@ -89,7 +89,8 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `DeviceCategoriesPanel.tsx:303` (hoy un `<p class="quiet">` claro) frente al `EmptyState` que usan las demás vistas.
   Redacción: `GeofencePanel` y `DeviceLocationPanel` dicen casi lo mismo con palabras distintas («…entrada o salida»
   frente a «…entrada o salida de una geocerca»); se deja, por ser de contextos distintos.
-- [ ] T7 — e2e: **escrito, sin ejecutar** (se marca al pasar en T8). Ruta: delegada (un writer; revisado línea a línea).
+- [x] T7 — e2e: escrito, **ejecutado y en verde** (ver el resultado al final de esta tarea). Ruta: delegada (un writer;
+  revisado línea a línea).
   Nuevo `frontend/e2e/login.spec.ts`: sin sembrar token (no gasta el refresh token de un solo uso), comprueba el `h1`
   «Inicia sesión» y que no hay panel. No afirma el botón de Google porque el build de CI no tiene
   `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` y el login muestra el aviso «Falta configurar…» en su lugar. `dashboard.spec.ts` sigue
@@ -99,9 +100,19 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   (con las 4 ya visitadas cubren las 16) comprobando su `h1` y que no aparece un `alert` de error; (c) en Vista remota,
   redimensionar a 390×844 y comprobar que el aviso de consentimiento y «Solicitar ver pantalla» siguen visibles y dentro
   del viewport (cierra lo que el `security-reviewer` de S59 no pudo descartar). `tsc` y `eslint` limpios; `playwright test
-  --list` lista el test de login. **Sin verificar hasta ejecutarlo:** que 80 Tab bastan para llegar al botón, la
-  serialización exacta del `box-shadow` en Chromium, que `networkidle` se estabilice en cada sección (tráfico realtime),
-  que ningún panel muestre un `alert` con datos vacíos y que `toBeInViewport` pase en el móvil.
+  --list` lista el test de login.
+  **Resultado de la ejecución real** (build de producción servido por el `webServer` de Playwright y backend de pruebas
+  de `compose.test.yaml` con sesión sembrada, como el job `e2e` de CI; hecho por el `verifier`): la primera pasada falló
+  en el step del anillo de foco, y era un fallo **del test, no del CSS**: `Button.module.css` anima `box-shadow` 0,15 s y el
+  test leía el valor al inicio de la transición. Medido tras ella, el anillo es el esperado, `rgb(245, 243, 238) 0 0 0 2px,
+  rgb(23, 105, 255) 0 0 0 4px` (la sombra de reposo sale serializada como `oklab(…)`, no `rgba(…)`), lo que confirma T3 en
+  un navegador real. Corregido con `expect.poll`. Medido además: 18 Tab bastan de los 80 permitidos; `networkidle` se resuelve
+  en 2–8 ms en las 12 secciones (por eso se cambió por una espera de 1 s); ninguna sección muestra un `alert` con datos
+  vacíos; el aviso de consentimiento y «Solicitar ver pantalla» quedan dentro del viewport a 390×844 (el botón termina en
+  y=791 de 844). Tras el arreglo: 2 ejecuciones seguidas, 2 tests pasan en cada una (dashboard ~15 s, login ~1 s), sin
+  intermitencias, más `eslint` y `tsc` limpios. El spec tiene 6 steps (3 originales + 3 nuevos). Commits `8caf627` y
+  `6323737`. **Sin verificar:** control negativo (que el step del anillo falle con el CSS anterior a T3) y estabilidad con
+  una muestra mayor que 2 ejecuciones.
 - [x] T9 — Login: foto a pantalla completa con el panel como cristal desenfocado (pedido del dueño al revisar el web; se
   hace antes del cierre T8). Ruta: inline. Antes: rejilla de dos columnas, panel crema sólido y foto solo a la derecha.
   Primera pasada: la foto cubre toda la pantalla (`position: absolute; inset: 0`) y el panel pasa a ser una franja de
@@ -136,8 +147,12 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   dueño: dejarla original); la tarjeta móvil tapa la cara del niño (no se ajustó `object-position`). **Pendiente:** verlo
   en un teléfono o a 390 px reales. El contraste de 4,5:1 del bloque completo se midió sobre la foto, no sobre píxeles
   de pantalla en un navegador a otros zooms o con otro tamaño de fuente del sistema.
-- [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
-  `/cerrar-sprint 60`.
+- [ ] T8 — Verificación y cierre. **Hecho:** `npm run lint`, `tsc`, `next build` (vía `webServer` de Playwright) y e2e
+  completos y en verde, ejecutados por el `verifier` (ver T7). **Falta, y es del dueño:** lanzar `/cerrar-sprint 60`
+  (esa skill solo la puede invocar el usuario; no se replica su flujo a mano), que genera `docs/sprint-60-evidence.md` y
+  deja `docs/progress.md` y el README al día. Este documento ya recoge el estado de cada tarea para alimentarla.
+  No se ejecutaron en S60 los tests de backend (`make test`) tras el último cambio de backend de la rama, que es el arreglo
+  del log de auth (`e9e4f69`, 295 passed en su momento).
 
 ## Pendiente conocido
 
