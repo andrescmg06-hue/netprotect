@@ -53,7 +53,9 @@ completa y el dueño lo aprueba por escrito. Ninguna línea de `frontend/src/` c
   solo lectura (mapeo de 4+ archivos cada uno); T4, T6 y T7 inline. Los contrastes de T7 se calcularon, no se supusieron.
 - **T8 pendiente**: sin capturas base. Necesitan backend y una sesión de tutor; el S53 las toma antes de cambiar tokens
   (ver informe §8).
-- **T9 incompleta hasta la aprobación del dueño**: el informe termina en 10 decisiones abiertas (informe §9). No se
-  avanza al S53 sin ellas.
-- T10 (`sprint-52-evidence.md`, `docs/progress.md`, `/cerrar-sprint 52`) queda para después de la aprobación.
+- **T9: informe aprobado por el dueño el 04/10/2026.** Siguen abiertas D1 (serif definitiva) y D5 (logo oficial), que
+  dependen del diseñador del paquete; el S53 arranca con los valores por defecto del informe y los deja como
+  ajustables (una sola variable de fuente; logos sin sustituir hasta validar).
+- T10: hechos `sprint-52-evidence.md`, el `## Alcance del Sprint 52` del README y `docs/progress.md`. **Falta
+  `/cerrar-sprint 52`**, que solo lo lanza quien escribe el comando.
 - Verificado: ninguna línea de `frontend/`, `backend/` ni `mobile/` cambió en esta rama (ver el comando en la evidencia).

@@ -665,3 +665,14 @@ permite detenerla. Una nueva pantalla, «Estado de NetProtect», muestra qué fu
 por el que llegan esas peticiones se reconecta solo tras un corte de red, de modo que ya no se pierden.
 
 El detalle está en `docs/sprint-50.md`.
+
+## Alcance del Sprint 52
+
+Primer sprint del segundo rediseño del panel web (editorial: crema, navy, serif y fotografía). No cambia código: mide el
+estado real antes de tocar los tokens que mueven las 16 vistas. Entrega un informe con la arquitectura, el sistema de
+estilos, los componentes repetidos, los assets, la propuesta de design system, los riesgos (con los contrastes
+calculados) y, por vista, qué muestra el mockup que el backend no tiene (batería, red, sesiones activas, horarios por
+día, entre otros), que se omite o se sustituye por el dato real. Quedan pendientes las capturas base y dos decisiones
+del diseñador del paquete (tipografía serif y logo oficial).
+
+El detalle está en `docs/sprint-52.md` y `docs/redesign/fase-0-informe.md`.

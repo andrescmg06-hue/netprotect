@@ -1,14 +1,18 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-02 · Sprint actual: 51_
+_Actualizado: 2026-10-04 · Sprint actual: 52 (rediseño web, Fase 0 hecha)_
 
 ## En curso
+- **S52 (rediseño del panel web, Fase 0, sin código)**, rama `sprint-52-rediseno-web-fase-0`. Informe
+  `docs/redesign/fase-0-informe.md` **aprobado por el dueño el 04/10/2026**; evidencia en `docs/sprint-52-evidence.md`.
+  Pendiente: T8 (capturas base, necesitan sesión de tutor), tipografía serif y logo oficial (decisiones D1 y D5 del
+  informe) y `/cerrar-sprint 52`. Siguiente: S53 (base visual: tokens, serif, primitivas, `DESIGN.md`).
 - **S51 (endurecimiento y cierre del rediseño Android)**, rama `sprint-51-cierre` (worktree `C:/Users/andre/np-s51`,
   con push). Hecho: T1–T9 y la revisión de seguridad (0 ALTA). Detalle y commits: `docs/sprint-51.md`.
 
 ## Siguiente paso
 **Rediseño editorial del panel web (S52–S60), rama `web-redesign`:** plan en `docs/redesign/PLAN_SPRINTS.md`; para
-retomar, `docs/redesign/CONTINUAR.md`. Empieza el **S52 (Fase 0, sin código)** — `docs/sprint-52.md`. Es independiente
-del cierre del S51 de abajo.
+retomar, `docs/redesign/CONTINUAR.md`. El **S52 (Fase 0)** está hecho y aprobado; sigue el **S53 (base visual)** —
+`docs/redesign/PLAN_SPRINTS.md` §4. Es independiente del cierre del S51 de abajo.
 
 Hecho el 02/10/2026: PR #12 (S50) y PR #13 (entorno + D-05) fusionados en `android-redesign` (`d0724b0`); esa rama ya
 está fusionada dentro de `sprint-51-cierre`; plantillas `.env.*.example` comprobadas (sin hueco, ver `docs/sprint-51.md`).
