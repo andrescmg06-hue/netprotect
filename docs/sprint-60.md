@@ -90,6 +90,19 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   Redacción: `GeofencePanel` y `DeviceLocationPanel` dicen casi lo mismo con palabras distintas («…entrada o salida»
   frente a «…entrada o salida de una geocerca»); se deja, por ser de contextos distintos.
 - [ ] T7 — e2e: login visible, prueba de teclado/foco y vistas S56–S59. Ruta: inline.
+- [x] T9 — Login: foto a pantalla completa con el panel como cristal desenfocado (pedido del dueño al revisar el web; se
+  hace antes del cierre T8). Ruta: inline. Antes: rejilla de dos columnas, panel crema sólido y foto solo a la derecha.
+  Ahora (`login/LoginScreen.module.css` y `.tsx`): la foto cubre toda la pantalla en `position: absolute; inset: 0` y el
+  panel es una franja de cristal (`color-mix` de `--color-bg` al 80 % + `backdrop-filter: blur(22px)`), de alto completo y
+  separada del borde izquierdo en escritorio; en pantallas estrechas es una tarjeta abajo con una banda de foto encima.
+  `@supports not (backdrop-filter)` cae a un panel casi sólido; `sizes` de la imagen pasa a `100vw`.
+  Contraste, medido sobre la foto real desenfocada bajo el panel (peor píxel, 1280×720, 1600×900 y 1920×1080): título
+  navy 9,1–9,2:1; subtítulo y nota al pie pasan de `--color-text-muted` (3,35:1, no cumplía) a un navy suavizado
+  `#3e4d60` (5,0–5,05:1).
+  Evidencia: capturas de Chrome sin interfaz sobre el `web` reconstruido, `docs/redesign/s60/login-1600.jpg` y
+  `login-520.jpg` (la ventana más estrecha que admite Chrome es ~500 px: no se pudo capturar a 390 px, y a 390 la
+  tarjeta tendría 310 px de contenido). `eslint` y `tsc` limpios. **Pendiente:** verlo en un teléfono o a 390 px
+  reales; en móvil la tarjeta tapa la cara del niño de la foto (no se ajustó `object-position`).
 - [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
   `/cerrar-sprint 60`.
 

@@ -1,19 +1,23 @@
-/* Login screen — split layout: cream sign-in panel + full-height photograph.
+/* Login screen — a full-bleed photograph with the sign-in panel as a strip of frosted glass over it.
    Everything reads tokens from globals.css; this screen declares no colours of its own. */
 .screen {
-  display: grid;
+  position: relative;
+  display: flex;
   min-height: 100vh;
   min-height: 100dvh;
-  grid-template-rows: auto 1fr;
-  background: var(--color-bg);
+  flex-direction: column;
+  justify-content: flex-end;
+  /* Narrow screens: leave a band of photograph above the glass card. */
+  padding-top: clamp(160px, 28vh, 280px);
+  background: var(--color-bg); /* only visible while the photograph loads */
   overflow: hidden;
 }
 
-/* Narrow screens: the photograph comes first, as a banner above the panel. */
+/* The photograph is the whole background, behind the panel on every screen size. */
 .photo {
-  position: relative;
-  order: -1;
-  height: clamp(200px, 34vh, 300px);
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
 }
 
@@ -23,10 +27,28 @@
   animation: login-photo 1100ms var(--ease) both;
 }
 
+/* Frosted glass: the photograph shows through, blurred. 80% cream keeps the title at ~9:1 and the
+   small texts at ~5:1 over the worst pixel of the photograph under the panel (measured on
+   study.jpg at 1280x720, 1600x900 and 1920x1080), which is why the muted greys are darker here. */
 .panel {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  padding: var(--space-8) var(--space-6) var(--space-12);
+  margin: var(--space-4);
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1);
+  backdrop-filter: blur(22px) saturate(1.1);
+}
+
+/* No backdrop-filter (old browsers): without the blur the photograph would run through the text,
+   so fall back to an almost solid panel. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel {
+    background: color-mix(in srgb, var(--color-bg) 96%, transparent);
+  }
 }
 
 .content {
@@ -59,7 +81,7 @@
   margin: var(--space-5) 0 0;
   font-size: clamp(var(--text-md), 0.9rem + 0.25vw, 17px);
   line-height: 1.5;
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-navy) 80%, var(--color-bg));
 }
 
 .action {
@@ -86,7 +108,8 @@
   content: "";
   height: 1px;
   flex: 1;
-  background: var(--color-border);
+  background: var(--color-border-strong);
+  opacity: 0.55;
 }
 
 .dot {
@@ -105,22 +128,24 @@
   margin: 18px 0 0;
   font-size: var(--text-sm);
   line-height: 1.5;
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-navy) 80%, var(--color-bg));
 }
 
 @media (min-width: 1024px) {
   .screen {
-    grid-template-columns: minmax(420px, 36%) 1fr;
-    grid-template-rows: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding-top: 0;
   }
 
-  .photo {
-    order: 0;
-    height: auto;
-  }
-
+  /* A full-height glass strip, inset from the left edge so a band of photograph frames it. */
   .panel {
-    padding: var(--space-12) clamp(var(--space-8), 5.5vw, 104px);
+    width: clamp(420px, 29vw, 540px);
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0 0 0 clamp(var(--space-6), 6.5vw, 120px);
+    padding: var(--space-12) clamp(var(--space-8), 3.6vw, 64px);
+    border-radius: 0;
   }
 
   .content {
