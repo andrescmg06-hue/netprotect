@@ -1,28 +1,45 @@
-/* Sprint 31 — design tokens. Every colour, radius, shadow and spacing value in the app comes from
-   here; components never hard-code them. See docs/planning/plan-frontend.md. */
+/* Sprint 31 — design tokens; Sprint 53 — editorial redesign (cream, stone, navy, serif headings).
+   Every colour, radius, shadow and spacing value in the app comes from here; components never
+   hard-code them. Token NAMES are stable on purpose: the 16 panels keep working while the values
+   change (docs/redesign/fase-0-informe.md §6). Some names no longer describe their value
+   (`--color-primary-softer` is now a warm neutral, `--color-bg-gradient` is a flat colour): that is
+   the price of not renaming 49 modules in one sprint. */
 :root {
   color-scheme: light;
 
-  --color-primary: #246bfe;
+  /* Brand blue is an accent (active item, primary action, "on"), never a surface. */
+  --color-primary: #1769ff; /* fills only: white on it is 4.67:1 */
   --color-primary-hover: #1456d9;
   --color-primary-soft: #eaf1ff;
-  --color-primary-softer: #f3f7ff;
-  /* Blue for text and icons: #246bfe is for fills (white on it 4.56:1) but falls under 4.5:1 as
-     text on the light washes; this one clears 4.9:1 on every light surface. */
-  --color-primary-text: #1f5fe6;
-  --color-navy: #102b63;
+  --color-primary-softer: #f3f1ec; /* warm neutral wash used for hover, not blue any more */
+  /* Blue for text and icons on cream/white: 5.63:1 on cream, 6.24:1 on white. */
+  --color-primary-text: #1456d9;
+  --color-primary-on-dark: #7fa8ff; /* 7.41:1 on --color-navy-950 */
+  --color-navy: #11243d; /* titles and values */
 
-  --color-bg: #f5f9ff;
-  --color-bg-gradient: linear-gradient(180deg, #f5f9ff 0%, #eef4ff 100%);
+  /* Dark surfaces (sidebar, brand card). --color-navy stays the ink colour. */
+  --color-navy-950: #0d1b2a;
+  --color-navy-900: #10233b;
+  --color-navy-700: #17345c;
+  --color-sidebar-bg: var(--color-navy-950);
+  --color-sidebar-text: #e8edf5; /* 14.8:1 on the sidebar */
+  --color-sidebar-muted: #9fb0c6; /* 7.87:1 on the sidebar */
+  --color-sidebar-line: rgba(255, 255, 255, 0.12);
+  --color-sidebar-active: var(--color-primary);
+
+  --color-bg: #f5f3ee;
+  --color-bg-gradient: #f5f3ee; /* flat: no gradient in the new direction */
   --color-surface: #ffffff;
-  --color-surface-muted: #f7f9fc;
-  --color-border: #e6ecf5;
-  --color-border-strong: #d5dfee;
+  --color-surface-muted: #f8f7f3;
+  --color-border: #d9d6cf; /* stone: lines and dividers */
+  --color-border-strong: #8a8678; /* control borders: 3.29:1 on cream, 3.64:1 on white */
 
-  --color-text: #1b2b4b;
-  --color-text-muted: #5b6b82; /* ≥4.8:1 on white, page ground and tinted rows */
-  --color-text-subtle: #94a3b8;
+  --color-text: #11243d;
+  --color-text-muted: #5b6779; /* 5.17:1 on cream, 5.08:1 on #f3f1ec */
+  /* Placeholders and tertiary text. NOT the control-border colour: #8a8678 fails 4.5:1 as text. */
+  --color-text-subtle: #6f6b60; /* 4.80:1 on cream, 5.32:1 on white, 4.71:1 on #f3f1ec */
 
+  /* Status colours keep their values: green only for positive, red only for alerts. */
   --color-success: #16b364;
   --color-success-soft: #e7f8ef;
   --color-success-text: #0b7a42;
@@ -35,17 +52,21 @@
   --color-purple: #7a5af8;
   --color-purple-soft: #f1edfe;
   --color-purple-text: #5b3fd6;
-  --color-neutral-soft: #eef2f7;
+  --color-neutral-soft: #f3f1ec;
 
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 16px;
+  /* Almost square. 8px is the ceiling; --radius-pill is only for switches and status dots. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
   --radius-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgba(16, 43, 99, 0.04), 0 4px 20px rgba(30, 70, 140, 0.05);
-  --shadow-pop: 0 12px 32px rgba(16, 43, 99, 0.14);
-  --focus-ring: 0 0 0 3px rgba(36, 107, 254, 0.25);
+  /* Depth comes from lines and tone, not from shadows. */
+  --shadow-card: 0 1px 2px rgba(17, 36, 61, 0.06);
+  --shadow-pop: 0 12px 32px rgba(13, 27, 42, 0.14);
+  --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-primary);
+  /* The cream gap of --focus-ring looks wrong on the navy sidebar: it gets its own ring. */
+  --focus-ring-on-dark: 0 0 0 2px var(--color-navy-950), 0 0 0 4px var(--color-primary-on-dark);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -55,8 +76,25 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* Shell geometry. The values are today's, only named; S54 decides whether they change (D7).
+     Media queries cannot read custom properties, so the three layout breakpoints stay literals:
+     sidebar >= 1200px, rail 900-1199px, drawer < 900px. */
+  --sidebar-width: 270px;
+  --sidebar-rail-width: 84px;
+  --sidebar-drawer-width: 300px;
+  --content-max: 1440px;
+  --header-height: 72px;
+  --header-height-mobile: 64px;
+  --band-height: 168px;
 
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Playfair Display approximates the mockups' serif (decision D1 is still open); changing the
+     face is a one-line edit here plus the import in app/layout.tsx. */
+  --font-serif: var(--font-playfair), "Libre Caslon Text", Georgia, "Times New Roman", serif;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -65,6 +103,8 @@
   --text-xl: 22px;
   --text-2xl: 28px;
   --text-3xl: 32px;
+  --text-4xl: 44px; /* page title */
+  --text-5xl: 64px; /* only the login "Inicia sesión" */
 
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration-fast: 150ms;
@@ -83,13 +123,13 @@ body {
 }
 
 html {
-  background: #eef4ff;
+  background: var(--color-bg);
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 body {
   min-height: 100vh;
-  background: var(--color-bg-gradient);
-  background-attachment: fixed;
+  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -97,11 +137,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Titles are the serif voice; everything else (buttons, forms, tables, navigation, data) stays sans. */
 h1,
 h2,
 h3,
 h4 {
   color: var(--color-navy);
+  font-family: var(--font-serif);
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -116,7 +159,7 @@ a {
 }
 
 ::selection {
-  background: rgba(36, 107, 254, 0.18);
+  background: rgba(23, 105, 255, 0.18);
 }
 
 input,
@@ -124,10 +167,24 @@ textarea {
   caret-color: var(--color-primary);
 }
 
-html {
-  scrollbar-color: #c7d3e6 transparent;
+/* Editorial utilities: an uppercase label, a one-line editorial phrase and aligned figures. */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
+.quote {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-style: italic;
+  line-height: 24px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
 
 /* Neutral reset: every button in the app is styled by its own CSS Module (ui/Button, the shell,
    the panels' row/option buttons). The pre-Sprint-31 rule this replaces gave every bare <button>

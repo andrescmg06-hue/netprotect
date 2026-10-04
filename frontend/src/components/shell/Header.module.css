@@ -5,10 +5,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  height: 72px;
+  height: var(--header-height);
   /* Same inner width as the centered content column below (max 1440px), so the avatar lines up
      with the page's right edge on very wide screens. */
-  padding: 0 max(var(--space-8), calc((100% - 1440px) / 2 + var(--space-8)));
+  padding: 0 max(var(--space-8), calc((100% - var(--content-max)) / 2 + var(--space-8)));
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -294,7 +294,7 @@
 @media (max-width: 899px) {
   .header {
     gap: var(--space-2);
-    height: 64px;
+    height: var(--header-height-mobile);
     padding: 0 var(--space-3);
   }
 
