@@ -42,6 +42,14 @@ export function formatDistance(meters: number): string {
   return `${Math.round(meters).toLocaleString("es-CO")} m`;
 }
 
+/** "4.71100, −74.07210": five decimals and a true minus sign (U+2212). The hyphen-minus of a
+ * tabular-figures run renders with a gap after it ("- 74.07"); the minus glyph is as wide as a
+ * digit and reads as one with its number. Display only, never parsed back. */
+export function formatCoordinates(latitude: number, longitude: number): string {
+  const part = (value: number) => value.toFixed(5).replace("-", "−");
+  return `${part(latitude)}, ${part(longitude)}`;
+}
+
 function gridOffsets(origin: number, cell: number, extent: number): number[] {
   if (cell < 12) return [];
   const first = Math.ceil(-origin / cell);
@@ -138,6 +146,31 @@ function labelPosition(center: Point, r: number, width: number): { x: number; y:
   return { x, y: above >= 16 ? above : center.y + 22 };
 }
 
+type Box = { left: number; right: number; top: number; bottom: number };
+
+/** Rough box of an SVG text block (a name line plus an optional second line) from its character
+ * count: enough to tell whether two labels would print over each other, not a text measurement. */
+function textBox(x: number, baseline: number, widthChars: number, lines: 1 | 2): Box {
+  const half = (widthChars * 6.8) / 2 + 4;
+  return { left: x - half, right: x + half, top: baseline - 13, bottom: baseline + (lines === 2 ? 18 : 4) };
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+/** Where the device's own label goes: below its dot, else above it, else nowhere. A zone label can
+ * land on the same spot (the device is inside that zone); the legend already names the marker, so
+ * dropping the secondary label beats printing two texts over each other. */
+function deviceLabelPosition(center: Point, text: string, width: number, taken: Box[]): { x: number; y: number } | null {
+  const x = Math.min(Math.max(center.x, 64), width - 64);
+  for (const y of [center.y + 24, center.y - 16]) {
+    const box = textBox(x, y, text.length, 1);
+    if (!taken.some((other) => overlaps(box, other))) return { x, y };
+  }
+  return null;
+}
+
 /** Sprint 36, recomposed in Sprint 57. A hand-made schematic, not a real map (see
  * docs/planning/plan-frontend.md, Sprint 36 decision, and .claude/rules/frontend.md): it plots the
  * configured zones, an unsaved draft and the device's last known location to scale on a flat
@@ -190,6 +223,31 @@ export function GeofenceMap({
   const origin = geometry ? geometry.gridOrigin : { x: width / 2, y: height / 2 };
   const verticals = gridOffsets(origin.x, cellPx, width);
   const horizontals = gridOffsets(origin.y, cellPx, height);
+
+  // Boxes of every zone/draft label, so the device label can step aside instead of overprinting.
+  const labelBoxes: Box[] = geometry
+    ? [
+        ...geometry.zones
+          .filter(({ geofence }) => geofence.id !== ghostId)
+          .map(({ geofence, center, r }) => {
+            const position = labelPosition(center, r, width);
+            const meta = `radio ${formatDistance(geofence.radius_meters)}`;
+            return textBox(position.x, position.y, Math.max(geofence.name.length, meta.length), 2);
+          }),
+        ...(geometry.draft
+          ? [
+              (() => {
+                const position = labelPosition(geometry.draft.center, geometry.draft.r, width);
+                return textBox(position.x, position.y, Math.max((geometry.draft.name || "Nueva zona").length, 14), 2);
+              })(),
+            ]
+          : []),
+      ]
+    : [];
+  const deviceText = tracking ? "Dispositivo" : "Última ubicación";
+  const devicePosition = geometry?.location
+    ? deviceLabelPosition(geometry.location.center, deviceText, width, labelBoxes)
+    : null;
 
   const zoneCount = geofences.length;
   const ariaLabel = [
@@ -289,14 +347,14 @@ export function GeofenceMap({
                   );
                 })()}
 
-              {geometry.location && (
+              {devicePosition && (
                 <text
-                  x={Math.min(Math.max(geometry.location.center.x, 64), width - 64)}
-                  y={geometry.location.center.y + 24}
+                  x={devicePosition.x}
+                  y={devicePosition.y}
                   textAnchor="middle"
                   className={`${styles.label} ${styles.labelMeta}`}
                 >
-                  {tracking ? "Dispositivo" : "Última ubicación"}
+                  {deviceText}
                 </text>
               )}
 

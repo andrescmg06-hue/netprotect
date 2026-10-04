@@ -13,9 +13,10 @@ Las vistas en sí no se recomponen todavía (S55–S59).
 - **Logo (D5)**: los PNG del paquete y los de `public/brand/` son visualmente idénticos (el hash distinto es solo
   re-exportación). Manda el oficial. `logo-full-on-dark.png` se comprobó compuesto sobre `#0d1b2a`: legible, sirve para
   el sidebar navy.
-- **Serif (D1)**: se mantiene Playfair Display. Comparada a 1× con Newsreader, Source Serif 4, Libre Caslon Text y
-  Fraunces a 44, 28 y 18 px: Playfair 600 es legible y es la más cercana a los mockups. La «e» que parecía «c» en una
-  captura de 390 px no se reprodujo en la comparación. Sigue abierta para el diseñador.
+- **Serif (D1)**: cambiada de Playfair Display a **Newsreader**. Primero se mantuvo Playfair tras compararla a 1× con
+  Newsreader, Source Serif 4, Libre Caslon Text y Fraunces; pero la verificación con datos reales (S59) mostró, en tres
+  mediciones independientes, que sus trazos finos hacen desaparecer la barra de la «e» en pantallas de 1×: «Geocercas»
+  se lee «Gcoccrcas». Newsreader conserva el trazo. Sigue abierta para el diseñador.
 - **Login**: el mockup dibuja un wordmark serif propio; se usa el logo oficial (`CONTINUAR.md` §6). El nombre es siempre
   NetProtect.
 - **Insignia «1 Issue» de `next dev`**: confirmado que la causa es la CSP sin `unsafe-eval` (error de consola de React en

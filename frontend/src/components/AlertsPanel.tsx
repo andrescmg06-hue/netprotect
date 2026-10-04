@@ -17,6 +17,7 @@ import {
   type AlertLevel,
   type AlertSilence,
   ApiError,
+  type Device,
   deleteAlertSilence,
   listAlertSilences,
   listDeviceAlerts,
@@ -98,17 +99,24 @@ export function AlertsPanel({
   accessToken,
   deviceId,
   view = "inbox",
+  devices,
 }: {
   accessToken: string;
   deviceId: string;
   view?: "inbox" | "silenced";
+  /** Devices the dashboard already holds. When given, the device name comes from here and the
+   * panel makes no listDevices call of its own. */
+  devices?: Pick<Device, "id" | "name">[];
 }) {
   const [state, setState] = useState<AlertsState>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geofenceNames, setGeofenceNames] = useState<Record<string, string>>({});
-  const [deviceName, setDeviceName] = useState<string | null>(null);
+  const [fetchedDeviceName, setFetchedDeviceName] = useState<string | null>(null);
+  const deviceName = devices
+    ? (devices.find((device) => device.id === deviceId)?.name ?? null)
+    : fetchedDeviceName;
 
   useEffect(() => {
     let cancelled = false;
@@ -154,16 +162,17 @@ export function AlertsPanel({
     };
   }, [accessToken, deviceId, view, reloadToken]);
 
-  // Best-effort device name for the detail pane (the panel only receives the id). A failure just
-  // leaves the row out; the device card in the page header still names the device.
+  // Best-effort device name for the detail pane when the caller did not pass the device list. A
+  // failure just leaves the row out; the device card in the page header still names the device.
+  const hasDeviceList = devices !== undefined;
   useEffect(() => {
-    if (view !== "inbox") return;
+    if (view !== "inbox" || hasDeviceList) return;
     let cancelled = false;
 
     listDevices(accessToken)
-      .then(({ devices }) => {
+      .then(({ devices: fetched }) => {
         if (!cancelled) {
-          setDeviceName(devices.find((device) => device.id === deviceId)?.name ?? null);
+          setFetchedDeviceName(fetched.find((device) => device.id === deviceId)?.name ?? null);
         }
       })
       .catch(() => {
@@ -173,7 +182,7 @@ export function AlertsPanel({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, deviceId, view]);
+  }, [accessToken, deviceId, view, hasDeviceList]);
 
   const refreshing = state.kind === "loading" || state.key !== reloadToken;
   const alerts = useMemo(() => (state.kind === "loaded" ? state.alerts : []), [state]);

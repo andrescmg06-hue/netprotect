@@ -1,7 +1,8 @@
 /* Sprint 57. The timeline is the page: a ruled filter bar, then one band per day with the date
    set large on the left and the events on a single continuous line, time first. No card. */
 .history {
-  --time-col: 56px;
+  /* Wide enough for "10:30 a. m." on one line. */
+  --time-col: 80px;
   --node-col: 16px;
   --col-gap: var(--space-4);
   display: flex;
@@ -78,6 +79,7 @@
 .dayMonth {
   color: var(--color-text-muted);
   font-size: var(--text-xs);
+  font-variant-numeric: lining-nums tabular-nums;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -129,6 +131,7 @@
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
 }
 
 .node {
@@ -320,7 +323,7 @@
 /* Phones: the date becomes a band header over its events and the time sits beside the node. */
 @media (max-width: 640px) {
   .history {
-    --time-col: 44px;
+    --time-col: 76px;
     --col-gap: var(--space-3);
   }
 

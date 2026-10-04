@@ -12,7 +12,7 @@ import {
   getDeviceStatistics,
 } from "@/lib/apiClient";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categoryFormatting";
-import { chartColor } from "@/lib/chartColors";
+import { CHART_NEUTRAL, chartColor } from "@/lib/chartColors";
 
 import styles from "./StatisticsPanel.module.css";
 
@@ -145,7 +145,7 @@ export function StatisticsPanel({
         label: entry.category ? CATEGORY_LABELS[entry.category] : "Sin categoría",
         value: entry.total_seconds,
         // Stable colour per category (its catalogue position), whatever its rank this period.
-        color: chartColor(entry.category ? CATEGORIES.indexOf(entry.category) : CATEGORIES.length),
+        color: entry.category ? chartColor(CATEGORIES.indexOf(entry.category)) : CHART_NEUTRAL,
       }));
     const blocks = [...data.blocks_by_reason].sort((a, b) => b.count - a.count);
     const appLabels = Object.fromEntries(
@@ -277,13 +277,15 @@ export function StatisticsPanel({
         {reading.categories.length === 0 ? (
           <p className={styles.quiet}>Sin uso de apps reportado en este periodo.</p>
         ) : (
-          <DonutChart
-            label="Uso por categoría"
-            segments={reading.categories}
-            centerValue={`${topShare} %`}
-            centerLabel={topCategory?.label}
-            formatValue={formatDuration}
-          />
+          <div className={styles.donut}>
+            <DonutChart
+              label="Uso por categoría"
+              segments={reading.categories}
+              centerValue={`${topShare} %`}
+              centerLabel={topCategory?.label}
+              formatValue={formatDuration}
+            />
+          </div>
         )}
       </RailSection>
 

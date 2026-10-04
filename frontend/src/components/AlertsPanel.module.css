@@ -378,7 +378,8 @@
 }
 
 /* ---- Narrow panels (tablets in portrait, phones): the detail opens under its own row instead of
-   in a side column, and the strip scrolls sideways as compact "count + level" items. */
+   in a side column, and the strip keeps every level visible (no sideways scroll): five equal
+   cells here, a 3 + 2 grid on phones (see the next block). */
 @container (max-width: 760px) {
   .inbox {
     grid-template-columns: minmax(0, 1fr);
@@ -399,19 +400,12 @@
     background: var(--color-surface-muted);
   }
 
-  .strip {
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
+  .stripOption {
+    padding: var(--space-3) var(--space-4);
   }
 
-  .stripOption {
-    flex: 0 0 auto;
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    scroll-snap-align: start;
+  .stripLabel {
+    white-space: normal;
   }
 
   .stripCount {
@@ -433,6 +427,27 @@
     grid-column: 3;
     grid-row: 1 / span 2;
     align-self: center;
+  }
+}
+
+/* Phones: five levels in one row would clip, so they wrap into two ruled rows of up to three. */
+@container (max-width: 560px) {
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-bottom: 0;
+  }
+
+  .stripOption {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 0;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .stripOption:nth-child(3n),
+  .stripOption:last-child {
+    border-right: 0;
   }
 }
 

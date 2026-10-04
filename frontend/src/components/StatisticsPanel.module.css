@@ -135,6 +135,14 @@
   white-space: nowrap;
 }
 
+/* The donut legend ellipsises its labels (ui/DonutChart); here a category name must be read in
+   full, so the label cell (second span of each row) wraps instead. */
+.donut li > span:nth-child(2) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .ledger {
   margin: 0;
 }

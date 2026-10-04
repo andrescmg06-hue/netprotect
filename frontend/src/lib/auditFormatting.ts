@@ -37,6 +37,25 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   SCREEN_SHARE_STOPPED: "Vista remota terminada",
 };
 
+/** Spanish names for the `resource_type` values the backend writes (every `record_audit_event`
+ * call; `device` is rendered by the panel itself, with the device name). Like the actions, an
+ * unknown type is shown as-is, and the CSV export keeps the raw value. */
+const AUDIT_RESOURCE_LABEL: Record<string, string> = {
+  device: "Dispositivo",
+  pairing_code: "Código de vinculación",
+  role: "Modo de la cuenta",
+  app_rule: "Regla de app",
+  category_rule: "Regla de categoría",
+  app_category_assignment: "Categoría de una app",
+  geofence: "Geocerca",
+  alert: "Alerta",
+  alert_silence: "Silencio de alerta",
+};
+
+export function auditResourceLabel(resourceType: string): string {
+  return AUDIT_RESOURCE_LABEL[resourceType] ?? resourceType;
+}
+
 export function auditActionLabel(action: string): string {
   return AUDIT_ACTION_LABEL[action] ?? action;
 }

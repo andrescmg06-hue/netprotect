@@ -34,28 +34,28 @@ colors:
   violet-text: "#5b3fd6"
 typography:
   display-xl:
-    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontFamily: "Newsreader, Libre Caslon Text, Georgia, serif"
     fontSize: "64px"
     fontWeight: 600
     lineHeight: 1.2
   display:
-    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontFamily: "Newsreader, Libre Caslon Text, Georgia, serif"
     fontSize: "44px"
     fontWeight: 600
     lineHeight: 1.2
   headline:
-    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontFamily: "Newsreader, Libre Caslon Text, Georgia, serif"
     fontSize: "28px"
     fontWeight: 600
     lineHeight: 1.2
     fontFeature: "tnum"
   title:
-    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontFamily: "Newsreader, Libre Caslon Text, Georgia, serif"
     fontSize: "18px"
     fontWeight: 600
     lineHeight: 1.2
   quote:
-    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontFamily: "Newsreader, Libre Caslon Text, Georgia, serif"
     fontSize: "17px"
     fontWeight: 400
     lineHeight: "24px"
@@ -218,7 +218,7 @@ Green only for positive states, red only for alerts, blocks and critical states;
 
 ## Typography
 
-**Display and titles: Playfair Display** (served by `next/font/google`, weights 400 and 600 plus italic). Provisional: it approximates the mockups' serif and the final face is still an open decision (D1 in `docs/redesign/fase-0-informe.md`); changing it is `--font-serif` plus one import in `app/layout.tsx`. **Interface: Inter.**
+**Display and titles: Newsreader** (served by `next/font/google`, weights 400 and 600 plus italic). Provisional: Playfair Display was the first choice (closest to the mockups) but its hairline strokes, such as the crossbar of the "e", vanished in 1x renders so titles read "Gcoccrcas"; Newsreader keeps them solid. The final face is still an open decision for the designer (D1 in `docs/redesign/fase-0-informe.md`); changing it is `--font-serif` plus one constant in `app/layout.tsx`. **Interface: Inter.**
 
 ### Hierarchy
 - **Display XL** (64px, serif 600): only the login "Inicia sesión". **Display** (44px): page title. **Headline** (28px): large values. **Title** (18px): card and section titles.

@@ -3,7 +3,7 @@
 import { ArrowLeftRight, History, LocateFixed, LogIn, LogOut, MapPin, Pencil, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { type GeofenceDraft, GeofenceMap, formatDistance } from "@/components/GeofenceMap";
+import { type GeofenceDraft, GeofenceMap, formatCoordinates, formatDistance } from "@/components/GeofenceMap";
 import { Button, ConfirmDialog, EmptyState, Field, Input, Spinner } from "@/components/ui";
 import {
   ApiError,
@@ -513,7 +513,7 @@ export function GeofencePanel({ accessToken, deviceId }: { accessToken: string; 
                 <span className={styles.zoneMain}>
                   <span className={styles.zoneName}>{geofence.name}</span>
                   <span className={styles.zoneCoords}>
-                    {geofence.latitude.toFixed(5)}, {geofence.longitude.toFixed(5)}
+                    {formatCoordinates(geofence.latitude, geofence.longitude)}
                   </span>
                 </span>
                 <span className={styles.zoneRadius}>

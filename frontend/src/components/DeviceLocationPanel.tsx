@@ -3,7 +3,7 @@
 import { Clock3, ExternalLink, LogIn, LogOut, MapPinOff, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { GeofenceMap, formatDistance } from "@/components/GeofenceMap";
+import { GeofenceMap, formatCoordinates, formatDistance } from "@/components/GeofenceMap";
 import { Button, EmptyState, Spinner } from "@/components/ui";
 import {
   ApiError,
@@ -272,7 +272,7 @@ export function DeviceLocationPanel({
               <div className={styles.fact}>
                 <dt>Coordenadas</dt>
                 <dd className={styles.figure}>
-                  {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}
+                  {formatCoordinates(report.latitude, report.longitude)}
                 </dd>
               </div>
               <div className={styles.fact}>

@@ -336,10 +336,10 @@ export function DashboardShell({
                 <StatisticsPanel accessToken={accessToken} deviceId={activeDevice.id} />
               )}
               {activeSection === "alerts" && (
-                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="inbox" />
+                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="inbox" devices={devices} />
               )}
               {activeSection === "silenced" && (
-                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" />
+                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" devices={devices} />
               )}
               {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} device={activeDevice} />}
             </div>

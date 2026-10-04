@@ -92,9 +92,9 @@
   --band-height: 168px;
 
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* Playfair Display approximates the mockups' serif (decision D1 is still open); changing the
+  /* Newsreader replaced Playfair Display (its hairlines vanished at 1x); D1 is still open for the designer; changing the
      face is a one-line edit here plus the import in app/layout.tsx. */
-  --font-serif: var(--font-playfair), "Libre Caslon Text", Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-serif-face), "Libre Caslon Text", Georgia, "Times New Roman", serif;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -145,7 +145,7 @@ h4 {
   color: var(--color-navy);
   font-family: var(--font-serif);
   font-weight: 600;
-  /* Playfair defaults to old-style numerals, where a 1 reads like a lowercase i. */
+  /* Keeps figures aligned with the capitals in headings (Playfair defaulted to old-style numerals). */
   font-variant-numeric: lining-nums;
   line-height: 1.2;
 }

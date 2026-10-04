@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, type Column, DataTable, EmptyState, Field, Input, Spinner } from "@/components/ui";
 import { type AuditLogEntry, ApiError, type Device, exportMyAuditLog, listMyAuditLog } from "@/lib/apiClient";
-import { auditActionLabel } from "@/lib/auditFormatting";
+import { auditActionLabel, auditResourceLabel } from "@/lib/auditFormatting";
 
 import styles from "./AuditPanel.module.css";
 
@@ -131,17 +131,21 @@ export function AuditPanel({
           const name = entry.resource_id ? deviceNames.get(entry.resource_id) : undefined;
           return (
             <span className={styles.resource} title={entry.resource_id ?? undefined}>
-              Dispositivo
+              {auditResourceLabel("device")}
               {entry.resource_id ? (
-                <span className={name ? styles.resourceName : styles.resourceId}> · {name ?? entry.resource_id}</span>
+                <span className={name ? styles.resourceName : styles.resourceId}>{name ?? entry.resource_id}</span>
               ) : null}
             </span>
           );
         }
         return (
           <span className={styles.resource}>
-            {entry.resource_type}
-            {entry.resource_id ? <span className={styles.resourceId}> · {entry.resource_id}</span> : null}
+            {auditResourceLabel(entry.resource_type)}
+            {entry.resource_id ? (
+              <span className={styles.resourceId} title={entry.resource_id}>
+                {entry.resource_id}
+              </span>
+            ) : null}
           </span>
         );
       },
