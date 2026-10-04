@@ -51,6 +51,11 @@ async function tabTo(page: Page, target: Locator, maxTabs: number) {
 test("a returning tutor can navigate the whole dashboard and see real backend data", async ({
   page,
 }) => {
+  // One continuous session over 16 sections, with a 1 s settle wait on 12 of them: the waits alone
+  // add 12 s on top of the navigation and the Tab walk, too close to the 30 s default of
+  // playwright.config.ts for a test that cannot be split (see the header comment).
+  test.setTimeout(90_000);
+
   await page.addInitScript((token) => {
     window.sessionStorage.setItem("netprotect.refresh_token", token);
   }, session.tutorRefreshToken);
@@ -102,15 +107,23 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
     await expect(primary).toBeVisible();
     await tabTo(page, primary, 80);
 
-    const boxShadow = await primary.evaluate((element) => getComputedStyle(element).boxShadow);
-    expect(boxShadow).toContain("rgb(23, 105, 255)");
-    expect(boxShadow).not.toMatch(/0px 1px 2px/);
+    // `Button.module.css` animates box-shadow for `--duration-fast` (0.15 s), so reading it right
+    // after the Tab returns the START of the transition: the resting shadow plus a transparent
+    // ring (`oklab(... / 0.25) 0px 1px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px`). Poll until the
+    // transition ends (measured: stable by 300 ms at `rgb(245, 243, 238) 0px 0px 0px 2px,
+    // rgb(23, 105, 255) 0px 0px 0px 4px`) instead of asserting a single early read. Even the
+    // resting shadow serialises as `oklab(...)` in Chromium, not `rgba(...)`.
+    const boxShadow = () => primary.evaluate((element) => getComputedStyle(element).boxShadow);
+    await expect.poll(boxShadow, { message: "the focus ring never replaced the resting shadow" }).toContain(
+      "rgb(23, 105, 255)"
+    );
+    await expect.poll(boxShadow).not.toMatch(/0px 1px 2px/);
   });
 
   await test.step("every section of the sidebar opens with its own title", async () => {
     // Only titles (and the absence of an error alert) are asserted: the seeded device has no
-    // location, history or alerts, so no data is expected. The alert check waits for the network
-    // to settle first so a late failed request cannot slip past it. Sections already visited by
+    // location, history or alerts, so no data is expected. The alert check waits a moment first
+    // so a late failed request cannot slip past it. Sections already visited by
     // the steps above (Inicio, Dispositivos, Vinculación, Reglas por aplicación) are not repeated.
     // "Alertas" is matched by prefix because its nav button gains a ", N sin leer" suffix when
     // the device has unread alerts; every other label is matched exactly.
@@ -135,7 +148,12 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
         .getByRole("button", { name, exact: typeof name === "string" })
         .click();
       await expect(title(page), `section "${label}"`).toHaveText(label);
-      await page.waitForLoadState("networkidle");
+      // Not `waitForLoadState("networkidle")`: in this single-page app it resolves in a few
+      // milliseconds on every section (measured), because the page was already idle before the
+      // panel starts fetching, so it would let a late error through. A short fixed wait lets the
+      // panel's own requests finish before the error check (measured: no panel raises one, even
+      // after 1.5 s).
+      await page.waitForTimeout(1000);
       await expect(page.getByRole("main").getByRole("alert"), `section "${label}" shows an error`).toHaveCount(0);
     }
   });
