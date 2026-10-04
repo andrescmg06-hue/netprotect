@@ -303,7 +303,7 @@ export function DashboardShell({
 
           {activeSection === "pairing" && <PairingPanel accessToken={accessToken} />}
 
-          {activeSection === "audit" && <AuditPanel accessToken={accessToken} />}
+          {activeSection === "audit" && <AuditPanel accessToken={accessToken} devices={devices} />}
 
           {/* Keyed on the device (the header and its selector stay mounted, so keyboard focus
               survives the switch): a device change unmounts the old panel, so its cleanup runs —
@@ -341,7 +341,7 @@ export function DashboardShell({
               {activeSection === "silenced" && (
                 <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" />
               )}
-              {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} />}
+              {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} device={activeDevice} />}
             </div>
           )}
         </main>
