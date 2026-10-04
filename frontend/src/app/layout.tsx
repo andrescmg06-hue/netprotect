@@ -12,12 +12,13 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 // independent 1x renders showed Playfair's hairline strokes (the crossbar of the "e") vanishing, so
 // titles read "Gcoccrcas". Decision D1 in docs/redesign/fase-0-informe.md stays open for the designer;
 // swapping the face again means editing this constant and `--font-serif` in globals.css. Only the
-// 400/600 weights and the italic used by `.quote` are loaded.
+// 400/500/600 weights and the italic used by `.quote` are loaded; 500 is the login title's weight
+// (the mockup sits between 400 and 600) and the browser only downloads the weights a page uses.
 const serif = Newsreader({
   subsets: ["latin"],
   variable: "--font-serif-face",
   display: "swap",
-  weight: ["400", "600"],
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"]
 });
 

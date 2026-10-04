@@ -92,17 +92,29 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
 - [ ] T7 — e2e: login visible, prueba de teclado/foco y vistas S56–S59. Ruta: inline.
 - [x] T9 — Login: foto a pantalla completa con el panel como cristal desenfocado (pedido del dueño al revisar el web; se
   hace antes del cierre T8). Ruta: inline. Antes: rejilla de dos columnas, panel crema sólido y foto solo a la derecha.
-  Ahora (`login/LoginScreen.module.css` y `.tsx`): la foto cubre toda la pantalla en `position: absolute; inset: 0` y el
-  panel es una franja de cristal (`color-mix` de `--color-bg` al 80 % + `backdrop-filter: blur(22px)`), de alto completo y
-  separada del borde izquierdo en escritorio; en pantallas estrechas es una tarjeta abajo con una banda de foto encima.
-  `@supports not (backdrop-filter)` cae a un panel casi sólido; `sizes` de la imagen pasa a `100vw`.
-  Contraste, medido sobre la foto real desenfocada bajo el panel (peor píxel, 1280×720, 1600×900 y 1920×1080): título
-  navy 9,1–9,2:1; subtítulo y nota al pie pasan de `--color-text-muted` (3,35:1, no cumplía) a un navy suavizado
-  `#3e4d60` (5,0–5,05:1).
-  Evidencia: capturas de Chrome sin interfaz sobre el `web` reconstruido, `docs/redesign/s60/login-1600.jpg` y
-  `login-520.jpg` (la ventana más estrecha que admite Chrome es ~500 px: no se pudo capturar a 390 px, y a 390 la
-  tarjeta tendría 310 px de contenido). `eslint` y `tsc` limpios. **Pendiente:** verlo en un teléfono o a 390 px
-  reales; en móvil la tarjeta tapa la cara del niño de la foto (no se ajustó `object-position`).
+  Primera pasada: la foto cubre toda la pantalla (`position: absolute; inset: 0`) y el panel pasa a ser una franja de
+  cristal de alto completo, separada del borde izquierdo en escritorio; en pantallas estrechas, una tarjeta abajo con una
+  banda de foto encima. `@supports not (backdrop-filter)` cae a un panel casi sólido; `sizes` de la imagen pasa a `100vw`.
+  **Segunda pasada, tras ver el resultado el dueño con la referencia `mock-01-login.jpg`:** faltaba transparencia y ajustar
+  letra, espacios y tamaños. Se descubrió que la foto del paquete (`photo-login-study.jpg`) es **idéntica** a
+  `public/login/study.jpg` (mismo hash): la pared lisa que se ve a la izquierda de la referencia es un montaje y no existe
+  en la foto, que tiene la ventana con árboles justo bajo el panel. Un cristal solo más transparente salía gris, así que el
+  cristal pasa a `background` al 60 % (75 % en móvil) con `backdrop-filter: blur(28px) brightness(1.5) saturate(0.9)`: la
+  luminosidad media bajo el panel queda en 0,74 frente a 0,75 de la referencia.
+  Proporciones leídas de la referencia (1500 px): franja del 28,5 % que empieza al 6,5 %, contenido a 4,5 % del borde,
+  bloque que arranca al 12 % de la altura (`align-items: flex-start`); logo a 64 px; título `clamp(3rem, 5.3vw, 6rem)`,
+  `line-height: .92`, peso 500 (se añade a `layout.tsx`: el navegador solo descarga los pesos que se usan); botón de Google
+  de 14 px, esquinas pequeñas y placa clara semitransparente con borde suave (el control lo identifican el relleno, la marca
+  de Google, la etiqueta y la flecha, no solo el borde); huecos del bloque ajustados hasta coincidir con la referencia.
+  **Contraste**, medido sobre la foto real desenfocada y aclarada bajo el panel (peor píxel): escritorio 1280×720 a 1920×1080,
+  título 5,8–6,1:1 y textos pequeños (navy al 92 %, `#23344b`) 4,6–4,9:1; móvil con el 60 % daba 4,35:1 (no cumplía) y por eso
+  usa el 75 % (6,5:1). Antes, subtítulo y nota al pie usaban `--color-text-muted` (3,35:1, tampoco cumplía sobre el cristal).
+  Evidencia: capturas de Chrome sin interfaz sobre el `web` reconstruido, en `docs/redesign/s60/`: `login-1500.jpg`,
+  `login-520.jpg` y `login-vs-mockup.jpg` (referencia a la izquierda, resultado a la derecha, recorte del panel). Chrome no
+  admite ventanas de menos de ~500 px, así que no hay captura a 390 px. `eslint` y `tsc` limpios.
+  **Diferencias que se mantienen:** el logo es el oficial (la referencia dibuja un wordmark serif propio y escribe
+  «NetProject»); la franja izquierda muestra árboles de la foto en lugar de pared lisa; la tarjeta móvil tapa la cara del
+  niño (no se ajustó `object-position`). **Pendiente:** verlo en un teléfono o a 390 px reales.
 - [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
   `/cerrar-sprint 60`.
 

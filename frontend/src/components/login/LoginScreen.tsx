@@ -26,7 +26,7 @@ export function LoginScreen({ authStatus }: { authStatus: "loading" | "unauthent
     <main className={styles.screen}>
       <section className={styles.panel}>
         <div className={styles.content}>
-          <Logo height={56} />
+          <Logo height={64} />
 
           <span className={styles.rule} aria-hidden="true" />
 
