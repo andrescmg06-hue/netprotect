@@ -60,8 +60,19 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `src/app/apple-icon.png` 180×180 sobre `--color-bg` crema (iOS rellena en negro la transparencia; 16 KB). Next los sirve
   por convención de nombres, sin tocar `layout.tsx`. Revisados a la vista. **Pendiente:** verlos en la pestaña del
   navegador tras reconstruir el web (la caché de favicon suele exigir Ctrl+F5 o reabrir la pestaña).
-- [ ] T5 — Imágenes: retirar o usar `card-twilight.jpg`, aligerar logos, comprobar `sharp` en el contenedor `web`,
-  valorar la carga `eager` de la banda. Ruta: inline.
+- [x] T5 — Imágenes (cambio hecho; **pesos nuevos sin medir**). Ruta: inline.
+  Comprobado en el contenedor `web`: el optimizador de Next funciona (`sharp` está), y banda y login ya pasan por él
+  (`study.jpg` 186 KB → 36 KB a 640 px; `band-alpine.jpg` 225 KB → 52 KB a 1080 px; medido con `curl` a `/_next/image`).
+  Cambiado: los tres logos (`ui/Logo.tsx`, ~100 KB cada uno, mostrados a ~44 px de alto) dejan `unoptimized`: su
+  justificación («no hace falta tocar la CSP») no se sostiene, porque `/_next/image` es el mismo origen y la banda ya
+  funciona con la CSP actual. Se pide `quality={90}` para que el texto de la marca no se degrade; Next 16 solo permite
+  75 por defecto y redondea cualquier otro valor en silencio, así que `next.config.ts` declara `images.qualities: [75, 90]`
+  (comprobado en `node_modules/next/dist/docs`). `tsc` y `eslint` limpios sobre los dos ficheros.
+  **Decididos sin cambio:** `card-twilight.jpg` (147 KB, sin uso) se conserva: es un asset del paquete de diseño y S54
+  decidió no usar la tarjeta de foto del pie del sidebar; borrarlo es decisión del dueño. La banda sigue `eager`: va sobre
+  el pliegue en cada vista y el optimizador ya la reduce.
+  **Pendiente:** tras reconstruir, medir el peso de los logos servidos y mirarlos a 1× y 2× (si el texto se ve blando,
+  subir a 100 o volver a `unoptimized`).
 - [ ] T6 — Estados vacíos: unificar `EmptyState` frente a `<p>` sueltos (AppRulesPanel, GeofencePanel,
   DeviceLocationPanel, DeviceCategoriesPanel). Ruta: inline.
 - [ ] T7 — e2e: login visible, prueba de teclado/foco y vistas S56–S59. Ruta: inline.
