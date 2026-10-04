@@ -54,7 +54,12 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   **No se pudo probar con Tab en un navegador:** la extensión de Chrome no estaba conectada y `/design-system` da 404 en el
   build de producción. Pendiente: Tab sobre un botón primario y una fila seleccionada (la hace el dueño), y probar el
   modo de alto contraste de Windows.
-- [ ] T4 — Favicon: `favicon.ico`, icono cuadrado y `apple-icon` desde `logo-shield`. Ruta: inline.
+- [x] T4 — Favicon. Ruta: inline. Generados desde `public/brand/logo-shield.png` (219×256, no cuadrado) con Pillow,
+  escudo centrado sobre lienzo cuadrado (LANCZOS): `src/app/icon.png` 192×192, 256 colores, 54 KB → 5,3 KB (con ligero
+  bandeado en el degradado a 192 px, imperceptible a tamaño de pestaña); `src/app/favicon.ico` con 16, 32 y 48 px (7 KB);
+  `src/app/apple-icon.png` 180×180 sobre `--color-bg` crema (iOS rellena en negro la transparencia; 16 KB). Next los sirve
+  por convención de nombres, sin tocar `layout.tsx`. Revisados a la vista. **Pendiente:** verlos en la pestaña del
+  navegador tras reconstruir el web (la caché de favicon suele exigir Ctrl+F5 o reabrir la pestaña).
 - [ ] T5 — Imágenes: retirar o usar `card-twilight.jpg`, aligerar logos, comprobar `sharp` en el contenedor `web`,
   valorar la carga `eager` de la banda. Ruta: inline.
 - [ ] T6 — Estados vacíos: unificar `EmptyState` frente a `<p>` sueltos (AppRulesPanel, GeofencePanel,
