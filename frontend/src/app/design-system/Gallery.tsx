@@ -7,6 +7,7 @@ import {
   Clock,
   LayoutGrid,
   Link2,
+  Palette,
   Plus,
   RefreshCw,
   Search,
@@ -40,6 +41,27 @@ import {
 
 import styles from "./Gallery.module.css";
 
+/** Token swatches shown in the gallery: the surfaces, ink, brand and status colours of globals.css. */
+const SWATCHES = [
+  { token: "--color-bg" },
+  { token: "--color-surface" },
+  { token: "--color-surface-muted" },
+  { token: "--color-border" },
+  { token: "--color-border-strong" },
+  { token: "--color-text" },
+  { token: "--color-text-muted" },
+  { token: "--color-text-subtle" },
+  { token: "--color-navy-950" },
+  { token: "--color-navy-700" },
+  { token: "--color-primary" },
+  { token: "--color-primary-text" },
+  { token: "--color-primary-soft" },
+  { token: "--color-success" },
+  { token: "--color-warning" },
+  { token: "--color-danger" },
+  { token: "--color-purple" },
+];
+
 export function Gallery() {
   const [days, setDays] = useState(0b001_1111);
   const [period, setPeriod] = useState<"today" | "7d" | "30d">("7d");
@@ -55,9 +77,38 @@ export function Gallery() {
 
       <PageHeader
         title="Sistema de diseño"
-        description="Componentes base del Sprint 31. Solo en desarrollo."
+        description="Componentes base del Sprint 31, con los tokens del rediseño editorial (Sprint 53). Solo en desarrollo."
         breadcrumb="Sistema de diseño"
       />
+
+      <PageHeader
+        band
+        title="Con banda fotográfica"
+        description="Variante opt-in del encabezado: velo crema a la izquierda, título serif, frase y selector a la derecha."
+        breadcrumb="Sistema de diseño"
+        quote="Saber dónde están, para que lleguen más lejos."
+        aside={<StatusBadge tone="success" dot>En línea</StatusBadge>}
+      />
+
+      <Card>
+        <CardHeader icon={Palette} title="Tokens" subtitle="Superficies, texto, marca y estados. Cada muestra lee su variable de globals.css." />
+        <div className={styles.swatches}>
+          {SWATCHES.map((swatch) => (
+            <div key={swatch.token} className={styles.swatch}>
+              <span className={styles.chip} style={{ background: `var(${swatch.token})` }} />
+              <span className={styles.swatchName}>{swatch.token}</span>
+            </div>
+          ))}
+        </div>
+        <div className={styles.type}>
+          <span className="eyebrow">Etiqueta en mayúsculas</span>
+          <h2 className={styles.typeTitle}>Título en serif, el tono editorial</h2>
+          <p className="quote">Una frase editorial en serif cursiva.</p>
+          <p>
+            Texto de interfaz en sans: <span className="tabular">0123456789 · 4 h 12 min</span> con cifras alineadas.
+          </p>
+        </div>
+      </Card>
 
       <MetricGrid>
         <MetricCard icon={ShieldCheck} tone="info" label="Reglas activas" value="12" hint="En 3 dispositivos" />
@@ -186,6 +237,14 @@ export function Gallery() {
                   Ir a Vinculación
                 </Button>
               }
+            />
+          </Card>
+          <Card padding="md">
+            <EmptyState
+              icon={ShieldCheck}
+              illustration={<ShieldCheck size={72} strokeWidth={1} aria-hidden="true" />}
+              title="Con ilustración opcional"
+              description="La ilustración reemplaza al icono. Aquí es un trazo lineal de ejemplo, no un asset final."
             />
           </Card>
         </div>

@@ -1,21 +1,25 @@
 ---
 name: NetProtect · Panel del tutor
-description: A calm light-blue frame where a parent sees the current device and anything needing attention at a glance.
+description: An editorial, calm control panel for a parent: cream paper, navy ink, one blue accent, serif titles over a sans interface.
 colors:
-  signal-blue: "#246bfe"
+  signal-blue: "#1769ff"
   signal-blue-deep: "#1456d9"
-  signal-blue-text: "#1f5fe6"
+  signal-blue-text: "#1456d9"
+  signal-blue-on-dark: "#7fa8ff"
   blue-wash: "#eaf1ff"
-  blue-mist: "#f3f7ff"
-  shield-navy: "#102b63"
-  sky-ground: "#f5f9ff"
+  warm-wash: "#f3f1ec"
+  ink-navy: "#11243d"
+  navy-950: "#0d1b2a"
+  navy-900: "#10233b"
+  navy-700: "#17345c"
+  cream: "#f5f3ee"
   paper-white: "#ffffff"
-  paper-muted: "#f7f9fc"
-  hairline: "#e6ecf5"
-  hairline-strong: "#d5dfee"
-  ink: "#1b2b4b"
-  slate-muted: "#5b6b82"
-  slate-subtle: "#94a3b8"
+  paper-muted: "#f8f7f3"
+  stone: "#d9d6cf"
+  stone-strong: "#8a8678"
+  ink: "#11243d"
+  slate-muted: "#5b6779"
+  slate-subtle: "#6f6b60"
   success: "#16b364"
   success-wash: "#e7f8ef"
   success-text: "#0b7a42"
@@ -28,26 +32,33 @@ colors:
   violet: "#7a5af8"
   violet-wash: "#f1edfe"
   violet-text: "#5b3fd6"
-  neutral-wash: "#eef2f7"
 typography:
+  display-xl:
+    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontSize: "64px"
+    fontWeight: 600
+    lineHeight: 1.2
   display:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
-    fontSize: "32px"
-    fontWeight: 700
+    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontSize: "44px"
+    fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
     fontSize: "28px"
-    fontWeight: 700
+    fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "-0.01em"
     fontFeature: "tnum"
   title:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
     fontSize: "18px"
     fontWeight: 600
     lineHeight: 1.2
+  quote:
+    fontFamily: "Playfair Display, Libre Caslon Text, Georgia, serif"
+    fontSize: "17px"
+    fontWeight: 400
+    lineHeight: "24px"
   body-lead:
     fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "15px"
@@ -68,11 +79,16 @@ typography:
     fontSize: "12px"
     fontWeight: 600
     lineHeight: 1.5
+  eyebrow:
+    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    letterSpacing: "0.14em"
 rounded:
-  sm: "8px"
-  md: "10px"
-  lg: "14px"
-  xl: "16px"
+  sm: "4px"
+  md: "6px"
+  lg: "8px"
+  xl: "8px"
   pill: "999px"
 spacing:
   "1": "4px"
@@ -83,6 +99,9 @@ spacing:
   "6": "24px"
   "8": "32px"
   "10": "40px"
+  "12": "48px"
+  "16": "64px"
+  "24": "96px"
 components:
   button-primary:
     backgroundColor: "{colors.signal-blue}"
@@ -95,12 +114,10 @@ components:
     backgroundColor: "{colors.signal-blue-deep}"
   button-secondary:
     backgroundColor: "{colors.paper-white}"
-    textColor: "{colors.signal-blue}"
+    textColor: "{colors.signal-blue-text}"
     rounded: "{rounded.md}"
     padding: "0 16px"
     height: "40px"
-  button-secondary-hover:
-    backgroundColor: "{colors.blue-mist}"
   button-danger:
     backgroundColor: "{colors.danger-wash}"
     textColor: "{colors.danger-text}"
@@ -113,27 +130,13 @@ components:
     rounded: "{rounded.md}"
     padding: "0 16px"
     height: "40px"
-  button-ghost-hover:
-    backgroundColor: "{colors.blue-mist}"
-    textColor: "{colors.signal-blue}"
   button-sm:
     typography: "{typography.label}"
     padding: "0 12px"
     height: "32px"
   card:
-    backgroundColor: "{colors.paper-white}"
-    rounded: "{rounded.xl}"
-    padding: "16px"
-  card-lg:
-    backgroundColor: "{colors.paper-white}"
-    rounded: "{rounded.xl}"
-    padding: "20px 24px"
-  metric-card:
-    backgroundColor: "{colors.paper-white}"
-    textColor: "{colors.shield-navy}"
-    typography: "{typography.headline}"
-    rounded: "{rounded.xl}"
-    padding: "20px"
+    backgroundColor: "{colors.paper-muted}"
+    rounded: "{rounded.lg}"
   input:
     backgroundColor: "{colors.paper-white}"
     textColor: "{colors.ink}"
@@ -145,50 +148,16 @@ components:
     backgroundColor: "{colors.success-wash}"
     textColor: "{colors.success-text}"
     typography: "{typography.caption}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "0 10px"
     height: "24px"
   status-badge-danger:
     backgroundColor: "{colors.danger-wash}"
     textColor: "{colors.danger-text}"
     typography: "{typography.caption}"
-    rounded: "{rounded.pill}"
-    padding: "0 10px"
-    height: "24px"
-  status-badge-info:
-    backgroundColor: "{colors.blue-wash}"
-    textColor: "{colors.signal-blue-deep}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.pill}"
-    padding: "0 10px"
-    height: "24px"
-  nav-item:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.md}"
-    padding: "0 12px"
-    height: "42px"
-  nav-item-hover:
-    backgroundColor: "{colors.blue-mist}"
-    textColor: "{colors.signal-blue}"
-  nav-item-active:
-    backgroundColor: "{colors.signal-blue}"
-    textColor: "{colors.paper-white}"
-  segmented-option-selected:
-    backgroundColor: "{colors.signal-blue}"
-    textColor: "{colors.paper-white}"
-    typography: "{typography.label}"
     rounded: "{rounded.sm}"
-    padding: "0 16px"
-    height: "32px"
-  search-field:
-    backgroundColor: "{colors.blue-mist}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.lg}"
-    padding: "0 16px 0 44px"
-    height: "44px"
+    padding: "0 10px"
+    height: "24px"
   switch-on:
     backgroundColor: "{colors.signal-blue}"
     rounded: "{rounded.pill}"
@@ -198,204 +167,134 @@ components:
 
 # Design System: NetProtect · Panel del tutor
 
-<!-- Recorded from the built Sprint 31–32 shell and ui/ primitives (frontend/src/app/globals.css
-     :root tokens, frontend/src/components/ui/*, frontend/src/components/shell/*,
-     DashboardShell). The section views inside the shell are still the pre-redesign panels and are
-     NOT described here; they are rebuilt from these primitives in Sprints 33–38. -->
+<!-- Sprint 53 (docs/sprint-53.md). Recorded from the shipped tokens in frontend/src/app/globals.css and
+     the evolved primitives in frontend/src/components/ui/*. SCOPE OF WHAT IS SHIPPED: tokens, serif
+     headings, the primitives and the /design-system gallery. NOT yet migrated: the shell (Sidebar,
+     Header) and the login are still the previous light design until Sprint 54, and the 16 section
+     views are recomposed in Sprints 55-59; they inherit the new colours, radii and typography today
+     but not the new composition. The component entries below describe the primitives only. -->
 
 ## Overview
 
-**Creative North Star: "The Calm Blue Frame"**
+**Creative North Star: "The Quiet Editorial Desk"**
 
-The tutor panel is one quiet, light-blue frame around whatever the parent is looking at. A white sidebar and a white header sit on a pale sky ground (`sky-ground`, with a very soft vertical gradient toward `#eef4ff`); inside it, white cards with hairline borders and a barely-there shadow hold the content. One saturated blue, Signal Blue, does all the pointing: the active section, the primary action, the selected option, the switch that is on. Everything else is navy, ink and slate on white. The effect is meant to read as security, trust and control without feeling like a dark admin console or a children's app.
+NetProtect is a parent's desk, not an admin console. The page is warm cream paper; content sits on it as open panels bounded by thin stone lines rather than as floating white cards; titles are set in a serif, as in a magazine, and everything you operate (buttons, forms, tables, navigation, data) is set in a plain sans. One saturated blue, Signal Blue, does all the pointing and is never a surface. A deep navy appears where the interface needs weight (the sidebar from Sprint 54, the brand card). The product speaks of security, control and accompaniment, so the page must feel calm, serious and human.
 
-The frame exists so that two things are always one glance away: which device the parent is looking at (the device card at the right of every page header, with its status badge), and whether anything needs attention (the unread count on the Alerts item and the dot on the header bell). Density is moderate: 14px body text, 40px controls, 24px between page blocks on desktop. Phone and desktop carry equal weight; the same markup becomes a full sidebar, an icon rail and an off-canvas drawer.
+Reference direction and the per-view decisions live in `docs/redesign/` (`02_DESIGN_TARGET.md`, `03_VISTAS.md`, `fase-0-informe.md`).
 
-The system is honest by construction. Every number, badge and button maps to real data or a real action; stat tiles carry a plain-text hint instead of trend arrows; delays (location every ~15 minutes) are stated in section descriptions instead of dressed up as live. Light theme only (`color-scheme: light`); there is no dark mode.
-
-**Key Characteristics:**
-- Light only: white surfaces on a pale sky-blue ground, navy headings, slate secondary text.
-- One accent (Signal Blue) reserved for active, primary and "on"; status colours are used only for status.
-- Soft-shadow white cards with 16px corners and a 1px hairline border.
-- Inter throughout, weights 400/500/600/700, no second family.
-- Lucide line icons only, 16–22px, stroke around 1.9–2.
-- Motion is short (150–200ms), state-only, and collapses under reduced motion.
-- Three responsive shells from one markup: sidebar ≥1200px, icon rail 900–1199px, drawer <900px.
+**Key characteristics**
+- Cream ground (`cream`), flat colour, no gradient.
+- Open panels: a 1px `stone` line and `paper-muted` tone, no drop shadow.
+- Almost square corners: 4–8px. Pills only for switches and status dots.
+- Serif for titles (h1–h4, `quote`), sans for everything else. Figures use tabular numerals.
+- Blue is an accent: one point of emphasis per screen.
+- Space is generous on purpose; fewer, better elements.
 
 ## Colors
 
-A single cool blue family over white and pale sky, with semantic status hues held back for status.
-
 ### Primary
-- **Signal Blue** (`signal-blue`): the only accent. Active navigation item (filled, white text), primary button, selected segment and day, switch "on", link colour, focus ring (at 25% alpha), caret, card titles and sidebar group labels.
-- **Signal Blue Deep** (`signal-blue-deep`): hover state of the primary button; text colour of the info badge.
-- **Blue Wash** (`blue-wash`): tinted containers for blue icons (device card icon tile, empty-state disc, info metric icon, avatar initials background) and the info badge fill.
-- **Blue Mist** (`blue-mist`): the hover wash for every quiet control (nav items, ghost and secondary buttons, icon buttons, menu items, search results) and the resting fill of the header search field and unselected days.
+- **Signal Blue** (`--color-primary`, `#1769ff`): fills only (primary button, active item, switch on). White text on it is 4.67:1.
+- **Signal Blue Deep** (`--color-primary-hover`, `#1456d9`): hover of the fill.
+- **Signal Blue Text** (`--color-primary-text`, `#1456d9`): blue for text and icons on cream or white (5.63:1 and 6.24:1).
+- **Blue Wash** (`--color-primary-soft`, `#eaf1ff`): the selected-row and informational wash.
+- **Signal Blue on Dark** (`--color-primary-on-dark`, `#7fa8ff`): blue on the navy surfaces (7.41:1).
 
 ### Neutral
-- **Shield Navy** (`shield-navy`): all headings (h1–h4), page titles, metric values, the device name, the user's name. Taken from the logo's "Net" wordmark.
-- **Ink** (`ink`): body text and nav item labels.
-- **Slate Muted** (`slate-muted`): secondary text: descriptions, hints, emails, resting icons in nav and header.
-- **Signal Blue Text** (`signal-blue-text`): blue text and icons (card titles, hover states, secondary buttons, sidebar group labels). ≥4.96:1 on every light surface, where Signal Blue itself drops to 4.24:1 on Blue Mist.
-- **Slate Subtle** (`slate-subtle`): input placeholders only. Not for any text a user must read (2.56:1 on white).
-- **Sky Ground** (`sky-ground`): the page ground behind the content column (as a 180° gradient to `#eef4ff`, fixed).
-- **Paper White** (`paper-white`): sidebar, header, cards, inputs, menus, dialogs.
-- **Paper Muted** (`paper-muted`): the action footer strip of the confirm dialog.
-- **Hairline** (`hairline`) and **Hairline Strong** (`hairline-strong`): 1px borders. Hairline on cards, sidebar, header and dividers; Hairline Strong on inputs.
+- **Cream** (`--color-bg`, `#f5f3ee`): the page. `--color-bg-gradient` is kept for compatibility and is now the same flat colour.
+- **Paper White** (`--color-surface`, `#ffffff`) and **Paper Muted** (`--color-surface-muted`, `#f8f7f3`, the panel tone).
+- **Warm Wash** (`--color-primary-softer` and `--color-neutral-soft`, `#f3f1ec`): hover and neutral fills. The token name still says "primary" for compatibility; it is a warm neutral, not blue.
+- **Stone** (`--color-border`, `#d9d6cf`): lines and dividers. **Stone Strong** (`--color-border-strong`, `#8a8678`): control borders only (3.29:1 on cream, 3.64:1 on white).
+- **Ink Navy** (`--color-navy` and `--color-text`, `#11243d`): titles, values and body text (14.09:1 on cream).
+- **Slate Muted** (`--color-text-muted`, `#5b6779`): secondary text (5.17:1 on cream). **Slate Subtle** (`--color-text-subtle`, `#6f6b60`): placeholders and tertiary text (4.80:1 on cream, 5.32:1 on white).
+- **Navy 950 / 900 / 700** (`#0d1b2a` / `#10233b` / `#17345c`): dark surfaces. `--color-sidebar-*` aliases them for Sprint 54.
 
 ### Status (semantic only)
-Each status hue comes as a triple: a solid (icon or dot), a wash (fill) and a text shade (text on the wash).
-- **Success** (`success` / `success-wash` / `success-text`): device "En línea", success metrics.
-- **Danger** (`danger` / `danger-wash` / `danger-text`): device "Alerta", destructive buttons and menu items, the unread count and bell dot, the confirm-dialog icon.
-- **Warning** (`warning` / `warning-wash` / `warning-text`): warning tone for badges and metrics.
-- **Violet** (`violet` / `violet-wash` / `violet-text`): a sixth tone available to badges and metric tiles; no shipped screen assigns it a meaning yet (undecided).
-- **Neutral Wash** (`neutral-wash`): the neutral badge and metric tone ("Desconectado").
+Green only for positive states, red only for alerts, blocks and critical states; amber for warnings; violet for schedules. Each has a base, a wash and a text colour (all text/wash pairs clear 4.5:1).
 
 ### Named Rules
-**The One Blue Rule.** Signal Blue marks exactly one of: where you are, what you can do next, or what is on. It is never used for decoration, for large fills beyond a single active item or button, or as a second brand colour. Status never borrows it except as the "info" tone.
-
-**The Tone Means Something Rule.** Badge and metric tones are chosen by meaning (online, alert, warning), never to make a screen colourful, and never as the only carrier of information: every tone ships with a text label.
-
-**The Fill-vs-Text Blue Rule.** Signal Blue (`#246bfe`) is for fills and borders; white text on it is 4.56:1. Blue *text and icons* use Signal Blue Text (`#1f5fe6`), which stays ≥4.9:1 on white, Blue Mist, Blue Wash and Sky Ground.
-
-**Contrast (WCAG 2.1 AA, measured).** Every text pairing clears 4.5:1: Slate Muted `#5b6b82` ≥4.8:1 on white, Sky Ground, Blue Mist and Neutral Wash; success text on its wash 4.92:1; warning 5.43:1; danger 5.04:1; info (Signal Blue Deep on Blue Wash) 5.51:1; violet 5.85:1; Signal Blue Text ≥4.96:1 on every light surface. Fixed in Sprint 32 after this document first recorded five gaps.
+**The One Accent Rule.** Blue is the only saturated colour that is not a status, and it marks one point of emphasis per screen. If two things are blue, one is wrong.
+**The Text Ladder Rule.** Text on cream uses `--color-text`, `--color-text-muted` or `--color-text-subtle`, never `#697586` (4.22:1 on cream) and never `--color-border-strong` (3.29:1) as text.
+**The Names Are Stable Rule.** Token names do not change when values do; a name that no longer fits (`--color-primary-softer`) is documented, not renamed, until every consumer migrates.
 
 ## Typography
 
-**Display Font:** Inter (self-hosted by `next/font`, fallback `system-ui, -apple-system, "Segoe UI", sans-serif`)
-**Body Font:** Inter (same stack)
-
-**Character:** One humanist-geometric sans at four weights; hierarchy comes from size, weight and the navy/ink/slate colour step, not from a second family.
+**Display and titles: Playfair Display** (served by `next/font/google`, weights 400 and 600 plus italic). Provisional: it approximates the mockups' serif and the final face is still an open decision (D1 in `docs/redesign/fase-0-informe.md`); changing it is `--font-serif` plus one import in `app/layout.tsx`. **Interface: Inter.**
 
 ### Hierarchy
-- **Display** (700, 32px, 1.2, -0.02em, navy): the page title in the page header, one per view.
-- **Headline** (700, 28px, 1.2, -0.01em, navy): the value in a metric card. Numbers use tabular figures.
-- **Title** (600, 18px, 1.2): card titles (in Signal Blue, with an optional leading icon) and dialog titles.
-- **Body lead** (400, 15px): page descriptions, device name (600), sidebar profile name and group labels (600). Page description max width is 820px.
-- **Body** (400, 14px, 1.5): default text, nav items (500), buttons (600), inputs.
-- **Label** (600, 13px): field labels, segmented options, small buttons, metric labels (400, slate), breadcrumb.
-- **Caption** (600, 12px): status badges, field hints and errors (400).
-
-Sentence case everywhere. The only numeric text below 12px is the nav unread count (700, 11px; 10px in the rail).
+- **Display XL** (64px, serif 600): only the login "Inicia sesión". **Display** (44px): page title. **Headline** (28px): large values. **Title** (18px): card and section titles.
+- **Quote** (17/24, serif, italic): the editorial phrase of a page (`.quote`).
+- **Body** (14px) and **Body Lead** (15px), **Label** (13px/600), **Caption** (12px/600), **Eyebrow** (11px/600, uppercase, 0.14em: `.eyebrow`).
+- Figures use `font-variant-numeric: tabular-nums` (`.tabular`).
 
 ### Named Rules
-**The Tabular Numbers Rule.** Counts and metric values render with tabular figures (`.tabular` or `font-variant-numeric: tabular-nums`) so they do not jitter as they update.
+**The Two Voices Rule.** h1–h4 are serif; nothing else is. Buttons, forms, tables, navigation, states, data and labels stay sans.
+**The Real Weights Rule.** Only 400 and 600 of the serif are loaded; do not ask for 700 (the browser would pick 600 anyway, so write 600).
 
 ## Layout
 
-The shell is a two-column grid: sidebar (auto width) and a content column. The content column holds the sticky 72px header and a centred content stack with a 1440px maximum width; the header pads itself so its right edge lines up with that same column on very wide screens.
+Cream page, content in open panels. The shell has three layouts: sidebar at 1200px and up, a rail from 900 to 1199px, a drawer below 900px. Their sizes are tokens (`--sidebar-width` 270px, `--sidebar-rail-width` 84px, `--sidebar-drawer-width` 300px, `--content-max` 1440px, `--header-height` 72px and `--header-height-mobile` 64px); the breakpoints themselves stay literals because media queries cannot read custom properties. `--band-height` (168px) is the minimum height of the photographic band of `PageHeader`.
 
-- **≥1200px:** 270px sidebar, sticky and full height. Content padding 32px (40px bottom), 24px gap between page blocks.
-- **900–1199px:** the sidebar becomes an 84px icon rail (shield logo, avatar, icons only; labels visually hidden but kept as accessible names; sign-out moves to the account menu). Header and content padding drop to 24px; the user's name in the header hides.
-- **<900px:** the sidebar becomes an off-canvas drawer (`min(300px, 86vw)`) over a navy 30% backdrop, opened from a menu button; the header drops to 64px and shows the shield mark; content padding 20px/16px with a 20px gap. Settings and the menu chevron hide.
-- **≤720px:** the page header stacks: the device card goes full width under the title and the breadcrumb hides.
-
-Spacing uses a 4px base scale (4, 8, 12, 16, 20, 24, 32, 40). Stat tiles lay out in an auto-fit grid with a 210px minimum column and 16px gap.
-
-The page header is the fixed opening of every view: title and one-sentence description on the left, the active device card on the right.
+Mobile reinterprets the composition instead of compressing it. Do not repeat the "N cards on top, M cards below" grid on every page.
 
 ## Elevation & Depth
 
-Mostly flat with ambient lift. Surfaces separate from the sky ground by colour (white on pale blue), a 1px hairline border and a very soft, blue-tinted two-layer shadow. Anything that floats above the page (menus, search results, drawer, dialog) uses one stronger pop shadow. Filled blue elements (primary button, active nav item) carry a small blue glow.
+Depth comes from lines and tone, not shadows.
 
-### Shadow Vocabulary
-- **Card** (`box-shadow: 0 1px 2px rgba(16, 43, 99, 0.04), 0 4px 20px rgba(30, 70, 140, 0.05)`): cards, metric tiles, the device card. Resting state, always paired with the hairline border.
-- **Pop** (`box-shadow: 0 12px 32px rgba(16, 43, 99, 0.14)`): account menu, search results, phone drawer, confirm dialog.
-- **Blue glow** (`0 2px 8px rgba(36, 107, 254, 0.25)` on the primary button; `0 4px 12px rgba(36, 107, 254, 0.25)` on the active nav item): only under Signal Blue fills.
-- **Focus ring** (`box-shadow: 0 0 0 3px rgba(36, 107, 254, 0.25)`): every `:focus-visible` and focused input, plus a Signal Blue border on inputs and the device card.
+- `--shadow-card`: `0 1px 2px rgba(17, 36, 61, 0.06)`, almost invisible; most panels use none.
+- `--shadow-pop`: `0 12px 32px rgba(13, 27, 42, 0.14)`, only for menus and dialogs.
+- `--focus-ring`: a 2px cream gap and a 4px Signal Blue ring. On navy surfaces use `--focus-ring-on-dark`.
 
-### Named Rules
-**The Hairline-Plus-Whisper Rule.** A resting container is white, has a 1px hairline border and the card shadow. Never a heavier shadow at rest; stronger elevation is reserved for things that float.
+**The Flat By Default Rule.** A surface is separated from the page by a 1px stone line and a tone change. A shadow is a response to state (a floating menu), never a resting style.
 
 ## Shapes
 
-Softly rounded, never pill-shaped except for the smallest status elements. Radii step with the size of the thing: 8px for small inner items (menu items, segmented options, sign-out), 10px for controls (buttons, inputs, nav items, icon buttons, days), 14px for the device card, search field and floating menus, 16px for cards, metric tiles and dialogs. Pills (999px) are only for status badges, counts and the switch. Circles are for avatars, the metric icon disc, the empty-state disc and status dots.
-
-Icon containers are tinted, not outlined: a wash-coloured circle (metric, empty state, dialog) or a 10px-rounded tile (device card) with the solid hue as the icon colour.
+`--radius-sm` 4px (default of focus, badges, small controls), `--radius-md` 6px (buttons, inputs), `--radius-lg` and `--radius-xl` 8px (panels, the ceiling), `--radius-pill` only for switches and status dots. Round icon discs that still exist in `MetricCard` and `EmptyState` are a known leftover, to be replaced by the shared tone icon in Sprint 55.
 
 ## Components
 
 ### Buttons
-Confident but not loud: solid only when it is the primary action.
-- **Shape:** gently rounded (10px), 40px tall (32px small), 600 weight, icon gap 8px.
-- **Primary:** Signal Blue fill, white text, small blue glow; hover deepens to Signal Blue Deep.
-- **Secondary:** white with a pale blue border (`#cfdcf7`) and Signal Blue text; hover fills Blue Mist and the border turns Signal Blue.
-- **Danger:** Danger Wash fill, Danger Text, 30%-alpha danger border; hover `#fddcd9` with a solid danger border.
-- **Ghost:** transparent, Slate Muted text; hover Blue Mist and Signal Blue text.
-- **Disabled:** 55% opacity, not-allowed cursor.
-- **Transitions:** background, border, colour and shadow at 150ms.
+Primary (Signal Blue fill, white text), secondary (paper white, `stone-strong` border, blue text), danger (danger wash, token-derived border), ghost (transparent, slate). Heights 40px and 32px (`sm`). The primary button has a quiet 1px shadow derived from the brand blue.
 
 ### Status badges
-- **Style:** 24px pill, 12px/600 text, optional leading 7px dot in the current colour or a 13px icon.
-- **Tones:** success, danger, warning, info, violet, neutral — each wash fill with its text shade. Device status maps ONLINE → success "En línea", OFFLINE → neutral "Desconectado", ALERT → danger "Alerta".
+Radius 4px; the optional dot is a circle. Always text as well as colour. Tones: success, danger, warning, info, violet, neutral.
 
-### Cards / Containers
-- **Corner Style:** 16px.
-- **Background:** Paper White on Sky Ground.
-- **Shadow Strategy:** the Card shadow (see Elevation).
-- **Border:** 1px Hairline.
-- **Internal Padding:** 16px (md) or 20px/24px (lg); padding none for edge-to-edge lists.
-- **Card header:** 18px/600 Signal Blue title with an optional icon, a 13px slate subtitle, actions on the right, 16px below.
+### Cards / containers (open panels)
+`Card` is a panel: `--color-surface-muted`, 1px `--color-border`, `--radius-lg`, no shadow. `CardHeader` titles are navy serif; its icon keeps the blue text colour. Because the panel tone is `surface-muted`, anything inside that needs its own hover or fill uses `--color-primary-softer` (hover) or `--color-primary-soft` (selected), never `--color-surface-muted`.
 
 ### Metric cards
-Tinted 48px circular icon (wash fill, solid icon) beside a slate label, a 28px/700 navy value and one plain-text hint line. Padding 20px, same card surface. The hint is plain text on purpose: no trend arrows or deltas unless the data exists.
+No background, shadow or radius: a top rule, a label and a tabular figure. `MetricGrid` is unchanged; the redesign avoids repeating four of them in a row on every page.
 
-### Inputs / Fields
-- **Style:** 40px, white, 1px Hairline Strong border, 10px radius, 12px horizontal padding; Slate Subtle placeholder; label 13px/600 above, 6px gap, 12px hint below.
-- **Hover:** border `#b9c9e4`.
-- **Focus:** Signal Blue border plus the focus ring.
-- **Error:** 12px Danger Text message under the field.
-- **Select:** same control with a Lucide chevron drawn as an inline SVG background, right 12px.
-- **Leading icon:** Slate Muted icon at left 12px, text padded to 38px.
+### Inputs / fields
+White field, `--color-border-strong` border, 6px radius, placeholder in `--color-text-subtle`, focus ring.
 
 ### Segmented control, day picker, switch
-- **Segmented control:** white group with a hairline border and 3px inset; 32px options at 13px/600 in Slate Muted; hover Blue Mist; selected is a Signal Blue fill with white text.
-- **Day picker:** 38px day chips, Blue Mist at rest with Slate Muted text, Blue Wash on hover, Signal Blue fill when selected.
-- **Switch:** 44×24 pill, off `#cbd5e1`, on Signal Blue; 18px white thumb with a soft navy shadow, slides 20px at 200ms.
-
-### Confirm dialog
-Native `<dialog>`, up to 440px, 16px radius, pop shadow, a navy 35% backdrop with 2px blur. A 44px Danger Wash circle with the danger icon, 18px/600 title, slate description; actions right-aligned in a Paper Muted footer strip above a hairline. Opens with a 200ms rise-and-settle (6px, 0.98 scale).
+Selected option in Signal Blue fill; the group border is `--color-border-strong`; the switch track off is `--color-border-strong`, on is Signal Blue.
 
 ### Empty state
-Centred: 56px Blue Wash circle with a Signal Blue icon, 15px/600 navy title, 13px slate description (max 420px), optional action. States what is missing and what to do; never fills the gap with sample data.
+Icon in a warm neutral disc, or an optional `illustration` node that replaces it. Illustrations must be light and small; the three in `docs/redesign/assets/ilustraciones/` are heavier than the direction and unoptimised, so they are not used yet.
 
-### Navigation
-- **Sidebar:** full logo (58px), a profile block (48px avatar, name, email, sign-out), then grouped sections: "Inicio" ungrouped, then Cuenta, Dispositivos, Monitoreo, Auditoría. Group labels 15px/600 in Signal Blue.
-- **Items:** 42px, 10px radius, 20px Lucide icon in Slate Muted plus 14px/500 ink label. Hover: Blue Mist with Signal Blue text and icon. Active: Signal Blue fill, white text and icon, blue glow, `aria-current="page"`.
-- **Unread count:** Danger pill (11px/700, tabular) on the Alerts item; inverts to white-on-blue when that item is active; announced to screen readers as "N sin leer".
-- **Rail and drawer:** see Layout. The drawer slides in 200ms and moves focus to its close button; closing returns focus to the menu button.
+### Page header
+`PageHeader` keeps its plain layout by default. With `band`, it paints a photographic band (`/brand/band-alpine.jpg`, decorative, `alt=""`) with a cream veil on the left, the breadcrumb, a serif title, the description, an optional `quote` and the `aside` slot (the device selector). It is opt-in; `DashboardShell` turns it on in Sprint 54. There is exactly one h1 per view (the e2e depends on it).
 
-### Header
-White, 72px (64px on phone), hairline bottom border, sticky. Left: a wide search field (up to 560px, 44px, Blue Mist fill, 14px radius; white with Signal Blue border and focus ring when focused) that only searches what the panel already has loaded (sections and linked devices) and says so through its results. Right: 40px icon buttons (bell with a danger dot when there are unread alerts, settings), a hairline divider, and the account button (36px avatar, name, chevron that rotates on open) opening a 240px menu.
-
-### Device card (signature)
-The active-device selector at the right of every page header: 280px white card, 14px radius, card shadow; a 48×56 Blue Wash tile with a Signal Blue phone icon, the device name (15px/600 navy, truncated), platform and OS in slate, and the status badge with a dot. A transparent native `<select>` covers the card, so it is keyboard- and screen-reader-native; focus puts the ring on the whole card. Full width at ≤720px.
+### Navigation, header, login, device selector
+Still the previous light design; they are rebuilt in Sprint 54 (navy sidebar with grouped navigation and a blue active item, a clean header with search, notifications, settings and profile, and the login with a full-bleed photograph). Do not describe them here until they ship.
 
 ### Motion
-Tokens: `--ease: cubic-bezier(0.2, 0.8, 0.2, 1)`, `--duration-fast: 150ms` (hover and colour changes, menu drop-in), `--duration: 200ms` (drawer, switch, dialog). Motion only reports a state change; nothing moves on its own. The global reduced-motion rule collapses every animation and transition to ~0ms.
+`--ease`, 150/200/250ms. One authored moment per screen (the section fade-in). Animate `transform` and `opacity` only; bars use `scaleX`. `prefers-reduced-motion` collapses all of it.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** take every colour, radius, shadow, space and duration from the `:root` tokens in `globals.css`; each component gets its own CSS Module.
-- **Do** keep Signal Blue for the active item, the primary action and "on" states (The One Blue Rule).
-- **Do** open every view with the page header: navy 32px title, one-sentence description, device card on the right.
-- **Do** build containers as white, 16px-radius cards with a hairline border and the card shadow.
-- **Do** pair every status colour with a text label, and pick tones by meaning.
-- **Do** use Signal Blue Text (`#1f5fe6`) for blue text and icons, and Signal Blue (`#246bfe`) only for fills.
-- **Do** keep text at or above 4.5:1 against its actual background (WCAG 2.1 AA) and give every interactive element the visible focus ring.
-- **Do** state data delays in the UI copy ("cada ~15 minutos") instead of implying real time.
-- **Do** design each view for 390px and 1440px with equal care; check the rail at 1024px.
-- **Do** keep motion between 150 and 250ms, on state changes only, and let the reduced-motion rule apply.
-- **Do** draw charts, when they arrive, as hand-made SVG using these tokens.
+- **Do** use only tokens from `globals.css`; if a value is missing, add a token, do not hard-code.
+- **Do** keep blue for one point of emphasis per screen and green/red for meaning only.
+- **Do** separate surfaces with a line and a tone, and leave generous space.
+- **Do** keep the real data rule: the look follows the mockup, the function follows the backend (`.claude/rules/frontend.md`).
+- **Do** check contrast on the surface the text actually sits on, cream and `paper-muted` included.
 
 ### Don't:
-- **Don't** add a dark theme or dark surfaces; the panel is light only.
-- **Don't** show any number, trend, feature, testimonial or sample data the system does not really have; no trend arrows on metric cards.
-- **Don't** use Tailwind, a component library or a chart library.
-- **Don't** use any icon set other than Lucide line icons, and don't use emoji or glyphs as icons.
-- **Don't** introduce a second typeface or replace the NetProtect logo files in `frontend/public/brand/`.
-- **Don't** hard-code hex values in components; add or reuse a token.
-- **Don't** give resting cards a heavier shadow than the card shadow, or use pop shadows on anything that does not float.
-- **Don't** copy the look of the not-yet-redesigned section panels (the "Legacy styles (Sprints 1–24)" block in `globals.css`, including its uppercase `.eyebrow` kicker and bare-button styling); that CSS is transitional and is removed as Sprints 33–38 rebuild each view.
-- **Don't** use Slate Subtle (`#94a3b8`) for anything other than placeholders.
+- **Don't** use drop shadows, glass or gradients as decoration; the only gradient is the cream veil of the page band.
+- **Don't** round beyond 8px, except switches and status dots.
+- **Don't** set anything but titles in the serif, and don't use more than the two loaded weights.
+- **Don't** recreate the logo: the official PNGs in `public/brand/` rule over any wordmark drawn in a mockup, and the product name is always NetProtect.
+- **Don't** turn real components (buttons, inputs, timelines, charts, maps, schedules) into images.
+- **Don't** repeat a grid of equal cards as a page structure.
