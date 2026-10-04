@@ -38,7 +38,7 @@ export function PageHeader({
   if (band) {
     return (
       <div className={`${styles.header} ${styles.band}`}>
-        <Image className={styles.photo} src="/brand/band-alpine.jpg" alt="" fill sizes="100vw" />
+        <Image className={styles.photo} src="/brand/band-alpine.jpg" alt="" fill sizes="100vw" loading="eager" />
         <div className={styles.veil} aria-hidden="true" />
         <div className={`${styles.text} ${styles.bandText}`}>
           {breadcrumbNav}
