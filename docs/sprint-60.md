@@ -44,8 +44,16 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   encima y no son el único portador del estado: se revisan en la pasada de teclado y contraste de T7 (no hay medición automática todavía).
   Evidencia: razones calculadas con la fórmula de luminancia WCAG. **Pendiente:** build y revisión visual de los dos cambios
   (se reconstruye el web una sola vez al cerrar T6, para no interrumpir tu revisión en el navegador).
-- [ ] T3 — Foco: probar con Tab en navegador el anillo en `Button.primary` y fila seleccionada de Alertas; corregir
-  prioridad si se pierde; fallback `forced-colors`. Ruta: inline.
+- [x] T3 — Foco (cambio hecho; **sin comprobación visual**). Ruta: inline. `Button.primary` y `.rowSelected` de Alertas
+  fijaban su propio `box-shadow` con la misma especificidad (0,1,0) que el `:focus-visible` global, y las hojas de módulo
+  cargan después: el anillo se perdía por orden de cascada. Se añadió `.primary:focus-visible` (0,2,0) y
+  `.rowSelected:focus-visible`, que conserva la raya navy de selección y suma el anillo; la regla gana por especificidad,
+  no por orden. Además, un bloque `@media (forced-colors: active)` en `globals.css` da un `outline` real, porque el modo de
+  alto contraste de Windows elimina los `box-shadow`. Revisados el resto de `box-shadow` propios: son sombras de
+  ventanas emergentes o la bolita del Switch, no el elemento enfocable.
+  **No se pudo probar con Tab en un navegador:** la extensión de Chrome no estaba conectada y `/design-system` da 404 en el
+  build de producción. Pendiente: Tab sobre un botón primario y una fila seleccionada (la hace el dueño), y probar el
+  modo de alto contraste de Windows.
 - [ ] T4 — Favicon: `favicon.ico`, icono cuadrado y `apple-icon` desde `logo-shield`. Ruta: inline.
 - [ ] T5 — Imágenes: retirar o usar `card-twilight.jpg`, aligerar logos, comprobar `sharp` en el contenedor `web`,
   valorar la carga `eager` de la banda. Ruta: inline.
