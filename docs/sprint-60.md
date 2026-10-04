@@ -151,7 +151,10 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
 - [x] T8 — Verificación y cierre. `/cerrar-sprint 60` lanzado por el dueño. Verificación completa del `verifier` en
   modo completo (backend y frontend, e2e real y control negativo): `ruff` verde, `make test` 295 passed, `lint`, `tsc`,
   `next build` y e2e 2 passed; revisión del `security-reviewer`: 0 ALTA, 0 MEDIA, 1 BAJA documental ya corregida. Todo en
-  `docs/sprint-60-evidence.md`. **No cierra el sprint hasta que CI pase los 8 jobs en GitHub Actions** (aún no hay push).
+  `docs/sprint-60-evidence.md`. **CI en GitHub Actions: 8 de 8 jobs en verde** en el PR #16 sobre `3e00b9f` (run 37229445424;
+`android` 4m26s, `android-instrumented` 5m55s, `api-collection` 58s, `backend` 30s, `e2e` 2m2s, `frontend` 40s, `integration` 1m38s,
+`performance` 1m39s). Antes, el PR #15 tenía 7 de 8 y el job `frontend` caía en `npm audit` por GHSA-vfj7-8cjw-p6xm (`braces *`,
+sin parche), que ya ponía en rojo el PR #14; se resolvió auditando solo producción (`--omit=dev`, `3e00b9f`) y queda W-14.
 
 - [x] T10 — Pruebas integradas web + emulador (pedido del dueño antes de publicar: «conecta la web y el emulador, genera
   todas esas cosas y comprueba que todo esté bien»). Autorizado explícitamente por el dueño: sembrar 3 usuarios sintéticos
@@ -216,7 +219,7 @@ Cumplido = hecho y con evidencia observada; pendiente = con motivo (humano si lo
 | e2e en verde (T7) | Cumplido | §1: 2 passed; spec con 6 steps y 16 secciones; Vista remota a 390×844 dentro del viewport |
 | Login a pantalla completa con cristal (T9) | Cumplido | §3 y capturas en `docs/redesign/s60/`; contraste ≥ 4,6:1 medido sobre la foto; verlo a 390 px reales pendiente (humano) |
 | Verificación completa y seguridad (T8) | Cumplido | §1 y §4 |
-| CI en GitHub Actions con los 8 jobs | **Pendiente** | aún no hay push; es lo que cierra el sprint |
+| CI en GitHub Actions con los 8 jobs | Cumplido | PR #16 sobre `3e00b9f`, run 37229445424: 8 de 8 en verde (`npm audit` pasa a `--omit=dev`, W-14) |
 | Revisión visual con sesión real de Google (T5 de S54) y login real (H-01) | **Pendiente (humano)** | solo una persona puede hacerlo |
 
 ## Pendiente conocido

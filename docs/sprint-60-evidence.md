@@ -184,4 +184,28 @@ navegador (W-10); la caché de la app conserva reglas y políticas de dispositiv
   uso); el horario de YouTube Music en vivo (hoy es domingo y no se cambió el reloj del emulador); la ubicación (el emulador solo
   tiene GPS y la app usa `NETWORK_PROVIDER`); la aceptación humana del diálogo de captura (H-02) y «Solicitar ver pantalla»; el e2e
   completo contra alertas sin leer reales tras corregir el regex; y que la política vuelva a «Todo permitido» tras la prueba.
-- CI en GitHub Actions: el sprint no se da por cerrado hasta que pasen los 8 jobs.
+- Nada que decir sobre CI: pasó (ver §7). Lo que el CI no cubre sigue en esta lista.
+
+## 7. CI en GitHub Actions
+
+El CI solo corre con `pull_request` y con push a `main` o `develop`, no con el push de una rama: hizo falta el PR #16. Salida de
+`gh pr checks 16` sobre `3e00b9f` (run `37229445424`):
+
+```
+android                pass     4m26s
+android-instrumented   pass     5m55s
+api-collection         pass     58s
+backend                pass     30s
+e2e                    pass     2m2s
+frontend               pass     40s
+integration            pass     1m38s
+performance            pass     1m39s
+```
+
+**Fallo del camino:** el PR #15 (el fix de auth sobre la rama de Cristian) tuvo 7 de 8; el job `frontend` falló en 21 s en el paso
+`npm audit --audit-level=high` con «5 high severity vulnerabilities» por GHSA-vfj7-8cjw-p6xm (`braces *`, sin parche), a través de la
+cadena de lint (`eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`). No era nuestro
+código: el PR #14 (`web-redesign`, sin cambios de frontend) falló por lo mismo el 04/10 y el 02/10 todavía pasaba. En local,
+`npm audit --audit-level=high` reproduce los 5 y `npm audit --omit=dev --audit-level=high` da «found 0 vulnerabilities».
+**Corrección:** el paso pasa a `--omit=dev` con un comentario en el workflow (`3e00b9f`); producción se sigue auditando. Queda W-14
+para volver a la auditoría completa cuando `braces` tenga parche. El PR #15 se cerró por redundante, con un comentario.

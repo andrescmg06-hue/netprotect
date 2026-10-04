@@ -5,10 +5,12 @@ _Actualizado: 2026-10-04 · Sprint actual: 60 (rediseño web, cierre; verificado
 - **S60 (rediseño del panel web, cierre)**, rama `sprint-60-rediseno-web-cierre`, creada desde `fix/s54-auth-log-sin-pii`
   (`e9e4f69`). Cadena de ramas real: `sprint-52…` → `sprint-53…` → `sprint-54…` → `fix/s54-auth-log-sin-pii` → `sprint-60…`.
   Trabajo hecho y verificado en local (T1–T9; `make test` 295 passed, `ruff`, `lint`, `tsc`, `next build` y e2e 2 passed,
-  con control negativo del test del foco; `security-reviewer` 0 ALTA, 0 MEDIA, 1 BAJA documental corregida). **Falta:**
-  hacer push de la cadena, que pasen los 8 jobs de CI (eso cierra el sprint), y lo que solo hace una persona: revisión
-  visual con sesión real de Google (T5 de S54), login a 390 px reales y modo de alto contraste de Windows. Detalle:
-  `docs/sprint-60.md` y `docs/sprint-60-evidence.md`.
+  con control negativo del test del foco; `security-reviewer` 0 ALTA, 0 MEDIA, 1 BAJA documental corregida) y publicado en
+  el PR #16 (`sprint-60-rediseno-web-cierre` → `sprint-54-rediseno-web-marco`, que sustituye al #15, cerrado). **CI: los 8 jobs
+  en verde** sobre `3e00b9f` (run 37229445424), tras cambiar `npm audit` a `--omit=dev` por GHSA-vfj7-8cjw-p6xm (W-14).
+  **Falta:** el merge del PR #16 (decisión del dueño) y lo que solo hace una persona: revisión visual con sesión real de
+  Google (T5 de S54), login a 390 px reales y modo de alto contraste de Windows. Detalle: `docs/sprint-60.md` y
+  `docs/sprint-60-evidence.md`.
 - **S54–S59 (rediseño del panel web, marco y las 16 vistas)**: código hecho por Cristian el 04/10/2026 (`35af89d`,
   `c76ceea`, `bdfa6e8`, `8be5abd`, `7b6b117`, `7ec38c7`/`ccde5cf`, y `eb2db05` con las correcciones y el cambio de serif a
   Newsreader). Documentación al día desde el S60: `docs/sprint-54.md` … `docs/sprint-59.md` y sus `-evidence.md`; la
@@ -30,10 +32,9 @@ _Actualizado: 2026-10-04 · Sprint actual: 60 (rediseño web, cierre; verificado
 ## Siguiente paso
 **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
 `docs/redesign/CONTINUAR.md`. S52–S59 hechos (S54–S59 con código y documentación al día); **S60 hecho y verificado en
-local** (`docs/sprint-60.md`). Lo que falta: push de la cadena de ramas (`fix/s54-auth-log-sin-pii` y
-`sprint-60-rediseno-web-cierre`; el PR #15 queda redundante si se publica la cadena), CI con los 8 jobs en verde y las
-pruebas humanas de arriba. `web-redesign` solo trae los documentos del S52; el pase a `main` lo decide el dueño. Es
-independiente del cierre del S51 de abajo.
+local y publicado** (PR #16, CI con los 8 jobs en verde; `docs/sprint-60.md`). Lo que falta: el merge del PR #16 hacia la
+rama de Cristian, que seguirá sobre esa base, y las pruebas humanas de arriba. `web-redesign` solo trae los documentos del
+S52; el pase a `main` lo decide el dueño. Es independiente del cierre del S51 de abajo.
 
 Hecho el 02/10/2026: PR #12 (S50) y PR #13 (entorno + D-05) fusionados en `android-redesign` (`d0724b0`); esa rama ya
 está fusionada dentro de `sprint-51-cierre`; plantillas `.env.*.example` comprobadas (sin hueco, ver `docs/sprint-51.md`).

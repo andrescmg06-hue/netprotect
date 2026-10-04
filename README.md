@@ -770,7 +770,8 @@ sobre la foto real. También se corrigió un fallo de seguridad heredado de S54:
 rechazado ya no copia texto del token, solo un motivo fijo. Las ampliaciones del e2e (login, foco por teclado, las 16
 secciones y el aviso de consentimiento de Vista remota a 390 px) pasan, y el test del foco falla con el CSS anterior.
 La documentación de S54 a S59 quedó al día. Quedan pendientes, porque solo los puede hacer una persona, la revisión
-visual con una sesión real de Google, el login a 390 px reales y el modo de alto contraste de Windows; y el cierre del
-sprint exige que pasen los 8 jobs de CI en GitHub Actions.
+visual con una sesión real de Google, el login a 390 px reales y el modo de alto contraste de Windows. Se publicó en el
+PR #16 y el CI de GitHub Actions pasó con los 8 jobs en verde; para ello el paso `npm audit` del job `frontend` audita solo
+las dependencias de producción mientras `braces` no tenga parche (GHSA-vfj7-8cjw-p6xm, tarea W-14).
 
 El detalle está en `docs/sprint-60.md` y `docs/sprint-60-evidence.md`.
