@@ -1,130 +1,150 @@
-/* Sprint 39 — login screen.
-
-   Colour literals that only exist on this screen are declared here as local variables on `.screen`
-   (they cascade down to every login component's module), NOT in globals.css — see sprint-39.md.
-   Colours that are already project tokens (--color-navy, --color-primary, --color-primary-text,
-   --color-surface, --color-text) are referenced directly, not re-declared.
-
-   Several values are deliberately inherited from globals.css rather than restated here: h1/h2 keep
-   `color: var(--color-navy)` and `line-height: 1.2` (`h1,h2,h3,h4`), footer links keep
-   `color: var(--color-primary-text)` (`a`), and the Google button keeps the neutral `:where(button)`
-   reset (transparent, no border, inherited font). See docs/sprint-39.md.
-*/
+/* Login screen — split layout: cream sign-in panel + full-height photograph.
+   Everything reads tokens from globals.css; this screen declares no colours of its own. */
 .screen {
-  --login-muted: #5b6b8c;
-  --login-subtitle: #6b80b0;
-  --login-footer-ink: #1b2f63;
-  --login-bg: #f4f8ff;
-  --login-wash: rgba(248, 251, 255, 0.15);
-  --login-card-shadow: 0 24px 60px rgba(31, 78, 160, 0.12);
-  --login-button-shadow: 0 2px 6px rgba(20, 40, 90, 0.06);
-  --login-button-shadow-hover: 0 3px 8px rgba(20, 40, 90, 0.09);
-  --login-divider: #e5eaf3;
-  --login-panel-soft: #f6f9fe;
-  --login-muted-soft: #64748b;
-  --login-danger: #e7000b;
-
-  position: relative;
-  display: flex;
+  display: grid;
   min-height: 100vh;
-  flex-direction: column;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr;
+  background: var(--color-bg);
   overflow: hidden;
-  padding: 2.5rem 1rem;
 }
 
-.hero {
+/* Narrow screens: the photograph comes first, as a banner above the panel. */
+.photo {
   position: relative;
+  order: -1;
+  height: clamp(200px, 34vh, 300px);
+  overflow: hidden;
+}
+
+.image {
+  object-fit: cover;
+  object-position: 55% 55%;
+  animation: login-photo 1100ms var(--ease) both;
+}
+
+.panel {
   display: flex;
-  width: 100%;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
+  padding: var(--space-8) var(--space-6) var(--space-12);
 }
 
-.heroTitle {
-  font-size: 32px;
-  font-weight: 800;
-  /* Colour and line-height come from globals.css `h1,h2,h3,h4` (navy / 1.2). */
-}
-
-.heroSubtitle {
-  margin-top: 0.75rem;
-  max-width: 440px;
-  /* 14px, matching `--text-base` in globals.css. */
-  font-size: 14px;
-  line-height: 1.625;
-  color: var(--login-muted);
-}
-
-.cardColumn {
-  position: relative;
+.content {
   display: flex;
   width: 100%;
+  max-width: 400px;
+  flex-direction: column;
+  margin-inline: auto;
+  animation: login-rise 700ms var(--ease) both;
+}
+
+.rule {
+  display: block;
+  width: 46px;
+  height: 1px;
+  margin-top: clamp(var(--space-8), 6vh, var(--space-16));
+  background: var(--color-border-strong);
+}
+
+/* h1: colour and the serif voice come from globals.css (`h1,h2,h3,h4`). */
+.title {
+  margin: clamp(var(--space-6), 5vh, var(--space-12)) 0 0;
+  font-size: clamp(2.75rem, 1rem + 3.4vw, var(--text-5xl));
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  max-width: 28ch;
+  margin: var(--space-5) 0 0;
+  font-size: clamp(var(--text-md), 0.9rem + 0.25vw, 17px);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.action {
+  margin-top: clamp(var(--space-6), 4.5vh, var(--space-10));
+  width: 100%;
+}
+
+.loading {
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 2.5rem;
+  height: clamp(52px, 4.2vw, 60px);
 }
 
-.footerWrap {
-  /* position set at lg only */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: clamp(var(--space-6), 4vh, 36px);
 }
 
-@media (min-width: 640px) {
-  .screen {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
+.divider::before,
+.divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--color-border);
+}
 
-  .heroTitle {
-    font-size: 36px;
-  }
+.dot {
+  order: 1;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.divider::after {
+  order: 2;
+}
+
+.footnote {
+  margin: 18px 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 @media (min-width: 1024px) {
   .screen {
-    display: block;
-    height: 100vh;
-    padding: 0;
+    grid-template-columns: minmax(420px, 36%) 1fr;
+    grid-template-rows: none;
   }
 
-  .hero {
-    position: absolute;
-    left: 15.5vw;
-    top: 17vh;
-    width: auto;
-    align-items: flex-start;
-    text-align: left;
+  .photo {
+    order: 0;
+    height: auto;
   }
 
-  .heroTitle {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: min(4vw, 7vh);
+  .panel {
+    padding: var(--space-12) clamp(var(--space-8), 5.5vw, 104px);
   }
 
-  .heroSubtitle {
-    margin-top: 18px;
-    margin-bottom: 0;
-    max-width: 30vw;
-    font-size: min(1.55vw, 2.8vh);
-    line-height: 1.4;
+  .content {
+    margin-inline: 0;
   }
+}
 
-  .cardColumn {
-    position: absolute;
-    left: 63vw;
-    right: 6vw;
-    top: 50%;
-    width: auto;
-    margin-top: 0;
-    justify-content: flex-start;
-    transform: translateY(-50%);
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
+}
 
-  .footerWrap {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+@keyframes login-photo {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content,
+  .image {
+    animation: none;
   }
 }

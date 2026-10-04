@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import Script from "next/script";
 import { useCallback, useRef, useState } from "react";
 
@@ -145,12 +146,15 @@ export function GoogleButton() {
           disabled={!scriptReady || status === "connecting"}
           className={styles.button}
         >
-          <svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <svg width="24" height="24" viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
             {GOOGLE_G.map((path) => (
               <path key={path.fill} fill={path.fill} d={path.d} />
             ))}
           </svg>
-          {status === "connecting" ? "Conectando…" : "Continuar con Google"}
+          <span className={styles.label}>
+            {status === "connecting" ? "Conectando…" : "Continuar con Google"}
+          </span>
+          <ArrowRight className={styles.arrow} size={18} aria-hidden="true" />
         </button>
       )}
 

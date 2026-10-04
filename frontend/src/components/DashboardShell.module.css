@@ -10,13 +10,21 @@
   min-height: 100vh;
 }
 
+/* --page-gutter/--page-top are the content padding, named once so the PageHeader band (S54) can
+   bleed exactly to the column's edges and up to the header line (see ui/PageHeader.module.css). */
 .content {
+  --page-gutter: var(--space-8);
+  --page-top: var(--space-8);
+  --band-bleed-x: var(--page-gutter);
+  --band-bleed-top: var(--page-top);
+  --band-radius: 0;
+  --band-border-width: 0 0 1px;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-8) var(--space-8) var(--space-10);
+  padding: var(--page-top) var(--page-gutter) var(--space-10);
   animation: section-enter var(--duration-slow) var(--ease);
 }
 
@@ -34,7 +42,8 @@
 
 @media (max-width: 1199px) {
   .content {
-    padding: var(--space-6) var(--space-6) var(--space-10);
+    --page-gutter: var(--space-6);
+    --page-top: var(--space-6);
   }
 }
 
@@ -44,7 +53,9 @@
   }
 
   .content {
+    --page-gutter: var(--space-4);
+    --page-top: var(--space-5);
     gap: var(--space-5);
-    padding: var(--space-5) var(--space-4) var(--space-8);
+    padding-bottom: var(--space-8);
   }
 }

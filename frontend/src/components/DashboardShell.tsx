@@ -229,11 +229,15 @@ export function DashboardShell({
 
         {/* Keyed on the section so each one mounts fresh and runs the entry animation. */}
         <main key={activeSection} className={styles.content}>
+          {/* S54: the editorial band (photo + cream veil). In band mode the breadcrumb sits over
+              the title and the device card on the right, so per-device views get both, like the
+              mockups; Inicio is the root and has no breadcrumb. No per-view quote on purpose:
+              the phrases in the mockups are placeholder copy, not product text. */}
           <PageHeader
+            band
             title={activeDefinition.label}
             description={activeDefinition.description}
-            // Per-device views show the device card where other views show the breadcrumb (mockups).
-            breadcrumb={activeSection === "overview" || activeDefinition.perDevice ? undefined : activeDefinition.label}
+            breadcrumb={activeSection === "overview" ? undefined : activeDefinition.label}
             aside={
               activeDefinition.perDevice && activeDevice ? (
                 <DeviceSelector devices={devices} activeDevice={activeDevice} onChange={setSelectedDeviceId} />

@@ -1,39 +1,73 @@
-import { BackgroundScene } from "./BackgroundScene";
-import { HeroShowcase } from "./HeroShowcase";
-import { LoginCard } from "./LoginCard";
-import { LoginFooter } from "./LoginFooter";
+import Image from "next/image";
+
+import { Logo, Spinner } from "@/components/ui";
+
+import { GoogleButton } from "./GoogleButton";
 
 import styles from "./LoginScreen.module.css";
 
-/** The unauthenticated landing view: background photo, "Panel del tutor" hero, laptop+phone
- * showcase, white "Inicia sesión" card and footer.
+/** The unauthenticated landing view: a cream sign-in panel on the left and a full-height photograph
+ * on the right (the photograph is a banner above the panel on narrow screens). Only Google sign-in,
+ * per the brief.
  *
  * It renders only when there is no session: `app/page.tsx` already hands an authenticated tutor
  * straight to DashboardShell, so no redirect is needed here.
  *
- * D4: while AuthContext is still `loading`, the card shows the "Comprobando sesión…" spinner
+ * The logo is the official one (`ui/Logo`, public/brand/logo-full.png): the mockup draws its own
+ * serif wordmark, but the official logo rules (docs/redesign/CONTINUAR.md §6) and the name is always
+ * NetProtect. The serif is only the voice of the title, through the global h1 rule.
+ *
+ * D4: while AuthContext is still `loading`, the panel shows the "Comprobando sesión…" spinner
  * instead of the Google button, so the button doesn't flash before the session check resolves.
  */
 export function LoginScreen({ authStatus }: { authStatus: "loading" | "unauthenticated" }) {
   return (
     <main className={styles.screen}>
-      <BackgroundScene />
+      <section className={styles.panel}>
+        <div className={styles.content}>
+          <Logo height={56} />
 
-      <div className={styles.hero}>
-        <h2 className={styles.heroTitle}>Panel del tutor</h2>
-        <p className={styles.heroSubtitle}>
-          Administra dispositivos, aplicaciones y reglas desde un solo lugar.
-        </p>
-      </div>
+          <span className={styles.rule} aria-hidden="true" />
 
-      <HeroShowcase />
+          <h1 className={styles.title}>
+            Inicia <br />
+            sesión
+          </h1>
 
-      <div className={styles.cardColumn}>
-        <LoginCard authStatus={authStatus} />
-      </div>
+          <p className={styles.subtitle}>
+            Accede a tu panel para administrar dispositivos, aplicaciones y reglas.
+          </p>
 
-      <div className={styles.footerWrap}>
-        <LoginFooter />
+          <div className={styles.action}>
+            {authStatus === "loading" ? (
+              <div className={styles.loading} aria-live="polite">
+                <Spinner label="Comprobando sesión…" />
+              </div>
+            ) : (
+              <GoogleButton />
+            )}
+          </div>
+
+          <div className={styles.divider} aria-hidden="true">
+            <span className={styles.dot} />
+          </div>
+
+          <p className={styles.footnote}>Tu cuenta de Google es tu cuenta en NetProtect.</p>
+        </div>
+      </section>
+
+      {/* Decorative: the photograph carries nothing the panel doesn't already state. It is the
+          largest element on the page, so it loads eagerly instead of lazily. */}
+      <div className={styles.photo} aria-hidden="true">
+        <Image
+          src="/login/study.jpg"
+          alt=""
+          fill
+          loading="eager"
+          fetchPriority="high"
+          sizes="(min-width: 1024px) 64vw, 100vw"
+          className={styles.image}
+        />
       </div>
     </main>
   );

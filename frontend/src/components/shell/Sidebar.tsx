@@ -48,25 +48,13 @@ export function Sidebar({
       <aside className={open ? `${styles.sidebar} ${styles.open}` : styles.sidebar} id="panel-sidebar">
         <div className={styles.brand}>
           <span className={styles.logoFull}>
-            <Logo height={58} />
+            <Logo height={50} onDark />
           </span>
           <span className={styles.logoShield}>
-            <Logo variant="shield" height={38} />
+            <Logo variant="shield" height={36} />
           </span>
           <button ref={closeRef} type="button" className={styles.close} onClick={onClose} aria-label="Cerrar menú">
             <X size={20} />
-          </button>
-        </div>
-
-        <div className={styles.profile}>
-          <Avatar name={displayName} src={user.avatar_url} size={48} online />
-          <div className={styles.profileText}>
-            <span className={styles.profileName}>{displayName}</span>
-            <span className={styles.profileEmail}>{user.email}</span>
-          </div>
-          <button type="button" className={styles.signOut} onClick={onSignOut} title="Cerrar sesión">
-            <LogOut size={16} aria-hidden="true" />
-            <span className={styles.signOutLabel}>Cerrar sesión</span>
           </button>
         </div>
 
@@ -87,7 +75,7 @@ export function Sidebar({
                     title={section.label}
                     onClick={() => onNavigate(section.key)}
                   >
-                    <Icon size={20} strokeWidth={1.9} aria-hidden="true" className={styles.itemIcon} />
+                    <Icon size={18} strokeWidth={1.75} aria-hidden="true" className={styles.itemIcon} />
                     <span className={styles.label}>{section.label}</span>
                     {badge !== null && (
                       <>
@@ -103,6 +91,20 @@ export function Sidebar({
             </div>
           ))}
         </nav>
+
+        {/* S54: the account block moved to the foot of the sidebar, under the navigation, where
+            the mockups keep the account out of the way of the sections. */}
+        <div className={styles.profile}>
+          <Avatar name={displayName} src={user.avatar_url} size={40} online />
+          <div className={styles.profileText}>
+            <span className={styles.profileName}>{displayName}</span>
+            <span className={styles.profileEmail}>{user.email}</span>
+          </div>
+          <button type="button" className={styles.signOut} onClick={onSignOut} title="Cerrar sesión">
+            <LogOut size={16} aria-hidden="true" />
+            <span className={styles.signOutLabel}>Cerrar sesión</span>
+          </button>
+        </div>
       </aside>
     </>
   );

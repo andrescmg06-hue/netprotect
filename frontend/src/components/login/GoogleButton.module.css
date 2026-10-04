@@ -3,29 +3,56 @@
   width: 100%;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
-/* The button keeps the neutral `:where(button)` reset from globals.css (transparent background,
-   no border, inherited font/colour); the card's white and this shadow are what delimit it. */
+/* The button starts from the neutral `:where(button)` reset in globals.css (transparent, no border,
+   inherited font), so everything that makes it look like a button is declared here. The border is
+   --color-border-strong: a control edge needs 3:1 against the page. Focus uses the global ring. */
 .button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: clamp(48px, 4.1vw, 58px);
+  gap: 14px;
+  height: clamp(52px, 4.2vw, 60px);
   width: 100%;
-  border-radius: 10px;
-  box-shadow: var(--login-button-shadow);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-navy);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
 
-.button:hover {
-  box-shadow: var(--login-button-shadow-hover);
+.button:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+  box-shadow: var(--shadow-card);
 }
 
-.button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+.label {
+  flex: 1;
+}
+
+.arrow {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--duration) var(--ease);
+}
+
+.button:hover:not(:disabled) .arrow {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .arrow {
+    transition: none;
+  }
 }
 
 .button:disabled {
@@ -35,20 +62,18 @@
 
 .missing {
   margin: 0;
-  border: 1px solid var(--login-divider);
-  border-radius: 12px;
-  background: var(--login-panel-soft);
-  padding: 0.75rem 1rem;
-  /* 13px, matching `--text-sm` in globals.css. */
-  font-size: 13px;
-  color: var(--login-muted-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .error {
   margin: 0;
-  /* `text-sm` -> 13px, same override as above. */
-  font-size: 13px;
-  color: var(--login-danger);
+  font-size: var(--text-sm);
+  color: var(--color-danger-text);
 }
 
 .fallback {

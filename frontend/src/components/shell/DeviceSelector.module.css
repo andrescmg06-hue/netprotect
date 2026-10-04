@@ -78,8 +78,35 @@
   cursor: default;
 }
 
+/* S54: on a phone the card wraps under the band's title. It keeps its own compact size (icon,
+   name and status on one row) instead of becoming a full-width strip; the platform line is the
+   least useful part of it and is dropped here. */
 @media (max-width: 720px) {
   .card {
-    width: 100%;
+    width: auto;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  }
+
+  .icon {
+    width: 32px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+  }
+
+  .text {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-2);
+    row-gap: 2px;
+  }
+
+  .name {
+    font-size: var(--text-base);
+  }
+
+  .meta {
+    display: none;
   }
 }

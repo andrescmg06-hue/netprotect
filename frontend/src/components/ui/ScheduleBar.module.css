@@ -1,0 +1,154 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Room for the time label that sits above each handle. */
+  padding-top: var(--space-6);
+  user-select: none;
+}
+
+.disabled {
+  opacity: 0.55;
+}
+
+.hours {
+  position: relative;
+  height: 16px;
+  order: 2;
+}
+
+.hour {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hour:first-child {
+  transform: none;
+}
+
+.hour:last-child {
+  transform: translateX(-100%);
+}
+
+.track {
+  position: relative;
+  height: 36px;
+  order: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-soft);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.disabled .track {
+  cursor: not-allowed;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+  touch-action: none;
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+.thumb:hover,
+.thumbActive {
+  transform: scale(1.12);
+}
+
+.thumbActive {
+  cursor: grabbing;
+}
+
+.disabled .thumb {
+  cursor: not-allowed;
+}
+
+/* The exact time rides above its handle, so the window reads without looking at the inputs. */
+.thumbTime {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  order: 3;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.swatchIdle {
+  border: 1px solid var(--color-border);
+  background: var(--color-neutral-soft);
+}
+
+.swatchActive {
+  background: var(--color-primary);
+}
+
+/* Phones: every other hour label goes, so the remaining ones never collide. */
+@media (max-width: 520px) {
+  .minorHour {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb {
+    transition: none;
+  }
+}

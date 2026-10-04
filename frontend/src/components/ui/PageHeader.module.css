@@ -45,15 +45,22 @@
 }
 
 /* Band mode (opt-in). `min-height`, not `height`: a long title or a wrapped quote on a narrow
-   screen has to push the band taller instead of being clipped. The photo is decorative. */
+   screen has to push the band taller instead of being clipped. The photo is decorative.
+   By default the band is a framed card (the design-system gallery). A container can make it bleed
+   to its own edges by setting --band-bleed-x/--band-bleed-top to its padding, plus
+   --band-radius/--band-border-width: DashboardShell does, so in the panel the photo runs
+   edge to edge under the header like the mockups, with the text still on the page's gutter. */
 .band {
   position: relative;
   align-items: center;
   min-height: var(--band-height);
-  padding: var(--space-6);
+  margin: calc(-1 * var(--band-bleed-top, 0px)) calc(-1 * var(--band-bleed-x, 0px)) 0;
+  padding: var(--space-6) max(var(--space-6), var(--band-bleed-x, 0px));
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-style: solid;
+  border-color: var(--color-border);
+  border-width: var(--band-border-width, 1px);
+  border-radius: var(--band-radius, var(--radius-lg));
   background: var(--color-bg);
 }
 
@@ -113,11 +120,23 @@
   }
 
   .band {
-    padding: var(--space-4);
+    padding: var(--space-5) max(var(--space-4), var(--band-bleed-x, 0px));
   }
 
   .bandTitle {
     font-size: var(--text-3xl);
+  }
+
+  /* The veil covers the whole band here, so the text may use the full width; the device card
+     then wraps under it at its own size instead of stretching into a full-width strip. */
+  .bandText {
+    max-width: 100%;
+  }
+
+  .bandAside {
+    align-items: flex-start;
+    width: auto;
+    max-width: 100%;
   }
 
   /* No room for a clear half on a phone: the veil covers the whole band. */

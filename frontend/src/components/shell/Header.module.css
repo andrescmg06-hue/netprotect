@@ -9,7 +9,8 @@
   /* Same inner width as the centered content column below (max 1440px), so the avatar lines up
      with the page's right edge on very wide screens. */
   padding: 0 max(var(--space-8), calc((100% - var(--content-max)) / 2 + var(--space-8)));
-  background: var(--color-surface);
+  /* S54: the header sits on the page's own cream with a thin stone line, not on a white card. */
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -23,9 +24,9 @@
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--color-navy);
   cursor: pointer;
   transition:
     background var(--duration-fast) var(--ease),
@@ -33,8 +34,7 @@
 }
 
 .iconButton:hover {
-  background: var(--color-primary-softer);
-  color: var(--color-primary-text);
+  background: var(--color-neutral-soft);
 }
 
 .menuButton,
@@ -48,7 +48,7 @@
   right: 10px;
   width: 8px;
   height: 8px;
-  border: 2px solid var(--color-surface);
+  border: 2px solid var(--color-bg);
   border-radius: 50%;
   box-sizing: content-box;
   background: var(--color-danger);
@@ -58,7 +58,7 @@
 .search {
   position: relative;
   flex: 1;
-  max-width: 560px;
+  max-width: 520px;
   min-width: 0;
 }
 
@@ -73,11 +73,12 @@
 
 .searchInput {
   width: 100%;
-  height: 44px;
-  padding: 0 var(--space-4) 0 44px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  background: var(--color-primary-softer);
+  height: 40px;
+  padding: 0 var(--space-4) 0 42px;
+  /* Control border at 3:1 (02_DESIGN_TARGET §5), on a white field so it reads as an input. */
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
   font-size: var(--text-base);
@@ -88,7 +89,7 @@
 }
 
 .searchInput::placeholder {
-  color: var(--color-text-muted);
+  color: var(--color-text-subtle);
 }
 
 .searchInput:focus {
@@ -178,11 +179,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  height: 48px;
+  height: 44px;
   margin: 0;
   padding: 0 var(--space-2) 0 4px;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-navy);
   font: inherit;
@@ -191,7 +192,7 @@
 }
 
 .userButton:hover {
-  background: var(--color-primary-softer);
+  background: var(--color-neutral-soft);
 }
 
 .userName {
