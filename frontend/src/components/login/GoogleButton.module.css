@@ -7,20 +7,22 @@
 }
 
 /* The button starts from the neutral `:where(button)` reset in globals.css (transparent, no border,
-   inherited font), so everything that makes it look like a button is declared here. The border is
-   --color-border-strong: a control edge needs 3:1 against the page. Focus uses the global ring. */
+   inherited font), so everything that makes it look like a button is declared here. It sits on the
+   frosted login panel, so like the mockup it is a light, slightly see-through plate with a soft edge
+   and small square corners. The edge is no longer 3:1: the control is identified by its fill, the
+   Google mark, the label and the arrow, not by the border alone. Focus uses the global ring. */
 .button {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: clamp(52px, 4.2vw, 60px);
+  height: clamp(48px, 3.8vw, 60px);
   width: 100%;
   padding: 0 var(--space-5);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 55%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
   color: var(--color-navy);
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 600;
   text-align: left;
   cursor: pointer;

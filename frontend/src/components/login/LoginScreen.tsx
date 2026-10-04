@@ -6,8 +6,9 @@ import { GoogleButton } from "./GoogleButton";
 
 import styles from "./LoginScreen.module.css";
 
-/** The unauthenticated landing view: a cream sign-in panel on the left and a full-height photograph
- * on the right (the photograph is a banner above the panel on narrow screens). Only Google sign-in,
+/** The unauthenticated landing view: a full-screen photograph with the sign-in panel over it as
+ * frosted glass (translucent and blurred, so the photograph shows through). On narrow screens the
+ * panel is a card at the bottom and the photograph fills the band above it. Only Google sign-in,
  * per the brief.
  *
  * It renders only when there is no session: `app/page.tsx` already hands an authenticated tutor
@@ -25,7 +26,7 @@ export function LoginScreen({ authStatus }: { authStatus: "loading" | "unauthent
     <main className={styles.screen}>
       <section className={styles.panel}>
         <div className={styles.content}>
-          <Logo height={56} />
+          <Logo height={64} />
 
           <span className={styles.rule} aria-hidden="true" />
 
@@ -56,8 +57,8 @@ export function LoginScreen({ authStatus }: { authStatus: "loading" | "unauthent
         </div>
       </section>
 
-      {/* Decorative: the photograph carries nothing the panel doesn't already state. It is the
-          largest element on the page, so it loads eagerly instead of lazily. */}
+      {/* Decorative: the photograph carries nothing the panel doesn't already state. It fills the
+          whole screen behind the panel, so it loads eagerly instead of lazily. */}
       <div className={styles.photo} aria-hidden="true">
         <Image
           src="/login/study.jpg"
@@ -65,7 +66,7 @@ export function LoginScreen({ authStatus }: { authStatus: "loading" | "unauthent
           fill
           loading="eager"
           fetchPriority="high"
-          sizes="(min-width: 1024px) 64vw, 100vw"
+          sizes="100vw"
           className={styles.image}
         />
       </div>
