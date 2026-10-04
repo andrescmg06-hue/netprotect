@@ -89,7 +89,19 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `DeviceCategoriesPanel.tsx:303` (hoy un `<p class="quiet">` claro) frente al `EmptyState` que usan las demás vistas.
   Redacción: `GeofencePanel` y `DeviceLocationPanel` dicen casi lo mismo con palabras distintas («…entrada o salida»
   frente a «…entrada o salida de una geocerca»); se deja, por ser de contextos distintos.
-- [ ] T7 — e2e: login visible, prueba de teclado/foco y vistas S56–S59. Ruta: inline.
+- [ ] T7 — e2e: **escrito, sin ejecutar** (se marca al pasar en T8). Ruta: delegada (un writer; revisado línea a línea).
+  Nuevo `frontend/e2e/login.spec.ts`: sin sembrar token (no gasta el refresh token de un solo uso), comprueba el `h1`
+  «Inicia sesión» y que no hay panel. No afirma el botón de Google porque el build de CI no tiene
+  `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` y el login muestra el aviso «Falta configurar…» en su lugar. `dashboard.spec.ts` sigue
+  siendo un solo test con sus 3 steps originales intactos y añade tres: (a) Tab hasta el botón primario «Generar código» de
+  Vinculación y comprobar que su `box-shadow` calculado contiene `rgb(23, 105, 255)` (el anillo opaco; la sombra de reposo
+  solo lleva ese color con alfa), de modo que falla con el bug de T3; (b) abrir las 12 secciones restantes del sidebar
+  (con las 4 ya visitadas cubren las 16) comprobando su `h1` y que no aparece un `alert` de error; (c) en Vista remota,
+  redimensionar a 390×844 y comprobar que el aviso de consentimiento y «Solicitar ver pantalla» siguen visibles y dentro
+  del viewport (cierra lo que el `security-reviewer` de S59 no pudo descartar). `tsc` y `eslint` limpios; `playwright test
+  --list` lista el test de login. **Sin verificar hasta ejecutarlo:** que 80 Tab bastan para llegar al botón, la
+  serialización exacta del `box-shadow` en Chromium, que `networkidle` se estabilice en cada sección (tráfico realtime),
+  que ningún panel muestre un `alert` con datos vacíos y que `toBeInViewport` pase en el móvil.
 - [x] T9 — Login: foto a pantalla completa con el panel como cristal desenfocado (pedido del dueño al revisar el web; se
   hace antes del cierre T8). Ruta: inline. Antes: rejilla de dos columnas, panel crema sólido y foto solo a la derecha.
   Primera pasada: la foto cubre toda la pantalla (`position: absolute; inset: 0`) y el panel pasa a ser una franja de
