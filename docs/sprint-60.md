@@ -73,8 +73,16 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   el pliegue en cada vista y el optimizador ya la reduce.
   **Pendiente:** tras reconstruir, medir el peso de los logos servidos y mirarlos a 1× y 2× (si el texto se ve blando,
   subir a 100 o volver a `unoptimized`).
-- [ ] T6 — Estados vacíos: unificar `EmptyState` frente a `<p>` sueltos (AppRulesPanel, GeofencePanel,
-  DeviceLocationPanel, DeviceCategoriesPanel). Ruta: inline.
+- [x] T6 — Estados vacíos: **revisado, sin cambios de código** (decisión deliberada). Ruta: inline. El mapeo marcaba cinco
+  `<p>` sueltos frente a `EmptyState`; leídos en el código, cuatro son notas compactas dentro de secciones secundarias de
+  una tarjeta (`AppRulesPanel.tsx:272` filtro sin resultados, `GeofencePanel.tsx:554` y `DeviceLocationPanel.tsx:328`
+  historial y movimientos de geocercas, `DeviceCategoriesPanel.tsx:278` que ni es un estado vacío sino la etiqueta «Sin
+  regla propia» de una fila). Pasarlos al `EmptyState` (disco con icono, título y descripción) los volvería mucho más
+  pesados dentro de esas tarjetas, es una decisión de diseño y no hay forma de comprobar el resultado sin navegador.
+  Ninguna lista queda sin mensaje. Único candidato real a unificar, si el diseñador lo pide: la lista principal de
+  `DeviceCategoriesPanel.tsx:303` (hoy un `<p class="quiet">` claro) frente al `EmptyState` que usan las demás vistas.
+  Redacción: `GeofencePanel` y `DeviceLocationPanel` dicen casi lo mismo con palabras distintas («…entrada o salida»
+  frente a «…entrada o salida de una geocerca»); se deja, por ser de contextos distintos.
 - [ ] T7 — e2e: login visible, prueba de teclado/foco y vistas S56–S59. Ruta: inline.
 - [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
   `/cerrar-sprint 60`.
