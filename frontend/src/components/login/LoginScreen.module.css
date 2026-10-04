@@ -28,12 +28,12 @@
 }
 
 /* Frosted glass: the photograph shows through, blurred and lightened. Under this strip study.jpg is
-   a window full of dark trees, not the plain wall of the mockup, so a see-through panel alone turns
-   grey: `brightness(1.5)` lifts the backdrop to the mockup's mean luminance (0.74 vs 0.75) before the
-   60% cream veil. Measured on the real photograph at 1280x720 to 1920x1080, the worst pixel under
-   the strip gives the title ~5.8-6.1:1 and the small texts (92% navy) ~4.6-4.9:1. The narrow-screen
-   card lies over the dark hoodie instead, where 60% gave only ~4.35:1, so it uses a 75% veil
-   (~6.5:1) and the see-through 60% is declared again for the desktop strip below. */
+   a window full of dark trees, so a see-through panel alone turns grey: `brightness(2)` lifts the
+   backdrop before the cream veil, which is what allows a thin veil (42% on the desktop strip)
+   without losing legibility. All text on it is full navy. Measured on the real photograph, the
+   worst pixel under the whole content block gives at least 4.6:1 at 1280x720, 1366x768, 1500x844
+   and 1920x1080. The narrow-screen card lies over the dark hoodie instead and needs a 55% veil
+   (4.7:1 or better); the thinner desktop veil is declared again in the media query below. */
 .panel {
   position: relative;
   z-index: 1;
@@ -42,9 +42,9 @@
   margin: var(--space-4);
   padding: var(--space-8) var(--space-6);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--color-bg) 75%, transparent);
-  -webkit-backdrop-filter: blur(28px) brightness(1.5) saturate(0.9);
-  backdrop-filter: blur(28px) brightness(1.5) saturate(0.9);
+  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(28px) brightness(2) saturate(0.9);
+  backdrop-filter: blur(28px) brightness(2) saturate(0.9);
 }
 
 /* No backdrop-filter (old browsers): without the blur the photograph would run through the text,
@@ -89,7 +89,7 @@
   margin: var(--space-4) 0 0;
   font-size: clamp(var(--text-md), 0.9rem + 0.25vw, 17px);
   line-height: 1.5;
-  color: color-mix(in srgb, var(--color-navy) 92%, var(--color-bg));
+  color: var(--color-navy); /* full navy: the glass is thin, a softer grey would not reach 4.5:1 */
 }
 
 .action {
@@ -136,7 +136,7 @@
   margin: 32px 0 0;
   font-size: var(--text-sm);
   line-height: 1.5;
-  color: color-mix(in srgb, var(--color-navy) 92%, var(--color-bg));
+  color: var(--color-navy);
 }
 
 @media (min-width: 1024px) {
@@ -146,24 +146,10 @@
     padding-top: 0;
   }
 
-  /* A full-height glass strip, inset from the left edge so a band of photograph frames it. */
-  /* The band of photograph left of the glass reads as plain wall in the mockup, but here it is
-     the window with the trees. A lighter, softer veil brings it to the mockup's tone (mean
-     luminance 0.61 against 0.59, measured on the reference and on the photograph). It is as wide as
-     the panel's left margin, so it needs no markup. */
-  .screen::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    z-index: 1;
-    width: clamp(var(--space-6), 6.5vw, 120px);
-    background: color-mix(in srgb, var(--color-bg) 55%, transparent);
-    -webkit-backdrop-filter: blur(12px) brightness(1.5);
-    backdrop-filter: blur(12px) brightness(1.5);
-    pointer-events: none;
-  }
+  /* A full-height glass strip, inset from the left edge so a band of the untouched photograph
+     frames it (that band is left exactly as the photograph is: no veil over it).
 
-  /* Proportions read off the mockup (1500px wide): the strip is 28.5% wide and starts at 6.5%; the
+     Proportions read off the mockup (1500px wide): the strip is 28.5% wide and starts at 6.5%; the
      content sits 4.5% in from its left edge and 2.8% from the right, so it is ~21% wide. The extra
      bottom padding lifts the block a little above the vertical centre, as in the mockup. */
   .panel {
@@ -174,7 +160,7 @@
     padding: clamp(var(--space-8), 12vh, 160px) 2.8vw var(--space-12) clamp(var(--space-8), 4.5vw, 84px);
     align-items: flex-start;
     border-radius: 0;
-    background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+    background: color-mix(in srgb, var(--color-bg) 42%, transparent);
   }
 
   .content {

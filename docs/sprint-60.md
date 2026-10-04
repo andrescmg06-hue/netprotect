@@ -118,17 +118,24 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `line-height: .92`, peso 500 (se añade a `layout.tsx`: el navegador solo descarga los pesos que se usan); botón de Google
   de 14 px, esquinas pequeñas y placa clara semitransparente con borde suave (el control lo identifican el relleno, la marca
   de Google, la etiqueta y la flecha, no solo el borde); huecos del bloque ajustados hasta coincidir con la referencia.
-  **Contraste**, medido sobre la foto real desenfocada y aclarada bajo el panel (peor píxel): escritorio 1280×720 a 1920×1080,
-  título 5,8–6,1:1 y textos pequeños (navy al 92 %, `#23344b`) 4,6–4,9:1; móvil con el 60 % daba 4,35:1 (no cumplía) y por eso
-  usa el 75 % (6,5:1). Antes, subtítulo y nota al pie usaban `--color-text-muted` (3,35:1, tampoco cumplía sobre el cristal).
+  **Tercera pasada, malentendido corregido:** el dueño pedía que el **panel del login** fuera más transparente, no que se
+  aclarase la franja de foto de su izquierda. Se retira el velo de esa franja (`.screen::before`, commit `11179d5`): vuelve a
+  ser la foto tal cual (diferencia media de 1,9/255 entre el render y la foto sin tocar, es ruido de compresión JPEG). El
+  panel pasa a un velo de crema del **42 %** en escritorio (antes 60 %) y **55 %** en móvil (antes 75 %), con
+  `backdrop-filter: blur(28px) brightness(2) saturate(0.9)`; el aclarado ×2 sobre el fondo es lo que permite un velo fino.
+  Para eso, subtítulo y nota al pie pasan de un navy suavizado a `--color-navy` pleno.
+  **Contraste final**, medido sobre la foto real desenfocada y aclarada, en el peor píxel de todo el bloque de contenido y
+  con texto navy pleno: escritorio ≥ 4,6:1 en 1280×720, 1366×768, 1500×844 y 1920×1080; tarjeta móvil 4,8–4,9:1 en 390×844,
+  414×896 y 520×900. (Primera medida con el 60 %: textos suaves a 4,35:1 en móvil, no cumplían; con `--color-text-muted`,
+  3,35:1.) Luminosidad media del panel renderizado: 0,758 frente a 0,750 de la referencia.
   Evidencia: capturas de Chrome sin interfaz sobre el `web` reconstruido, en `docs/redesign/s60/`: `login-1500.jpg`,
   `login-520.jpg` y `login-vs-mockup.jpg` (referencia a la izquierda, resultado a la derecha, recorte del panel). Chrome no
-  admite ventanas de menos de ~500 px, así que no hay captura a 390 px. `eslint` y `tsc` limpios.
+  admite ventanas de menos de ~500 px, así que no hay captura a 390 px. `eslint` limpio.
   **Diferencias que se mantienen:** el logo es el oficial (la referencia dibuja un wordmark serif propio y escribe
-  «NetProject»); la franja izquierda, aclarada a petición del dueño (velo del 55 % con desenfoque de 12 px en `.screen::before`,
-  luminosidad media 0,604 en el render real frente a 0,590 de la referencia), ya no muestra los árboles nítidos pero
-  conserva un tinte verdoso de la foto en lugar de pared lisa; la tarjeta móvil tapa la cara del
-  niño (no se ajustó `object-position`). **Pendiente:** verlo en un teléfono o a 390 px reales.
+  «NetProject»); la franja izquierda conserva los árboles de la foto en lugar de la pared lisa del mockup (decisión del
+  dueño: dejarla original); la tarjeta móvil tapa la cara del niño (no se ajustó `object-position`). **Pendiente:** verlo
+  en un teléfono o a 390 px reales. El contraste de 4,5:1 del bloque completo se midió sobre la foto, no sobre píxeles
+  de pantalla en un navegador a otros zooms o con otro tamaño de fuente del sistema.
 - [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
   `/cerrar-sprint 60`.
 
