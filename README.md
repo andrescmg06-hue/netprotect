@@ -676,3 +676,15 @@ día, entre otros), que se omite o se sustituye por el dato real. Quedan pendien
 del diseñador del paquete (tipografía serif y logo oficial).
 
 El detalle está en `docs/sprint-52.md` y `docs/redesign/fase-0-informe.md`.
+
+## Alcance del Sprint 53
+
+Base visual del rediseño editorial del panel web, sin migrar ninguna vista. Los tokens de color, radio y sombra pasan a
+crema, piedra y navy (mismos nombres, así los 16 paneles cambian de aspecto sin tocar su JSX), los títulos usan una
+serif (Playfair Display, provisional) y el resto sigue en sans. Las primitivas evolucionan a paneles abiertos con las
+mismas props; el encabezado de página gana una banda fotográfica opcional y el estado vacío una ilustración opcional,
+ambos apagados por defecto. Se corrigieron dos pares de contraste que el paquete de diseño daba por buenos, se reescribió
+`DESIGN.md` (el anterior prohibía justo lo que el rediseño pide) y la galería `/design-system` muestra los tokens
+nuevos. Antes de cambiar nada se tomó una línea base de 34 capturas para detectar regresiones.
+
+El detalle está en `docs/sprint-53.md` y `docs/sprint-53-evidence.md`.

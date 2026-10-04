@@ -1,7 +1,11 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-04 · Sprint actual: 52 (rediseño web, Fase 0 hecha)_
+_Actualizado: 2026-10-04 · Sprint actual: 53 (rediseño web, base visual)_
 
 ## En curso
+- **S53 (rediseño del panel web, base visual)**, rama `sprint-53-rediseno-web-base-visual` (sale de la del S52). Hecho:
+  línea base de 34 capturas, tokens nuevos, serif, primitivas con las mismas props, fotos, `DESIGN.md` reescrito y
+  galería; lint, tipos y build en verde. Detalle: `docs/sprint-53.md` y `docs/sprint-53-evidence.md`. Pendiente:
+  `/cerrar-sprint 53` (lo lanza el dueño), D1 (serif) y D5 (logo). Siguiente: **S54** (Login → Sidebar → Header → banda).
 - **S52 (rediseño del panel web, Fase 0, sin código)**, rama `sprint-52-rediseno-web-fase-0`. Informe
   `docs/redesign/fase-0-informe.md` **aprobado por el dueño el 04/10/2026**; evidencia en `docs/sprint-52-evidence.md`.
   Pendiente: T8 (capturas base, necesitan sesión de tutor), tipografía serif y logo oficial (decisiones D1 y D5 del
