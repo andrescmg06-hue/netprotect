@@ -4,7 +4,7 @@
   gap: 6px;
   height: 24px;
   padding: 0 10px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;
@@ -13,7 +13,7 @@
 .dot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background: currentColor;
 }
 
@@ -34,7 +34,7 @@
 
 .info {
   background: var(--color-primary-soft);
-  color: var(--color-primary-hover);
+  color: var(--color-primary-text);
 }
 
 .purple {

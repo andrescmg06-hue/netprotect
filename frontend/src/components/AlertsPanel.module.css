@@ -49,12 +49,14 @@
   transition: background var(--duration-fast) var(--ease);
 }
 
+/* Rows sit inside a Card, which is now --color-surface-muted: hover and selection need their own
+   tones to stay visible (warm wash for hover, the blue wash for the selected alert). */
 .row:hover {
-  background: var(--color-surface-muted);
+  background: var(--color-primary-softer);
 }
 
 .rowSelected {
-  background: var(--color-primary-softer);
+  background: var(--color-primary-soft);
 }
 
 .rowIcon {

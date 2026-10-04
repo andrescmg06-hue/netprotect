@@ -6,10 +6,9 @@
 
 .card {
   padding: var(--space-6);
-  background: var(--color-surface);
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-lg);
 }
 
 .cardTitle {
@@ -49,7 +48,7 @@
 }
 
 .option:hover:not(:disabled) {
-  border-color: #b9c9e4;
+  border-color: var(--color-border-strong);
 }
 
 .option:disabled {

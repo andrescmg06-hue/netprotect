@@ -37,11 +37,12 @@
 }
 
 .control::placeholder {
-  color: var(--color-text-muted);
+  color: var(--color-text-subtle);
 }
 
+/* The resting border is already --color-border-strong, so hover darkens it one step. */
 .control:hover {
-  border-color: #b9c9e4;
+  border-color: var(--color-text-muted);
 }
 
 .control:focus {

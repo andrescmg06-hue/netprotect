@@ -6,7 +6,7 @@ import styles from "./GeofenceMap.module.css";
 
 const METERS_PER_DEGREE_LAT = 111_320;
 const VIEWBOX = 320;
-const ZONE_COLORS = ["#246bfe", "#7a5af8", "#16b364", "#f79009", "#f04438", "#0e8a8a"];
+const ZONE_COLORS = ["#1769ff", "#7a5af8", "#16b364", "#f79009", "#f04438", "#0e8a8a"];
 
 type Meters = { x: number; y: number };
 

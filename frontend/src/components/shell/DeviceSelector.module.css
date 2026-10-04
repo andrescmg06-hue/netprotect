@@ -16,7 +16,7 @@
 }
 
 .card:not(.single):hover {
-  border-color: #b9c9e4;
+  border-color: var(--color-border-strong);
 }
 
 .card:focus-within {

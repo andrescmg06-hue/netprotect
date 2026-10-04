@@ -7,7 +7,7 @@
   padding: 0;
   border: 0;
   border-radius: var(--radius-pill);
-  background: #cbd5e1;
+  background: var(--color-border-strong); /* 3.29:1 on cream: the off track must be visible */
   cursor: pointer;
   transition: background var(--duration) var(--ease);
 }
@@ -19,8 +19,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(16, 43, 99, 0.25);
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-navy) 25%, transparent);
   transition: transform var(--duration) var(--ease);
 }
 

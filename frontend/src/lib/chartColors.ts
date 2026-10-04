@@ -4,7 +4,7 @@
  * a different element's `:root` scope reliably across browsers for `<circle>` strokes.
  */
 export const CHART_COLORS = [
-  "#246bfe",
+  "#1769ff", // brand blue as of Sprint 53 (was #246bfe); keep in step with --color-primary
   "#7a5af8",
   "#16b364",
   "#f79009",
