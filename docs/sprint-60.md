@@ -113,7 +113,9 @@ escribir). Un commit por unidad de trabajo, con el porqué. Se marca solo con ev
   `login-520.jpg` y `login-vs-mockup.jpg` (referencia a la izquierda, resultado a la derecha, recorte del panel). Chrome no
   admite ventanas de menos de ~500 px, así que no hay captura a 390 px. `eslint` y `tsc` limpios.
   **Diferencias que se mantienen:** el logo es el oficial (la referencia dibuja un wordmark serif propio y escribe
-  «NetProject»); la franja izquierda muestra árboles de la foto en lugar de pared lisa; la tarjeta móvil tapa la cara del
+  «NetProject»); la franja izquierda, aclarada a petición del dueño (velo del 55 % con desenfoque de 12 px en `.screen::before`,
+  luminosidad media 0,604 en el render real frente a 0,590 de la referencia), ya no muestra los árboles nítidos pero
+  conserva un tinte verdoso de la foto en lugar de pared lisa; la tarjeta móvil tapa la cara del
   niño (no se ajustó `object-position`). **Pendiente:** verlo en un teléfono o a 390 px reales.
 - [ ] T8 — Verificación y cierre: `npm run lint && npm run build` y e2e vía `verifier`, `docs/sprint-60-evidence.md`,
   `/cerrar-sprint 60`.

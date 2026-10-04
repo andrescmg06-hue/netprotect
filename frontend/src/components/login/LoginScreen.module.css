@@ -147,6 +147,22 @@
   }
 
   /* A full-height glass strip, inset from the left edge so a band of photograph frames it. */
+  /* The band of photograph left of the glass reads as plain wall in the mockup, but here it is
+     the window with the trees. A lighter, softer veil brings it to the mockup's tone (mean
+     luminance 0.61 against 0.59, measured on the reference and on the photograph). It is as wide as
+     the panel's left margin, so it needs no markup. */
+  .screen::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 1;
+    width: clamp(var(--space-6), 6.5vw, 120px);
+    background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+    -webkit-backdrop-filter: blur(12px) brightness(1.5);
+    backdrop-filter: blur(12px) brightness(1.5);
+    pointer-events: none;
+  }
+
   /* Proportions read off the mockup (1500px wide): the strip is 28.5% wide and starts at 6.5%; the
      content sits 4.5% in from its left edge and 2.8% from the right, so it is ~21% wide. The extra
      bottom padding lifts the block a little above the vertical centre, as in the mockup. */
