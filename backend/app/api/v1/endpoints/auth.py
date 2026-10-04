@@ -92,8 +92,9 @@ async def login_with_google(
     try:
         identity = verify_google_id_token(payload.id_token)
     except InvalidGoogleTokenError as exc:
-        # The reason (wrong audience, expired token, unverified email...) is otherwise invisible: the
-        # client only ever sees 401 invalid_google_token. It never contains the token itself.
+        # The reason (wrong audience, expired token, unverified email...) is otherwise invisible:
+        # the client only ever sees 401 invalid_google_token. The reason is a fixed label chosen
+        # by google_auth, never text taken from the token.
         logger.warning("Google ID token rejected: %s", exc)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, detail="invalid_google_token"
