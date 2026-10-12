@@ -74,3 +74,47 @@ En `%TEMP%\np-sprint51\`, con la build `minified` y un supervisado de prueba vin
 
 Sin capturar: 01–02 (login y elegir modo: requieren cerrar sesión y volver a entrar con Google), 12, 14, 15 y 16.
 Quedan para T10 en el Galaxy; las de 12, 14, 15 y 16 están en las evidencias de S48, S49 y S50.
+
+## T10 — Prueba en el Galaxy S25 FE (parcial, 12/10/2026)
+
+Horas en UTC. Dispositivo del teléfono: `1f78580e` («samsung SM-S731B», Android 16). No se leyeron coordenadas.
+
+### Instalación (punto 1)
+
+- `ANDROID_SERIAL=R5CY92MJ2PY NETPROTECT_API_BASE_URL=http://localhost:8000 ./gradlew installMinified` desde `mobile/`:
+  `BUILD SUCCESSFUL in 1m 49s`, con `minifyMinifiedWithR8`; instalado `com.netprotect.app` 0.1.0-sprint1.
+- `adb -s R5CY92MJ2PY reverse tcp:8000 tcp:8000` → `reverse --list` muestra `UsbFfs tcp:8000 tcp:8000`.
+- Fallo en el camino: el primer inicio de sesión dio «failed to connect to localhost port 8000». La lista de
+  `adb reverse` estaba vacía (el puente se perdió); el backend respondía 200 en la PC. Se restauró con el mismo comando.
+  El puente no sobrevive a reconexiones del cable ni a reinicios de `adb`, y `adb reverse` solo redirige TCP.
+
+### Vista remota y ubicación (punto 4)
+
+`audit_logs` desde las 03:50 (consulta por `action`, `resource_type` y `resource_id`):
+
+| Hora | Acción | Dispositivo |
+|---|---|---|
+| 03:56:41 | `PAIRING_CODE_GENERATED` (×2) | — |
+| 03:57:03 | `DEVICE_LINKED` y `SCREEN_SHARE_CONSENT_GRANTED` | `1f78580e` |
+| 03:57:21–03:59:13 | `SCREEN_SHARE_REQUESTED` y `SCREEN_SHARE_STOPPED` (×3, sin `STARTED`) | `da5e6b92` (emulador) |
+| 04:01:29 | `SCREEN_SHARE_REQUESTED` | `1f78580e` |
+| 04:01:40 | `SCREEN_SHARE_STARTED` | `1f78580e` |
+| 04:02:25 | `SCREEN_SHARE_STOPPED` | `1f78580e` |
+| 04:03:35–04:04:45 | `LOCATION_VIEWED` (×3) | `1f78580e` |
+
+- **Error de uso, no del producto:** las tres primeras solicitudes fueron al «Pixel 8 EMULADOR» (`da5e6b92`), que
+  seguía vinculado al tutor y no captura pantalla; por eso no hay `STARTED`. Con el dispositivo correcto la sesión
+  empezó 11 s después de la solicitud y duró unos 45 s.
+- `device_location_reports` del teléfono: 1 reporte (03:58:46), precisión 2000 m. Es lo esperado: la app solo tiene
+  `ACCESS_COARSE_LOCATION` y reporta cada 15 min (`REPORT_INTERVAL_MS`, `LocationReportingService.kt`).
+- **Confirmación visual (H-02):** el dueño confirmó que vio el vídeo del teléfono en el panel. Es declaración suya,
+  sin captura ni grabación.
+- **Sin comprobar:** la ruta WebRTC. Los TURN
+  por defecto (`turn:localhost:3478`, `turn:10.0.2.2:3478`, UDP) no son alcanzables desde un teléfono real, así que
+  la sesión pudo ir en directo por Wi-Fi; para forzar un relé hay que poner la IP de la PC en `TURN_URLS` y abrir
+  UDP 3478.
+
+### Pendiente en T10
+
+TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % (punto 3) y capturas 01, 02, 12, 14, 15 y 16
+(punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.

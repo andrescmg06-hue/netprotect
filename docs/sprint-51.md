@@ -78,15 +78,25 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
     `plan-turn.md`). Los `.env*` y `secrets/` siguen bloqueados para Claude por permisos.
 - [ ] T10 — Pruebas humanas en el Galaxy S25 FE. **Aplazado a propósito: se hace con el teléfono real.**
   Pendiente, en este orden:
-  1. Build `minified` (release con R8) instalada en el Galaxy, con el backend local (`make dev`; el teléfono ve la
-     PC por la IP de la red, no por `10.0.2.2`).
+  1. Build `minified` (release con R8) instalada en el Galaxy, con el backend local (`make dev`). **Corrección
+     (12/10/2026):** no vale la IP de la red, porque la excepción de tráfico sin cifrar de
+     `src/debug/res/xml/network_security_config.xml` solo cubre `10.0.2.2` y `localhost`; se usa
+     `adb reverse tcp:8000 tcp:8000` y `NETPROTECT_API_BASE_URL=http://localhost:8000`.
   2. TalkBack: recorrer las 17 pantallas; comprobar orden de foco, etiquetas y áreas táctiles de 48 dp
      (Accessibility Scanner).
   3. Fuente al 130 % y al 200 % en el teléfono.
   4. **H-02:** vista remota real de extremo a extremo con R8 activo (cierra WebRTC bajo R8 y el T5).
   5. Capturas 01, 02, 12, 14, 15 y 16 (las otras 11 ya están en `docs/sprint-51-evidence.md`).
   El emulador `Pixel_8` sirve para los puntos 1, 3 y 5; los puntos 2 y 4 solo cuentan como válidos en el teléfono.
-- [ ] T5 — se cierra con el punto 4 de T10 (H-02): hasta entonces R8 solo está verificado de forma estática.
+  **Avance del 12/10/2026 (parcial; T10 sigue abierto).** Punto 1 hecho: `installMinified` con R8 en el Galaxy
+  (`SM-S731B`, Android 16), login real de Google, vinculación con código y consentimiento de captura. Punto 4: el
+  registro de auditoría del backend muestra una vista remota real contra el teléfono (`SCREEN_SHARE_REQUESTED` →
+  `STARTED` → `STOPPED`, unos 45 s) con la build `minified`, y **el dueño confirmó que vio el vídeo del teléfono en el
+  panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
+  Puntos 2, 3 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
+- [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
+  en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
+  captura (`docs/sprint-51-evidence.md`, T10).
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
   Pendiente tras T10: cerrar G-01…G-27 en `tasks.md` y lecciones en `.claude/rules/android.md` (mecánico, apto
   para DeepSeek); `/cerrar-sprint 51`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` → `main`
