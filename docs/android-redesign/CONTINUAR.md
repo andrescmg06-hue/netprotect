@@ -1,4 +1,4 @@
-# Cómo continuar el rediseño Android (estado al 01/10/2026, tras el Sprint 50)
+# Cómo continuar el rediseño Android (estado al 12/10/2026, tras el Sprint 51)
 
 Para quien retome el trabajo. Complementa `CLAUDE_CODE_HANDOFF.md` (el proceso) con **dónde estamos**, **cómo preparar
 el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
@@ -11,7 +11,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
 | S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
 | S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho (PR #12 fusionado el 02/10/2026); falta H-02 en el teléfono real (se cubre en T10 del S51) |
-| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | 🔄 **En curso** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`, ya con `android-redesign` fusionada). Hecho T1–T9 + seguridad; **T10 aplazado a propósito hasta tener el Galaxy S25 FE** (checklist en `docs/sprint-51.md`) y T11 después. Opus |
+| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | ✅ **Cerrado reducido el 12/10/2026** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`), pendiente de PR y CI. Hecho T1–T9, seguridad (0 ALTA) y la parte de T10 hecha en el Galaxy S25 FE (build `minified` con R8, vista remota real, arreglo de letra grande en la pantalla 13). **Pendiente:** TalkBack y fuente grande en el resto de pantallas (decisión del dueño: pasan al S67), la release real de producción y los PR `sprint-51-cierre` → `android-redesign` → `main` (merge del dueño). `docs/sprint-51.md` |
+| S61–S67 | Rediseño v2 del supervisado: quita el modo tutor de la app y rehace las pantallas del supervisado (plan aprobado por el dueño) | 📋 **Plan aprobado, sin empezar.** `docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md` (hoy sin versionar en el checkout de OneDrive; se commitea al empezar el S61). S61 quita el modo tutor; S64 y S65 cubren hallazgos de seguridad del S51 (B-08, B-10); S67 repite TalkBack y fuente grande sobre las pantallas nuevas |
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
   para empezar.
@@ -122,4 +123,4 @@ uso registrado (el mínimo del límite es 1 minuto). Se borra todo al final y se
 - **B-03:** una misma cuenta puede ser tutor y supervisado sin aviso claro (backend).
 - **B-05:** el panel web consulta alertas cada minuto con un token caducado y recibe 401. Se ve en los logs del
   backend si queda una pestaña abierta.
-- **B-06:** con letra grande, algunos botones se aplastan. S51 corrigió la píldora de estado y la barra inferior (`9c7eb73`); falta revisar el resto en el Galaxy (T10).
+- **B-06:** con letra grande, algunos botones se aplastan. S51 corrigió la píldora de estado y la barra inferior (`9c7eb73`); el arreglo de `LinkedDeviceScreen` (`615e84d`, `5042d4a`) se comprobó en el Galaxy; el resto de pantallas se revisa en el S67 sobre las pantallas del rediseño v2.

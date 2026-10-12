@@ -158,3 +158,88 @@ Capturas `t10-fuente-1.3-p17-*` y `t10-fuente-2.0-p17-*` en `%TEMP%\np-sprint51\
 
 TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % en las pantallas sin revisar (punto 3; hechas la 13, corregida, y la 17, con defecto a 2.0) y capturas 01,
 02, 12, 14, 15 y 16 (punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.
+
+## T11 — Cierre (12/10/2026)
+
+Worktree `C:/Users/andre/np-s51`, rama `sprint-51-cierre`, HEAD `030e989`. `{pkg}` = `mobile/app/src/main/java/com/netprotect/app`.
+
+### Verificación de Android (`verifier`)
+
+Con la variable `CI` sin definir (con `CI` definida, la guarda de la build `minified` hace fallar el empaquetado):
+
+```
+cd mobile && env -u CI ./gradlew test assembleDebug lintDebug assembleRelease
+```
+
+Salida: `BUILD SUCCESSFUL in 2m 19s` · `144 actionable tasks: 37 executed, 107 up-to-date` · código de salida 0.
+
+- `testDebugUnitTest`: 162 tests, 0 fallos, 0 errores, 0 omitidos (19 clases). `testMinifiedUnitTest` y
+  `testReleaseUnitTest` corrieron sin fallos.
+- `lintDebug`: 0 errores, 24 avisos.
+  - 1 en `AndroidManifest.xml:63`: `android:dataExtractionRules` solo aplica a Android más nuevos. El archivo de reglas es
+    nuevo en este sprint (T3).
+  - 11 avisos `UseKtx` de `SharedPreferences` en archivos de `core/auth` y `core/rules` que el sprint no tocó.
+  - El resto, en el informe `mobile/app/build/reports/lint-results-debug.txt`.
+- `assembleRelease` (R8): `app-release-unsigned.apk`, 47,6 MB.
+- Nota: `assembleDebug` salió `UP-TO-DATE` (entradas sin cambios desde una compilación anterior).
+- **No se ejecutó:** `connectedDebugAndroidTest`. El emulador local con API 36 falla todos los tests de Compose por una
+  causa sin diagnosticar; los valida el job `android-instrumented` de GitHub. Backend y frontend no se tocaron en el
+  sprint, así que no se ejecutaron.
+
+### Comprobaciones por `grep`
+
+```
+grep -rn "Color(0x" mobile/app/src/main/java --include=*.kt | grep -v "/ui/theme/"
+```
+
+Sin salida: 0 colores literales fuera de `ui/theme`.
+
+```
+grep -rn "Log\.[dviwe](" mobile/app/src/main/java
+```
+
+2 coincidencias, ambas preexistentes, en `core/screenshare/ScreenShareService.kt`:
+
+- `:376: Log.w(TAG, "SDP create failed: $error")`
+- `:379: Log.w(TAG, "SDP set failed: $error")`
+
+Solo registran el mensaje de error de WebRTC; ni el SDP, ni tokens, ni datos del menor.
+
+### Revisión de seguridad (`security-reviewer`, Opus)
+
+Sobre `git diff origin/main...HEAD` (287 archivos). **0 ALTA, 2 MEDIA, 5 BAJA.** Los commits posteriores a la revisión
+del 02/10/2026 que tocan código son solo `615e84d` y `5042d4a` (layout de `LinkedDeviceScreen.kt`): sin regresión.
+
+Comandos que ejecutó (extractos):
+
+- `git log --oneline --since=2026-10-02 origin/android-redesign..HEAD` → `030e989`, `d0e3b2b`, `184f26f`, `5042d4a`,
+  `b7b7aec`, `615e84d`, `496e290`, `f54c757`.
+- `git log --since=2026-10-02 --stat origin/main..HEAD -- . ':!docs'` → solo `5042d4a` y `615e84d`.
+- `git show origin/main:.../HomeScreen.kt | grep switchMode` → línea 123,
+  `fun switchMode(user: CurrentUser) { RolePreference.clear(context)`: el hallazgo (a) ya existía en `main`.
+- `git show origin/main:.../SupervisedScreen.kt | grep screen_share_consent` → `main` enviaba `granted=true` antes del
+  lanzador y no tenía tiempo límite ni `BackHandler`: el hallazgo (c) es nuevo del S50.
+- `git diff origin/main...HEAD -- backend/app` → solo `devices.py` (`/devices/me`), `location.py` (auditoría de lectura
+  de ubicación) y `alerts.py` (bloqueo asesor).
+
+| Sev. | Hallazgo | Dónde | Detalle | Destino |
+|---|---|---|---|---|
+| MEDIA | (a) «Cambiar de modo» | `feature/home/HomeScreen.kt:127-130`, `SupervisedShell.kt:473` | `switchMode` solo borra `RolePreference`; al desmontarse `SupervisedShell` se detienen `RuleEnforcementService`, `LocationReportingService`, el realtime, `SyncWorker` y el latido. Sin llamada al backend, sin auditoría y sin aviso al tutor (lo ve `OFFLINE` a los 300 s, sin alerta). Preexistente en `main`. No rompe las invariantes 1–2. | S61 (el modo tutor sale de la app) |
+| MEDIA | (b) Desvinculación del tutor no detectada | `SupervisedShell.kt:241-256`, `core/network/DeviceClient.kt:87`, `backend/app/api/v1/endpoints/devices.py:252` | Con el dispositivo vinculado, el latido devuelve 200 con estado `UNLINKED` y el cliente lo ignora; solo `checkLink()` al arrancar el shell lo detecta. Tras desvincular, el teléfono sigue enviando ubicación, apps y latido (los acepta `require_supervised_owner_of_device`, `deps.py:92-94`). Preexistente. | S64 (B1 del plan v2) |
+| MEDIA (nota de privacidad, dentro de (b)) | Historial de ubicación entre revinculaciones | `backend/app/api/v1/endpoints/pairing.py:204-233`, `location.py:182-189` | Revincular la misma instalación con otro tutor reutiliza la fila del dispositivo, y `get_location_history` filtra solo por `device_id`, no por el inicio del vínculo activo: un tutor nuevo podría ver ubicaciones guardadas antes de su vínculo (dentro de la retención). Verificado por Claude en el código. Preexistente, backend. | Sin sprint asignado (invariante 6) |
+| BAJA | (c) Consentimiento: Atrás y tiempo límite en silencio | `SupervisedShell.kt:361-377` (`CONSENT_TIMEOUT_MS`, l. 73), `RemoteViewPanel.tsx:349-350` | Atrás o los 2 min ocultan la solicitud sin enviar nada; el panel web espera indefinidamente. Nuevo del S50. Falla en modo seguro (no se captura nada). | S65 (B5, aprobado por el dueño) |
+| BAJA | (d) Cerrar sesión sin aviso al tutor | `HomeScreen.kt:97-101` | Detiene toda la protección sin avisar al tutor; no se verificó si `/auth/logout` deja rastro en la auditoría. Acción legítima. | Backend, fuera del alcance de v2 |
+| BAJA (previo 1) | Guarda de la build `minified` | `mobile/app/build.gradle.kts` (`taskGraph.whenReady`) | Sigue corregido. | — |
+| BAJA (previo 2) | «Continuar» envía `granted=true` antes del diálogo de MediaProjection | `SupervisedShell.kt:493-497` | Deuda conocida. | — |
+| BAJA (previo 3) | Access token en extras de `Intent` a servicios propios no exportados | `SupervisedShell.kt:142,300,312` | Deuda conocida. | — |
+
+Revisado sin hallazgos: logs (invariante 7); auditoría de lectura de ubicación (invariantes 6–7); galería de depuración
+solo en el manifest de debug (invariante 11); tráfico sin cifrar solo en `src/debug/res`; `dataExtractionRules` excluye
+todo y `allowBackup=false`; `proguard` sin cambios; autorización por dispositivo sin cambios (invariantes 1–3); token de
+renovación solo vía `TokenStore` con Keystore; token del WebSocket como primer frame.
+
+### Comprobaciones de Claude sobre lo delegado
+
+- `tail -3 gradle.log` → `144 actionable tasks: 37 executed, 107 up-to-date` … `EXIT=0`.
+- `grep -c FAILED gradle.log` → `0`.
+- La lectura de `pairing.py:204-233` y `location.py:170-195` confirmó la nota de privacidad del historial de ubicación.
