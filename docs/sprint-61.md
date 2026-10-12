@@ -28,7 +28,10 @@ Rama `sprint-61-solo-supervisado`, creada desde `android-redesign` (`61a8d10`), 
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis) con el motivo.
 
 - [x] T1 — Paquete v2 y plan aprobado en la rama. Inline (copiar y guardar). `7006eeb`.
-- [ ] T2 — Flujo de rol solo supervisado. `HomeScreen` decide con `GET /users/me/roles`: concede SUPERVISADO o muestra
+- [x] T2 — Flujo de rol solo supervisado. `aa63cf1`. `decideRole` es una función pura con 4 tests JVM. Hay caché local del
+  rol confirmado (`SupervisedRoleCache`) y `TutorAccountScreen` con 4 tests instrumentados. `./gradlew test assembleDebug
+  assembleDebugAndroidTest lintDebug` → `BUILD SUCCESSFUL in 2m 5s`, 166 tests por variante, lint 0 errores. Los tests
+  instrumentados quedan para el CI. Enunciado: `HomeScreen` decide con `GET /users/me/roles`: concede SUPERVISADO o muestra
   la pantalla de cuenta de tutor. Se quitan `SelectingRole`, `InTutorMode`, `switchMode`, `RolePreference`,
   `RoleSelectionScreen` y el «Cambiar de modo» de Vinculado y del shell, con sus tests y frames. Delegado
   (**Opus**: auth y roles, sensible; más de 2 archivos no triviales).
