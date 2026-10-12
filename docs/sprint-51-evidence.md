@@ -139,7 +139,22 @@ después). **Solo se revisó la pantalla 13, «Dispositivo vinculado»**, arriba
   CI los ejecuta en el emulador, no en el teléfono del dueño). No se revisaron a fuente grande las otras 16 pantallas,
   ni la escala 1.7 tras el arreglo.
 
+### Fuente grande en «Estado de NetProtect» (pantalla 17), 12/10/2026
+
+Capturas `t10-fuente-1.3-p17-*` y `t10-fuente-2.0-p17-*` en `%TEMP%\np-sprint51\`, tomadas con un script de `adb`
+(`uiautomator dump` para localizar el botón y `input tap`), escala restaurada a 1.7 al terminar.
+
+- **1.3: correcto.** Títulos, descripciones y etiquetas «Activo» caben sin cortes.
+- **2.0: defecto.** Con el icono a la izquierda y la etiqueta «Activo» a la derecha, la columna de texto queda
+  estrecha y los títulos se parten **dentro de la palabra**: «disposit / ivo», «dispositiv / o», «Ubicaci / ón»,
+  «aproxim / ada». No hay recorte de contenido, pero se lee mal. Sin corregir; la fila de esa pantalla recibe la
+  etiqueta por un parámetro `pill` (`ServicesStatusScreen.kt`), no es `ListRow`, y no se localizó aún el componente.
+- **Pantalla 14 (Permisos): sin revisar.** El script no llegó a ella: las capturas `*-p14-*` son de la pantalla 17.
+  No se tomaron por válidas.
+- **Pantallas 12, 15 y 16** necesitan estados concretos (sin vincular, solicitud de captura, regla de bloqueo) y las
+  del tutor otra cuenta: sin revisar.
+
 ### Pendiente en T10
 
-TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % en las otras 16 pantallas (punto 3) y capturas 01,
+TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % en las pantallas sin revisar (punto 3; hechas la 13, corregida, y la 17, con defecto a 2.0) y capturas 01,
 02, 12, 14, 15 y 16 (punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.
