@@ -91,10 +91,12 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   **Avance del 12/10/2026 (parcial; T10 sigue abierto).** Punto 1 hecho: `installMinified` con R8 en el Galaxy
   (`SM-S731B`, Android 16), login real de Google, vinculación con código y consentimiento de captura. Punto 4: el
   registro de auditoría del backend muestra una vista remota real contra el teléfono (`SCREEN_SHARE_REQUESTED` →
-  `STARTED` → `STOPPED`, unos 45 s) con la build `minified`; el dueño informa que las pruebas salieron bien, pero
-  **sin confirmación explícita de haber visto el vídeo ni captura**, y sin comprobar si la ruta fue directa o por TURN.
+  `STARTED` → `STOPPED`, unos 45 s) con la build `minified`, y **el dueño confirmó que vio el vídeo del teléfono en el
+  panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
   Puntos 2, 3 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
-- [ ] T5 — se cierra con el punto 4 de T10 (H-02): hasta entonces R8 solo está verificado de forma estática.
+- [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
+  en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
+  captura (`docs/sprint-51-evidence.md`, T10).
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
   Pendiente tras T10: cerrar G-01…G-27 en `tasks.md` y lecciones en `.claude/rules/android.md` (mecánico, apto
   para DeepSeek); `/cerrar-sprint 51`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` → `main`

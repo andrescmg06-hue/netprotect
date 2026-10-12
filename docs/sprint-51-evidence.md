@@ -107,7 +107,9 @@ Horas en UTC. Dispositivo del teléfono: `1f78580e` («samsung SM-S731B», Andro
   empezó 11 s después de la solicitud y duró unos 45 s.
 - `device_location_reports` del teléfono: 1 reporte (03:58:46), precisión 2000 m. Es lo esperado: la app solo tiene
   `ACCESS_COARSE_LOCATION` y reporta cada 15 min (`REPORT_INTERVAL_MS`, `LocationReportingService.kt`).
-- **Sin comprobar:** si el vídeo se vio en el panel (solo consta lo que informa el dueño); la ruta WebRTC. Los TURN
+- **Confirmación visual (H-02):** el dueño confirmó que vio el vídeo del teléfono en el panel. Es declaración suya,
+  sin captura ni grabación.
+- **Sin comprobar:** la ruta WebRTC. Los TURN
   por defecto (`turn:localhost:3478`, `turn:10.0.2.2:3478`, UDP) no son alcanzables desde un teléfono real, así que
   la sesión pudo ir en directo por Wi-Fi; para forzar un relé hay que poner la IP de la PC en `TURN_URLS` y abrir
   UDP 3478.
@@ -115,4 +117,4 @@ Horas en UTC. Dispositivo del teléfono: `1f78580e` («samsung SM-S731B», Andro
 ### Pendiente en T10
 
 TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % (punto 3) y capturas 01, 02, 12, 14, 15 y 16
-(punto 5): sin evidencia. El dueño informa que las pruebas hechas salieron bien, sin detallar cuáles.
+(punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.
