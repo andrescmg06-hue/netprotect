@@ -27,7 +27,6 @@ class LinkedDeviceScreenTest {
         pendingPermissions: Int = 2,
         onOpenServices: () -> Unit = {},
         onOpenPermissions: () -> Unit = {},
-        onSwitchMode: () -> Unit = {},
         onSignOut: () -> Unit = {},
     ) {
         composeRule.setContent {
@@ -42,7 +41,6 @@ class LinkedDeviceScreenTest {
                     pendingPermissions = pendingPermissions,
                     onOpenServices = onOpenServices,
                     onOpenPermissions = onOpenPermissions,
-                    onSwitchMode = onSwitchMode,
                     onSignOut = onSignOut,
                 )
             }
@@ -108,13 +106,5 @@ class LinkedDeviceScreenTest {
     fun noContactShowsTodaviaNo() {
         set(lastContact = null)
         composeRule.onNodeWithText("Todavía no").performScrollTo().assertExists()
-    }
-
-    @Test
-    fun switchModeCallsOnSwitchMode() {
-        var switched = false
-        set(onSwitchMode = { switched = true })
-        composeRule.onNodeWithText("Cambiar de modo").performScrollTo().performClick()
-        assertTrue(switched)
     }
 }

@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,30 +21,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.components.BrandHeader
-import com.netprotect.app.ui.components.CodeDisplay
 import com.netprotect.app.ui.components.ConfirmDialog
-import com.netprotect.app.ui.components.DayHeader
-import com.netprotect.app.ui.components.EmptyState
 import com.netprotect.app.ui.components.ErrorState
-import com.netprotect.app.ui.components.FilterChips
 import com.netprotect.app.ui.components.InfoBanner
 import com.netprotect.app.ui.components.ListRow
 import com.netprotect.app.ui.components.LoadingState
-import com.netprotect.app.ui.components.NpBottomBar
-import com.netprotect.app.ui.components.NpBottomItem
 import com.netprotect.app.ui.components.NpButton
 import com.netprotect.app.ui.components.NpButtonVariant
 import com.netprotect.app.ui.components.NpCard
 import com.netprotect.app.ui.components.NpTopBar
 import com.netprotect.app.ui.components.OtpInput
 import com.netprotect.app.ui.components.PermissionCard
-import com.netprotect.app.ui.components.SectionHeader
-import com.netprotect.app.ui.components.SegmentedControl
-import com.netprotect.app.ui.components.SeverityBadge
 import com.netprotect.app.ui.components.StatusPill
-import com.netprotect.app.ui.components.TimelineItem
-import com.netprotect.app.ui.components.UsageBar
-import com.netprotect.app.ui.format.DeviceStatusLabels
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
@@ -55,9 +42,6 @@ import com.netprotect.app.ui.theme.NpTone
  * son ilustrativos ("Tablet de Sofía") y nada de esto se usa fuera de `src/debug`. */
 @Composable
 fun DesignGallery() {
-    var segmentedIndex by remember { mutableIntStateOf(0) }
-    var chipsIndex by remember { mutableIntStateOf(0) }
-    var bottomIndex by remember { mutableIntStateOf(0) }
     var otp by remember { mutableStateOf("") }
     var showConfirm by remember { mutableStateOf(false) }
     var confirmDanger by remember { mutableStateOf(false) }
@@ -101,19 +85,17 @@ fun DesignGallery() {
 
         Section("StatusPill") {
             listOf(
-                "ONLINE", "OFFLINE", "ALERT", "SYNCING", "RESTRICTED", "UNLINKED",
-            ).forEach { status ->
-                val (label, tone) = DeviceStatusLabels.label(status)
+                "En línea" to NpTone.Success,
+                "Desconectado" to NpTone.Neutral,
+                "Alerta" to NpTone.Danger,
+                "Sincronizando" to NpTone.Info,
+                "Restringido" to NpTone.Warning,
+                "Desvinculado" to NpTone.Neutral,
+            ).forEach { (label, tone) ->
                 StatusPill(text = label, tone = tone)
             }
             NpTone.entries.forEach { tone ->
                 StatusPill(text = tone.name, tone = tone, showDot = false)
-            }
-        }
-
-        Section("SeverityBadge") {
-            listOf("INFO", "WARNING", "HIGH", "CRITICAL").forEach { level ->
-                SeverityBadge(level = level)
             }
         }
 
@@ -124,20 +106,6 @@ fun DesignGallery() {
                 text = "El permiso de uso está desactivado.",
                 tone = NpTone.Warning,
                 icon = NpIcons.TriangleAlert,
-            )
-        }
-
-        Section("SectionHeader") {
-            SectionHeader(title = "Aplicaciones", actionLabel = "Ver todas", onAction = {})
-        }
-
-        Section("EmptyState") {
-            EmptyState(
-                icon = NpIcons.Smartphone,
-                title = "Sin dispositivos",
-                message = "Vincula un dispositivo para empezar.",
-                actionLabel = "Vincular dispositivo",
-                onAction = {},
             )
         }
 
@@ -158,76 +126,6 @@ fun DesignGallery() {
         Section("NpTopBar") {
             NpTopBar(title = "Dispositivos")
             NpTopBar(onBack = {})
-        }
-
-        Section("NpBottomBar") {
-            NpBottomBar(
-                items = listOf(
-                    NpBottomItem("Inicio", NpIcons.Home),
-                    NpBottomItem("Dispositivos", NpIcons.Smartphone, badgeCount = 3),
-                    NpBottomItem("Actividad", NpIcons.Clock),
-                    NpBottomItem("Más", NpIcons.MoreHorizontal),
-                ),
-                selectedIndex = bottomIndex,
-                onSelect = { bottomIndex = it },
-            )
-        }
-
-        Section("SegmentedControl") {
-            SegmentedControl(
-                options = listOf("Hoy", "7 días", "30 días"),
-                selectedIndex = segmentedIndex,
-                onSelect = { segmentedIndex = it },
-            )
-        }
-
-        Section("FilterChips") {
-            FilterChips(
-                options = listOf("Todas", "Redes sociales", "Juegos", "Streaming"),
-                selectedIndex = chipsIndex,
-                onSelect = { chipsIndex = it },
-            )
-        }
-
-        Section("UsageBar") {
-            UsageBar(fraction = 0f, contentDescription = "0 %")
-            UsageBar(fraction = 0.4f, contentDescription = "40 %")
-            UsageBar(fraction = 1f, contentDescription = "100 %")
-        }
-
-        Section("TimelineItem") {
-            TimelineItem(
-                icon = NpIcons.Ban,
-                tone = NpTone.Danger,
-                title = "Bloqueo de app",
-                time = "10:42 a. m.",
-                subtitle = "YouTube",
-            )
-            TimelineItem(
-                icon = NpIcons.MapPin,
-                tone = NpTone.Info,
-                title = "Salió de la geocerca",
-                time = "9:15 a. m.",
-                subtitle = "Zona escolar",
-            )
-            TimelineItem(
-                icon = NpIcons.Clock,
-                tone = NpTone.Success,
-                title = "Se alcanzó el límite",
-                time = "8:03 a. m.",
-                subtitle = "Instagram",
-                isLast = true,
-            )
-        }
-
-        Section("DayHeader") {
-            DayHeader(text = "Hoy")
-            DayHeader(text = "Ayer")
-        }
-
-        Section("CodeDisplay") {
-            CodeDisplay(code = "482 917", remainingSeconds = 143, totalSeconds = 180)
-            CodeDisplay(code = "482 917", remainingSeconds = 0, totalSeconds = 180)
         }
 
         Section("OtpInput") {

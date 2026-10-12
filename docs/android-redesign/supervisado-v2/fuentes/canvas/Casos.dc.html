@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Casos reales</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:root{--k:1;--kd:1;--e:cubic-bezier(.2,0,0,1)}
+.ph{position:relative;width:411px;height:891px;background:#f5f3ee;overflow:hidden;font-family:Inter,sans-serif;color:#11243d;display:flex;flex-direction:column;border:1px solid #c9c5bb;border-radius:28px;box-sizing:border-box;font-size:calc(16px*var(--k));line-height:1.5}
+.ph.k2{--k:2;--kd:1.4;height:auto;min-height:891px}
+.cap{font:600 12px/16px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779;margin-bottom:12px}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.gest{position:absolute;bottom:8px;left:50%;margin-left:-60px;width:120px;height:4px;border-radius:2px;background:#11243d;opacity:.45;z-index:9}
+.disp{font:600 calc(38px*var(--kd))/1.08 'Playfair Display',serif;letter-spacing:-.01em;margin:0}
+.ttl{font:600 calc(26px*var(--kd))/1.15 'Playfair Display',serif;margin:0}
+.bd{font-size:calc(16px*var(--k));line-height:1.5}
+.sm{font-size:calc(14px*var(--k));line-height:1.5;color:#5b6779}
+.xs{font-size:calc(14px*var(--k));line-height:1.45;color:#5b6779}
+.eye{font:600 calc(11px*var(--k))/1.4 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779}
+.b6{font-weight:600}
+.hr{border-top:1px solid #d9d6cf}
+.top{padding:46px 14px 0;display:flex;align-items:center;justify-content:space-between;flex:none}
+.bk{width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:#11243d;border-radius:50%;transition:background .2s}
+.bk:hover,.bk:active{background:#e9e6df}
+.btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:6px 8px 6px 22px;border-radius:4px;font:600 calc(16px*var(--k))/1.3 Inter,sans-serif;border:0;box-sizing:border-box;width:100%;background:#1769ff;color:#fff;text-align:left;transition:transform .12s var(--e),background .2s}
+.btn:active{transform:scale(.985)}
+.btn .ar{width:46px;height:46px;border-radius:3px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none;transition:transform .24s var(--e)}
+.btn:hover .ar{transform:translateX(3px)}
+.btn.o{background:#fff;color:#11243d;box-shadow:inset 0 0 0 1.5px #11243d}
+.btn.o .ar{background:#11243d;color:#fff}
+.btn.g{background:transparent;color:#11243d;box-shadow:inset 0 0 0 1.5px #c9c5bb}
+.btn.g .ar{background:#ebe8e1}
+.btn.off{background:#e4e1da;color:#5b6779}
+.btn.off .ar{background:#d9d6cf}
+.btn.dg{background:#c4271c}
+.btn.c{justify-content:center;padding:6px 22px}
+.tl{display:inline-flex;align-items:center;gap:10px;min-height:48px;background:none;border:0;padding:0 2px;font:600 calc(15px*var(--k))/1.3 Inter,sans-serif;color:#1456d9;background-image:linear-gradient(currentColor,currentColor);background-repeat:no-repeat;background-position:0 calc(50% + 14px);background-size:0 1.5px;transition:background-size .3s var(--e)}
+.tl:hover,.tl:active{background-size:100% 1.5px}
+.chip{display:inline-flex;align-items:center;gap:7px;font:600 calc(13px*var(--k))/1.3 Inter,sans-serif;padding:3px 10px;border-radius:999px}
+.c-ok{color:#0b7a42;background:#e7f8ef}.c-pe{color:#9a5000;background:#fef3e2}.c-ve{color:#1456d9;background:#eaf1ff}.c-gr{color:#4a5568;background:#ebe8e1}.c-er{color:#c4271c;background:#feeceb}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.rs{animation:rise .55s var(--e) both;animation-delay:var(--d,0s)}
+.msg{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:4px;font-size:calc(15px*var(--k));line-height:1.45}
+.tile{width:44px;height:44px;border-radius:4px;background:#f3f1ec;border:1px solid #d9d6cf;display:flex;align-items:center;justify-content:center;color:#11243d;flex:none;box-sizing:border-box}
+.scrim{position:absolute;inset:0;background:rgba(13,27,42,.58);z-index:5;display:flex;align-items:flex-end;padding:0 18px 52px;animation:fade .3s var(--e)}
+.dlg{background:#f5f3ee;border-radius:4px;padding:28px 22px 18px;width:100%;box-sizing:border-box;animation:rise .45s var(--e) both .05s}
+.dlg h2{margin:0 0 10px;font:600 26px/1.15 'Playfair Display',serif}
+.dlg p{margin:0 0 20px;font-size:15px;line-height:1.5;color:#5b6779}
+.pv{display:inline-block;margin:0 0 12px;font:600 11px/16px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9a5000;background:#fef3e2;padding:2px 8px;border-radius:2px}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{stroke-dashoffset:92}to{stroke-dashoffset:0}}
+@keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.5);opacity:0}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes sheen{0%,70%{left:-80px}100%{left:120%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.08)}}
+@keyframes ecg{from{stroke-dashoffset:240}to{stroke-dashoffset:0}}
+@keyframes tick{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@keyframes hop{0%{left:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
+@keyframes shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes shackle{0%{transform:translateY(-5px)}60%{transform:translateY(-5px)}80%{transform:translateY(1px)}100%{transform:translateY(0)}}
+.arc{animation:draw 1s var(--e) both}
+.a1{animation-delay:.1s}.a2{animation-delay:.3s}.a3{animation-delay:.5s}.a4{animation-delay:.7s}
+.rg{transform-origin:84px 84px;animation:ring 2.8s ease-out infinite}
+.bre{animation:breathe 3.2s ease-in-out infinite}
+.pl{animation:pulse 1.8s ease-in-out infinite}
+.sp{animation:spin 1s linear infinite}
+@media (prefers-reduced-motion:reduce){.rs,.arc,.rg,.bre,.pl,.sp,.scrim,.dlg{animation:none!important}.btn,.btn .ar,.tl{transition:none}}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></symbol><symbol id="i-wifioff" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol><symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol><symbol id="i-unlink" viewBox="0 0 24 24"><path d="m18.84 12.25 1.72-1.71a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></symbol><symbol id="i-swap" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><rect width="6" height="6" x="9" y="9"/></symbol><symbol id="i-nog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol><symbol id="i-spin" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="i-app" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M3 9h18"/></symbol><symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol><symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="i-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol><symbol id="i-layers" viewBox="0 0 24 24"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" x2="20" y1="8" y2="8"/><line x1="4" x2="20" y1="16" y2="16"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol></defs></svg>
+<div style="position:relative;width:2400px;height:1050px;background:#ebe8e1;box-sizing:border-box;padding:56px;display:flex;gap:48px;align-items:flex-start">
+<div>
+<div class="cap">1 · Bienvenida: vinculado</div>
+<span class="pv">Primera vez</span>
+<div class="ph "><div style="background:#0d1b2a;color:#fff;flex:1;display:flex;flex-direction:column;padding:70px 24px 0;border-radius:28px">
+<div class="eye" style="color:#9fb4d4">Vinculación completada</div>
+<div style="margin:30px auto 0;position:relative;width:200px;height:200px"><svg viewBox="0 0 168 168" width="200" height="200" aria-hidden="true"><circle cx="84" cy="84" r="70" fill="none" stroke="#1c3350" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(-83 84 84)"/><circle class="arc a1" cx="84" cy="84" r="70" fill="none" stroke="#16b364" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(-83 84 84)"/><circle cx="84" cy="84" r="70" fill="none" stroke="#1c3350" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(7 84 84)"/><circle class="arc a2" cx="84" cy="84" r="70" fill="none" stroke="#16b364" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(7 84 84)"/><circle cx="84" cy="84" r="70" fill="none" stroke="#1c3350" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(97 84 84)"/><circle class="arc a3" cx="84" cy="84" r="70" fill="none" stroke="#16b364" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(97 84 84)"/><circle cx="84" cy="84" r="70" fill="none" stroke="#1c3350" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(187 84 84)"/><circle class="arc a4" cx="84" cy="84" r="70" fill="none" stroke="#16b364" stroke-width="8" stroke-linecap="round" stroke-dasharray="92 348" transform="rotate(187 84 84)"/><image href="/_blob/3f5387e827e7fdd88ecb416ef79ce2ab" x="54" y="54" width="60" height="60" opacity="1"/></svg></div>
+<h1 class="disp rs" style="color:#fff;margin-top:30px">Este teléfono ya está vinculado</h1>
+<p class="bd rs" style="margin:12px 0 0;color:#d3dcea;--d:.15s">Antes de seguir, te explicamos en dos pasos qué hace NetProtect aquí.</p>
+<div style="flex:1"></div>
+<div style="padding-bottom:36px"><button class="btn" style=""><span style="display:flex;align-items:center;gap:10px">Ver qué hace NetProtect</span><span class="ar"><svg class="ic" style="width:20px;height:20px;"><use href="#i-arrow"/></svg></span></button><div style="display:flex;gap:6px;justify-content:center;margin-top:16px"><i style="width:22px;height:4px;border-radius:2px;background:#fff"></i><i style="width:22px;height:4px;border-radius:2px;background:#2b4565"></i></div></div></div><div class="gest"></div></div>
+</div>
+<div>
+<div class="cap">2 · Bienvenida: qué ve el tutor</div>
+<span class="pv">Textos por validar</span>
+<div class="ph "><div class="top"><button class="bk" aria-label="Atrás"><svg class="ic"><use href="#i-back"/></svg></button><img src=/_blob/3f5387e827e7fdd88ecb416ef79ce2ab alt=NetProtect style=height:26px;width:auto;margin-right:12px></div><div style="padding:8px 24px 0;flex:1">
+<div class="eye">Paso 2 de 2</div><h1 class="disp rs" style="margin-top:6px;font-size:34px">Esto es lo que tu tutor puede ver</h1>
+<div style="margin-top:14px;border-top:1px solid #11243d">
+<div class="rs" style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #d9d6cf"><span class="tile"><svg class="ic"><use href="#i-wifi"/></svg></span><div><b class="bd">Si el dispositivo está activo</b><div class="sm">Y cuándo se comunicó por última vez.</div></div></div>
+<div class="rs" style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #d9d6cf"><span class="tile"><svg class="ic"><use href="#i-grid"/></svg></span><div><b class="bd">Cuánto tiempo usas las apps</b><div class="sm">Para aplicar las reglas que él configure.</div></div></div>
+<div class="rs" style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #d9d6cf"><span class="tile"><svg class="ic"><use href="#i-pin"/></svg></span><div><b class="bd">Tu ubicación aproximada</b><div class="sm">Cada unos 15 minutos, no en tiempo real.</div></div></div>
+</div>
+<div class="eye" style="margin-top:20px">Y tú decides</div>
+<div class="rs" style="display:flex;gap:14px;padding:12px 0;font-size:calc(15px*var(--k))"><svg class="ic" style="width:20px;height:20px;color:#1456d9;margin-top:2px"><use href="#i-eye"/></svg><span>La vista de pantalla solo se activa si tú la autorizas, y puedes detenerla.</span></div>
+</div>
+<div style="padding:12px 24px 36px;border-top:1px solid #d9d6cf"><div style="display:flex;gap:6px;justify-content:center;margin-bottom:12px"><i style="width:22px;height:4px;border-radius:2px;background:#2b4565;opacity:.35"></i><i style="width:22px;height:4px;border-radius:2px;background:#11243d"></i></div><button class="btn" style=""><span style="display:flex;align-items:center;gap:10px">Entendido, configurar permisos</span><span class="ar"><svg class="ic" style="width:20px;height:20px;"><use href="#i-arrow"/></svg></span></button></div><div class="gest"></div></div>
+</div>
+<div>
+<div class="cap">3 · Batería limita a NetProtect</div>
+<span class="pv">Pasos por validar en Samsung</span>
+<div class="ph "><div class="top"><button class="bk" aria-label="Atrás"><svg class="ic"><use href="#i-back"/></svg></button><img src=/_blob/3f5387e827e7fdd88ecb416ef79ce2ab alt=NetProtect style=height:26px;width:auto;margin-right:12px></div><div style="padding:8px 24px 0;flex:1">
+<div style="width:64px;height:64px;background:#fef3e2;color:#9a5000;border-radius:4px;display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:30px;height:30px;"><use href="#i-alert"/></svg></div>
+<h1 class="disp rs" style="margin-top:16px;font-size:34px">NetProtect se detiene en segundo plano</h1>
+<p class="bd rs" style="margin:10px 0 16px;color:#5b6779">Tu teléfono (samsung SM-S731B) está limitando la batería de NetProtect. Por eso tu tutor no recibe reportes.</p>
+<div class="eye" style="border-bottom:1px solid #11243d;padding-bottom:6px">Cómo arreglarlo</div>
+<div class="rs" style="display:flex;gap:14px;padding:11px 0;font-size:calc(15px*var(--k));--d:0.18s"><span style="width:28px;height:28px;border-radius:50%;border:1.5px solid #11243d;display:flex;align-items:center;justify-content:center;font:600 13px/1 Inter;flex:none">1</span><span>Abre los ajustes de batería de NetProtect.</span></div><div class="rs" style="display:flex;gap:14px;padding:11px 0;font-size:calc(15px*var(--k));--d:0.26s"><span style="width:28px;height:28px;border-radius:50%;border:1.5px solid #11243d;display:flex;align-items:center;justify-content:center;font:600 13px/1 Inter;flex:none">2</span><span>Elige “Sin restricciones” o “No optimizar”.</span></div><div class="rs" style="display:flex;gap:14px;padding:11px 0;font-size:calc(15px*var(--k));--d:0.34s"><span style="width:28px;height:28px;border-radius:50%;border:1.5px solid #11243d;display:flex;align-items:center;justify-content:center;font:600 13px/1 Inter;flex:none">3</span><span>Vuelve aquí. Lo comprobaremos solos.</span></div>
+<p class="xs" style="margin-top:8px">Los nombres pueden cambiar según el fabricante. Pasos por validar en un Samsung real.</p></div>
+<div style="padding:12px 24px 36px;border-top:1px solid #d9d6cf;display:flex;flex-direction:column;gap:8px"><button class="btn" style=""><span style="display:flex;align-items:center;gap:10px">Abrir ajustes de batería</span><span class="ar"><svg class="ic" style="width:20px;height:20px;"><use href="#i-ext"/></svg></span></button><button class="btn g c" style=""><span style="display:flex;align-items:center;gap:10px">Más tarde</span></button></div><div class="gest"></div></div>
+</div>
+<div>
+<div class="cap">4 · Permiso desactivado (en la app)</div>
+<div class="ph "><div class="top"><button class="bk" aria-label="Atrás"><svg class="ic"><use href="#i-back"/></svg></button><img src=/_blob/3f5387e827e7fdd88ecb416ef79ce2ab alt=NetProtect style=height:26px;width:auto;margin-right:12px></div><div style="padding:8px 24px 0;flex:1">
+<div class="eye" style="color:#9a5000">Permiso desactivado</div><h1 class="disp rs" style="margin-top:6px;font-size:34px">Se desactivó un permiso</h1>
+<p class="bd rs" style="margin:10px 0 16px;color:#5b6779">“Mostrar sobre otras apps” se quitó en Ajustes de Android. Mientras tanto, NetProtect no puede mostrar la pantalla de bloqueo.</p>
+<div class="rs" style="display:flex;gap:14px;align-items:flex-start;padding:16px;border:1.5px solid #9a5000;border-radius:4px;background:#fff"><span class="tile" style="background:#fef3e2;border-color:#f1d29b;color:#9a5000"><svg class="ic"><use href="#i-monitor"/></svg></span><div><b class="bd">Mostrar sobre otras apps</b><div style="margin-top:4px"><span class="chip c-pe">Pendiente</span></div></div></div>
+<p class="xs" style="margin-top:14px">Tu tutor puede ver que este permiso está pendiente.</p></div>
+<div style="padding:12px 24px 36px;border-top:1px solid #d9d6cf;display:flex;flex-direction:column;gap:8px"><button class="btn" style=""><span style="display:flex;align-items:center;gap:10px">Activar de nuevo</span><span class="ar"><svg class="ic" style="width:20px;height:20px;"><use href="#i-ext"/></svg></span></button><button class="btn g c" style=""><span style="display:flex;align-items:center;gap:10px">Volver al inicio</span></button></div><div class="gest"></div></div>
+</div>
+<div>
+<div class="cap">5 · Aviso de Android por permiso desactivado</div>
+<div class="ph "><div style="background:#1a2230;flex:1;padding:56px 16px 0;border-radius:28px;display:flex;flex-direction:column;gap:10px">
+<div class="rs" style="background:#2a3446;border-radius:16px;padding:14px 16px;display:flex;gap:12px"><span style="color:#f5b455"><svg class="ic"><use href="#i-alert"/></svg></span><div><div style="font-size:12px;color:#b9c3d4;margin-bottom:4px">NetProtect · ahora</div><b style="display:block;font-size:15px;line-height:1.35;color:#fff">Se desactivó un permiso</b><p style="margin:2px 0 0;font-size:14px;line-height:1.4;color:#d3dae6">“Mostrar sobre otras apps” ya no está activo. Toca para activarlo de nuevo.</p></div></div>
+<div class="rs" style="background:#2a3446;border-radius:16px;padding:14px 16px;display:flex;gap:12px;--d:.1s"><span style="color:#9ec0ff"><svg class="ic"><use href="#i-shield"/></svg></span><div><div style="font-size:12px;color:#b9c3d4;margin-bottom:4px">NetProtect · ahora</div><b style="display:block;font-size:15px;line-height:1.35;color:#fff">NetProtect está activo</b><p style="margin:2px 0 0;font-size:14px;line-height:1.4;color:#d3dae6">Reporte y control de apps funcionando en este dispositivo.</p></div></div></div><div class="gest"></div></div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2400,"height":1050}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

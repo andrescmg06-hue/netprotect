@@ -56,7 +56,6 @@ fun LinkedDeviceScreen(
     pendingPermissions: Int,
     onOpenPermissions: () -> Unit,
     onOpenServices: () -> Unit,
-    onSwitchMode: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -231,15 +230,6 @@ fun LinkedDeviceScreen(
                             tint = NpColors.SlateMuted,
                         )
                     },
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            NpCard(onClick = onSwitchMode) {
-                ListRow(
-                    title = "Cambiar de modo",
-                    subtitle = "Salir del modo supervisado en este dispositivo.",
-                    leading = { IconTile(icon = NpIcons.ArrowLeftRight, tone = NpTone.Info, size = 44.dp) },
-                    trailing = { Chevron() },
                 )
             }
             Spacer(Modifier.height(12.dp))

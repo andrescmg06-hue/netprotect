@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Preguntas técnicas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pg{position:relative;width:1440px;height:1480px;background:#f5f3ee;box-sizing:border-box;padding:56px 64px;font-family:Inter,sans-serif;color:#11243d;overflow:hidden}
+.ey{font:600 12px/16px Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#5b6779}
+h1{margin:8px 0 8px;font:600 44px/50px 'Playfair Display',serif}
+.lead{margin:0 0 24px;font-size:15px;line-height:23px;color:#5b6779;max-width:820px}
+table{border-collapse:collapse;width:100%}
+th{font:600 11px/16px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779;text-align:left;padding:0 12px 8px 0;border-bottom:1px solid #11243d}
+td{padding:9px 16px 9px 0;border-bottom:1px solid #d9d6cf;font-size:13px;line-height:19px;vertical-align:top}
+td.n{width:30px;font-weight:600;color:#5b6779}
+td.q{width:560px}
+td.s{width:90px;color:#9a5000;font-weight:600}
+td.s.k{color:#0b7a42}
+</style>
+</helmet>
+<div class="pg">
+<div class="ey">Pendiente de validar</div>
+<h1>Preguntas técnicas y qué asumen los mockups</h1>
+<p class="lead">Mientras no haya respuesta, las pantallas usan un estado neutral o un texto cauto. Esta tabla dice dónde se apoyan en una suposición para que se corrija antes de implementar.</p>
+<table>
+<tr><th>#</th><th>Pregunta</th><th>Qué asumen hoy los mockups</th><th>Estado</th></tr>
+<tr><td class="n">1</td><td class="q">¿Qué errores devuelve la API para distinguir sin Internet, servicio caído, sesión caducada y error desconocido?</td><td>Acceso muestra cuatro mensajes separados.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">2</td><td class="q">¿La sesión de Google se restaura siempre en silencio?</td><td>“Restaurando tu sesión…” breve; si falla, cae al login.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">3</td><td class="q">¿El backend devuelve la expiración del código de vinculación?</td><td>No se muestra cuenta regresiva en Vincular.</td><td class="s k">Sin suposición</td></tr>
+<tr><td class="n">4</td><td class="q">¿Cuál es la cadencia real del reporte del dispositivo?</td><td>“Cada minuto mientras la app esté abierta”, tomado del documento fuente.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">5</td><td class="q">¿La ubicación se envía cada ~15 min en segundo plano, solo con la app abierta u otro esquema?</td><td>“Cada unos 15 minutos”, nunca “en tiempo real”.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">6</td><td class="q">¿Cómo se comprueba cada permiso y a qué ajuste exacto se navega?</td><td>Detalle de permiso abre Ajustes y comprueba al volver.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">7</td><td class="q">¿“Protección contra desinstalación” solo avisa al tutor o hace algo más?</td><td>El texto dice que avisa; no afirma que impida desinstalar.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">8</td><td class="q">¿Qué mecanismo muestra el bloqueo y qué límites tiene según versión y fabricante?</td><td>Nota: “cubre la pantalla de la app, pero no la cierra”.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">9</td><td class="q">¿Quién inicia la vista remota y cómo expira la solicitud?</td><td>Caduca en 2 min, según el documento fuente; el contador es de ejemplo.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">10</td><td class="q">¿Cuál es el flujo exacto del consentimiento y del diálogo de captura de Android?</td><td>Consentimiento propio y luego el aviso del sistema, sin imitarlo.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">11</td><td class="q">¿Qué eventos terminan una vista remota y cómo se refleja en ambas apps?</td><td>Se detiene con “Detener” o al caducar.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">12</td><td class="q">¿Se garantiza que no se graba ni guarda ninguna captura?</td><td>Consentimiento, Estado y Privacidad dicen “no graba”. Quitar o ajustar si no es cierto.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">13</td><td class="q">¿Qué consecuencias tiene “Cambiar de modo”, quién lo puede hacer y a quién se avisa?</td><td>Pantalla de modo marcada como por validar; puede no existir.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">14</td><td class="q">¿Qué diferencia hay entre cerrar sesión y desvincular, y qué queda en el teléfono?</td><td>Cerrar sesión pide confirmación; desvincular solo lo hace el tutor (decisión propuesta).</td><td class="s">Por validar</td></tr>
+<tr><td class="n">15</td><td class="q">¿Qué texto va cuando no hay ninguna ubicación frente a cuando está desactualizada?</td><td>“Sin confirmar” cuando aún no hay dato.</td><td class="s">Por validar</td></tr>
+<tr><td class="n">16</td><td class="q">¿Cuándo se puede mostrar “Todo funciona”, “Falta un paso” o “Sin reporte reciente”?</td><td>Todo funciona = 4 permisos y comunicación reciente. Umbral de tiempo sin definir.</td><td class="s">Por validar</td></tr>
+</table>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1480}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

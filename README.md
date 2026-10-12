@@ -2,7 +2,7 @@
 
 **NetProtect: Aplicación de seguridad informática para la protección y supervisión de la navegación web**
 
-NetProtect será una plataforma de seguridad digital y control parental con una **única aplicación Android** que posteriormente operará como Tutor o Supervisado según la identidad y autorización verificadas por el backend. El tutor también dispondrá de un panel web conectado a la misma API.
+NetProtect será una plataforma de seguridad digital y control parental con una **única aplicación Android**, destinada al teléfono del menor (supervisado) —desde el Sprint 61 ya no tiene modo tutor—, y un panel web conectado a la misma API que es la única interfaz del tutor.
 
 Este repositorio corresponde al **Sprint 1 — Arquitectura y entorno**.
 

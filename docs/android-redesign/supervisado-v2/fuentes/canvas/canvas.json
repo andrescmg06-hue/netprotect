@@ -1,0 +1,154 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T15:00:00Z"
+  },
+  "title": "NetProtect App Supervisado — Mockups",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1900,
+      "h": 760,
+      "title": "00 · Flujo de navegación"
+    },
+    "Acceso.dc.html": {
+      "x": 0,
+      "y": 880,
+      "w": 2360,
+      "h": 1050,
+      "title": "01 · Cargando e inicio de sesión (5 estados)"
+    },
+    "Vincular.dc.html": {
+      "x": 0,
+      "y": 2050,
+      "w": 1440,
+      "h": 1050,
+      "title": "02 · Vincular este dispositivo (3 estados)"
+    },
+    "Vinculado.dc.html": {
+      "x": 0,
+      "y": 3220,
+      "w": 1900,
+      "h": 1050,
+      "title": "03 · Dispositivo vinculado (4 estados)"
+    },
+    "Permisos.dc.html": {
+      "x": 0,
+      "y": 4390,
+      "w": 980,
+      "h": 1050,
+      "title": "04 · Permisos (2 estados)"
+    },
+    "Estado.dc.html": {
+      "x": 1100,
+      "y": 4390,
+      "w": 980,
+      "h": 1050,
+      "title": "05 · Estado de NetProtect (2 estados)"
+    },
+    "Consentimiento.dc.html": {
+      "x": 0,
+      "y": 5560,
+      "w": 1440,
+      "h": 1050,
+      "title": "06 · Consentimiento y notificaciones permanentes"
+    },
+    "Bloqueo.dc.html": {
+      "x": 0,
+      "y": 6730,
+      "w": 3280,
+      "h": 1050,
+      "title": "07 · App bloqueada (7 variantes)"
+    },
+    "Letra200.dc.html": {
+      "x": 0,
+      "y": 7900,
+      "w": 1440,
+      "h": 2260,
+      "title": "08 · Letra al 200 %"
+    },
+    "Guia.dc.html": {
+      "x": 0,
+      "y": 10170,
+      "w": 1440,
+      "h": 1500,
+      "title": "09 · Guía para Compose y movimiento"
+    },
+    "Decisiones.dc.html": {
+      "x": 0,
+      "y": 11790,
+      "w": 2400,
+      "h": 1050,
+      "title": "10 · Sesión, vínculo, modo y privacidad"
+    },
+    "Detalle.dc.html": {
+      "x": 0,
+      "y": 12960,
+      "w": 1440,
+      "h": 1050,
+      "title": "11 · Detalle de permiso (3 estados)"
+    },
+    "Preguntas.dc.html": {
+      "x": 0,
+      "y": 14130,
+      "w": 1440,
+      "h": 1480,
+      "title": "12 · Preguntas técnicas por validar"
+    },
+    "Casos.dc.html": {
+      "x": 0,
+      "y": 15730,
+      "w": 2400,
+      "h": 1050,
+      "title": "13 · Casos reales: bienvenida, batería y permiso desactivado"
+    },
+    "Variante.dc.html": {
+      "x": 0,
+      "y": 16900,
+      "w": 980,
+      "h": 1050,
+      "title": "14 · Variante B: Inicio unificado (prueba A/B)"
+    },
+    "Prueba.dc.html": {
+      "x": 0,
+      "y": 18070,
+      "w": 1440,
+      "h": 1180,
+      "title": "15 · Plan de prueba con usuarios"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Acceso.dc.html",
+    "Vincular.dc.html",
+    "Vinculado.dc.html",
+    "Permisos.dc.html",
+    "Estado.dc.html",
+    "Consentimiento.dc.html",
+    "Bloqueo.dc.html",
+    "Letra200.dc.html",
+    "Guia.dc.html",
+    "Decisiones.dc.html",
+    "Detalle.dc.html",
+    "Preguntas.dc.html",
+    "Casos.dc.html",
+    "Variante.dc.html",
+    "Prueba.dc.html"
+  ],
+  "notes": {},
+  "designSystems": [
+    {
+      "title": "NetProtect",
+      "namespace": "netprotect",
+      "artifact": "https://claude.ai/code/artifact/a1ca635c-11a7-45b4-a69b-367aa3953280",
+      "version": "1791094434-ffcf",
+      "copiedAt": "2026-10-12T15:00:00Z"
+    }
+  ]
+}

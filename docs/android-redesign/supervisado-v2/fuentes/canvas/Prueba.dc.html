@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plan de prueba</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:root{--k:1;--kd:1;--e:cubic-bezier(.2,0,0,1)}
+.ph{position:relative;width:411px;height:891px;background:#f5f3ee;overflow:hidden;font-family:Inter,sans-serif;color:#11243d;display:flex;flex-direction:column;border:1px solid #c9c5bb;border-radius:28px;box-sizing:border-box;font-size:calc(16px*var(--k));line-height:1.5}
+.ph.k2{--k:2;--kd:1.4;height:auto;min-height:891px}
+.cap{font:600 12px/16px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779;margin-bottom:12px}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.gest{position:absolute;bottom:8px;left:50%;margin-left:-60px;width:120px;height:4px;border-radius:2px;background:#11243d;opacity:.45;z-index:9}
+.disp{font:600 calc(38px*var(--kd))/1.08 'Playfair Display',serif;letter-spacing:-.01em;margin:0}
+.ttl{font:600 calc(26px*var(--kd))/1.15 'Playfair Display',serif;margin:0}
+.bd{font-size:calc(16px*var(--k));line-height:1.5}
+.sm{font-size:calc(14px*var(--k));line-height:1.5;color:#5b6779}
+.xs{font-size:calc(14px*var(--k));line-height:1.45;color:#5b6779}
+.eye{font:600 calc(11px*var(--k))/1.4 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779}
+.b6{font-weight:600}
+.hr{border-top:1px solid #d9d6cf}
+.top{padding:46px 14px 0;display:flex;align-items:center;justify-content:space-between;flex:none}
+.bk{width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:#11243d;border-radius:50%;transition:background .2s}
+.bk:hover,.bk:active{background:#e9e6df}
+.btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:6px 8px 6px 22px;border-radius:4px;font:600 calc(16px*var(--k))/1.3 Inter,sans-serif;border:0;box-sizing:border-box;width:100%;background:#1769ff;color:#fff;text-align:left;transition:transform .12s var(--e),background .2s}
+.btn:active{transform:scale(.985)}
+.btn .ar{width:46px;height:46px;border-radius:3px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none;transition:transform .24s var(--e)}
+.btn:hover .ar{transform:translateX(3px)}
+.btn.o{background:#fff;color:#11243d;box-shadow:inset 0 0 0 1.5px #11243d}
+.btn.o .ar{background:#11243d;color:#fff}
+.btn.g{background:transparent;color:#11243d;box-shadow:inset 0 0 0 1.5px #c9c5bb}
+.btn.g .ar{background:#ebe8e1}
+.btn.off{background:#e4e1da;color:#5b6779}
+.btn.off .ar{background:#d9d6cf}
+.btn.dg{background:#c4271c}
+.btn.c{justify-content:center;padding:6px 22px}
+.tl{display:inline-flex;align-items:center;gap:10px;min-height:48px;background:none;border:0;padding:0 2px;font:600 calc(15px*var(--k))/1.3 Inter,sans-serif;color:#1456d9;background-image:linear-gradient(currentColor,currentColor);background-repeat:no-repeat;background-position:0 calc(50% + 14px);background-size:0 1.5px;transition:background-size .3s var(--e)}
+.tl:hover,.tl:active{background-size:100% 1.5px}
+.chip{display:inline-flex;align-items:center;gap:7px;font:600 calc(13px*var(--k))/1.3 Inter,sans-serif;padding:3px 10px;border-radius:999px}
+.c-ok{color:#0b7a42;background:#e7f8ef}.c-pe{color:#9a5000;background:#fef3e2}.c-ve{color:#1456d9;background:#eaf1ff}.c-gr{color:#4a5568;background:#ebe8e1}.c-er{color:#c4271c;background:#feeceb}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.rs{animation:rise .55s var(--e) both;animation-delay:var(--d,0s)}
+.msg{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:4px;font-size:calc(15px*var(--k));line-height:1.45}
+.tile{width:44px;height:44px;border-radius:4px;background:#f3f1ec;border:1px solid #d9d6cf;display:flex;align-items:center;justify-content:center;color:#11243d;flex:none;box-sizing:border-box}
+.scrim{position:absolute;inset:0;background:rgba(13,27,42,.58);z-index:5;display:flex;align-items:flex-end;padding:0 18px 52px;animation:fade .3s var(--e)}
+.dlg{background:#f5f3ee;border-radius:4px;padding:28px 22px 18px;width:100%;box-sizing:border-box;animation:rise .45s var(--e) both .05s}
+.dlg h2{margin:0 0 10px;font:600 26px/1.15 'Playfair Display',serif}
+.dlg p{margin:0 0 20px;font-size:15px;line-height:1.5;color:#5b6779}
+.pv{display:inline-block;margin:0 0 12px;font:600 11px/16px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9a5000;background:#fef3e2;padding:2px 8px;border-radius:2px}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{stroke-dashoffset:92}to{stroke-dashoffset:0}}
+@keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.5);opacity:0}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes sheen{0%,70%{left:-80px}100%{left:120%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.08)}}
+@keyframes ecg{from{stroke-dashoffset:240}to{stroke-dashoffset:0}}
+@keyframes tick{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@keyframes hop{0%{left:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
+@keyframes shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes shackle{0%{transform:translateY(-5px)}60%{transform:translateY(-5px)}80%{transform:translateY(1px)}100%{transform:translateY(0)}}
+.arc{animation:draw 1s var(--e) both}
+.a1{animation-delay:.1s}.a2{animation-delay:.3s}.a3{animation-delay:.5s}.a4{animation-delay:.7s}
+.rg{transform-origin:84px 84px;animation:ring 2.8s ease-out infinite}
+.bre{animation:breathe 3.2s ease-in-out infinite}
+.pl{animation:pulse 1.8s ease-in-out infinite}
+.sp{animation:spin 1s linear infinite}
+@media (prefers-reduced-motion:reduce){.rs,.arc,.rg,.bre,.pl,.sp,.scrim,.dlg{animation:none!important}.btn,.btn .ar,.tl{transition:none}}
+</style>
+</helmet>
+<style>.pg{position:relative;width:1440px;height:1180px;background:#f5f3ee;box-sizing:border-box;padding:56px 64px;font-family:Inter,sans-serif;color:#11243d;overflow:hidden}
+.pg h1{margin:8px 0 8px;font:600 44px/50px 'Playfair Display',serif}.pg table{border-collapse:collapse;width:100%}.pg th{font:600 11px/16px Inter;letter-spacing:.14em;text-transform:uppercase;color:#5b6779;text-align:left;padding:0 12px 8px 0;border-bottom:1px solid #11243d}.pg td{padding:10px 16px 10px 0;border-bottom:1px solid #d9d6cf;font-size:14px;line-height:20px;vertical-align:top}.pg td.n{width:30px;font-weight:600;color:#5b6779}.pg td.s{color:#5b6779;width:480px}.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px;margin-top:28px}.cols h2{margin:0 0 10px;font:600 12px/16px Inter;letter-spacing:.16em;text-transform:uppercase;color:#5b6779;padding-bottom:8px;border-bottom:1px solid #d9d6cf}.cols p{margin:0 0 8px;font-size:14px;line-height:21px}</style>
+<div class="pg"><div class="eye">Validación con usuarios</div><h1>Plan de prueba: 5 personas, 25 minutos</h1>
+<p class="bd" style="margin:0 0 22px;color:#5b6779;max-width:860px">Objetivo: confirmar que cualquier persona entiende el estado, completa los permisos y comprende qué ve su tutor. Se prueba un prototipo clicable en un Android real, con pensamiento en voz alta.</p>
+<table><tr><th>#</th><th>Tarea</th><th>Qué cuenta como éxito</th></tr><tr><td class="n">1</td><td>Vincular el teléfono con un código de 6 dígitos</td><td class="s">Completa sin ayuda; tiempo; errores al escribir</td></tr><tr><td class="n">2</td><td>Entender por qué dice “Falta un paso” y resolverlo</td><td class="s">Encuentra el permiso pendiente en menos de 20 s</td></tr><tr><td class="n">3</td><td>Responder a una solicitud de vista remota y luego detenerla</td><td class="s">Entiende qué verá su tutor; encuentra “Detener” sin ayuda</td></tr><tr><td class="n">4</td><td>Explicar con sus palabras qué ve el tutor y qué no</td><td class="s">Responde bien “¿Puede grabar tu pantalla?” (según lo validado)</td></tr><tr><td class="n">5</td><td>Recuperarse tras desactivar un permiso en Ajustes</td><td class="s">Llega a “Activar de nuevo” desde el aviso</td></tr><tr><td class="n">6</td><td>Encontrar cómo cerrar sesión y entender que no desvincula</td><td class="s">Lo encuentra en Más ajustes; no confunde con desvincular</td></tr><tr><td class="n">7</td><td>Repetir 2 y 3 con letra al 200 % y TalkBack</td><td class="s">Sin texto cortado; orden de lectura lógico</td></tr></table>
+<div class="cols">
+<div><h2>Quiénes</h2><p>3 adolescentes y 2 tutores. Para menores, consentimiento previo de su tutor y de ellos.</p><p>Incluir a una persona que use letra grande o TalkBack.</p></div>
+<div><h2>Qué medimos</h2><p>Éxito sin ayuda (meta: 4 de 5 en cada tarea). Tiempo por tarea. Errores. Comprensión de privacidad. Escala SUS al final.</p></div>
+<div><h2>Qué decide cada resultado</h2><p>Variante A (Inicio con dos accesos) contra Variante B (una pantalla con pestañas): gana la que complete más tareas sin ayuda.</p><p>Si falla la tarea 4, se reescribe Privacidad antes de construir.</p></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
