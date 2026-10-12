@@ -93,7 +93,8 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   registro de auditoría del backend muestra una vista remota real contra el teléfono (`SCREEN_SHARE_REQUESTED` →
   `STARTED` → `STOPPED`, unos 45 s) con la build `minified`, y **el dueño confirmó que vio el vídeo del teléfono en el
   panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
-  Puntos 2, 3 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
+  Punto 3 (fuente grande), parcial: la pantalla 13 partía «Conectado» por letras desde 1.3; corregido con `FlowRow`
+  (`615e84d`) y comprobado a 1.3 y 2.0; las otras 16 pantallas, sin revisar. Puntos 2 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
 - [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
   en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
   captura (`docs/sprint-51-evidence.md`, T10).

@@ -114,7 +114,24 @@ Horas en UTC. Dispositivo del teléfono: `1f78580e` («samsung SM-S731B», Andro
   la sesión pudo ir en directo por Wi-Fi; para forzar un relé hay que poner la IP de la PC en `TURN_URLS` y abrir
   UDP 3478.
 
+### Fuente grande (punto 3, parcial)
+
+Escala cambiada con `adb shell settings put system font_scale` (valor original del teléfono: 1.7, restaurado al
+terminar) y capturas con `adb exec-out screencap`, en `%TEMP%\np-sprint51\` (`t10-fuente-*` antes, `t10-fix-fuente-*`
+después). **Solo se revisó la pantalla 13, «Dispositivo vinculado»**, arriba y abajo.
+
+- **Defecto encontrado:** en «Última comunicación», «Conectado» se partía por letras: «Conectad / o» a 1.3, «Co / nec /
+  tad / o» a 1.7 y una letra por línea a 2.0, estirando la tarjeta. Causa: `Row` con tres `Text`
+  (`LinkedDeviceScreen.kt`); el estado recibía solo el ancho sobrante. Mismo tipo de defecto que B-06.
+- **Corrección** (`615e84d`): `FlowRow`, como `DeviceDetailScreen.kt`; el texto «Sin conexión» no cambia, para no
+  romper `LinkedDeviceScreenTest.kt:104`. Compilada e instalada con `installMinified` (`BUILD SUCCESSFUL in 1m 9s`);
+  `testDebugUnitTest`: 162 tests, 0 fallos.
+- **Comprobación visual tras el arreglo:** a 1.3 y a 2.0 «Conectado» queda entero en su propia línea.
+- **No hecho:** no se añadió test de regresión para fuente grande, y no se ejecutaron los tests instrumentados (el
+  CI los ejecuta en el emulador, no en el teléfono del dueño). No se revisaron a fuente grande las otras 16 pantallas,
+  ni la escala 1.7 tras el arreglo.
+
 ### Pendiente en T10
 
-TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % (punto 3) y capturas 01, 02, 12, 14, 15 y 16
-(punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.
+TalkBack en las 17 pantallas (punto 2), fuente al 130 % y 200 % en las otras 16 pantallas (punto 3) y capturas 01,
+02, 12, 14, 15 y 16 (punto 5): sin evidencia. El punto 4 (H-02) y, con él, T5 quedan cerrados.
