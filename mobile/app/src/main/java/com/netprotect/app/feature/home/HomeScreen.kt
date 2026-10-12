@@ -34,7 +34,7 @@ import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.AuthRepository
 import com.netprotect.app.core.auth.RestoreResult
 import com.netprotect.app.core.auth.authorized
-import com.netprotect.app.core.auth.RolePreference
+import com.netprotect.app.core.auth.SupervisedRoleCache
 import com.netprotect.app.core.network.CurrentUser
 import com.netprotect.app.core.network.InfrastructureHealth
 import com.netprotect.app.core.network.InfrastructureHealthClient
@@ -42,17 +42,18 @@ import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.feature.supervised.SupervisedShell
-import com.netprotect.app.feature.tutor.TutorShell
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-
-private const val ROLE_TUTOR = "TUTOR"
-private const val ROLE_SUPERVISADO = "SUPERVISADO"
 
 private sealed interface HomeState {
     data object Loading : HomeState
     data class SignedOut(val error: String? = null) : HomeState
-    data class SelectingRole(val user: CurrentUser, val error: String? = null) : HomeState
-    data class InTutorMode(val user: CurrentUser) : HomeState
+    data class TutorAccount(
+        val user: CurrentUser,
+        val error: String? = null,
+        val granting: Boolean = false,
+    ) : HomeState
+    data class RoleCheckFailed(val user: CurrentUser, val message: String) : HomeState
     data class InSupervisedMode(val user: CurrentUser) : HomeState
 }
 
@@ -62,11 +63,16 @@ private sealed interface InfraState {
     data class Error(val message: String) : InfraState
 }
 
-/** Top-level router: Loading -> SignedOut -> SelectingRole -> TutorMode/SupervisedMode.
+/** Top-level router. The app is supervised-only (Sprint 61, B-07): there is no mode choice.
  *
- * The role choice is a local shortcut ([RolePreference]) remembered per install so returning
- * users skip straight to their mode; the backend grant (via [RoleClient]) is what actually
- * authorizes tutor/supervised actions.
+ * Loading -> SignedOut -> (role check) -> SupervisedMode, or TutorAccount / RoleCheckFailed.
+ *
+ * After sign-in or a restored session: if [SupervisedRoleCache] already holds this user's id the
+ * app enters supervised mode with no network call, so the protection services never wait on an
+ * extra request at start. Otherwise it lists the roles ([RoleClient.listRoles]) and applies
+ * [decideRole]: SUPERVISADO enters, no role grants SUPERVISADO and enters, and a tutor-only
+ * account gets [TutorAccountScreen], where the role is granted only if the user asks for it.
+ * The cache is a local shortcut; the backend still authorizes every supervised request.
  */
 @Composable
 fun HomeScreen() {
@@ -87,53 +93,94 @@ fun HomeScreen() {
     // Sprint 43: bumped by "Reintentar"; one tap = one new /health/ready check, never a loop.
     var infraAttempt by remember { mutableIntStateOf(0) }
 
-    fun stateAfterSignIn(user: CurrentUser): HomeState =
-        when (RolePreference.read(context)) {
-            ROLE_TUTOR -> HomeState.InTutorMode(user)
-            ROLE_SUPERVISADO -> HomeState.InSupervisedMode(user)
-            else -> HomeState.SelectingRole(user)
+    fun failureState(user: CurrentUser, exception: Exception): HomeState {
+        val error = exception.toUiError()
+        // An expired session goes back to login with its reason, as from any other screen.
+        return if (error == UiError.SessionExpired) {
+            HomeState.SignedOut(error.message)
+        } else {
+            HomeState.RoleCheckFailed(user, error.message)
         }
+    }
+
+    suspend fun grantSupervised(user: CurrentUser) {
+        authRepository.session.authorized { token -> roleClient.selectRole(token, ROLE_SUPERVISADO) }
+        SupervisedRoleCache.write(context, user.id)
+    }
+
+    suspend fun resolveRole(user: CurrentUser) {
+        if (SupervisedRoleCache.isConfirmedFor(context, user.id)) {
+            state = HomeState.InSupervisedMode(user)
+            return
+        }
+        state = HomeState.Loading
+        state = try {
+            val roles = authRepository.session.authorized { token -> roleClient.listRoles(token) }
+            when (decideRole(roles)) {
+                RoleOutcome.Supervised -> {
+                    SupervisedRoleCache.write(context, user.id)
+                    HomeState.InSupervisedMode(user)
+                }
+                RoleOutcome.GrantSupervised -> {
+                    grantSupervised(user)
+                    HomeState.InSupervisedMode(user)
+                }
+                RoleOutcome.TutorAccount -> HomeState.TutorAccount(user)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            failureState(user, exception)
+        }
+    }
 
     suspend fun signOut() {
         authRepository.signOut()
-        RolePreference.clear(context)
+        SupervisedRoleCache.clear(context)
         state = HomeState.SignedOut()
     }
 
     fun signIn() {
         scope.launch {
-            state = try {
-                stateAfterSignIn(authRepository.signIn(context))
+            val user = try {
+                authRepository.signIn(context)
             } catch (_: GetCredentialCancellationException) {
-                HomeState.SignedOut()
+                state = HomeState.SignedOut()
+                return@launch
             } catch (exception: Exception) {
-                HomeState.SignedOut(exception.message ?: "No se pudo iniciar sesión")
+                state = HomeState.SignedOut(exception.message ?: "No se pudo iniciar sesión")
+                return@launch
             }
+            resolveRole(user)
         }
     }
 
-    fun selectRole(user: CurrentUser, roleCode: String) {
+    /** Only from [TutorAccountScreen], on the user's explicit request. */
+    fun useAsSupervised(current: HomeState.TutorAccount) {
+        if (current.granting) return
+        state = current.copy(granting = true, error = null)
         scope.launch {
             state = try {
-                authRepository.session.authorized { token -> roleClient.selectRole(token, roleCode) }
-                RolePreference.write(context, roleCode)
-                if (roleCode == ROLE_TUTOR) HomeState.InTutorMode(user) else HomeState.InSupervisedMode(user)
+                grantSupervised(current.user)
+                HomeState.InSupervisedMode(current.user)
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (exception: Exception) {
-                HomeState.SelectingRole(user, exception.toUiError().message)
+                val error = exception.toUiError()
+                if (error == UiError.SessionExpired) {
+                    HomeState.SignedOut(error.message)
+                } else {
+                    current.copy(granting = false, error = error.message)
+                }
             }
         }
-    }
-
-    fun switchMode(user: CurrentUser) {
-        RolePreference.clear(context)
-        state = HomeState.SelectingRole(user)
     }
 
     suspend fun restore() {
-        state = when (val result = authRepository.restoreSession()) {
-            is RestoreResult.Restored -> stateAfterSignIn(result.user)
-            RestoreResult.NoSession -> HomeState.SignedOut()
-            RestoreResult.Unreachable -> HomeState.SignedOut(UiError.Offline.message)
+        when (val result = authRepository.restoreSession()) {
+            is RestoreResult.Restored -> resolveRole(result.user)
+            RestoreResult.NoSession -> state = HomeState.SignedOut()
+            RestoreResult.Unreachable -> state = HomeState.SignedOut(UiError.Offline.message)
         }
     }
 
@@ -180,26 +227,21 @@ fun HomeScreen() {
                 onSignIn = ::signIn,
                 onRetryService = { infraAttempt++ },
             )
-            is HomeState.SelectingRole -> RoleSelectionScreen(
-                displayName = current.user.displayName,
-                email = current.user.email,
+            is HomeState.TutorAccount -> TutorAccountScreen(
+                loading = current.granting,
                 error = current.error,
-                onSelectTutor = { selectRole(current.user, ROLE_TUTOR) },
-                onSelectSupervised = { selectRole(current.user, ROLE_SUPERVISADO) },
+                onUseAsSupervised = { useAsSupervised(current) },
                 onSignOut = { scope.launch { signOut() } },
             )
-            is HomeState.InTutorMode -> TutorShell(
-                baseUrl = BuildConfig.API_BASE_URL,
-                session = authRepository.session,
-                user = current.user,
-                onSignOut = ::signOut,
-                onSwitchMode = { switchMode(current.user) },
+            is HomeState.RoleCheckFailed -> RoleCheckFailedScreen(
+                message = current.message,
+                onRetry = { scope.launch { resolveRole(current.user) } },
+                onSignOut = { scope.launch { signOut() } },
             )
             is HomeState.InSupervisedMode -> SupervisedShell(
                 baseUrl = BuildConfig.API_BASE_URL,
                 session = authRepository.session,
                 onSignOut = ::signOut,
-                onSwitchMode = { switchMode(current.user) },
             )
         }
     }

@@ -39,7 +39,7 @@ fun BrandHeader(
     stacked: Boolean = false,
 ) {
     if (stacked) {
-        // Centred column with a larger mark: the "Elegir modo" screen (mockup 02).
+        // Centred column with a larger mark: the loading and tutor-account screens (mockup 02).
         Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
                 painter = painterResource(NpIcons.LogoShield),

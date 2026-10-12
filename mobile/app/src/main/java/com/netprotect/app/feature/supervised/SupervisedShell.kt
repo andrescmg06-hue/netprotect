@@ -98,7 +98,6 @@ fun SupervisedShell(
     baseUrl: String,
     session: TokenSession,
     onSignOut: suspend () -> Unit,
-    onSwitchMode: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -470,7 +469,6 @@ fun SupervisedShell(
                     pendingPermissions = permissions.pending,
                     onOpenPermissions = { route = SupervisedRoute.Permissions },
                     onOpenServices = { route = SupervisedRoute.Services },
-                    onSwitchMode = onSwitchMode,
                     onSignOut = { scope.launch { onSignOut() } },
                 )
 

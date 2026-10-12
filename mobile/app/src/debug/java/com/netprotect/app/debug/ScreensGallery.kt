@@ -29,8 +29,9 @@ import com.netprotect.app.core.status.ServiceState
 import com.netprotect.app.core.status.ServicesView
 import com.netprotect.app.feature.home.LoadingScreen
 import com.netprotect.app.feature.home.LoginScreen
-import com.netprotect.app.feature.home.RoleSelectionScreen
+import com.netprotect.app.feature.home.RoleCheckFailedScreen
 import com.netprotect.app.feature.home.ServiceStatus
+import com.netprotect.app.feature.home.TutorAccountScreen
 import com.netprotect.app.feature.tutor.apps.AppsScreen
 import com.netprotect.app.feature.tutor.device.DeviceDetailScreen
 import com.netprotect.app.feature.tutor.device.RenameUi
@@ -90,7 +91,29 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // ---- Sprint 50 (al principio para las capturas) ----
+        // ---- Sprint 61 (al principio para las capturas) ----
+        ScreenFrame("TutorAccountScreen") {
+            TutorAccountScreen(loading = false, error = null, onUseAsSupervised = {}, onSignOut = {})
+        }
+        ScreenFrame("TutorAccountScreen · concediendo") {
+            TutorAccountScreen(loading = true, error = null, onUseAsSupervised = {}, onSignOut = {})
+        }
+        ScreenFrame("TutorAccountScreen · error") {
+            TutorAccountScreen(
+                loading = false,
+                error = "Sin conexión con el servidor. Revisa tu conexión e intenta de nuevo.",
+                onUseAsSupervised = {},
+                onSignOut = {},
+            )
+        }
+        ScreenFrame("RoleCheckFailedScreen") {
+            RoleCheckFailedScreen(
+                message = "El servidor tuvo un problema. Intenta de nuevo en unos minutos.",
+                onRetry = {},
+                onSignOut = {},
+            )
+        }
+        // ---- Sprint 50 ----
         ScreenFrame("ScreenShareConsentScreen") {
             ScreenShareConsentScreen(onContinue = {}, onDecline = {})
         }
@@ -215,7 +238,7 @@ fun ScreensGallery() {
                 reachable = true,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · 0 pendientes sin conexión") {
@@ -227,7 +250,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 0,
-                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · sin nombre ni contacto") {
@@ -239,7 +262,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onSwitchMode = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
             )
         }
         ScreenFrame("PermissionsScreen · 2 pendientes") {
@@ -438,36 +461,6 @@ fun ScreensGallery() {
         }
         ScreenFrame("LoginScreen · Ready + error") {
             LoginScreen(error = "No se pudo iniciar sesión", service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
-        }
-        ScreenFrame("RoleSelectionScreen · con nombre") {
-            RoleSelectionScreen(
-                displayName = "Andrés Mosquera",
-                email = "tutor@example.com",
-                error = null,
-                onSelectTutor = {},
-                onSelectSupervised = {},
-                onSignOut = {},
-            )
-        }
-        ScreenFrame("RoleSelectionScreen · sin nombre") {
-            RoleSelectionScreen(
-                displayName = null,
-                email = "tutor@example.com",
-                error = null,
-                onSelectTutor = {},
-                onSelectSupervised = {},
-                onSignOut = {},
-            )
-        }
-        ScreenFrame("RoleSelectionScreen · con error") {
-            RoleSelectionScreen(
-                displayName = "Andrés Mosquera",
-                email = "tutor@example.com",
-                error = "No se pudo guardar el modo",
-                onSelectTutor = {},
-                onSelectSupervised = {},
-                onSignOut = {},
-            )
         }
         ScreenFrame("TutorHomeScreen · Idle (2 dispositivos)") {
             TutorHomeScreen(
