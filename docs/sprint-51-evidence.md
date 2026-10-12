@@ -127,6 +127,14 @@ después). **Solo se revisó la pantalla 13, «Dispositivo vinculado»**, arriba
   romper `LinkedDeviceScreenTest.kt:104`. Compilada e instalada con `installMinified` (`BUILD SUCCESSFUL in 1m 9s`);
   `testDebugUnitTest`: 162 tests, 0 fallos.
 - **Comprobación visual tras el arreglo:** a 1.3 y a 2.0 «Conectado» queda entero en su propia línea.
+- **Regresión mía en `615e84d`, vista en el CI** (run 38203874517, `android-instrumented`): pegué « ·» al texto del
+  tiempo y `LinkedDeviceScreenTest.noContactShowsTodaviaNo` falló (`performScrollTo() failed`), porque busca
+  «Todavía no» exacto; los otros 142 tests pasaron. Antes solo había buscado en los tests «Conectado», «Sin conexión»
+  y «Hace un momento». Corregido en un commit posterior: el tiempo vuelve a ser un `Text` con su texto original y el
+  punto va a su lado en una `Row`, un único elemento del `FlowRow`. Comprobado a mano a 1.3 y 2.0.
+- **El test no se pudo ejecutar en local:** en el emulador `Pixel_8` (Android 16) los 10 tests de
+  `LinkedDeviceScreenTest` fallan antes de evaluar nada con `Unable to resolve activity ... ComponentActivity`, y
+  `DevicesScreenTest` falla igual; es del entorno, no del cambio. Causa sin diagnosticar. Lo valida el CI.
 - **No hecho:** no se añadió test de regresión para fuente grande, y no se ejecutaron los tests instrumentados (el
   CI los ejecuta en el emulador, no en el teléfono del dueño). No se revisaron a fuente grande las otras 16 pantallas,
   ni la escala 1.7 tras el arreglo.
