@@ -157,7 +157,8 @@ fun HomeScreen() {
 
     /** Only from [TutorAccountScreen], on the user's explicit request. */
     fun useAsSupervised(current: HomeState.TutorAccount) {
-        if (current.granting) return
+        // Reads the live state, not the captured one: two taps before recomposition send one request.
+        if ((state as? HomeState.TutorAccount)?.granting != false) return
         state = current.copy(granting = true, error = null)
         scope.launch {
             state = try {
