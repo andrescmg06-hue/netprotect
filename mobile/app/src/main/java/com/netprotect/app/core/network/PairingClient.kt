@@ -2,11 +2,6 @@ package com.netprotect.app.core.network
 
 import org.json.JSONObject
 
-data class PairingCode(
-    val code: String,
-    val expiresInSeconds: Int,
-)
-
 data class LinkedTutor(
     val displayName: String?,
     val email: String,
@@ -19,18 +14,6 @@ data class RedeemResult(
 )
 
 class PairingClient(baseUrl: String) : HttpJsonClient(baseUrl) {
-
-    suspend fun generateCode(accessToken: String): PairingCode {
-        val payload = sendJson("/api/v1/pairing/codes", "POST", JSONObject(), accessToken)
-        return PairingCode(
-            code = payload.getString("code"),
-            expiresInSeconds = payload.getInt("expires_in_seconds"),
-        )
-    }
-
-    suspend fun revokeCurrentCode(accessToken: String) {
-        deleteForJson("/api/v1/pairing/codes/current", accessToken)
-    }
 
     suspend fun redeem(
         accessToken: String,
@@ -60,7 +43,4 @@ class PairingClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         )
     }
 
-    suspend fun unlinkDevice(accessToken: String, deviceId: String) {
-        deleteForJson("/api/v1/devices/$deviceId/link", accessToken)
-    }
 }

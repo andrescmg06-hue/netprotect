@@ -22,10 +22,8 @@ class DesignGalleryTest {
             }
         }
         val titles = listOf(
-            "NpButton", "StatusPill", "SeverityBadge", "InfoBanner", "SectionHeader",
-            "EmptyState", "LoadingState", "ErrorState", "BrandHeader", "NpTopBar",
-            "NpBottomBar", "SegmentedControl", "FilterChips", "UsageBar", "TimelineItem",
-            "DayHeader", "CodeDisplay", "OtpInput", "PermissionCard", "NpCard", "ListRow",
+            "NpButton", "StatusPill", "InfoBanner", "LoadingState", "ErrorState",
+            "BrandHeader", "NpTopBar", "OtpInput", "PermissionCard", "NpCard", "ListRow",
             "ConfirmDialog",
         )
         titles.forEach { title ->
