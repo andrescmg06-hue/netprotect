@@ -665,3 +665,25 @@ permite detenerla. Una nueva pantalla, «Estado de NetProtect», muestra qué fu
 por el que llegan esas peticiones se reconecta solo tras un corte de red, de modo que ya no se pierden.
 
 El detalle está en `docs/sprint-50.md`.
+
+## Alcance del Sprint 51
+
+Último sprint del rediseño Android: no añade funciones, comprueba que nada se perdió y endurece lo hecho. `lintDebug`
+corre ahora en el CI (T1). Se quitó el último color literal fuera del tema (T2) y la app declara con `dataExtractionRules`
+que nada de ella se respalda ni se transfiere (T3). Con la letra al 200 %, la duración en Estadísticas crece en vez de
+cortarse y el nombre de la app en la pantalla de bloqueo admite dos líneas (T4). La build de release con R8 compila, y un
+tipo de build `minified` (release con R8, firmada con la clave de debug y apuntando al backend local) permite probarla en
+ejecución (T5). En accesibilidad, la marca se lee como un solo encabezado «NetProtect» (T6). Sin conexión, el dispositivo
+vinculado pasa a «Sin conexión» y el reporte pasa a «Sin confirmar» tras 3 minutos sin envíos (T7). Al girar el teléfono
+se conservan el periodo de Estadísticas, el filtro de Alertas y el código de vinculación a medio escribir (T8). La
+regresión contra el inventario de S40 encontró 0 puntos perdidos (T9); en el camino se corrigió un error por el que todas
+las apps aparecían «Desinstalada».
+
+En el Galaxy S25 FE (T10, parcial), la vista remota funcionó de extremo a extremo con la build `minified`, y «Dispositivo
+vinculado» ya no parte «Conectado» por letras con la fuente grande. La revisión de seguridad sobre todo el rediseño no
+encontró hallazgos ALTA (2 MEDIA preexistentes y 5 BAJA; los que requieren acción están en `docs/tasks.md`).
+
+Queda pendiente: TalkBack y fuente grande en el resto de las pantallas (pasan al S67, sobre las pantallas del rediseño v2
+del supervisado), la release real de producción y el PR de `android-redesign` a `main`, cuyo merge hace el dueño.
+
+El detalle está en `docs/sprint-51.md` (evidencia en `docs/sprint-51-evidence.md`).

@@ -17,9 +17,11 @@ import com.netprotect.app.core.network.HistoryClient
 import com.netprotect.app.core.network.StatisticsClient
 import com.netprotect.app.feature.tutor.alerts.AlertsScreen
 import com.netprotect.app.feature.tutor.history.HistoryScreen
+import com.netprotect.app.feature.tutor.sections.AlertFilter
 import com.netprotect.app.feature.tutor.sections.AlertsController
 import com.netprotect.app.feature.tutor.sections.AlertsData
 import com.netprotect.app.feature.tutor.sections.StatisticsController
+import com.netprotect.app.feature.tutor.sections.StatsPeriod
 import com.netprotect.app.feature.tutor.sections.alertItems
 import com.netprotect.app.feature.tutor.sections.appLabels
 import com.netprotect.app.feature.tutor.sections.historyDays
@@ -41,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -360,8 +363,10 @@ private fun DeviceSectionRoute(
         DeviceSection.Statistics -> {
             val client = remember { StatisticsClient(baseUrl) }
             val appsClient = remember { ApplicationsClient(baseUrl) }
+            // The selection survives rotation (D-02, S51); the data is reloaded for it.
+            var savedPeriod by rememberSaveable(deviceId) { mutableStateOf(StatsPeriod.Today) }
             val statistics = remember(deviceId) {
-                StatisticsController { period ->
+                StatisticsController(savedPeriod) { period ->
                     val stats = session.authorized { token -> client.getStatistics(token, deviceId, period.apiValue) }
                     statisticsView(stats, loadAppLabels(appsClient, session, deviceId))
                 }
@@ -372,7 +377,10 @@ private fun DeviceSectionRoute(
                 period = statistics.period,
                 statistics = statistics.state,
                 now = now,
-                onSelectPeriod = { scope.launch { statistics.select(it) } },
+                onSelectPeriod = {
+                    savedPeriod = it
+                    scope.launch { statistics.select(it) }
+                },
                 onRefresh = { scope.launch { statistics.refresh() } },
                 onBack = onBack,
             )
@@ -380,8 +388,11 @@ private fun DeviceSectionRoute(
         DeviceSection.Alerts -> {
             val client = remember { AlertsClient(baseUrl) }
             val appsClient = remember { ApplicationsClient(baseUrl) }
+            // The selection survives rotation (D-02, S51); the data is reloaded.
+            var savedFilter by rememberSaveable(deviceId) { mutableStateOf(AlertFilter.All) }
             val alerts = remember(deviceId) {
                 AlertsController(
+                    initialFilter = savedFilter,
                     load = {
                         AlertsData(
                             alerts = session.authorized { token -> client.listAlerts(token, deviceId) },
@@ -413,7 +424,10 @@ private fun DeviceSectionRoute(
                 actionError = alerts.actionError,
                 silenceTarget = (items as? LoadState.Loaded)?.value?.firstOrNull { it.id == alerts.silenceTarget },
                 now = now,
-                onSelectFilter = { alerts.filter = it },
+                onSelectFilter = {
+                    savedFilter = it
+                    alerts.filter = it
+                },
                 onMarkRead = { alertId -> scope.launch { alerts.markRead(alertId) } },
                 onAskSilence = { alertId -> alerts.askSilence(alertId) },
                 onConfirmSilence = { scope.launch { alerts.confirmSilence() } },

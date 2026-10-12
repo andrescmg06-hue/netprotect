@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.icons.NpIcons
@@ -98,7 +99,15 @@ fun NpBottomBar(
                         }
                     }
                 }
-                Text(text = item.label, style = NpText.Caption, color = color)
+                // One line, ellipsized: a label must never break mid-word at large font scales.
+                Text(
+                    text = item.label,
+                    style = NpText.Caption,
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (selected) {
                     Spacer(Modifier.height(2.dp))
                     Box(

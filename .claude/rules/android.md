@@ -13,7 +13,7 @@ paths:
   decisión de plataforma ya tomada (foreground services, ubicación, geofencing, overlays, etc.).
 - Un `.kt` nuevo no está verificado hasta que `./gradlew compileDebugKotlin` corre sobre él.
 - `./gradlew lintDebug` antes de cerrar cualquier cambio — es el único que detecta APIs por encima
-  de `minSdk 26`, y no corre en CI.
+  de `minSdk 26`. Corre en el job `android` de CI desde el Sprint 51 (`263ade5`), pero conviene verlo en local antes.
 
 ---
 
@@ -214,7 +214,7 @@ silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprin
   invocarlos desde la corrutina en `Dispatchers.Default` del *polling loop* crasheaba el proceso al
   instante. Ver `BlockOverlayController.kt`, que cae de vuelta a la notificación cuando el permiso
   de superposición no está concedido (sigue funcionando con el dispositivo bloqueado).
-- `gradlew lintDebug` no corre en CI y es el único que detecta llamadas a APIs de Android más
+- `gradlew lintDebug` (en CI desde el Sprint 51) es el único que detecta llamadas a APIs de Android más
   nuevas que `minSdk 26`. En el emulador (API 36) nunca fallan, y en un teléfono real con
   Android 8–15 cierran la app (`NoSuchMethodError`). Así se encontraron dos el 24/09/2026:
   `checkOpNoThrow` con `attributionTag` y `systemDialerPackage`. Correrlo antes de cerrar cualquier
@@ -233,3 +233,18 @@ silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprin
   para quien la abrió. Encolar el frame de autenticación de forma síncrona, antes de que la función
   de conexión retorne, es lo que garantiza el orden — no el callback en el que se dispare. Encontrado
   en el Sprint 29 (`RealtimeClient.kt`/`ScreenShareService.kt`), ver `docs/sprint-29-evidence.md`.
+- Los tests de UI con Compose buscan textos literales exactos (`onNodeWithText` sin `substring`). Antes de cambiar o
+  partir cualquier texto de pantalla, `grep` de ese literal en `mobile/app/src/androidTest` y se actualiza el test en el
+  mismo commit. Regresión real del Sprint 51: `615e84d` pegó « ·» al texto del tiempo en `LinkedDeviceScreen` y
+  `LinkedDeviceScreenTest.noContactShowsTodaviaNo` falló en el CI; se corrigió en `5042d4a`.
+- Una fila de estado que mezcla un valor y una píldora o etiqueta debe poder envolver (`FlowRow`, cada `Text` como su
+  propio nodo), no apretarse en una columna estrecha: con letra grande la palabra se parte por letras («Conectad / o»).
+  Verificar a escala 1.3 y a 2.0 (`adb shell settings put system font_scale 2.0`; restaurar el valor original al
+  terminar).
+- Teléfono real contra el backend local: la excepción de tráfico sin cifrar de `src/debug/res/xml/
+  network_security_config.xml` solo cubre `10.0.2.2` y `localhost`, así que la IP de la red no sirve. Usar
+  `adb reverse tcp:8000 tcp:8000` y compilar con `NETPROTECT_API_BASE_URL=http://localhost:8000`. El puente se pierde al
+  reconectar el cable o reiniciar `adb`; si aparece «failed to connect to localhost port 8000», comprobar
+  `adb reverse --list` antes de culpar al backend.
+- Al automatizar `adb` + `uiautomator`: partir el volcado con `sed 's/>/>\n/g'` (no con `tr`) y arrancar la app desde cero
+  en cada pantalla en vez de depender de `KEYCODE_BACK`.

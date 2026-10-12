@@ -12,6 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,6 +24,12 @@ import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
+
+// Two colored halves of one word: TalkBack must read "NetProtect", not "Net", "Protect".
+private fun Modifier.brandNameSemantics() = clearAndSetSemantics {
+    contentDescription = "NetProtect"
+    heading()
+}
 
 /** Marca: escudo + "Net"/"Protect" (Title 700 ×1.4) + subtítulo opcional en mayúsculas. */
 @Composable
@@ -38,7 +47,7 @@ fun BrandHeader(
                 modifier = Modifier.size(72.dp),
             )
             Spacer(Modifier.height(8.dp))
-            Row {
+            Row(Modifier.brandNameSemantics()) {
                 val brandStyle = NpText.Title.copy(fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp)
                 Text(text = "Net", style = brandStyle, color = NpColors.ShieldNavy)
                 Text(text = "Protect", style = brandStyle, color = NpColors.SignalBlue)
@@ -61,7 +70,7 @@ fun BrandHeader(
         )
         Spacer(Modifier.width(12.dp))
         Column {
-            Row {
+            Row(Modifier.brandNameSemantics()) {
                 val brandStyle = NpText.Title.copy(fontWeight = FontWeight.Bold, lineHeight = 25.2.sp)
                 Text(text = "Net", style = brandStyle, color = NpColors.ShieldNavy)
                 Text(text = "Protect", style = brandStyle, color = NpColors.SignalBlue)

@@ -4,6 +4,8 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -57,6 +59,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /** Detalle de un dispositivo: cabecera, renombrado, desvinculación y las seis secciones. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DeviceDetailScreen(
     device: LoadState<DeviceSummary>,
@@ -109,13 +112,17 @@ fun DeviceDetailScreen(
                         Text(text = d.name, style = NpText.Display, color = NpColors.ShieldNavy)
                         Spacer(Modifier.height(8.dp))
                         val (statusLabel, statusTone) = DeviceStatusLabels.label(d.status)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // FlowRow: at large font scales the pill moves to its own line instead of being clipped.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
                                 text = d.osVersion?.let { "Android $it" } ?: "Android",
                                 style = NpText.Body,
                                 color = NpColors.SlateMuted,
                             )
-                            Spacer(Modifier.width(12.dp))
                             StatusPill(text = statusLabel, tone = statusTone, showDot = false)
                         }
                         Spacer(Modifier.height(8.dp))

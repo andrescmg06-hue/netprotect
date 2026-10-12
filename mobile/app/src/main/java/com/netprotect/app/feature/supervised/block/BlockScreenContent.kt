@@ -116,7 +116,7 @@ fun BlockScreenContent(
                             text = appLabel,
                             style = NpText.Title,
                             color = NpColors.ShieldNavy,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                         if (categoryLabel != null) {

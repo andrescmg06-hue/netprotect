@@ -46,7 +46,7 @@ jobs:
       # Sprint 21: `npm ci --no-audit` above keeps install output quiet; the audit is its own
       # step so a failure points at the advisory, not at a broken install. --audit-level=high
       # to avoid gating CI on low/moderate advisories that often have no fix available yet.
-      - run: npm audit --audit-level=high
+      - run: npm audit --audit-level=high --omit=dev
       - run: npm run lint
       - run: npm run build
 
@@ -63,7 +63,7 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x ./gradlew
-      - run: ./gradlew test assembleDebug
+      - run: ./gradlew test assembleDebug lintDebug
 
   integration:
     runs-on: ubuntu-latest

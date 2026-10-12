@@ -1,17 +1,31 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-01 · Sprint actual: 50_
+_Actualizado: 2026-10-12 · Sprint actual: 51 (cerrado reducido, pendiente de PR)_
 
 ## En curso
-- Reestructuración de este mismo `CLAUDE.md` en `.claude/rules/` + `docs/historial-estado.md` (este
-  trabajo) para que el contexto por área cargue solo según la ruta tocada.
+- **S51 (endurecimiento y cierre del rediseño Android)**, rama `sprint-51-cierre` (worktree `C:/Users/andre/np-s51`).
+  Cerrado **reducido** por decisión del dueño (12/10/2026), a falta de PR y CI. Hecho: T1–T9, la parte de T10 hecha en
+  el Galaxy (build `minified` con R8, vista remota real H-02, arreglo de letra grande en «Dispositivo vinculado») y la
+  revisión de seguridad (0 ALTA, 2 MEDIA, 5 BAJA). Pendiente: TalkBack y fuente grande en el resto de pantallas (pasan
+  al S67) y los PR. Detalle y commits: `docs/sprint-51.md`.
 
 ## Siguiente paso
-- S50 cerrado en local, en la rama `sprint-50-consentimiento` (commits locales; el PR está pendiente de que el dueño lo pida),
-  con H-02 pendiente. Después: S51 (endurecimiento, accesibilidad, regresión y PR `android-redesign` → `main`).
-  Plan: `docs/android-redesign/sprints/S51-endurecimiento-y-cierre.md`.
-  **Para retomar el trabajo (otra persona o sesión nueva): `docs/android-redesign/CONTINUAR.md`.**
+1. **PR `sprint-51-cierre` → `android-redesign`** y después **PR `android-redesign` → `main`**, con los 8 jobs de CI en
+   verde (el merge a `main` lo hace el dueño). Falta la confirmación del dueño para hacer push y abrir los PR.
+2. **S61 del rediseño v2 del supervisado:** plan en `docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`
+   (S61–S67; quita el modo tutor de la app y rehace las pantallas del supervisado). El plan está hoy **sin versionar**
+   en el checkout de OneDrive; se commitea al empezar el S61. Del backlog de seguridad del S51 entran en ese plan
+   B-07 (S61), B-08 (S64) y B-10 (S65); ver `docs/tasks.md`.
+3. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio,
+   hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real) y firma de release; la release real de
+   producción no se ha instalado.
+
+**Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
+- Sprint 51 (cerrado reducido, pendiente de PR): bug «todas las apps Desinstalada» (`optString` y JSON null)
+  corregido; selecciones del tutor sobreviven al giro (D-02 revisada); textos al 200 %; `lintDebug` en CI; build
+  `minified` para probar R8; vista remota real en el Galaxy con R8 (H-02); regresión del inventario sin pérdidas;
+  seguridad sin ALTA — `docs/sprint-51.md`
 - Sprint 50: consentimiento de vista remota como pantalla propia, «Estado de NetProtect» y reconexión del
   canal realtime (B-02) — `docs/sprint-50.md`
 - Sprint 49: pantalla «App bloqueada» en sus 7 variantes, con la categoría real y solo textos verdaderos;

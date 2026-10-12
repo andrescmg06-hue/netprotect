@@ -53,7 +53,7 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         val tutorsJson = payload.getJSONArray("tutors")
         val tutors = (0 until tutorsJson.length()).map { index ->
             val tutor = tutorsJson.getJSONObject(index)
-            tutor.optString("display_name").takeIf { it.isNotBlank() && it != "null" } ?: tutor.getString("email")
+            tutor.optStringOrNull("display_name") ?: tutor.getString("email")
         }
         val status = payload.getJSONObject("status")
         MyDeviceInfo(
@@ -128,10 +128,10 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             name = getString("name"),
             platform = getString("platform"),
             status = status.getString("status"),
-            lastSeenAt = status.optString("last_seen_at").takeIf { it.isNotBlank() },
-            timezone = optString("timezone").takeIf { it.isNotBlank() },
-            osVersion = optString("os_version").takeIf { it.isNotBlank() && it != "null" },
-            appVersion = optString("app_version").takeIf { it.isNotBlank() && it != "null" },
+            lastSeenAt = status.optStringOrNull("last_seen_at"),
+            timezone = optStringOrNull("timezone"),
+            osVersion = optStringOrNull("os_version"),
+            appVersion = optStringOrNull("app_version"),
         )
     }
 }
