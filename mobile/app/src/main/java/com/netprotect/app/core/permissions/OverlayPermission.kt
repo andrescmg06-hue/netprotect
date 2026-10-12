@@ -19,7 +19,7 @@ object OverlayPermission {
     fun isGranted(context: Context): Boolean = Settings.canDrawOverlays(context)
 
     /** Verified live (17/09/2026): FLAG_ACTIVITY_NEW_TASK here silently breaks the
-     * ActivityResultLauncher callback in SupervisedScreen — the settings screen still opens and
+     * ActivityResultLauncher callback in SupervisedShell — the settings screen still opens and
      * the permission still gets granted, but the card never refreshes on its own afterwards
      * (only the manual "verificar de nuevo" fallback catches it). Launched through a result
      * launcher tied to the current Activity, so no new task is needed here in the first place.

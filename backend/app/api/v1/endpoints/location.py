@@ -1,14 +1,18 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_supervised_owner_of_device, require_tutor_of_device
+from app.api.deps import (
+    get_current_user,
+    require_supervised_owner_of_device,
+    require_tutor_of_device,
+)
 from app.core.config import settings
 from app.core.crypto import decrypt_coordinate, encrypt_coordinate
 from app.db.session import get_db
-from app.models import Device, DeviceLocationReport, GeofenceEvent
+from app.models import Device, DeviceLocationReport, GeofenceEvent, User
 from app.schemas.location import (
     MAX_HISTORY_REPORTS,
     LatestLocationResponse,
@@ -17,6 +21,7 @@ from app.schemas.location import (
     ReportLocationRequest,
 )
 from app.services.alerts import record_alert_for_geofence_event
+from app.services.audit import record_audit_event
 from app.services.geofencing import evaluate_geofence_transitions
 from app.services.retention import purge_expired_rows
 
@@ -32,6 +37,31 @@ def _to_response(report: DeviceLocationReport) -> LocationReportResponse:
         captured_at=report.captured_at,
         received_at=report.received_at,
     )
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+async def _audit_location_read(
+    db: AsyncSession, request: Request, tutor: User, device_id: uuid.UUID, action: str
+) -> None:
+    """Sprint 47 (D-10): who looked at a minor's location is exactly what an audit trail must
+    answer, so the two tutor reads are the only GETs in the project that are audited. Recorded
+    only after require_tutor_of_device has passed (a stranger's 404 leaves no row), and only the
+    action + device id: never the coordinates, the accuracy or the reading's time — the audit log
+    must not become a second, unencrypted copy of the location (invariant 7). One read = one row,
+    no deduplication: the trail is not summarised.
+    """
+    await record_audit_event(
+        db,
+        actor_user_id=tutor.id,
+        action=action,
+        resource_type="device",
+        resource_id=str(device_id),
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
 
 
 @router.post("/devices/{device_id}/location", response_model=LocationReportResponse)
@@ -117,7 +147,9 @@ async def report_location(
 @router.get("/devices/{device_id}/location/latest", response_model=LatestLocationResponse)
 async def get_latest_location(
     device_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     _device: Device = Depends(require_tutor_of_device),
 ) -> LatestLocationResponse:
     report = (
@@ -129,13 +161,17 @@ async def get_latest_location(
         )
     ).scalar_one_or_none()
 
-    return LatestLocationResponse(report=_to_response(report) if report is not None else None)
+    response = LatestLocationResponse(report=_to_response(report) if report is not None else None)
+    await _audit_location_read(db, request, current_user, device_id, "LOCATION_VIEWED")
+    return response
 
 
 @router.get("/devices/{device_id}/location/history", response_model=LocationHistoryResponse)
 async def get_location_history(
     device_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     _device: Device = Depends(require_tutor_of_device),
 ) -> LocationHistoryResponse:
     """Everything still inside the retention window for this device, most recent first. No
@@ -152,4 +188,6 @@ async def get_location_history(
         )
     ).scalars().all()
 
-    return LocationHistoryResponse(reports=[_to_response(report) for report in reports])
+    response = LocationHistoryResponse(reports=[_to_response(report) for report in reports])
+    await _audit_location_read(db, request, current_user, device_id, "LOCATION_HISTORY_VIEWED")
+    return response

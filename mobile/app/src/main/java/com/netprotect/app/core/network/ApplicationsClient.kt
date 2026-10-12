@@ -71,7 +71,7 @@ class ApplicationsClient(baseUrl: String) : HttpJsonClient(baseUrl) {
                 packageName = app.getString("package_name"),
                 appLabel = app.getString("app_label"),
                 isSystemApp = app.getBoolean("is_system_app"),
-                uninstalledAt = app.optString("uninstalled_at").takeIf { it.isNotBlank() },
+                uninstalledAt = app.optStringOrNull("uninstalled_at"),
                 latestUsageDate = latestUsage?.getString("usage_date"),
                 latestUsageSeconds = latestUsage?.getInt("foreground_seconds"),
             )

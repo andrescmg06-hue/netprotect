@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, CardHeader, type Column, DataTable, EmptyState, Field, Input, Spinner } from "@/components/ui";
 import { type AuditLogEntry, ApiError, exportMyAuditLog, listMyAuditLog } from "@/lib/apiClient";
+import { auditActionLabel } from "@/lib/auditFormatting";
 
 import styles from "./AuditPanel.module.css";
 
@@ -87,7 +88,11 @@ export function AuditPanel({ accessToken }: { accessToken: string }) {
       key: "action",
       header: "Acción",
       primary: true,
-      render: (entry) => <span className={styles.action}>{entry.action}</span>,
+      render: (entry) => (
+        <span className={styles.action} title={entry.action}>
+          {auditActionLabel(entry.action)}
+        </span>
+      ),
     },
     {
       key: "resource",

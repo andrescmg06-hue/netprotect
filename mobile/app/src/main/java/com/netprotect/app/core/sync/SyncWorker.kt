@@ -47,7 +47,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         // No stored session (signed out) or genuinely offline: nothing to do, and not a
         // worker "failure" either way — WorkManager's exponential backoff on Result.retry()
         // is for transient errors, not for "there was nothing to sync this cycle".
-        val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
+        val accessToken = BackgroundTokenRefresher.refresh(applicationContext)
             ?: return Result.success()
 
         // Sprint 20: this is the heartbeat that matters most for manipulation detection — it

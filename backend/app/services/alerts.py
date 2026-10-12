@@ -1,7 +1,8 @@
+import hashlib
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -104,6 +105,13 @@ async def _record_alert(
         db, Alert, Alert.last_occurred_at, device_id, settings.alert_retention_days
     )
 
+    # Two reports of the same signal can arrive at once — the supervised app's foreground
+    # heartbeat and SyncWorker's are independent loops. Without serializing them, both saw "no
+    # open alert" and both inserted one, and every later heartbeat then failed with
+    # MultipleResultsFound (found live in Sprint 41). A transaction-scoped advisory lock per
+    # (device, dedup_key) makes the check-then-insert atomic; it is released on commit/rollback.
+    await db.execute(select(func.pg_advisory_xact_lock(_dedup_lock_key(device_id, dedup_key))))
+
     now = datetime.now(UTC)
     silence = (
         await db.execute(
@@ -115,15 +123,20 @@ async def _record_alert(
     if silence is not None and (silence.silenced_until is None or silence.silenced_until > now):
         return
 
+    # Oldest first and at most one: duplicates written before the lock above existed must not
+    # keep breaking every new report; later occurrences fold into the oldest open alert.
     open_alert = (
         await db.execute(
-            select(Alert).where(
+            select(Alert)
+            .where(
                 Alert.device_id == device_id,
                 Alert.dedup_key == dedup_key,
                 Alert.read_at.is_(None),
             )
+            .order_by(Alert.first_occurred_at, Alert.id)
+            .limit(1)
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if open_alert is not None:
         open_alert.occurrence_count += 1
         open_alert.last_occurred_at = occurred_at
@@ -143,3 +156,10 @@ async def _record_alert(
             last_occurred_at=occurred_at,
         )
     )
+
+
+def _dedup_lock_key(device_id: uuid.UUID, dedup_key: str) -> int:
+    """A stable signed 64-bit key for pg_advisory_xact_lock (Python's hash() is salted per process,
+    so two backend workers would disagree on it)."""
+    digest = hashlib.blake2b(f"alert:{device_id}:{dedup_key}".encode(), digest_size=8).digest()
+    return int.from_bytes(digest, "big", signed=True)

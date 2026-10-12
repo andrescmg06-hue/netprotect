@@ -558,3 +558,132 @@ elimina la tarjeta de infraestructura del login anterior y su `fetch` a `/api/v1
 endpoint del backend no se toca). Ninguna ruta de API ni lógica de negocio cambió.
 
 El detalle está en `docs/sprint-39.md`.
+
+## Alcance del Sprint 40
+
+Preparación del rediseño de la app Android (Sprints 40–51): se resuelven las 14 decisiones de
+`docs/android-redesign/DECISIONES.md`, se mide la línea base de tests, se escribe el inventario de
+lo que la app hace hoy (`docs/android-redesign/INVENTARIO.md`) y se configura OpenCode
+(`AGENTS.md` + `opencode.json` en la raíz). No cambia ningún archivo de `mobile/`, `backend/`,
+`frontend/` ni `infra/`.
+
+El detalle está en `docs/sprint-40.md`.
+
+## Alcance del Sprint 41
+
+La app Android ya no deja de funcionar a los 15 minutos: un único dueño de los tokens por proceso
+(`TokenSession`) renueva una sola vez para todas las pantallas, servicios y workers, conserva la sesión
+sin red y vuelve al login solo si el backend rechaza la renovación. Los errores se muestran en español
+por categoría. La ubicación del supervisado, que dejaba de enviarse tras el primer reporte, vuelve a
+llegar. En el backend se corrigió que los latidos dieran 500 cuando dos reportes simultáneos creaban
+alertas duplicadas. Probado en un teléfono real con tokens de 1 minuto.
+
+El detalle está en `docs/sprint-41.md`.
+
+## Alcance del Sprint 42
+
+Base del rediseño de la app Android, sin cambiar ninguna pantalla todavía: tema claro con los colores,
+la tipografía (Inter) y las formas de `DESIGN.md`; 52 iconos Lucide; logo e icono de lanzador; formateadores
+de fechas y duraciones y etiquetas en español; 23 componentes compartidos con su vista previa; una galería
+de componentes que solo existe en builds de depuración; y el esqueleto de navegación (una pila de rutas que
+sobrevive a la rotación). Primer sprint con trabajo delegado a DeepSeek, revisado y corregido por Claude.
+
+El detalle está en `docs/sprint-42.md`.
+
+## Alcance del Sprint 43
+
+Primeras pantallas reales de la app Android rediseñadas sobre el sistema de diseño: carga, inicio de sesión con
+Google y elección de modo (Tutor o Supervisado), según los mockups 1 y 2. El login muestra ahora una sola línea de
+estado del servicio ("Comprobando", "Listo" o "No disponible" con "Reintentar") en lugar del detalle de base de datos
+y Redis. No cambia el flujo de autenticación.
+
+El detalle está en `docs/sprint-43.md`.
+
+## Alcance del Sprint 44
+
+El modo tutor de la app Android deja de ser una sola columna: barra inferior con Inicio, Dispositivos, Actividad y Más;
+el detalle de cada dispositivo abre sus seis secciones como pantallas. Desvincular pide confirmación, renombrar valida el
+nombre, el código de vinculación muestra una cuenta atrás real y cada dispositivo indica su versión de Android y su última
+actividad. Las secciones del dispositivo conservan su aspecto anterior hasta los Sprints 45–47.
+
+El detalle está en `docs/sprint-44.md`.
+
+## Alcance del Sprint 45
+
+Las secciones Apps, Ubicación y Geocercas del modo tutor de la app Android se rediseñan según los mockups 5–7. Apps gana
+buscador, iconos y la fecha real del uso; Ubicación muestra la última lectura con su precisión y solo dice «Dentro de
+«zona»» cuando es seguro; Geocercas muestra el último evento de cada zona y el historial. No se muestran coordenadas, nombre
+de lugar ni mapa: el mapa se abre en la aplicación del teléfono solo al tocar.
+
+El detalle está en `docs/sprint-45.md`.
+
+## Alcance del Sprint 46
+
+Las secciones Historial, Estadísticas y Alertas del modo tutor de la app Android se rediseñan según los mockups 8–10. Desde
+el móvil ya se puede marcar una alerta como leída y silenciarla (silencio indefinido, con confirmación; se quita desde el
+panel web). El historial se agrupa por día con el nombre de la app, las estadísticas muestran el cumplimiento como días
+dentro del límite («5 de 7 días») y las alertas se filtran por no leídas, críticas o advertencias.
+
+El detalle está en `docs/sprint-46.md`.
+
+## Alcance del Sprint 47
+
+La pestaña Actividad del modo tutor en Android muestra el registro de auditoría del propio tutor como una línea de tiempo
+por día, con etiquetas en español y «Cargar más». Cada vez que un tutor consulta la ubicación de un dispositivo, desde la
+app o desde el panel web, queda registrado como «Ubicación consultada», guardando solo la acción y el dispositivo, nunca
+coordenadas. El panel web también muestra ahora las acciones de Mi actividad en español.
+
+El detalle está en `docs/sprint-47.md`.
+
+## Alcance del Sprint 48
+
+El modo supervisado de la app Android se reorganiza en un contenedor que mantiene en marcha, sin interrupciones, el
+latido, el bloqueo de apps, la ubicación, la sincronización y la vista remota mientras se navega entre pantallas. Se
+rediseñan Vincular (código de 6 casillas, errores claros), Dispositivo vinculado (todos los tutores, última
+comunicación, resumen de permisos, «Cerrar sesión» que ya no dice que desvincula) y Permisos (estado actualizado al
+volver de Ajustes). En el backend, `GET /devices/me` deja de fallar cuando una cuenta supervisada tiene más de un
+dispositivo registrado.
+
+El detalle está en `docs/sprint-48.md`; para continuar el rediseño, `docs/android-redesign/CONTINUAR.md`.
+
+## Alcance del Sprint 49
+
+La pantalla que ve el menor cuando una app queda bloqueada se rediseña según el mockup 16, en sus siete variantes: bloqueo
+del tutor, límite diario, límite semanal, horario, categoría, horario escolar y «solo apps aprobadas». Muestra el icono
+y el nombre reales de la app, su categoría real si tiene una asignada y una explicación que solo promete lo que es
+verdad (por ejemplo, que el tiempo se reinicia mañana o el lunes solo en los dos límites). No se muestran horas concretas
+ni hay opción de desbloquear. La pantalla y la ventana superpuesta usan ahora el tema de la app.
+
+El detalle está en `docs/sprint-49.md`.
+
+## Alcance del Sprint 50
+
+Cuando el tutor pide ver la pantalla del dispositivo supervisado, la app Android muestra ahora una pantalla completa de
+consentimiento con información verdadera: qué permite, que es solo para esa sesión y cómo detenerla. Hay que marcar una
+casilla para continuar, y después Android pide su propia confirmación. Mientras se comparte, una banda azul en la app
+permite detenerla. Una nueva pantalla, «Estado de NetProtect», muestra qué funciones están activas de verdad. El canal
+por el que llegan esas peticiones se reconecta solo tras un corte de red, de modo que ya no se pierden.
+
+El detalle está en `docs/sprint-50.md`.
+
+## Alcance del Sprint 51
+
+Último sprint del rediseño Android: no añade funciones, comprueba que nada se perdió y endurece lo hecho. `lintDebug`
+corre ahora en el CI (T1). Se quitó el último color literal fuera del tema (T2) y la app declara con `dataExtractionRules`
+que nada de ella se respalda ni se transfiere (T3). Con la letra al 200 %, la duración en Estadísticas crece en vez de
+cortarse y el nombre de la app en la pantalla de bloqueo admite dos líneas (T4). La build de release con R8 compila, y un
+tipo de build `minified` (release con R8, firmada con la clave de debug y apuntando al backend local) permite probarla en
+ejecución (T5). En accesibilidad, la marca se lee como un solo encabezado «NetProtect» (T6). Sin conexión, el dispositivo
+vinculado pasa a «Sin conexión» y el reporte pasa a «Sin confirmar» tras 3 minutos sin envíos (T7). Al girar el teléfono
+se conservan el periodo de Estadísticas, el filtro de Alertas y el código de vinculación a medio escribir (T8). La
+regresión contra el inventario de S40 encontró 0 puntos perdidos (T9); en el camino se corrigió un error por el que todas
+las apps aparecían «Desinstalada».
+
+En el Galaxy S25 FE (T10, parcial), la vista remota funcionó de extremo a extremo con la build `minified`, y «Dispositivo
+vinculado» ya no parte «Conectado» por letras con la fuente grande. La revisión de seguridad sobre todo el rediseño no
+encontró hallazgos ALTA (2 MEDIA preexistentes y 5 BAJA; los que requieren acción están en `docs/tasks.md`).
+
+Queda pendiente: TalkBack y fuente grande en el resto de las pantallas (pasan al S67, sobre las pantallas del rediseño v2
+del supervisado), la release real de producción y el PR de `android-redesign` a `main`, cuyo merge hace el dueño.
+
+El detalle está en `docs/sprint-51.md` (evidencia en `docs/sprint-51-evidence.md`).

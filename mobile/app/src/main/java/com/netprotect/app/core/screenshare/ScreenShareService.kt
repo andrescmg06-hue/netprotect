@@ -1,5 +1,6 @@
 package com.netprotect.app.core.screenshare
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.RealtimeClient
 import com.netprotect.app.core.network.WebRtcConfigClient
+import com.netprotect.app.core.network.optStringOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,12 +50,12 @@ import org.webrtc.VideoTrack
  * this (docs/android/capability-matrix.md, Sprint 23): one MediaProjection is good for exactly one
  * createVirtualDisplay() call, and reusing the Intent from createScreenCaptureIntent() throws
  * SecurityException. So this service is handed a *fresh* projection result every time, obtained by
- * the supervised user tapping through the system dialog in SupervisedScreen — there is no stored
+ * the supervised user tapping through the system dialog in SupervisedShell — there is no stored
  * grant this service could quietly reuse later, by design of the platform and of this feature.
  *
  * It holds its own WebSocket rather than sharing RuleEnforcementService's: that one is gated on
  * usage-access permission (which has nothing to do with screen sharing), and this one must outlive
- * SupervisedScreen going to the background, which a Compose effect cannot.
+ * SupervisedShell going to the background, which a Compose effect cannot.
  */
 class ScreenShareService : Service() {
 
@@ -96,6 +98,12 @@ class ScreenShareService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, ScreenShareService::class.java))
         }
+
+        /** Sprint 50: the in-app banner's "Detener" — exactly what the notification's own action
+         * sends, so the tutor is told the supervised person stopped it (supervised_stopped). */
+        fun requestStop(context: Context) {
+            context.startService(Intent(context, ScreenShareService::class.java).setAction(ACTION_STOP))
+        }
     }
 
     private val serviceJob = Job()
@@ -128,6 +136,8 @@ class ScreenShareService : Service() {
         val resultData = getResultData(intent) ?: return START_NOT_STICKY
 
         sessionStarted = true
+        // Sprint 50: drives the in-app banner and "Estado de NetProtect"; the session itself is unchanged.
+        ServiceStatusRegistry.screenShareStarted(java.time.Instant.now())
         serviceScope.launch { startSession(baseUrl, accessToken, deviceId, resultData) }
         return START_NOT_STICKY
     }
@@ -141,6 +151,7 @@ class ScreenShareService : Service() {
         }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.screenShareStopped()
         releaseEverything()
         serviceJob.cancel()
         super.onDestroy()
@@ -152,11 +163,11 @@ class ScreenShareService : Service() {
         deviceId: String,
         resultData: Intent,
     ) {
-        // The token handed over by SupervisedScreen is whatever that screen got when it opened,
+        // The token handed over by SupervisedShell is whatever that screen got when it opened,
         // and it is never renewed: after 15 minutes with the app open it is expired, and both the
         // config fetch and this service's socket would be rejected. Same fix the other background
         // components already use (Sprint 19).
-        val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
+        val accessToken = BackgroundTokenRefresher.refresh(applicationContext)
             ?: screenAccessToken
 
         // Asked of the backend rather than hardcoded, so the TURN relay and its per-request
@@ -281,7 +292,7 @@ class ScreenShareService : Service() {
                 if (candidate.isNotEmpty()) {
                     peerConnection?.addIceCandidate(
                         IceCandidate(
-                            body.optString("sdp_mid"),
+                            body.optStringOrNull("sdp_mid"),
                             body.optInt("sdp_m_line_index", 0),
                             candidate,
                         )

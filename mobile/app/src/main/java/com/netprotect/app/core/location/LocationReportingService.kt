@@ -1,5 +1,6 @@
 package com.netprotect.app.core.location
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,6 +13,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.permissions.LocationPermission
 import java.time.Instant
@@ -31,7 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * exists as a service rather than a plain Compose effect.
  *
  * Declared with foregroundServiceType="location" (AndroidManifest.xml) and started only from a
- * foreground Activity (SupervisedScreen's DisposableEffect, exactly like RuleEnforcementService)
+ * foreground Activity (SupervisedShell's DisposableEffect, exactly like RuleEnforcementService)
  * — never from a background context. That combination is deliberate, not incidental: per
  * Android's own docs (see docs/android/capability-matrix.md, Sprint 13), an app running a
  * `location`-typed foreground service already counts as "in the foreground" for the location
@@ -93,10 +95,13 @@ class LocationReportingService : Service() {
         val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
 
         reportingJob = serviceScope.launch { runReportingLoop(baseUrl, accessToken, deviceId) }
+        // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
+        ServiceStatusRegistry.locationRunning(true)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.locationRunning(false)
         serviceJob.cancel()
         super.onDestroy()
     }
@@ -106,9 +111,12 @@ class LocationReportingService : Service() {
         while (serviceScope.isActive) {
             val location = runCatching { fetchCurrentLocation() }.getOrNull()
             if (location != null) {
+                // Sprint 41: the token handed over at start() was never renewed, so every report
+                // after its 15-minute lifetime failed silently with 401. Ask the shared session.
+                val token = BackgroundTokenRefresher.refresh(applicationContext) ?: accessToken
                 runCatching {
                     client.reportLocation(
-                        accessToken = accessToken,
+                        accessToken = token,
                         deviceId = deviceId,
                         latitude = location.latitude,
                         longitude = location.longitude,

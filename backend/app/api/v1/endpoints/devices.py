@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -108,6 +108,7 @@ async def list_my_devices(
 
 @router.get("/devices/me", response_model=MyDeviceResponse)
 async def get_my_own_device(
+    device_instance_id: str | None = Query(default=None, max_length=128),
     current_user: User = Depends(require_role(SUPERVISADO)),
     db: AsyncSession = Depends(get_db),
 ) -> MyDeviceResponse:
@@ -115,14 +116,27 @@ async def get_my_own_device(
 
     Registered before /devices/{device_id} on purpose — FastAPI matches routes in
     registration order, and a path parameter would otherwise swallow the literal "me".
+
+    One supervised account can legitimately own several device rows — a reinstall generates a
+    new device_instance_id, and so does a second phone (B-01: this used to crash with
+    MultipleResultsFound, a 500). The app now says which install it is; the pair (account,
+    device_instance_id) is unique (uq_devices_instance_per_supervised_user), so that is exact.
+    Without it (older builds) the most recently created device that still has an active tutor
+    is "me", then the most recent one at all — never a 500.
     """
-    device = (
-        await db.execute(
-            select(Device)
-            .where(Device.supervised_user_id == current_user.id)
-            .options(selectinload(Device.status))
+    query = (
+        select(Device)
+        .where(Device.supervised_user_id == current_user.id)
+        .options(selectinload(Device.status))
+    )
+    if device_instance_id is not None:
+        query = query.where(Device.device_instance_id == device_instance_id)
+    else:
+        has_active_tutor = exists().where(
+            TutorDevice.device_id == Device.id, TutorDevice.unlinked_at.is_(None)
         )
-    ).scalar_one_or_none()
+        query = query.order_by(has_active_tutor.desc(), Device.created_at.desc())
+    device = (await db.execute(query.limit(1))).scalars().first()
 
     if device is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="not_linked")

@@ -1,5 +1,6 @@
 package com.netprotect.app.core.rules
 
+import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,6 +17,7 @@ import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
 import com.netprotect.app.core.storage.RulesCacheStore
 import com.netprotect.app.feature.supervised.BlockScreenActivity
+import com.netprotect.app.ui.format.CategoryLabels
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,7 +31,7 @@ import kotlinx.coroutines.launch
 /** Foreground service that keeps sondeando (polling) which app is in the foreground and blocks
  * it locally when a rule says to — this has to keep running while the supervised device uses
  * OTHER apps, i.e. while this app itself is not on screen, which a plain Compose LaunchedEffect
- * (tied to SupervisedScreen's composition) cannot do.
+ * (tied to SupervisedShell's composition) cannot do.
  *
  * Requires a persistent notification: not a choice, but a requirement of Android itself for any
  * foreground service (since API 26), independent of the Play anti-stalkerware policy — see
@@ -70,11 +72,13 @@ class RuleEnforcementService : Service() {
         // Comfortably under access_token_ttl_minutes (15 on the backend): this service can run
         // for hours between app opens, so it has to renew its own token instead of 401ing
         // silently forever after the first 15 minutes of any session (Sprint 19).
-        private const val TOKEN_REFRESH_INTERVAL_MS = 10 * 60_000L
+        // Sprint 41: only a cheap "is it near expiry?" check against the shared TokenSession —
+        // the network renewal happens there, once for the whole process, when actually due.
+        private const val TOKEN_REFRESH_INTERVAL_MS = 15_000L
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             // Sprint 20: stamped here, synchronously, and not only from the poll loop below.
-            // startForegroundService() is asynchronous, and SupervisedScreen's heartbeat loop
+            // startForegroundService() is asynchronous, and SupervisedShell's heartbeat loop
             // starts in the same composition — without this, the session's first heartbeat could
             // read a marker the service hadn't stamped yet and report a SERVICE_INACTIVE that
             // never happened.
@@ -113,10 +117,13 @@ class RuleEnforcementService : Service() {
         val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
 
         pollingJob = serviceScope.launch { runPollingLoop(baseUrl, accessToken, deviceId) }
+        // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
+        ServiceStatusRegistry.enforcementRunning(true)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        ServiceStatusRegistry.enforcementRunning(false)
         BlockOverlayController.hide(applicationContext)
         realtimeClient?.disconnect()
         serviceJob.cancel()
@@ -129,7 +136,9 @@ class RuleEnforcementService : Service() {
         val database = NetProtectDatabase.getInstance(applicationContext)
         val rulesCacheStore = RulesCacheStore(database)
         val pendingEventStore = PendingRuleEventStore(database)
-        var accessToken = initialAccessToken
+        // Sprint 41: the token handed over by the screen may already be stale (or empty); the
+        // realtime connect below uses it once, so start from the shared session's valid one.
+        var accessToken = BackgroundTokenRefresher.refresh(applicationContext) ?: initialAccessToken
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
@@ -176,12 +185,12 @@ class RuleEnforcementService : Service() {
             val now = System.currentTimeMillis()
 
             // Sprint 20: the only thing that proves this service is still alive to anything
-            // outside its process (SyncWorker, SupervisedScreen's heartbeat loop). Stamped every
+            // outside its process (SyncWorker, SupervisedShell's heartbeat loop). Stamped every
             // cycle so a stale marker means the service really stopped — see EnforcementLiveness.
             EnforcementLiveness.markActive(applicationContext)
 
             if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
-                BackgroundTokenRefresher.refresh(applicationContext, baseUrl)?.let { accessToken = it }
+                BackgroundTokenRefresher.refresh(applicationContext)?.let { accessToken = it }
                 lastTokenRefreshAt = now
             }
 
@@ -275,9 +284,13 @@ class RuleEnforcementService : Service() {
         val exemptReasons = setOf(BlockReason.DEFAULT_POLICY, BlockReason.SCHOOL_MODE)
         if (exemptFromDefaultPolicy && reason in exemptReasons) return
 
+        // Sprint 49: only the display changes — which app is blocked, when and why is decided above.
+        // The category shown is the real assigned one (never invented), or none.
+        val categoryLabel = categoryAssignments.find { it.packageName == foregroundPackage }
+            ?.let { CategoryLabels.categoryLabel(it.category.wireValue) }
         if (OverlayPermission.isGranted(applicationContext)) {
             val appLabel = resolveAppLabel(foregroundPackage)
-            BlockOverlayController.show(applicationContext, appLabel, reason) {
+            BlockOverlayController.show(applicationContext, foregroundPackage, appLabel, categoryLabel, reason) {
                 BlockOverlayController.hide(applicationContext)
                 startActivity(
                     Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
@@ -289,7 +302,7 @@ class RuleEnforcementService : Service() {
             // while the device is locked (see launchBlockScreen's docstring) — better than
             // nothing, but the tutor should still be told to grant the overlay permission for
             // this to work while the device is unlocked and in active use.
-            launchBlockScreen(foregroundPackage, reason)
+            launchBlockScreen(foregroundPackage, categoryLabel, reason)
         }
         val occurredAt = Instant.now()
         val reported = runCatching {
@@ -310,7 +323,7 @@ class RuleEnforcementService : Service() {
      * IMPORTANCE_HIGH channel: the ongoing "service is running" notification is deliberately
      * IMPORTANCE_LOW/silent, and reusing it would make every block silent too.
      */
-    private fun launchBlockScreen(foregroundPackage: String, reason: BlockReason) {
+    private fun launchBlockScreen(foregroundPackage: String, categoryLabel: String?, reason: BlockReason) {
         val manager = getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(BLOCK_CHANNEL_ID) == null) {
             manager.createNotificationChannel(
@@ -325,6 +338,7 @@ class RuleEnforcementService : Service() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(BlockScreenActivity.EXTRA_PACKAGE_NAME, foregroundPackage)
             .putExtra(BlockScreenActivity.EXTRA_REASON, reason.wireValue)
+            .putExtra(BlockScreenActivity.EXTRA_CATEGORY_LABEL, categoryLabel)
         val pendingIntent = android.app.PendingIntent.getActivity(
             this,
             BLOCK_NOTIFICATION_ID,

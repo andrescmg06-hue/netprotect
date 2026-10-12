@@ -2,6 +2,7 @@ package com.netprotect.app.core.network
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
@@ -34,13 +35,39 @@ class RealtimeClient(private val baseUrl: String) {
      * the other peer name themselves in `type` (Sprint 23) — both are handed over here under one
      * name so a caller can ignore what isn't theirs.
      */
-    fun connect(deviceId: String, accessToken: String, onEvent: (String, JSONObject) -> Unit) {
+    /** Sprint 50 (B-02): the socket's own life, for a caller that reconnects. [Closed.code] is the
+     * close code the backend sent (4401 unauthenticated, 4404 not your device) or 1006 for a
+     * network failure. Optional: the Sprint 18/23 callers keep passing nothing. */
+    sealed interface ConnectionEvent {
+        data object Opened : ConnectionEvent
+        data class Closed(val code: Int) : ConnectionEvent
+    }
+
+    fun connect(
+        deviceId: String,
+        accessToken: String,
+        onConnection: (ConnectionEvent) -> Unit = {},
+        onEvent: (String, JSONObject) -> Unit,
+    ) {
         val wsUrl = "${baseUrl.trimEnd('/').replaceFirst(Regex("^http"), "ws")}" +
             "/api/v1/devices/$deviceId/ws"
         val request = Request.Builder().url(wsUrl).build()
         socket = client.newWebSocket(
             request,
             object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    onConnection(ConnectionEvent.Opened)
+                }
+
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    webSocket.close(code, null)
+                    onConnection(ConnectionEvent.Closed(code))
+                }
+
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    onConnection(ConnectionEvent.Closed(NETWORK_FAILURE))
+                }
+
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     val body = runCatching { JSONObject(text) }.getOrNull() ?: return
                     val name = body.optString("event").ifEmpty { body.optString("type") }
@@ -67,5 +94,10 @@ class RealtimeClient(private val baseUrl: String) {
     fun disconnect() {
         socket?.close(1000, null)
         socket = null
+    }
+
+    companion object {
+        /** RFC 6455's "abnormal closure": no close frame at all (network drop, server gone). */
+        const val NETWORK_FAILURE = 1006
     }
 }

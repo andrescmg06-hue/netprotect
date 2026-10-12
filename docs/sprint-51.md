@@ -1,0 +1,151 @@
+# Sprint 51 — Endurecimiento, accesibilidad, regresión e integración a `main`
+
+Duodécimo y último sprint del rediseño Android (`docs/android-redesign/sprints/S51-endurecimiento-y-cierre.md`).
+Decisiones: D-02 (revisión con evidencia), D-14 (a): `lintDebug` en el job `android` de CI. Sin funcionalidades
+nuevas: aquí se demuestra que nada se perdió.
+
+## Tareas
+
+Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o DeepSeek, con el motivo.
+
+- [x] T1 — D-14: `lintDebug` en el job `android` de CI. Inline (una línea en `ci.yml`). `263ade5`.
+- [x] T2 — Último color literal fuera de `ui/theme` (`feature/home/HomeScreen.kt:171`) → `colorScheme.background`.
+  Delegado (escritor; T2–T4 tocaban 4 archivos). `6e69b46`.
+- [x] T3 — L-02: `dataExtractionRules` en el manifest; nada de la app se respalda ni se transfiere. `f5dbfac`.
+- [x] T4 — Texto a 200 %: la duración en Estadísticas crece en vez de cortarse; el nombre de la app en la pantalla
+  de bloqueo admite 2 líneas. Claude devolvió el nombre de Estadísticas a 96 dp fijos: el escritor lo hizo
+  variable y las barras dejaban de alinearse a fuente normal. `80cbee5`.
+- [ ] T5 — Release con R8: `assembleRelease` compila. Reglas: Credential Manager (Play Services), WebRTC, Room y
+  WorkManager traen las suyas en el AAR; el JSON se lee con `JSONObject` por nombre de clave (inmune a la
+  ofuscación). Para probarla en ejecución, tipo de build `minified` (`5c33ff1`): la release con R8, firmada con la
+  clave de debug y apuntando al backend local. La galería de depuración no está ni en `release` ni en `minified`
+  (comprobado en el manifest de cada APK). En el emulador, `minified` instalada sobre la debug (misma clave,
+  conserva la sesión) arranca sin errores en logcat. En modo supervisado lee el JSON del backend: nombre del
+  tutor y «Conectado». Los tres servicios (reporte, control de apps, ubicación) aparecen «Activo». **Falta:** el
+  modo tutor y la vista remota (WebRTC) con `minified` (T10, H-02).
+- [x] T6 — Accesibilidad estática. Inline. Las 39 apariciones de `contentDescription = null` son decorativas: cada
+  icono tiene al lado un texto que dice lo mismo, o va dentro de una tarjeta pulsable con texto (incluido
+  `AppIcon`, con el nombre de la app al lado). Único arreglo: la marca, que TalkBack leía «Net», «Protect», ahora
+  es un solo encabezado «NetProtect» (`BrandHeader`). `NpButton(small = true)` mide 40 dp de alto, pero Compose
+  amplía el área táctil de un `clickable` a 48 dp; se comprueba con Accessibility Scanner en T10. **No hay
+  encargo para DeepSeek:** la lista mecánica quedó en una sola línea y delegarla costaba más que hacerla.
+- [x] T7 — Sin conexión: modo avión en Inicio del tutor y pantallas del supervisado (las otras 9 ya usan `ErrorState`).
+  **Supervisado, hecho (emulador, `minified`):** Dispositivo vinculado pasa a «Sin conexión» en rojo. En Estado
+  de NetProtect, el reporte sigue «Activo» hasta 3 min sin envíos y luego pasa a «Sin confirmar»
+  (`REPORT_STALE_AFTER_SECONDS`); control de apps y ubicación siguen «Activo», que es verdad sin red. Al volver la
+  red, el reporte se recupera solo. **Falta el modo tutor**: el emulador está vinculado como supervisado.
+- [x] T8 — Rotación y muerte del proceso; D-02 se revisa con esa evidencia. **Supervisado, hecho:** al girar se
+  conserva la pantalla y el horizontal se ve bien. Con «No conservar actividades» la actividad se recrea en la
+  misma pantalla. `am kill` no mata el proceso porque los servicios en primer plano lo mantienen vivo, así que en
+  el supervisado la muerte del proceso real no ocurre con la app en uso. **Falta el modo tutor**, que es donde
+  los datos se recargan al girar (sin ViewModel).
+- **Modo tutor (emulador, `minified`)**, con un supervisado de prueba vinculado por API (`backend/scripts/
+  seed_test_session.py` pasado por stdin al contenedor; código real generado en la app) y datos de apps, uso y
+  ubicación cargados por API:
+  - **Bug encontrado y corregido** (`07d8525`): en Android `optString` devuelve el texto «null» para un JSON
+    null, así que **todas** las apps salían «Desinstalada», y el nombre, la zona horaria o la última conexión
+    podían mostrarse como «null». Un ayudante `optStringOrNull` cubre todos los campos anulables, con test
+    instrumentado (el `org.json` de escritorio devuelve «» y ocultaría el bug). Verificado en pantalla tras el
+    arreglo.
+  - Sin red: el detalle del dispositivo y Ubicación recargadas muestran «Sin conexión con el servidor…» con
+    «Reintentar». Si la app arranca en frío sin red, el tutor con sesión ve el login con el error y «Reintentar»,
+    y la sesión se retoma al volver la red (decisión del Sprint 41; no se cambia aquí).
+  - Rotación: se conserva la pantalla y la búsqueda de Apps, pero el periodo de Estadísticas («7 días») volvía
+    a «Hoy». **Corregido** (`fa63aeb`, D-02 revisada, aprobado por el dueño): el periodo, el filtro de Alertas y
+    el código de vinculación a medio escribir son `rememberSaveable`; los datos se recargan para la selección
+    restaurada. Verificado girando en el emulador. Queda sin guardar el texto del diálogo de renombrar (texto en
+    curso, no una selección).
+  - Fuente 200 %: la duración de Estadísticas ya no se corta (T4 verificado). `StatusPill` se cortaba
+    («Desconectado» → «Des») y la barra inferior partía palabras («Dispositi/vos»). **Corregido** (`9c7eb73`):
+    la píldora baja entera a su propia línea y las etiquetas usan «…». Verificado al 200 %.
+  - Menor: tras vincular, el código ya usado sigue visible con su cuenta atrás hasta salir de Inicio.
+- [x] T9 — Regresión contra `docs/android-redesign/INVENTARIO.md`: 0 puntos perdidos; detalle en `docs/sprint-51-evidence.md`. Capturas de 11 de las 17 pantallas; el resto en T10.
+- **Revisión de seguridad** (parte de T11): `security-reviewer` del proyecto sobre `main...sprint-51-cierre`, 371
+  archivos. **0 ALTA, 0 MEDIA, 3 BAJA.**
+  - `minified` (firmado con la clave de debug y con excepción de cleartext) podía salir de un `assemble` genérico
+    en CI. **Corregido:** Gradle falla si se empaqueta `minified` con `CI` definido, y sus tests unitarios siguen
+    corriendo. Verificado: `CI=true ./gradlew test assembleDebug lintDebug` pasa y `CI=true ./gradlew
+    assembleMinified` falla.
+  - Preexistente (S23): «Continuar» envía `granted=true` antes del diálogo de Android. Si el menor lo cancela se
+    envía `screen_share_stop`, pero la auditoría registra un «sí» momentáneo. No es un bypass; queda como deuda.
+  - Preexistente (S41): el access token viaja en extras de Intent a servicios propios no exportados. No empeoró, y
+    `ScreenShareService` ya renueva el token por su cuenta. Queda como deuda.
+  - Plantillas `.env.*.example` (comprobado el 02/10/2026, solo nombres de variable): `development` declara las tres
+    variables TURN; `test` no declara `TURN_CREDENTIAL_TTL_SECONDS`; `production` no declara `TURN_SHARED_SECRET` ni
+    el TTL. **No es un hueco:** en producción el secreto llega como Compose secret
+    (`secrets/turn_shared_secret.txt` → `TURN_SHARED_SECRET_FILE`, `compose.prod.yaml`) y `config.py` aborta el
+    arranque si queda el valor de desarrollo; el TTL tiene valor por defecto de 3600 s (`config.py`, D3 de
+    `plan-turn.md`). Los `.env*` y `secrets/` siguen bloqueados para Claude por permisos.
+- [ ] T10 — Pruebas humanas en el Galaxy S25 FE. **Aplazado a propósito: se hace con el teléfono real.**
+  Pendiente, en este orden:
+  1. Build `minified` (release con R8) instalada en el Galaxy, con el backend local (`make dev`). **Corrección
+     (12/10/2026):** no vale la IP de la red, porque la excepción de tráfico sin cifrar de
+     `src/debug/res/xml/network_security_config.xml` solo cubre `10.0.2.2` y `localhost`; se usa
+     `adb reverse tcp:8000 tcp:8000` y `NETPROTECT_API_BASE_URL=http://localhost:8000`.
+  2. TalkBack: recorrer las 17 pantallas; comprobar orden de foco, etiquetas y áreas táctiles de 48 dp
+     (Accessibility Scanner).
+  3. Fuente al 130 % y al 200 % en el teléfono.
+  4. **H-02:** vista remota real de extremo a extremo con R8 activo (cierra WebRTC bajo R8 y el T5).
+  5. Capturas 01, 02, 12, 14, 15 y 16 (las otras 11 ya están en `docs/sprint-51-evidence.md`).
+  El emulador `Pixel_8` sirve para los puntos 1, 3 y 5; los puntos 2 y 4 solo cuentan como válidos en el teléfono.
+  **Avance del 12/10/2026 (parcial; T10 sigue abierto).** Punto 1 hecho: `installMinified` con R8 en el Galaxy
+  (`SM-S731B`, Android 16), login real de Google, vinculación con código y consentimiento de captura. Punto 4: el
+  registro de auditoría del backend muestra una vista remota real contra el teléfono (`SCREEN_SHARE_REQUESTED` →
+  `STARTED` → `STOPPED`, unos 45 s) con la build `minified`, y **el dueño confirmó que vio el vídeo del teléfono en el
+  panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
+  Punto 3 (fuente grande), parcial: la pantalla 13 partía «Conectado» por letras desde 1.3; corregido con `FlowRow`
+  (`615e84d`) y comprobado a 1.3 y 2.0; las otras 16 pantallas, sin revisar. Puntos 2 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
+  **Decisión del dueño (12/10/2026): S51 se cierra reducido.** Lo que falta de T10 queda **pendiente, sin
+  evidencia**, y no se hace en este sprint:
+  - TalkBack en las 17 pantallas;
+  - fuente grande en las 16 pantallas no revisadas;
+  - el título de la pantalla 17 partido a media palabra al 200 %;
+  - las capturas 01, 02, 12, 14, 15 y 16.
+
+  Motivo: el rediseño v2 del supervisado (`docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`, sprints
+  S61–S67) quita el modo tutor de la app y rehace las pantallas del supervisado. S67 repite estas pruebas sobre las
+  pantallas nuevas. Revisar ahora pantallas que se van a borrar o rehacer no aporta evidencia útil.
+- [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
+  en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
+  captura (`docs/sprint-51-evidence.md`, T10).
+- [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
+  **Avance del 12/10/2026:**
+  - `security-reviewer` hecho: **0 ALTA, 2 MEDIA, 5 BAJA** sobre `origin/main...HEAD` (287 archivos), sin regresión
+    desde la revisión del 02/10/2026. Todo es preexistente salvo (c), que es del S50 y falla en modo seguro. Los
+    hallazgos pasaron a `docs/tasks.md` (B-07…B-11). Tabla y comandos en `docs/sprint-51-evidence.md` (T11).
+  - `verifier` (Android) hecho: `env -u CI ./gradlew test assembleDebug lintDebug assembleRelease` →
+    `BUILD SUCCESSFUL`, 162 tests unitarios sin fallos, `lintDebug` 0 errores. No se ejecutó
+    `connectedDebugAndroidTest` en local (lo valida el job `android-instrumented`). Detalle en
+    `docs/sprint-51-evidence.md` (T11).
+  - Docs de cierre escritas (`tasks.md`, `progress.md`, `README.md`, `CONTINUAR.md`, `.claude/rules/android.md`).
+  - **Pendiente:** push de `sprint-51-cierre`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` →
+    `main` con los 8 jobs de CI en verde (el merge a `main` es del dueño). Requiere que el dueño confirme el push y la
+    apertura de los PR. T11 sigue abierto hasta entonces.
+
+## Criterios de aceptación
+
+Tomados de `docs/android-redesign/sprints/S51-endurecimiento-y-cierre.md:69-77`.
+
+- [x] Inventario de S40: 100 % de puntos presentes o sustituidos a propósito. **Cumplido** (T9): 0 puntos perdidos;
+  `docs/sprint-51-evidence.md` (T9).
+- [x] 0 colores literales fuera de `ui/theme`. **Cumplido:** T2 (`6e69b46`) y `grep` del 12/10/2026 sin salida
+  (`docs/sprint-51-evidence.md`, T11).
+- [ ] TalkBack y fuente 200 % sin bloqueos en las 17 pantallas. **PENDIENTE, requiere a una persona** (el teléfono
+  real). Decisión del dueño (12/10/2026): pasa al S67 del rediseño v2, sobre las pantallas nuevas. Solo la pantalla 13
+  se verificó a 1.3 y 2.0; el título de la pantalla 17 se parte a media palabra a 2.0 y no se corrigió.
+- [x] Rotación y muerte de proceso sin perder la pantalla. **Cumplido** (T8). En modo supervisado los servicios en
+  primer plano mantienen vivo el proceso, así que la muerte real del proceso no ocurre con la app en uso.
+- [x] Release instala y funciona. **Cumplido con matiz:** la build `minified` (configuración release con R8, firmada con
+  la clave de debug y con el backend local) se instaló y funcionó en el Galaxy S25 FE, incluida la vista remota
+  (H-02/T5); `assembleRelease` compila (12/10/2026). La release real de producción (URL de producción, firma de
+  release) no se ha instalado: **pendiente de despliegue**.
+- [x] `security-reviewer` sin hallazgos ALTA sobre todo el rediseño. **Cumplido** (12/10/2026): 0 ALTA.
+- [ ] PR a `main` con CI verde. **Pendiente:** necesita la confirmación del dueño para hacer push y abrir los PR, y que
+  el CI quede en verde.
+
+## Hallazgos de la auditoría (fase 1)
+
+- El código legado (`LegacySections.kt`, `TutorScreen.kt`, `SupervisedScreen.kt`) ya no existe.
+- `proguard-rules.pro` no tiene reglas y R8 está activo en release: riesgo con Room, WebRTC y receivers.
+- Solo hay dos `Log.w` (errores SDP en `ScreenShareService`); no registran tokens ni datos del menor.
+- No hay ViewModel (D-02 a): los datos se recargan al girar; la pila de navegación sí se conserva.

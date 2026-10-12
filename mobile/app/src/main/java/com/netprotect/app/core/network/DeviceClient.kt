@@ -10,6 +10,9 @@ data class DeviceSummary(
     val status: String,
     val lastSeenAt: String?,
     val timezone: String?,
+    // Sprint 44: already in the backend's DeviceResponse; null when the device never reported it.
+    val osVersion: String? = null,
+    val appVersion: String? = null,
 )
 
 data class MyDeviceInfo(
@@ -19,6 +22,10 @@ data class MyDeviceInfo(
     // Null means the device row exists but every tutor has since unlinked from it — that's
     // not the same as being genuinely linked, even though /devices/me still returns 200.
     val tutorLabel: String?,
+    /** Sprint 48: every active tutor's name (or e-mail), for "Supervisado por". */
+    val tutors: List<String> = emptyList(),
+    /** Sprint 48: the server's last heartbeat from this device (ISO-8601), or null. */
+    val lastSeenAt: String? = null,
 )
 
 class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
@@ -29,26 +36,33 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         return (0 until devices.length()).map { index -> devices.getJSONObject(index).toSummary() }
     }
 
+    /** Sprint 44: one device the tutor supervises (the detail screen reloads it on its own). The
+     * backend answers 404 both when it doesn't exist and when it isn't this tutor's. */
+    suspend fun getDevice(accessToken: String, deviceId: String): DeviceSummary =
+        getJson("/api/v1/devices/$deviceId", accessToken).toSummary()
+
     /** What the server currently believes about this signed-in account's own device, or null
      * if it isn't linked (server-side truth, not the local pairing cache — see
      * [com.netprotect.app.core.auth.LinkedDeviceStore]).
      */
-    suspend fun getMyDevice(accessToken: String): MyDeviceInfo? = try {
-        val payload = getJson("/api/v1/devices/me", accessToken)
-        val tutors = payload.getJSONArray("tutors")
-        val tutorLabel = if (tutors.length() == 0) {
-            null
-        } else {
-            (0 until tutors.length()).joinToString(", ") { index ->
-                val tutor = tutors.getJSONObject(index)
-                tutor.optString("display_name").takeIf { it.isNotBlank() } ?: tutor.getString("email")
-            }
+    suspend fun getMyDevice(accessToken: String, deviceInstanceId: String? = null): MyDeviceInfo? = try {
+        // Sprint 48 (B-01): one account can own several device rows (a reinstall makes a new
+        // instance id); saying which install this is makes the answer exact.
+        val query = deviceInstanceId?.let { "?device_instance_id=" + java.net.URLEncoder.encode(it, "UTF-8") }.orEmpty()
+        val payload = getJson("/api/v1/devices/me$query", accessToken)
+        val tutorsJson = payload.getJSONArray("tutors")
+        val tutors = (0 until tutorsJson.length()).map { index ->
+            val tutor = tutorsJson.getJSONObject(index)
+            tutor.optStringOrNull("display_name") ?: tutor.getString("email")
         }
+        val status = payload.getJSONObject("status")
         MyDeviceInfo(
             deviceId = payload.getString("device_id"),
             deviceName = payload.getString("device_name"),
-            status = payload.getJSONObject("status").getString("status"),
-            tutorLabel = tutorLabel,
+            status = status.getString("status"),
+            tutorLabel = if (tutors.isEmpty()) null else tutors.joinToString(", "),
+            tutors = tutors,
+            lastSeenAt = if (status.isNull("last_seen_at")) null else status.getString("last_seen_at"),
         )
     } catch (exception: ApiException) {
         if (exception.statusCode == 404) null else throw exception
@@ -114,8 +128,10 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             name = getString("name"),
             platform = getString("platform"),
             status = status.getString("status"),
-            lastSeenAt = status.optString("last_seen_at").takeIf { it.isNotBlank() },
-            timezone = optString("timezone").takeIf { it.isNotBlank() },
+            lastSeenAt = status.optStringOrNull("last_seen_at"),
+            timezone = optStringOrNull("timezone"),
+            osVersion = optStringOrNull("os_version"),
+            appVersion = optStringOrNull("app_version"),
         )
     }
 }

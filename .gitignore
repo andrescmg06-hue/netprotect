@@ -77,3 +77,6 @@ compose.override.yml
 
 # Impeccable: review captures are regenerated every sprint; surface briefs are committed.
 .impeccable/review/
+
+# Caché local del registro de skills de Gentle AI
+.atl/

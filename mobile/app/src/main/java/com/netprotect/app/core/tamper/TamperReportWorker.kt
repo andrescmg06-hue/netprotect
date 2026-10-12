@@ -41,7 +41,7 @@ class TamperReportWorker(context: Context, params: WorkerParameters) :
         val eventType = inputData.getString(KEY_EVENT_TYPE) ?: return Result.failure()
         val occurredAt = inputData.getString(KEY_OCCURRED_AT) ?: return Result.failure()
 
-        val accessToken = BackgroundTokenRefresher.refresh(applicationContext, baseUrl)
+        val accessToken = BackgroundTokenRefresher.refresh(applicationContext)
             ?: return Result.retry()
 
         return runCatching {
