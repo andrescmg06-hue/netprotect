@@ -56,7 +56,9 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
       (compila y los tests JVM pasan).
   - El rol nunca se concede en silencio a un tutor. La caché va por id de usuario, en `MODE_PRIVATE`, se borra al
     cerrar sesión y no entra en copias de seguridad. El backend sigue exigiendo SUPERVISADO.
-  - **Pendiente:** CI (incluidos los tests instrumentados de `TutorAccountScreen`) y el login real con las dos cuentas.
+  - CI del PR #19 (run `38321817276`): 8/8 en verde; `android-instrumented` «Finished 71 tests on emulator-5554», que son
+    todos los `@Test` de `androidTest`, incluidos los 4 de `TutorAccountScreenTest`.
+  - **Pendiente, humano:** login real con una cuenta supervisada y con una que solo es tutor.
 
 ## Criterios de aceptación
 
