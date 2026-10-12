@@ -35,7 +35,10 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   la pantalla de cuenta de tutor. Se quitan `SelectingRole`, `InTutorMode`, `switchMode`, `RolePreference`,
   `RoleSelectionScreen` y el «Cambiar de modo» de Vinculado y del shell, con sus tests y frames. Delegado
   (**Opus**: auth y roles, sensible; más de 2 archivos no triviales).
-- [ ] T3 — Borrar `feature/tutor/**` y el código muerto: componentes, formateadores, `ui/navigation`, `ui/state`,
+- [x] T3 — `0217236`: 79 archivos, −8502 líneas. `test assembleDebug assembleDebugAndroidTest lintDebug assembleRelease` →
+  `BUILD SUCCESSFUL in 1m 38s`, 84 tests unitarios y lint con 0 errores. La búsqueda de `feature.tutor`, `TutorShell`,
+  `onSwitchMode`, `RoleSelection`, `RolePreference` y `NavStack` no encuentra nada. `SupervisedShell` y los servicios no
+  cambiaron. También salió `LocationReport`, que solo usaba el tutor. Enunciado: Borrar `feature/tutor/**` y el código muerto: componentes, formateadores, `ui/navigation`, `ui/state`,
   clientes y métodos de red solo del tutor; también sus tests JVM e instrumentados, las galerías y `DesignGalleryTest`.
   Delegado (**Sonnet**: borrado amplio pero mecánico, inventario ya hecho).
 - [ ] T4 — Docs que describen la app como «Tutor o Supervisado»: `CLAUDE.md`, `README.md`, `.claude/rules/android.md`,
