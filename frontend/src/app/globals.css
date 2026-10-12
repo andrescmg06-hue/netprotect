@@ -160,6 +160,15 @@ a {
   border-radius: var(--radius-sm);
 }
 
+/* Windows high-contrast mode drops box-shadow, so the ring above would vanish. A real outline is
+   recoloured by the system; !important because several components reset outline on their own. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+}
+
 ::selection {
   background: rgba(23, 105, 255, 0.18);
 }

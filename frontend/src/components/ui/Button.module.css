@@ -51,6 +51,12 @@
   background: var(--color-primary-hover);
 }
 
+/* .primary sets its own box-shadow with the same specificity as the global :focus-visible ring and
+   module sheets load after globals, so without this the keyboard ring is replaced by the drop shadow. */
+.primary:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 .secondary {
   background: var(--color-surface);
   border-color: var(--color-border-strong);

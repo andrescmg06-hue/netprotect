@@ -37,9 +37,14 @@ Las vistas en sí no se recomponen todavía (S55–S59).
 - [ ] T5 — Verificación: `tsc` y `eslint` en verde (verificados por quien lidera); ningún `*Panel.tsx` cambió; imagen
   `web` reconstruida y sirviendo el login nuevo (200). **Pendiente: revisión visual del shell con sesión** (la hace el
   dueño al iniciar sesión con Google; capturas sembradas después).
-- [ ] T6 — Cierre: `docs/sprint-54-evidence.md`, README, `docs/progress.md`.
+- [x] T6 — Cierre: `docs/sprint-54-evidence.md`, README (`## Alcance del Sprint 54`), `docs/progress.md`. Hecho en el
+  S60 (T1), después del código, con la evidencia que dejó la tanda de S59 (`docs/redesign/s59/LEEME.md`).
 
 ## Pendiente conocido
 
 - El login real con Google lo prueba una persona (el dueño).
 - Commits: el dueño rechazó el commit del login durante la ejecución; los cambios quedan en el *stage* hasta que lo pida.
+  (Nota del S60: esa línea quedó desfasada; el historial muestra que el código se commiteó como `35af89d`, de Cristian,
+  el 04/10/2026 a las 04:22. Se deja el texto original y se anota la contradicción.)
+- Nota del S60: el commit `35af89d` ya trae `docs/sprint-54.md` y `ScheduleBar` (usada en S56). La serif cambió a
+  Newsreader en `eb2db05`; el README del S53 decía Playfair y se corrigió.

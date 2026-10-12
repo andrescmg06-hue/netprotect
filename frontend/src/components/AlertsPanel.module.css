@@ -161,6 +161,13 @@
   box-shadow: inset 2px 0 0 var(--color-navy);
 }
 
+/* Keep the selection rule and add the keyboard ring; declared after :hover so it wins at equal specificity. */
+.rowSelected:focus-visible {
+  box-shadow:
+    inset 2px 0 0 var(--color-navy),
+    var(--focus-ring);
+}
+
 .rowIcon {
   display: inline-flex;
   padding-top: 1px;

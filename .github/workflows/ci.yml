@@ -46,7 +46,14 @@ jobs:
       # Sprint 21: `npm ci --no-audit` above keeps install output quiet; the audit is its own
       # step so a failure points at the advisory, not at a broken install. --audit-level=high
       # to avoid gating CI on low/moderate advisories that often have no fix available yet.
-      - run: npm audit --audit-level=high
+      # Sprint 60: --omit=dev. Since 2026-10-03 GHSA-vfj7-8cjw-p6xm (braces, ReDoS-style stack
+      # exhaustion, affects every version: "braces *", no patched release) fails this step through
+      # the lint toolchain only (eslint-config-next -> @next/eslint-plugin-next -> fast-glob ->
+      # micromatch -> braces), which never ships in the build. It turned every PR red, including
+      # one with no frontend changes (#14). Production dependencies are audited as before (0
+      # vulnerabilities at the time of the change). Revert to the full audit once braces is
+      # patched: docs/tasks.md W-14.
+      - run: npm audit --audit-level=high --omit=dev
       - run: npm run lint
       - run: npm run build
 

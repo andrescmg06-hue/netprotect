@@ -8,25 +8,31 @@ depende de la memoria local ni de archivos que solo existan en la PC del dueño.
 
 | Sprint | Contenido | Estado |
 |---|---|---|
-| S52 | Fase 0: informe de inspección y propuesta (sin código) | ⏳ **Siguiente.** Seguimiento en `docs/sprint-52.md` |
-| S53 | Base visual: tokens, tipografía serif, primitivas, galería | Pendiente |
-| S54 | Marco: Login → Sidebar → Header | Pendiente |
-| S55–S59 | Las 16 vistas, por familias | Pendiente |
-| S60 | Cierre: accesibilidad, e2e, favicon, `/cerrar-sprint` | Pendiente |
+| S52 | Fase 0: informe de inspección y propuesta (sin código) | Hecho y aprobado el 04/10/2026. `docs/sprint-52.md` |
+| S53 | Base visual: tokens, tipografía serif, primitivas, galería | Hecho. `docs/sprint-53.md` y `docs/sprint-53-evidence.md` (falta `/cerrar-sprint 53`, del dueño) |
+| S54 | Marco: Login → Sidebar → Header → banda | Código hecho; documentación al día. Falta la revisión con sesión real de Google. `docs/sprint-54.md` |
+| S55 | Inicio, Dispositivos, Vinculación | Código hecho; documentación al día. `docs/sprint-55.md` |
+| S56 | Apps, Reglas, Política y horario, Categorías | Código hecho; documentación al día. `docs/sprint-56.md` |
+| S57 | Geocercas, Ubicación, Historial | Código hecho; documentación al día; sin revisión de seguridad registrada. `docs/sprint-57.md` |
+| S58 | Estadísticas, Alertas, Silenciadas | Código hecho; documentación al día. `docs/sprint-58.md` |
+| S59 | Vista remota, Auditoría, Perfil (y verificación integrada de S54–S59) | Código hecho; documentación al día; falta probar Vista remota con un teléfono real y la revisión de seguridad. `docs/sprint-59.md` |
+| S60 | Cierre: accesibilidad, favicon, imágenes, estados vacíos, e2e, `/cerrar-sprint` | **En curso.** `docs/sprint-60.md` |
 
-No se ha escrito código del rediseño: solo está este paquete de documentos y los assets.
+El código de S54–S59 lo escribió Cristian el 04/10/2026 en una sola tanda (commits `35af89d`, `c76ceea`, `bdfa6e8`,
+`8be5abd`, `7b6b117`, `7ec38c7`/`ccde5cf` y `eb2db05`, que corrige defectos y cambia la serif a Newsreader). Sus
+documentos de seguimiento y evidencia se escribieron después, en el S60 (T1). La evidencia visual de S54–S59 está
+concentrada en `docs/redesign/s59/LEEME.md` (e2e «1 passed» y 18 capturas, tomadas antes de `eb2db05`).
 
 ## 2. Ramas
 
-- Integración: **`web-redesign`** (creada desde `sprint-51-cierre`, que incluye el S50 y el S51 del rediseño Android).
-- Cada sprint: `sprint-NN-<slug>` (por ejemplo `sprint-52-rediseno-web-fase-0`), creada desde `web-redesign`, con PR de
-  vuelta a `web-redesign`. `web-redesign` → `main` lo decide el dueño al cerrar el S60.
-
-```bash
-git fetch origin
-git checkout web-redesign && git pull
-git checkout -b sprint-52-rediseno-web-fase-0
-```
+- Cadena real de ramas: `sprint-52-rediseno-web-fase-0` → `sprint-53-rediseno-web-base-visual` →
+  `sprint-54-rediseno-web-marco` (con el código de S54–S59) → `fix/s54-auth-log-sin-pii` (arreglo del log de auth,
+  `e9e4f69`) → `sprint-60-rediseno-web-cierre` (S60, rama de trabajo actual).
+- **`web-redesign`** (creada desde `sprint-51-cierre`, que incluye el S50 y el S51 del rediseño Android) **solo trae los
+  documentos del S52**; no contiene el código del rediseño. El pase del rediseño a `main` lo decide el dueño al cerrar
+  el S60.
+- El plan original preveía `sprint-NN-<slug>` desde `web-redesign` con PR de vuelta a ella; no es lo que ocurrió. Push,
+  merge y PR solo cuando el dueño los pida.
 
 > `web-redesign` arrastra los commits del S50/S51 (Android) porque nacieron en `sprint-51-cierre`, que aún no está en
 > `main`. No afecta al panel web: el código de `frontend/` es idéntico. Si el S51 se fusiona primero, basta con
