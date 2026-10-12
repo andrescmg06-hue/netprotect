@@ -58,8 +58,9 @@ mismo patrón de arranque-sólo-desde-Activity-en-primer-plano ya usado por `Rul
 desde el Sprint 8. Consecuencia aceptada: si el proceso muere (swipe en Recientes, sistema bajo
 presión de memoria), el reporte se detiene hasta reabrir la app — no hay reinicio automático.
 Decisión de diseño separada, también documentada: Android **no** integra el SDK nativo de Google
-Maps — la pantalla del tutor delega a la app de mapas ya instalada vía un intent `geo:`, así que
-`GOOGLE_MAPS_ANDROID_API_KEY` no existe como variable de este proyecto. El panel web sí necesita su
+Maps, así que `GOOGLE_MAPS_ANDROID_API_KEY` no existe como variable de este proyecto (hasta el
+Sprint 60 la pantalla del tutor de la app abría un mapa externo con un intent `geo:`; esa pantalla
+se eliminó en el Sprint 61 y el tutor ve el mapa solo en el panel web). El panel web sí necesita su
 propia clave (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, Maps Embed API) para el mapa embebido — pendiente
 de que un humano con cuenta de Google Cloud la genere y la restrinja por referer HTTP (mismo caso
 que `GOOGLE_WEB_CLIENT_ID`, ver `docs/sprint-13.md`); sin ella, el panel muestra coordenadas en

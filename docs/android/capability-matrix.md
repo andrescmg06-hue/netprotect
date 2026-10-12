@@ -454,8 +454,9 @@ de ubicación en segundo plano).
 
 `GOOGLE_MAPS_ANDROID_API_KEY` no se añadió a las variables de entorno de este sprint (a pesar de
 que el encargo lo contemplaba como opción) porque se decidió no integrar el Maps SDK for Android
-en absoluto: la pantalla del tutor muestra coordenadas/hora en texto y un botón "Abrir en mapa" que
-lanza un `Intent(ACTION_VIEW, Uri.parse("geo:lat,lng?q=lat,lng"))` — Android resuelve ese intent con
+en absoluto: la pantalla del tutor (histórica; la app dejó de tener modo tutor en el Sprint 61 y el
+mapa vive ahora solo en el panel web) mostraba coordenadas/hora en texto y un botón "Abrir en mapa" que
+lanzaba un `Intent(ACTION_VIEW, Uri.parse("geo:lat,lng?q=lat,lng"))` — Android resuelve ese intent con
 cualquier app de mapas ya instalada (Google Maps en el emulador/dispositivo de prueba), sin
 necesitar clave de API, restricción por SHA-1/paquete, ni la dependencia adicional del SDK. El
 panel web sí necesita su propia clave (Maps Embed API, restringida por referer HTTP) porque un

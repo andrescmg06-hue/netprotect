@@ -41,8 +41,8 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   cambiaron. También salió `LocationReport`, que solo usaba el tutor. Enunciado: Borrar `feature/tutor/**` y el código muerto: componentes, formateadores, `ui/navigation`, `ui/state`,
   clientes y métodos de red solo del tutor; también sus tests JVM e instrumentados, las galerías y `DesignGalleryTest`.
   Delegado (**Sonnet**: borrado amplio pero mecánico, inventario ya hecho).
-- [ ] T4 — Docs que describen la app como «Tutor o Supervisado»: `CLAUDE.md`, `README.md`, `.claude/rules/android.md`,
-  `INVENTARIO.md`, `capability-matrix.md` y el comentario de `QUERY_ALL_PACKAGES` en el manifest. Delegado (**Sonnet**).
+- [x] T4 — Docs que describen la app como «Tutor o Supervisado»: `CLAUDE.md`, `README.md`, `.claude/rules/android.md`,
+  `INVENTARIO.md`, `capability-matrix.md` y el comentario de `QUERY_ALL_PACKAGES` en el manifest. Delegado (**Sonnet**). Hecho (este commit): descripciones actuales ajustadas a «app solo del supervisado»; el historial de sprints anteriores no se tocó.
 - [ ] T5 — Verificación (`verifier`, **Haiku**: `test assembleDebug lintDebug`), `security-reviewer` (**Opus**, flujo de
   roles) y CI. Pendiente humano: login real con una cuenta supervisada y con una que solo es tutor.
 
