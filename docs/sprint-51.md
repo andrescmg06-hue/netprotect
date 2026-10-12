@@ -95,6 +95,16 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
   Punto 3 (fuente grande), parcial: la pantalla 13 partía «Conectado» por letras desde 1.3; corregido con `FlowRow`
   (`615e84d`) y comprobado a 1.3 y 2.0; las otras 16 pantallas, sin revisar. Puntos 2 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
+  **Decisión del dueño (12/10/2026): S51 se cierra reducido.** Lo que falta de T10 queda **pendiente, sin
+  evidencia**, y no se hace en este sprint:
+  - TalkBack en las 17 pantallas;
+  - fuente grande en las 16 pantallas no revisadas;
+  - el título de la pantalla 17 partido a media palabra al 200 %;
+  - las capturas 01, 02, 12, 14, 15 y 16.
+
+  Motivo: el rediseño v2 del supervisado (`docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`, sprints
+  S61–S67) quita el modo tutor de la app y rehace las pantallas del supervisado. S67 repite estas pruebas sobre las
+  pantallas nuevas. Revisar ahora pantallas que se van a borrar o rehacer no aporta evidencia útil.
 - [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
   en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
   captura (`docs/sprint-51-evidence.md`, T10).
