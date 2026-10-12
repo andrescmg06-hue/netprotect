@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Flujo de navegación</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.n{position:absolute;box-sizing:border-box;width:220px;height:92px;padding:16px 18px;background:#fff;border:1px solid #8a8678;border-radius:4px;font-family:Inter,sans-serif}
+.n b{display:block;font-size:16px;font-weight:600;color:#11243d;line-height:22px}
+.n span{display:block;font-size:13px;line-height:18px;color:#5b6779;margin-top:4px}
+.n.d{background:#0d1b2a;border-color:#0d1b2a}.n.d b{color:#fff}.n.d span{color:#9fb0c6}
+.n.i{border-style:dashed;background:#f8f7f3}
+.ln{position:absolute;background:#11243d;height:1.5px}
+.lv{position:absolute;background:#11243d;width:1.5px}
+.ld{position:absolute;border-top:1.5px dashed #5b6779;height:0}
+.ar{position:absolute;width:0;height:0;border-left:9px solid #11243d;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.lb{position:absolute;font:500 12px/16px Inter,sans-serif;color:#5b6779}
+.ey{font:600 11px/16px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5b6779}
+</style>
+</helmet>
+<div style="position:relative;width:1900px;height:760px;background:#f5f3ee;overflow:hidden;font-family:Inter,sans-serif;color:#11243d">
+<div style="position:absolute;left:56px;top:48px;width:900px">
+<div class="ey">NetProtect · App del dispositivo supervisado</div>
+<h1 style="margin:10px 0 10px;font:600 44px/48px 'Playfair Display',serif;letter-spacing:-.01em">Una sola ruta, sin barra inferior</h1>
+<p style="margin:0;font-size:16px;line-height:25px;color:#5b6779;max-width:720px">La app solo se vincula, aplica lo que el tutor configuró y le muestra al menor qué pasa en su teléfono. Inicio es el centro; Permisos y Estado son pantallas de detalle con flecha atrás y «Volver al inicio».</p>
+</div>
+
+<div class="n" style="left:56px;top:230px"><b>Cargando</b><span>Restaura la sesión</span></div>
+<div class="ln" style="left:276px;top:276px;width:55px"></div><div class="ar" style="left:331px;top:271px"></div>
+<div class="n" style="left:340px;top:230px"><b>Inicio de sesión</b><span>Solo con Google</span></div>
+<div class="ln" style="left:560px;top:276px;width:55px"></div><div class="ar" style="left:615px;top:271px"></div>
+<div class="n" style="left:624px;top:230px"><b>Vincular</b><span>Código de 6 dígitos</span></div>
+<div class="ln" style="left:844px;top:276px;width:55px"></div><div class="ar" style="left:899px;top:271px"></div>
+<div class="n d" style="left:908px;top:230px"><b>Dispositivo vinculado</b><span>Inicio · ¿todo funciona?</span></div>
+
+<div class="ln" style="left:1128px;top:276px;width:86px"></div>
+<div class="lv" style="left:1213px;top:206px;height:140px"></div>
+<div class="ln" style="left:1213px;top:206px;width:78px"></div><div class="ar" style="left:1291px;top:201px"></div>
+<div class="ln" style="left:1213px;top:346px;width:78px"></div><div class="ar" style="left:1291px;top:341px"></div>
+<div class="n" style="left:1300px;top:160px"><b>Permisos</b><span>4 permisos, cada uno con su acción</span></div>
+<div class="n" style="left:1300px;top:300px"><b>Estado de NetProtect</b><span>Qué funciones están activas</span></div>
+<div class="lb" style="left:1560px;top:182px">flecha atrás · «Volver al inicio»</div>
+
+<div class="ld" style="left:1018px;top:322px;width:0;border-top:none;border-left:1.5px dashed #5b6779;height:150px"></div>
+<div class="ld" style="left:1018px;top:472px;width:0;border:none"></div>
+<div class="n i" style="left:908px;top:470px"><b>Consentimiento</b><span>Interrumpe cualquier pantalla · caduca en 2 min</span></div>
+<div class="n i" style="left:1300px;top:470px"><b>Aviso de vista remota</b><span>Banner sobre toda pantalla con «Detener»</span></div>
+<div class="n i" style="left:56px;top:470px"><b>App bloqueada</b><span>Cubre la app bloqueada · 7 motivos</span></div>
+<div class="lb" style="left:1030px;top:380px;width:150px">se cruza cuando el tutor pide ver la pantalla</div>
+
+<div style="position:absolute;left:56px;top:612px;width:1788px;height:1px;background:#d9d6cf"></div>
+<div style="position:absolute;left:56px;top:632px;width:560px">
+<div class="ey">Por qué este patrón</div>
+<p style="margin:8px 0 0;font-size:14px;line-height:22px;color:#11243d">Con tres pantallas reales, una pila simple es más clara que pestañas. «Cerrar sesión» queda al final de Inicio y no compite con lo importante.</p>
+</div>
+<div style="position:absolute;left:660px;top:632px;width:1184px">
+<div class="ey">Decisiones propuestas · lámina 09</div>
+<div style="display:flex;gap:40px;margin-top:8px;font-size:14px;line-height:21px;color:#11243d">
+<div style="flex:1">Cerrar sesión pide confirmación con un aviso corto.</div>
+<div style="flex:1">Solo el tutor desvincula; el menor ve una pantalla clara con «Vincular de nuevo».</div>
+<div style="flex:1">Pantalla «Privacidad» enlazada desde Inicio, con lo que NetProtect hace y no hace.</div>
+<div style="flex:1">Sin tema oscuro: solo tema claro.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1900,"height":760}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
