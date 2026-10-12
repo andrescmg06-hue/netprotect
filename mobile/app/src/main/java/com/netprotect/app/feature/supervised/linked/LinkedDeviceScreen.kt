@@ -142,15 +142,17 @@ fun LinkedDeviceScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            Text(
-                                text = (
-                                    lastContact
+                            // Time and dot stay together as one flow item; each keeps its own Text node.
+                            Row {
+                                Text(
+                                    text = lastContact
                                         ?.let { RelativeTime.format(it, now, ZoneId.systemDefault()).replaceFirstChar { c -> c.uppercase() } }
-                                        ?: "Todavía no"
-                                    ) + " ·",
-                                style = NpText.Body,
-                                color = NpColors.Ink,
-                            )
+                                        ?: "Todavía no",
+                                    style = NpText.Body,
+                                    color = NpColors.Ink,
+                                )
+                                Text(text = " ·", style = NpText.Body, color = NpColors.Ink)
+                            }
                             Text(
                                 text = if (reachable) "Conectado" else "Sin conexión",
                                 style = NpText.Body,
