@@ -1,8 +1,11 @@
 package com.netprotect.app.feature.supervised.linked
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +44,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /** Pantalla «Dispositivo vinculado» del modo supervisado. Solo lectura: llama a los callbacks. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LinkedDeviceScreen(
     deviceName: String?,
@@ -132,15 +136,21 @@ fun LinkedDeviceScreen(
                             style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
                             color = NpColors.SlateMuted,
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // FlowRow: at large font scales the status moves to its own line instead of
+                        // being squeezed into the width left over and wrapping letter by letter.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.Center,
+                        ) {
                             Text(
-                                text = lastContact
-                                    ?.let { RelativeTime.format(it, now, ZoneId.systemDefault()).replaceFirstChar { c -> c.uppercase() } }
-                                    ?: "Todavía no",
+                                text = (
+                                    lastContact
+                                        ?.let { RelativeTime.format(it, now, ZoneId.systemDefault()).replaceFirstChar { c -> c.uppercase() } }
+                                        ?: "Todavía no"
+                                    ) + " ·",
                                 style = NpText.Body,
                                 color = NpColors.Ink,
                             )
-                            Text(text = " · ", style = NpText.Body, color = NpColors.Ink)
                             Text(
                                 text = if (reachable) "Conectado" else "Sin conexión",
                                 style = NpText.Body,
