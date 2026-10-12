@@ -95,13 +95,53 @@ Ruta: **inline** = Claude directo; **delegado** = un escritor (subagente) o Deep
   panel** (confirmación verbal, sin captura; no se comprobó si la ruta fue directa o por TURN). H-02 cubierto.
   Punto 3 (fuente grande), parcial: la pantalla 13 partía «Conectado» por letras desde 1.3; corregido con `FlowRow`
   (`615e84d`) y comprobado a 1.3 y 2.0; las otras 16 pantallas, sin revisar. Puntos 2 y 5: sin evidencia todavía. Detalle y comandos en `docs/sprint-51-evidence.md` (T10).
+  **Decisión del dueño (12/10/2026): S51 se cierra reducido.** Lo que falta de T10 queda **pendiente, sin
+  evidencia**, y no se hace en este sprint:
+  - TalkBack en las 17 pantallas;
+  - fuente grande en las 16 pantallas no revisadas;
+  - el título de la pantalla 17 partido a media palabra al 200 %;
+  - las capturas 01, 02, 12, 14, 15 y 16.
+
+  Motivo: el rediseño v2 del supervisado (`docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`, sprints
+  S61–S67) quita el modo tutor de la app y rehace las pantallas del supervisado. S67 repite estas pruebas sobre las
+  pantallas nuevas. Revisar ahora pantallas que se van a borrar o rehacer no aporta evidencia útil.
 - [x] T5 — cerrado con el punto 4 de T10 (H-02, 12/10/2026): la vista remota (WebRTC) funcionó de extremo a extremo
   en el Galaxy con la build `minified` (R8). Evidencia: auditoría del backend y confirmación visual del dueño, sin
   captura (`docs/sprint-51-evidence.md`, T10).
 - [ ] T11 — `security-reviewer` sobre `main...android-redesign`, docs, cierre G-01…G-27 y PR `android-redesign` → `main`.
-  Pendiente tras T10: cerrar G-01…G-27 en `tasks.md` y lecciones en `.claude/rules/android.md` (mecánico, apto
-  para DeepSeek); `/cerrar-sprint 51`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` → `main`
-  (el merge es del dueño).
+  **Avance del 12/10/2026:**
+  - `security-reviewer` hecho: **0 ALTA, 2 MEDIA, 5 BAJA** sobre `origin/main...HEAD` (287 archivos), sin regresión
+    desde la revisión del 02/10/2026. Todo es preexistente salvo (c), que es del S50 y falla en modo seguro. Los
+    hallazgos pasaron a `docs/tasks.md` (B-07…B-11). Tabla y comandos en `docs/sprint-51-evidence.md` (T11).
+  - `verifier` (Android) hecho: `env -u CI ./gradlew test assembleDebug lintDebug assembleRelease` →
+    `BUILD SUCCESSFUL`, 162 tests unitarios sin fallos, `lintDebug` 0 errores. No se ejecutó
+    `connectedDebugAndroidTest` en local (lo valida el job `android-instrumented`). Detalle en
+    `docs/sprint-51-evidence.md` (T11).
+  - Docs de cierre escritas (`tasks.md`, `progress.md`, `README.md`, `CONTINUAR.md`, `.claude/rules/android.md`).
+  - **Pendiente:** push de `sprint-51-cierre`; PR `sprint-51-cierre` → `android-redesign`; PR `android-redesign` →
+    `main` con los 8 jobs de CI en verde (el merge a `main` es del dueño). Requiere que el dueño confirme el push y la
+    apertura de los PR. T11 sigue abierto hasta entonces.
+
+## Criterios de aceptación
+
+Tomados de `docs/android-redesign/sprints/S51-endurecimiento-y-cierre.md:69-77`.
+
+- [x] Inventario de S40: 100 % de puntos presentes o sustituidos a propósito. **Cumplido** (T9): 0 puntos perdidos;
+  `docs/sprint-51-evidence.md` (T9).
+- [x] 0 colores literales fuera de `ui/theme`. **Cumplido:** T2 (`6e69b46`) y `grep` del 12/10/2026 sin salida
+  (`docs/sprint-51-evidence.md`, T11).
+- [ ] TalkBack y fuente 200 % sin bloqueos en las 17 pantallas. **PENDIENTE, requiere a una persona** (el teléfono
+  real). Decisión del dueño (12/10/2026): pasa al S67 del rediseño v2, sobre las pantallas nuevas. Solo la pantalla 13
+  se verificó a 1.3 y 2.0; el título de la pantalla 17 se parte a media palabra a 2.0 y no se corrigió.
+- [x] Rotación y muerte de proceso sin perder la pantalla. **Cumplido** (T8). En modo supervisado los servicios en
+  primer plano mantienen vivo el proceso, así que la muerte real del proceso no ocurre con la app en uso.
+- [x] Release instala y funciona. **Cumplido con matiz:** la build `minified` (configuración release con R8, firmada con
+  la clave de debug y con el backend local) se instaló y funcionó en el Galaxy S25 FE, incluida la vista remota
+  (H-02/T5); `assembleRelease` compila (12/10/2026). La release real de producción (URL de producción, firma de
+  release) no se ha instalado: **pendiente de despliegue**.
+- [x] `security-reviewer` sin hallazgos ALTA sobre todo el rediseño. **Cumplido** (12/10/2026): 0 ALTA.
+- [ ] PR a `main` con CI verde. **Pendiente:** necesita la confirmación del dueño para hacer push y abrir los PR, y que
+  el CI quede en verde.
 
 ## Hallazgos de la auditoría (fase 1)
 
