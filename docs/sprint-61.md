@@ -45,6 +45,18 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   `INVENTARIO.md`, `capability-matrix.md` y el comentario de `QUERY_ALL_PACKAGES` en el manifest. Delegado (**Sonnet**). Hecho (este commit): descripciones actuales ajustadas a «app solo del supervisado»; el historial de sprints anteriores no se tocó.
 - [ ] T5 — Verificación (`verifier`, **Haiku**: `test assembleDebug lintDebug`), `security-reviewer` (**Opus**, flujo de
   roles) y CI. Pendiente humano: login real con una cuenta supervisada y con una que solo es tutor.
+  **Avance (12/10/2026):**
+  - `verifier` sobre `d7345ea`:
+    - comando: `env -u CI ./gradlew clean test assembleDebug assembleDebugAndroidTest lintDebug assembleRelease`;
+    - resultado: `BUILD SUCCESSFUL in 2m 26s`, 84 tests unitarios sin fallos y lint con 0 errores (24 avisos);
+    - las búsquedas de restos del tutor y de colores literales no encuentran nada.
+  - `security-reviewer` sobre `origin/android-redesign...HEAD -- mobile`: **0 ALTA, 1 MEDIA, 1 BAJA.**
+    - MEDIA: cerrar sesión sigue apagando la protección sin aviso. B-07 queda parcial en `tasks.md` (S63 y B-11).
+    - BAJA: la guarda contra el doble toque en `useAsSupervised` leía el estado capturado. Corregido en `f622e54`
+      (compila y los tests JVM pasan).
+  - El rol nunca se concede en silencio a un tutor. La caché va por id de usuario, en `MODE_PRIVATE`, se borra al
+    cerrar sesión y no entra en copias de seguridad. El backend sigue exigiendo SUPERVISADO.
+  - **Pendiente:** CI (incluidos los tests instrumentados de `TutorAccountScreen`) y el login real con las dos cuentas.
 
 ## Criterios de aceptación
 
