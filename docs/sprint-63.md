@@ -32,7 +32,11 @@ Rama `sprint-63-acceso-vincular`, creada desde `android-redesign` (`93ced9e`), e
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
 
 - [x] T1 — Abrir el sprint. Inline. (este commit)
-- [ ] T2 — Errores tipados: `UiError` con los casos de arriba, comprobación de red con `ConnectivityManager` y el permiso
+- [x] T2 — `a755950`. `UiError` con `NoInternet`, `ServiceUnavailable` (sustituye a `Server`), `SessionExpired`, `RateLimited` y `Rejected`; `Offline`
+  desaparece. `NetworkState` (ConnectivityManager, `NET_CAPABILITY_INTERNET` sin exigir VALIDATED, para que un portal cautivo cuente como red)
+  se inicia en `MainActivity`. `RestoreResult.Unreachable(error)` lleva la causa (B4). Un 401 en el login sigue con su mensaje: es una
+  credencial de Google rechazada, no una sesión caducada. `test assembleDebug assembleDebugAndroidTest lintDebug` → BUILD SUCCESSFUL en 3m 1s,
+  105 tests unitarios, lint con 0 errores. Enunciado: Errores tipados: `UiError` con los casos de arriba, comprobación de red con `ConnectivityManager` y el permiso
   `ACCESS_NETWORK_STATE`, mapeo en el login, la restauración de sesión, el chequeo de salud y Vincular, función pura con
   tests JVM. Delegado (**Opus**: red, sesión y un permiso nuevo).
 - [ ] T3 — Pantallas: Carga, Inicio de sesión (con la fotografía y las variantes de error y «Vuelve a entrar»), Vincular
