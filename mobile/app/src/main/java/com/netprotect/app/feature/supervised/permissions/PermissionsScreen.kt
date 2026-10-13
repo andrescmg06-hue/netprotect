@@ -74,10 +74,13 @@ fun PermissionsScreen(
             title = texts.title,
             description = texts.description,
             status = step.status,
-            action = if (step.status == RailStatus.Next) {
+            // Every pending step has its button: the "next" one is primary, the others secondary. With only
+            // one button, a permission the child cannot grant (denied for good) would block the rest.
+            action = if (step.status != RailStatus.Done) {
                 {
                     NpButton(
                         text = texts.actionLabel,
+                        variant = if (step.status == RailStatus.Next) NpButtonVariant.Primary else NpButtonVariant.Secondary,
                         onClick = when (step.permission) {
                             SupervisedPermission.UsageAccess -> onOpenUsageAccessSettings
                             SupervisedPermission.Location -> onRequestLocation

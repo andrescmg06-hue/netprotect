@@ -70,9 +70,11 @@ salir; Permisos vuelve a tener iconos oscuros (`app-real-inicio-barra-clara.png`
 - **No probado con un tutor real:** desvincular desde el panel web (se simuló con la base de datos, que es el mismo dato que lee
   `/devices/me`) ni en el Galaxy S25 FE.
 - **No probado:** TalkBack, «quitar animaciones» y los pasos de batería (S67).
-- **Riesgo de uso, sin resolver:** los pasos «Pendiente» del rail no llevan botón (como en la lámina 04); si el menor deniega para
-  siempre el permiso «siguiente» (p. ej. ubicación), los demás no se alcanzan desde esa pantalla y hay que activarlos en Ajustes.
-  Se detecta al volver a la app. Decidir si todos los pendientes llevan botón.
+- **Riesgo de uso, resuelto por decisión del dueño:** los pasos «Pendiente» del rail no llevaban botón (como la lámina 04), así que si el
+  menor denegaba para siempre el permiso «siguiente» (p. ej. ubicación) los demás no se alcanzaban desde esa pantalla. Ahora todos los
+  pendientes llevan botón (el «siguiente» primario, los demás secundario; `galeria-permisos-pendientes-con-botones-100.png`).
+  `testDebugUnitTest lintDebug connectedDebugAndroidTest` → BUILD SUCCESSFUL en 3m 37s, 147 tests unitarios, lint 0 errores,
+  99 instrumentados con `everyPendingStepHasItsOwnButton` y `withAllPendingEachButtonCallsItsOwnCallback` ejecutados y en verde.
 - **Fuera de alcance, visto:** el aviso `ActiveShareBanner` dice «Tu tutor está viendo esta pantalla» y la lámina 03, «…tu pantalla»
   (lo rehace S65); `heartbeatFailing` del shell ya no se lee (aviso del compilador); el titular de Inicio usa el último contacto
   más reciente entre el latido local y el `last_seen_at` del servidor, y Estado solo el local, así que pueden diferir unos segundos
@@ -100,3 +102,7 @@ que ve el tutor. `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintD
 
 Observación fuera de alcance, ya existía: `PendingRuleEventStore` guarda por `deviceId` eventos con nombres de apps; si se vuelve a
 vincular la misma fila con otro tutor, se le pueden enviar eventos del vínculo anterior. B1 hará más frecuente volver a vincular.
+
+Nota de la galería (solo depuración): al haber varias copias de Inicio a la vez en `ScreensGalleryActivity`, la barra de estado se queda
+con iconos claros sobre fondo crema y la hora se ve apagada en las capturas de la galería; en la app real, con una sola Inicio, el efecto
+pone y restaura el valor como debe (`app-real-inicio-barra-clara.png`, `app-real-permisos.png`).

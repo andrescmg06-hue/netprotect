@@ -57,6 +57,9 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   teléfono pasó solo a «Este dispositivo ya no está vinculado», los servicios bajaron de 2 a 0 y el latido se detuvo; al
   restaurarlo, volvió a «Todo funciona». Defecto encontrado en la app real y corregido: los iconos de la barra de estado sobre el panel
   navy. Evidencia en `docs/sprint-64-evidence.md`. Inline.
+- [x] Decisión posterior (dueño): **todos los permisos pendientes llevan botón**, no solo el «siguiente» como en la lámina 04. El «siguiente» lo lleva
+  primario y los demás secundario; así un permiso que el menor no pueda conceder (p. ej. la ubicación denegada para siempre) no bloquea
+  el resto desde esa pantalla. `PermissionsScreen.kt`, 2 tests de UI. 147 tests unitarios y 99 instrumentados pasan, lint 0 errores.
 - [ ] T6 — `security-reviewer` (**Opus**): **sin hallazgos ALTA**; dos BAJA, ambos arreglados: (1) cualquier 404 de `/devices/me` contaba como
   desvinculación (un 404 de un proxy en un despliegue habría parado los servicios de todos los teléfonos): ahora solo el 404 con
   `detail = not_linked` (`isNotLinkedAnswer`, 3 tests JVM); (2) el descarte de respuestas tardías de `refreshLink` comparaba por

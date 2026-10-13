@@ -11,8 +11,8 @@ data class PermissionStep(val permission: SupervisedPermission, val status: Rail
 
 /**
  * Rail order of lámina 04: pending permissions first, then the configured ones, each group in the
- * canonical order of [SupervisedPermission]. The first pending one is the [RailStatus.Next] step — the
- * only one with a button — so the child always has exactly one thing to do.
+ * canonical order of [SupervisedPermission]. The first pending one is the [RailStatus.Next] step, the one
+ * the child should do first; every pending step still has its own button.
  */
 fun permissionSteps(permissions: PermissionsUi): List<PermissionStep> {
     val granted = SupervisedPermission.entries.associateWith { permissions.isGranted(it) }

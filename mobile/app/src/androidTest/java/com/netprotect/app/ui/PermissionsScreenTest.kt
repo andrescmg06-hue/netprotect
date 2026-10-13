@@ -16,7 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Permisos (lámina 04), Sprint 64: rail with the pending permissions first and one button, on the next one. */
+/** Permisos (lámina 04), Sprint 64: rail with the pending permissions first, a button on each pending step. */
 class PermissionsScreenTest {
 
     @get:Rule
@@ -59,18 +59,25 @@ class PermissionsScreenTest {
     }
 
     @Test
-    fun onlyTheNextStepHasAButtonAndItRequestsThatPermission() {
+    fun everyPendingStepHasItsOwnButton() {
         set()
-        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(1)
-        composeRule.onNodeWithText("Activar en Ajustes").performScrollTo().performClick()
-        assertEquals(listOf("requestOverlay"), calls)
+        // Overlay is the next step, device admin the other pending one: two buttons, each with its own callback.
+        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(2)
+        composeRule.onAllNodesWithText("Activar en Ajustes")[0].performScrollTo().performClick()
+        composeRule.onAllNodesWithText("Activar en Ajustes")[1].performScrollTo().performClick()
+        assertEquals(listOf("requestOverlay", "requestDeviceAdmin"), calls)
     }
 
     @Test
-    fun eachPermissionAsNextCallsItsOwnCallback() {
+    fun withAllPendingEachButtonCallsItsOwnCallback() {
         set(permissions = PermissionsUi(usageAccess = false, location = false, overlay = false, deviceAdmin = false))
-        composeRule.onNodeWithText("Activar en Ajustes").performScrollTo().performClick()
-        assertEquals(listOf("openUsage"), calls)
+        // Usage access, overlay and device admin say "Activar en Ajustes"; location asks for the approximate one.
+        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(3)
+        composeRule.onNodeWithText("Permitir ubicación aproximada").performScrollTo().performClick()
+        composeRule.onAllNodesWithText("Activar en Ajustes")[0].performScrollTo().performClick()
+        composeRule.onAllNodesWithText("Activar en Ajustes")[1].performScrollTo().performClick()
+        composeRule.onAllNodesWithText("Activar en Ajustes")[2].performScrollTo().performClick()
+        assertEquals(listOf("requestLocation", "openUsage", "requestOverlay", "requestDeviceAdmin"), calls)
     }
 
     @Test
