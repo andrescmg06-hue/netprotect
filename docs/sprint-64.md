@@ -28,8 +28,10 @@ Rama `sprint-64-inicio-permisos`, creada desde `android-redesign` (`527deac`), e
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
 
 - [x] T1 — Abrir el sprint. Inline. (este commit)
-- [ ] T2 — Regla §2.3 pura con U = 300 s, usada también por Estado, con tests JVM. Delegado (**Opus**: regla de producto que ve
-  el menor).
+- [x] T2 — `4262686`. `homeStatus(pendingPermissions, lastHeartbeatOk, now)` (`AllWorking`, `MissingStep(n)`, `NoRecentReport`) con
+  los textos de §03 y el singular, y `isReportRecent` + `REPORT_STALE_AFTER_SECONDS = 300` compartidos por Inicio y Estado
+  (antes 180 s). El límite exacto de 300 s cuenta como reciente. `testDebugUnitTest lintDebug --rerun-tasks` (sin caché) →
+  BUILD SUCCESSFUL, 128 tests, 0 fallos, lint con 0 errores. Delegado (Opus).
 - [ ] T3 — Shell: B1 (`/devices/me` en `ON_RESUME` y cada 5 min), estado `Unlinked`, `Linked` con identidad estable y estado
   de presentación aparte. Delegado (**Opus**: G-19, servicios y sesión).
 - [ ] T4 — Pantallas: Inicio con `NpHeroPanel`, Permisos con `NpRail`, `UnlinkedScreen`, frames de galería y tests.
