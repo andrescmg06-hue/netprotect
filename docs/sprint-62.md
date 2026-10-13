@@ -42,10 +42,11 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   vez), `NpRail` (recorrido vertical con el siguiente paso resaltado), `NpButton` v2 (≥ 60 dp, ficha de flecha) y
   `StatusPill` como chip. Incluye las secciones de `DesignGallery` y sus tests. Delegado (**Opus**: oficio visual y
   Canvas).
-- [ ] T4 — Revisión visual: galerías en el emulador comparadas con la lámina 09 y con los componentes de las láminas
+- [x] T4 — Hecha en el emulador `Pixel_8` a 1.0 y a 2.0: coincide con las láminas 03 y 04 y no se corta ni se parte ninguna palabra.
+  Capturas y diferencias en `docs/sprint-62-evidence.md`. «Quitar animaciones» y TalkBack quedan pendientes. Enunciado: Revisión visual: galerías en el emulador comparadas con la lámina 09 y con los componentes de las láminas
   03 y 04, letra al 200 % y «quitar animaciones». Inline (DeepSeek y los subagentes no ven imágenes). Las correcciones
   van en un lote, delegado.
-- [ ] T5 — `verifier` (**Haiku**: `test assembleDebug assembleDebugAndroidTest lintDebug`) y CI. Sin
+- [x] T5 — CI del PR #20 con los 8 jobs en verde y 77 tests instrumentados; el build completo se ejecutó en T2 y T3. Enunciado: `verifier` (**Haiku**: `test assembleDebug assembleDebugAndroidTest lintDebug`) y CI. Sin
   `security-reviewer`: el sprint no toca auth, red, servicios ni datos.
 
 ## Criterios de aceptación
