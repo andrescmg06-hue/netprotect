@@ -1,5 +1,6 @@
 package com.netprotect.app.core.network
 
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
@@ -48,3 +49,9 @@ class InfrastructureHealthClient(
         }
     }
 }
+
+/** Sprint 63: what the login says when [InfrastructureHealthClient.check] fails. An I/O failure is
+ * "no Internet" or "service down" depending on the phone's network; anything else (non-2xx, not
+ * ready, malformed answer) means the service answered but is not usable. */
+fun Throwable.toHealthUiError(online: () -> Boolean = NetworkState::isOnline): UiError =
+    if (this is IOException) classifyIoFailure(online()) else UiError.ServiceUnavailable

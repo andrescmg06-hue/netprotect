@@ -40,6 +40,7 @@ import com.netprotect.app.core.network.InfrastructureHealth
 import com.netprotect.app.core.network.InfrastructureHealthClient
 import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
+import com.netprotect.app.core.network.toHealthUiError
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.feature.supervised.SupervisedShell
 import kotlinx.coroutines.CancellationException
@@ -60,7 +61,7 @@ private sealed interface HomeState {
 private sealed interface InfraState {
     data object Checking : InfraState
     data class Ready(val health: InfrastructureHealth) : InfraState
-    data class Error(val message: String) : InfraState
+    data class Error(val error: UiError) : InfraState
 }
 
 /** Top-level router. The app is supervised-only (Sprint 61, B-07): there is no mode choice.
@@ -148,7 +149,7 @@ fun HomeScreen() {
                 state = HomeState.SignedOut()
                 return@launch
             } catch (exception: Exception) {
-                state = HomeState.SignedOut(exception.message ?: "No se pudo iniciar sesión")
+                state = HomeState.SignedOut(signInErrorMessage(exception))
                 return@launch
             }
             resolveRole(user)
@@ -181,7 +182,7 @@ fun HomeScreen() {
         when (val result = authRepository.restoreSession()) {
             is RestoreResult.Restored -> resolveRole(result.user)
             RestoreResult.NoSession -> state = HomeState.SignedOut()
-            RestoreResult.Unreachable -> state = HomeState.SignedOut(UiError.Offline.message)
+            is RestoreResult.Unreachable -> state = HomeState.SignedOut(result.error.message)
         }
     }
 
@@ -209,7 +210,7 @@ fun HomeScreen() {
                     if (authRepository.session.hasStoredSession()) restore()
                 }
             } catch (exception: Exception) {
-                InfraState.Error(exception.message ?: "No fue posible contactar la API")
+                InfraState.Error(exception.toHealthUiError())
             }
         }
     }
@@ -219,7 +220,8 @@ fun HomeScreen() {
         when (val current = state) {
             HomeState.Loading -> LoadingScreen()
             is HomeState.SignedOut -> LoginScreen(
-                error = current.error,
+                // Sprint 63: with no error of its own, the login shows the health check's cause.
+                error = current.error ?: (infraState as? InfraState.Error)?.error?.message,
                 service = when (infraState) {
                     InfraState.Checking -> ServiceStatus.Checking
                     is InfraState.Ready -> ServiceStatus.Ready

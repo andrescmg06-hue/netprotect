@@ -63,14 +63,14 @@ fun ScreensGallery() {
         ScreenFrame("TutorAccountScreen · error") {
             TutorAccountScreen(
                 loading = false,
-                error = "Sin conexión con el servidor. Revisa tu conexión e intenta de nuevo.",
+                error = "No hay conexión a Internet. Comprueba tu conexión e inténtalo de nuevo.",
                 onUseAsSupervised = {},
                 onSignOut = {},
             )
         }
         ScreenFrame("RoleCheckFailedScreen") {
             RoleCheckFailedScreen(
-                message = "El servidor tuvo un problema. Intenta de nuevo en unos minutos.",
+                message = "NetProtect no puede conectarse al servicio ahora. Inténtalo de nuevo en unos momentos.",
                 onRetry = {},
                 onSignOut = {},
             )
