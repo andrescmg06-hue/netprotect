@@ -40,12 +40,25 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 2m 6s,
   162 tests, 0 fallos, lint con 0 errores. Delegado (Opus). Fuera de T2, a T3 y T5: derivar `CONSENT_TIMEOUT_MS` de la ventana;
   los 3 pasos de la lámina; mostrar la hora del último reporte de ubicación (`ServicesView` no tiene el campo).
-- [ ] T3 — Shell: guardar la hora de la solicitud, cuenta atrás, `screen_share_stop` con motivo `dismissed` (Atrás) y `expired`
-  (caducidad), sin tocar las claves de los efectos de servicio. Delegado (**Opus**: G-19, realtime y consentimiento).
-- [ ] T4 — Web: motivos `expired` y `dismissed` en `describeStopReason`, límite de espera en `requesting`, y test de backend de
-  `screen_share_stop` con motivo. Delegado (**Sonnet**).
-- [ ] T5 — Pantallas: consentimiento en 3 pasos con cuenta atrás, Estado restilado (panel «En curso», «Detener ahora»), banner,
-  textos de los avisos, intent de la notificación de vista remota, frames de galería y tests. Delegado (**Opus**: oficio visual).
+- [x] T3 — `2b2de18`, `05e792d`. `consentRequestedAt` es estado de presentación (no clave de ningún efecto de servicio); las transiciones de la solicitud
+  (`Requested`, `Answered`, `Back`, `Tick`, `Stopped`) son un reducer puro, `consentStep`, con 8 tests JVM. «Atrás» envía
+  `screen_share_stop` con `reason = dismissed` y la caducidad (120 s) `expired`; «Ahora no» sigue con `granted=false`; «Continuar» limpia la
+  solicitud sin enviar nada para que la caducidad no mande `expired` tras un sí. El envío es de mejor esfuerzo y sin cola: con el socket
+  caído el tutor no se entera y la solicitud se cierra igual en el teléfono. `CONSENT_TIMEOUT_MS` desaparece (el plazo sale de
+  `CONSENT_WINDOW_SECONDS`). Los 11 efectos de servicio del shell conservan su clave. `testDebugUnitTest assembleDebug
+  assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 2m 25s, 170 tests, 0 fallos, lint con 0 errores.
+  Delegado (Opus). Para T5: tras «Continuar» la pantalla de consentimiento queda detrás del diálogo de Android con
+  `consentRequestedAt` en nulo, y no debe mostrar cuenta atrás.
+- [x] T4 — `6a1a4f9`, `31bc2af`. Web: `RemoteViewPanel` entiende `expired` y `dismissed` y tiene un límite de espera de 135 s en `requesting`
+  (`REQUEST_WAIT_LIMIT_MS`, 120 s + 15 s de margen) que cierra con `teardown(true)`, la misma ruta que «Detener», que libera el hueco del
+  tutor; `eslint` y `tsc` pasan, `next build` no se pudo correr localmente (enlace de `node_modules`) y lo cubre el CI. Backend: test
+  `test_a_device_stop_before_answering_is_relayed_and_frees_the_slot` (`dismissed` y `expired`; una segunda conexión de tutor no recibe
+  `screen_share_busy`); `make test` en contenedor → **287 passed**, 0 fallos (285 antes + 2). Sin cambios de código de producción del
+  backend. Sin test de componente para el temporizador de 135 s. Delegado (Sonnet).
+- [ ] T5a — Pantallas: consentimiento en 3 pasos con cuenta atrás, Estado restilado (panel «En curso», «Detener ahora»), banner, textos
+  corregidos, frames de galería y tests. Delegado (**Opus**: oficio visual).
+- [ ] T5b — Avisos permanentes: textos de las tres notificaciones (control de apps, ubicación, vista remota) y `PendingIntent` inmutable que abre la
+  app al tocar la de vista remota. Toca los servicios, sin cambiar sus efectos. Delegado (**Opus**).
 - [ ] T6 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 05 y 06, y la **prueba G-19** (3 min navegando,
   `dumpsys activity services com.netprotect.app`, latido en el backend). Inline.
 - [ ] T7 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: consentimiento, realtime y servicios), CI y PR.
