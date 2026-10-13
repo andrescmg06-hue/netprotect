@@ -1,5 +1,6 @@
 package com.netprotect.app.feature.supervised.linked
 
+import android.app.Activity
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,14 +27,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.netprotect.app.core.status.isReportRecent
 import com.netprotect.app.ui.components.NpButton
 import com.netprotect.app.ui.components.NpHeroPanel
@@ -69,6 +73,7 @@ fun LinkedDeviceScreen(
     val reportRecent = isReportRecent(lastContact, now)
     val readyCount = (SEAL_ARC_COUNT - pendingPermissions).coerceIn(0, SEAL_ARC_COUNT)
     val actionLabel = homeStatusAction(status)
+    LightStatusBarIcons()
 
     Column(
         modifier = modifier
@@ -334,6 +339,27 @@ private fun SideBySideOrStacked(first: @Composable () -> Unit, second: @Composab
                 line.placeRelative(0, a.height)
                 b.placeRelative(0, a.height + lineDp)
             }
+        }
+    }
+}
+
+/**
+ * The navy panel of Inicio sits under the status bar, and the activity's bar style (dark icons, for the
+ * cream screens) would leave the clock unreadable there. Light icons while Inicio is on screen; the
+ * previous appearance comes back when it leaves. Does nothing outside an activity (previews, tests).
+ */
+@Composable
+private fun LightStatusBarIcons() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        if (window == null) {
+            onDispose { }
+        } else {
+            val controller = WindowCompat.getInsetsController(window, view)
+            val previous = controller.isAppearanceLightStatusBars
+            controller.isAppearanceLightStatusBars = false
+            onDispose { controller.isAppearanceLightStatusBars = previous }
         }
     }
 }
