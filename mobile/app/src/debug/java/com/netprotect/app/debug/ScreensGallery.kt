@@ -37,6 +37,7 @@ import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
+import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
@@ -56,6 +57,10 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 64 (al principio para las capturas) ----
+        ScreenFrame("UnlinkedScreen") {
+            UnlinkedScreen(onRelink = {}, onSignOut = {})
+        }
         // ---- Sprint 63 (al principio para las capturas). Sin Dialog: el diálogo se muestra como tarjeta. ----
         ScreenFrame("LoadingScreen") {
             LoadingScreen()

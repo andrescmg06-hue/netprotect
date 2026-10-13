@@ -55,6 +55,7 @@ import com.netprotect.app.core.sync.SyncWorker
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
+import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
@@ -62,12 +63,16 @@ import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.ui.components.LoadingState
 import com.netprotect.app.ui.theme.NpColors
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 private const val HEARTBEAT_INTERVAL_MS = 60_000L
 private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
+
+/** Sprint 64 (B1): how often `/devices/me` is asked while linked, besides every ON_RESUME. */
+private const val LINK_CHECK_INTERVAL_MS = 5 * 60_000L
 
 /** Sprint 50: a request nobody answers closes by itself — the backend doesn't tell the device when
  * the tutor just closes the tab. Nothing is sent: a "no" is never sent on the child's behalf. */
@@ -76,7 +81,12 @@ private const val CONSENT_TIMEOUT_MS = 2 * 60_000L
 private sealed interface SupervisedState {
     data object CheckingLink : SupervisedState
     data class EnteringCode(val error: String? = null) : SupervisedState
-    data class Linked(val tutorLabel: String) : SupervisedState
+    /** Sprint 64 (G-19): only the device's identity, which every service is started with. The tutors
+     * and everything else a refresh can change live in separate presentation state. */
+    data class Linked(val deviceId: String) : SupervisedState
+    /** Sprint 64 (B1): the server said this device is no longer linked. Not [EnteringCode]: that one
+     * means it was never linked (or the person chose to link again). */
+    data object Unlinked : SupervisedState
 }
 
 /**
@@ -85,9 +95,10 @@ private sealed interface SupervisedState {
  * heartbeat loop, the app sync loop, RuleEnforcementService, LocationReportingService, the
  * realtime socket for screen-share requests, SyncWorker and the permission launchers.
  *
- * The one rule that keeps them alive: every effect is keyed on [SupervisedState] and the
- * permission flags, and **nothing else**. Navigation ([SupervisedRoute]) and what the screens
- * display ([MyDeviceInfo], last heartbeat) are separate state that no effect reads as a key, and
+ * The one rule that keeps them alive: every effect is keyed on the linked device's identity (the
+ * `deviceId` inside `SupervisedState.Linked`) and the permission flags, and **nothing else**.
+ * Navigation ([SupervisedRoute]) and what the screens display ([MyDeviceInfo], the tutors, last
+ * heartbeat) are separate state that no effect reads as a key, and
  * this composable never leaves the composition while the mode is on — so going from "Dispositivo
  * vinculado" to "Permisos" and back never disposes a service. Do not put anything that changes
  * over time inside `SupervisedState.Linked`: every change would restart (stop + start) all of them.
@@ -126,6 +137,12 @@ fun SupervisedShell(
     var linking by remember { mutableStateOf(false) }
     var rechecking by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(Instant.now()) }
+    // Sprint 64 (G-19): the tutors' names, refreshed by B1 — presentation only, never an effect key.
+    var tutorLabel by remember { mutableStateOf<String?>(null) }
+
+    // The only key the service effects below use: null in every state but Linked, and stable while
+    // linked — a B1 refresh that changes the tutors leaves it untouched.
+    val linkedDeviceId = (state as? SupervisedState.Linked)?.deviceId
 
     // Android's own screen-capture consent dialog. Deliberately launched only from the card
     // below, never automatically: the tutor's request is what makes the card appear, and the
@@ -175,8 +192,8 @@ fun SupervisedShell(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
-    LaunchedEffect(state) {
-        if (state is SupervisedState.Linked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    LaunchedEffect(linkedDeviceId != null) {
+        if (linkedDeviceId != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -200,43 +217,112 @@ fun SupervisedShell(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Any failure (offline, timeout, 5xx, unreadable body) becomes a failed Result, which
+    // classifyLinkCheck never reads as an unlink. Cancellation is not a failure: it propagates.
+    suspend fun fetchMyDevice(): Result<MyDeviceInfo?> = try {
+        // Sprint 48 (B-01): say which install this is — one account can own several rows.
+        Result.success(session.authorized { token -> deviceClient.getMyDevice(token, deviceInstanceId) })
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (exception: Exception) {
+        Result.failure(exception)
+    }
+
+    // Sprint 64 (B1): the only way out of Linked besides signing out. Clearing the cache and leaving
+    // Linked lets the effects' onDispose stop the services, the socket, the heartbeat and SyncWorker.
+    fun enterUnlinked() {
+        LinkedDeviceStore.clear(context)
+        deviceInfo = null
+        tutorLabel = null
+        screenShareRequested = false
+        route = SupervisedRoute.Linked
+        // Linking again starts from "no report yet", not from the old link's last heartbeat.
+        lastHeartbeatOk = null
+        heartbeatFailing = false
+        // A share must not outlive the link it was authorised under.
+        if (ServiceStatusRegistry.status.value.screenShareActive) ScreenShareService.requestStop(context)
+        state = SupervisedState.Unlinked
+    }
+
     // The local cache is only a UI shortcut. On every start we ask the server who this
     // account's device actually is: a different Google account signing into the same phone,
     // or a tutor unlinking it remotely, would otherwise leave a stale cache pointing at a
     // device_id that no longer belongs to this session.
     suspend fun checkLink() {
         val cached = LinkedDeviceStore.read(context)
-        state = try {
-            // Sprint 48 (B-01): say which install this is — one account can own several rows.
-            val mine = session.authorized { token -> deviceClient.getMyDevice(token, deviceInstanceId) }
-            deviceInfo = mine
-            val tutorLabel = mine?.tutorLabel
-            // The device row can outlive every tutor link (all of them unlinked): /devices/me
-            // still answers 200 in that case, with an empty tutor list. That is not "linked" —
-            // treat it the same as no device at all, so the user can redeem a new code instead
-            // of getting stuck on a "linked, but to no one" screen with no way out.
-            if (mine != null && tutorLabel != null) {
-                LinkedDeviceStore.write(context, mine.deviceId, tutorLabel)
-                SupervisedState.Linked(tutorLabel)
-            } else {
-                LinkedDeviceStore.clear(context)
-                SupervisedState.EnteringCode()
+        when (val check = classifyLinkCheck(fetchMyDevice())) {
+            is LinkCheck.Linked -> {
+                deviceInfo = check.info
+                tutorLabel = check.tutorLabel
+                LinkedDeviceStore.write(context, check.deviceId, check.tutorLabel)
+                state = SupervisedState.Linked(check.deviceId)
             }
-        } catch (exception: Exception) {
+            // The device row can outlive every tutor link: /devices/me then answers 200 with an empty
+            // tutor list, which is not "linked" either. With a cache this phone was linked, so the
+            // tutor ended it (B1); without one it simply never was.
+            LinkCheck.Unlinked -> if (cached != null) {
+                enterUnlinked()
+            } else {
+                deviceInfo = null
+                state = SupervisedState.EnteringCode()
+            }
             // Couldn't reach the server (offline, timeout): trust the cache rather than
             // forcing this device to re-pair just because of a transient network hiccup.
-            cached?.let { SupervisedState.Linked(it.tutorLabel) } ?: SupervisedState.EnteringCode()
+            LinkCheck.Inconclusive -> {
+                tutorLabel = cached?.tutorLabel
+                state = cached?.let { SupervisedState.Linked(it.deviceId) } ?: SupervisedState.EnteringCode()
+            }
+        }
+    }
+
+    // Sprint 64 (B1): the periodic and ON_RESUME re-check while linked. A refresh with tutors only
+    // updates presentation state; linkedDeviceId changes only if the identity really changed
+    // (changesLinkIdentity), so it never restarts a service (G-19). A failure changes nothing.
+    suspend fun refreshLink() {
+        val linked = state as? SupervisedState.Linked ?: return
+        val check = classifyLinkCheck(fetchMyDevice())
+        // The state moved while the request was in flight: this answer no longer applies.
+        if (state != linked) return
+        when (check) {
+            is LinkCheck.Linked -> {
+                deviceInfo = check.info
+                tutorLabel = check.tutorLabel
+                LinkedDeviceStore.write(context, check.deviceId, check.tutorLabel)
+                if (changesLinkIdentity(linked.deviceId, check)) state = SupervisedState.Linked(check.deviceId)
+            }
+            LinkCheck.Unlinked -> enterUnlinked()
+            LinkCheck.Inconclusive -> Unit
         }
     }
     LaunchedEffect(Unit) { checkLink() }
+
+    // Sprint 64 (B1): coming back to the app re-asks the server whether the link still exists. Keyed
+    // on the lifecycle owner only, like the permission observer above.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && state is SupervisedState.Linked) {
+                scope.launch { refreshLink() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // The first re-check waits a full interval: checkLink or the pairing has just asked.
+    LaunchedEffect(linkedDeviceId) {
+        if (linkedDeviceId == null) return@LaunchedEffect
+        while (true) {
+            delay(LINK_CHECK_INTERVAL_MS)
+            refreshLink()
+        }
+    }
 
     // Sends a heartbeat immediately once linked, then every HEARTBEAT_INTERVAL_MS while this
     // shell stays composed — a tighter cadence than SyncWorker's 15-minute background floor
     // (below) can offer, so this keeps running whenever the app happens to be in the foreground
     // instead of stepping aside for it.
-    LaunchedEffect(state) {
-        val linked = state as? SupervisedState.Linked ?: return@LaunchedEffect
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
+    LaunchedEffect(linkedDeviceId) {
+        val deviceId = linkedDeviceId ?: return@LaunchedEffect
         while (true) {
             val sent = runCatching {
                 session.authorized { token ->
@@ -269,10 +355,9 @@ fun SupervisedShell(
     // reading the full app list and today's usage is heavier than a plain ping. Gated on
     // hasUsageAccess: the app list alone needs no permission, but sending it without usage
     // numbers would be a half-finished sync, so both wait for the same signal.
-    LaunchedEffect(state, hasUsageAccess) {
-        state as? SupervisedState.Linked ?: return@LaunchedEffect
+    LaunchedEffect(linkedDeviceId, hasUsageAccess) {
+        val deviceId = linkedDeviceId ?: return@LaunchedEffect
         if (!hasUsageAccess) return@LaunchedEffect
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId ?: return@LaunchedEffect
         while (true) {
             runCatching {
                 session.authorized { token ->
@@ -293,10 +378,9 @@ fun SupervisedShell(
     // foreground — the whole point is catching when the supervised user opens some other app.
     // A foreground service, not a LaunchedEffect, is what makes that possible; see
     // RuleEnforcementService. Same hasUsageAccess gate as the sync above.
-    DisposableEffect(state, hasUsageAccess) {
-        val linked = state as? SupervisedState.Linked
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId
-        if (linked != null && hasUsageAccess && deviceId != null) {
+    DisposableEffect(linkedDeviceId, hasUsageAccess) {
+        val deviceId = linkedDeviceId
+        if (hasUsageAccess && deviceId != null) {
             RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
         }
         onDispose { RuleEnforcementService.stop(context) }
@@ -305,10 +389,9 @@ fun SupervisedShell(
     // Independent gate from the rule-enforcement service above: reporting location doesn't need
     // usage access, and enforcing rules doesn't need location. Same foreground-start requirement
     // (see LocationReportingService): this effect only fires while the shell is composed.
-    DisposableEffect(state, hasLocationPermission) {
-        val linked = state as? SupervisedState.Linked
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId
-        if (linked != null && hasLocationPermission && deviceId != null) {
+    DisposableEffect(linkedDeviceId, hasLocationPermission) {
+        val deviceId = linkedDeviceId
+        if (hasLocationPermission && deviceId != null) {
             LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
         }
         onDispose { LocationReportingService.stop(context) }
@@ -320,10 +403,8 @@ fun SupervisedShell(
     // ScreenShareService opens its own connection for the session itself.
     // Sprint 50 (B-02): it now reconnects by itself (growing waits up to 30 s, a fresh valid token
     // as the first frame each time), so a request sent after a network drop is no longer lost.
-    DisposableEffect(state) {
-        val linked = state as? SupervisedState.Linked
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId
-        if (linked == null || deviceId == null) return@DisposableEffect onDispose { }
+    DisposableEffect(linkedDeviceId) {
+        val deviceId = linkedDeviceId ?: return@DisposableEffect onDispose { }
 
         val channel = ReconnectingRealtimeChannel(
             baseUrl = BuildConfig.API_BASE_URL,
@@ -347,10 +428,9 @@ fun SupervisedShell(
     // Sprint 19: the background counterpart to the heartbeat/app-sync loops above — same data,
     // sent by SyncWorker on WorkManager's own schedule so it keeps happening while the app isn't
     // in the foreground. No permission gate: SyncWorker checks usage access itself.
-    DisposableEffect(state) {
-        val linked = state as? SupervisedState.Linked
-        val deviceId = LinkedDeviceStore.read(context)?.deviceId
-        if (linked != null && deviceId != null) {
+    DisposableEffect(linkedDeviceId) {
+        val deviceId = linkedDeviceId
+        if (deviceId != null) {
             SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
         }
         onDispose { SyncWorker.cancel(context) }
@@ -430,7 +510,8 @@ fun SupervisedShell(
                                 LinkedDeviceStore.write(context, result.deviceId, label)
                                 codeInput = ""
                                 route = SupervisedRoute.Linked
-                                state = SupervisedState.Linked(label)
+                                tutorLabel = label
+                                state = SupervisedState.Linked(result.deviceId)
                                 // Names and last contact for the linked screen; failures just leave
                                 // the pairing answer's data on screen.
                                 runCatching {
@@ -459,11 +540,20 @@ fun SupervisedShell(
                 onSignOut = { scope.launch { onSignOut() } },
             )
 
+            SupervisedState.Unlinked -> UnlinkedScreen(
+                onRelink = {
+                    codeInput = ""
+                    state = SupervisedState.EnteringCode()
+                },
+                // No confirmation: nothing is protecting this phone any more.
+                onSignOut = { scope.launch { onSignOut() } },
+            )
+
             is SupervisedState.Linked -> when (route) {
                 SupervisedRoute.Linked -> LinkedDeviceScreen(
                     deviceName = deviceInfo?.deviceName,
                     androidVersion = Build.VERSION.RELEASE,
-                    tutors = deviceInfo?.tutors?.takeIf { it.isNotEmpty() } ?: listOf(current.tutorLabel),
+                    tutors = deviceInfo?.tutors?.takeIf { it.isNotEmpty() } ?: listOfNotNull(tutorLabel),
                     lastContact = lastContact(lastHeartbeatOk, deviceInfo?.lastSeenAt),
                     reachable = !heartbeatFailing,
                     now = now,
