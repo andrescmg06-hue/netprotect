@@ -40,8 +40,8 @@ import com.netprotect.app.ui.theme.NpText
 
 /**
  * «Más ajustes» del modo supervisado (lámina 10). Sprint 63: solo «Cerrar sesión», que pide confirmación
- * antes de llamar a [onSignOut], y la nota de que solo el tutor puede desvincular. «Privacidad» llega con
- * su pantalla (S66); «Cambiar de modo» está por validar y no se muestra.
+ * antes de llamar a [onSignOut], y la nota de que solo el tutor puede desvincular. «Privacidad» no está aquí:
+ * se abre desde Inicio (decisión 4, S66); «Cambiar de modo» se eliminó (PLAN §1, pregunta 13).
  */
 @Composable
 fun MoreSettingsScreen(

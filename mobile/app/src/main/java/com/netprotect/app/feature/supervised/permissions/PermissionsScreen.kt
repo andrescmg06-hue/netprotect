@@ -46,7 +46,8 @@ import com.netprotect.app.ui.theme.NpText
 
 /**
  * Permisos del modo supervisado (lámina 04): a rail with the pending permissions first and the next one
- * highlighted with its button. Only calls the callbacks; the shell launches every Intent and permission.
+ * highlighted with its button, and «Ver detalle» under each one. Only calls the callbacks; the shell launches
+ * every Intent and permission.
  */
 @Composable
 fun PermissionsScreen(
@@ -58,6 +59,7 @@ fun PermissionsScreen(
     onRequestOverlay: () -> Unit,
     onRecheckOverlay: () -> Unit,
     onRequestDeviceAdmin: () -> Unit,
+    onOpenDetail: (SupervisedPermission) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -76,23 +78,26 @@ fun PermissionsScreen(
             status = step.status,
             // Every pending step has its button: the "next" one is primary, the others secondary. With only
             // one button, a permission the child cannot grant (denied for good) would block the rest.
-            action = if (step.status != RailStatus.Done) {
-                {
-                    NpButton(
-                        text = texts.actionLabel,
-                        variant = if (step.status == RailStatus.Next) NpButtonVariant.Primary else NpButtonVariant.Secondary,
-                        onClick = when (step.permission) {
-                            SupervisedPermission.UsageAccess -> onOpenUsageAccessSettings
-                            SupervisedPermission.Location -> onRequestLocation
-                            SupervisedPermission.Overlay -> onRequestOverlay
-                            SupervisedPermission.DeviceAdmin -> onRequestDeviceAdmin
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = NpIcons.ExternalLink,
-                    )
+            // Every step, pending or configured, also links to its detail (lámina 11).
+            action = {
+                Column {
+                    if (step.status != RailStatus.Done) {
+                        NpButton(
+                            text = texts.actionLabel,
+                            variant = if (step.status == RailStatus.Next) NpButtonVariant.Primary else NpButtonVariant.Secondary,
+                            onClick = when (step.permission) {
+                                SupervisedPermission.UsageAccess -> onOpenUsageAccessSettings
+                                SupervisedPermission.Location -> onRequestLocation
+                                SupervisedPermission.Overlay -> onRequestOverlay
+                                SupervisedPermission.DeviceAdmin -> onRequestDeviceAdmin
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = NpIcons.ExternalLink,
+                        )
+                        Spacer(Modifier.height(NpSpace.Xs))
+                    }
+                    DetailAction(title = texts.title, onClick = { onOpenDetail(step.permission) })
                 }
-            } else {
-                null
             },
         )
     }
@@ -154,32 +159,29 @@ fun PermissionsScreen(
     }
 }
 
-/** Texts of one permission, literal from 02_PANTALLAS §04. */
-private class PermissionTexts(val title: String, val description: String, val actionLabel: String)
-
-private fun permissionTexts(permission: SupervisedPermission): PermissionTexts = when (permission) {
-    SupervisedPermission.UsageAccess -> PermissionTexts(
-        title = "Acceso al uso de apps",
-        description = "Permite saber cuánto tiempo se usan las apps y aplicar las reglas de tu tutor.",
-        actionLabel = "Activar en Ajustes",
-    )
-    // Location is Android's own dialog, not a Settings screen: "Activar en Ajustes" would be false.
-    SupervisedPermission.Location -> PermissionTexts(
-        title = "Ubicación aproximada",
-        description = "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
-        actionLabel = "Permitir ubicación aproximada",
-    )
-    SupervisedPermission.Overlay -> PermissionTexts(
-        title = "Mostrar sobre otras apps",
-        description = "Necesario para mostrar la pantalla de bloqueo cuando corresponda.",
-        actionLabel = "Activar en Ajustes",
-    )
-    // Pending question 7: the text says it warns the tutor, never that it prevents uninstalling.
-    SupervisedPermission.DeviceAdmin -> PermissionTexts(
-        title = "Protección contra desinstalación",
-        description = "Avisa a tu tutor si alguien intenta desinstalar NetProtect.",
-        actionLabel = "Activar en Ajustes",
-    )
+/** «Ver detalle»: the quiet 14 sp / 48 dp action of LinkDeviceScreen. The click label names the permission,
+ * since TalkBack would otherwise hear four identical «Ver detalle». */
+@Composable
+private fun DetailAction(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClickLabel = "Ver detalle de $title", onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Ver detalle",
+            style = NpText.BodySm.copy(fontWeight = FontWeight.SemiBold),
+            color = NpColors.BlueText,
+        )
+        Spacer(Modifier.width(NpSpace.Xs))
+        Icon(
+            painter = painterResource(NpIcons.ChevronRight),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = NpColors.BlueText,
+        )
+    }
 }
 
 @Composable
