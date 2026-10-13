@@ -1,5 +1,6 @@
 package com.netprotect.app.core.status
 
+import com.netprotect.app.core.location.LocationReportingService
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,9 @@ data class ServiceStatus(
     val lastHeartbeatOk: Instant? = null,
     val enforcementRunning: Boolean = false,
     val locationRunning: Boolean = false,
+    /** Instant of the last location report the backend accepted (B2). Only the instant: never the
+     * location itself. Null until the first success of the current run. */
+    val locationLastReportedAt: Instant? = null,
     val screenShareActive: Boolean = false,
     val screenShareSince: Instant? = null,
     val realtimeConnected: Boolean = false,
@@ -33,7 +37,12 @@ object ServiceStatusRegistry {
 
     fun heartbeatSucceeded(at: Instant) = mutable.update { it.copy(lastHeartbeatOk = at) }
     fun enforcementRunning(running: Boolean) = mutable.update { it.copy(enforcementRunning = running) }
-    fun locationRunning(running: Boolean) = mutable.update { it.copy(locationRunning = running) }
+    /** Stopping drops the last report too, so each start begins without one (B2). */
+    fun locationRunning(running: Boolean) = mutable.update {
+        if (running) it.copy(locationRunning = true) else it.copy(locationRunning = false, locationLastReportedAt = null)
+    }
+    /** Call only after the backend accepted a report; a failure must leave the last success as is. */
+    fun locationReported(at: Instant) = mutable.update { it.copy(locationLastReportedAt = at) }
     fun realtimeConnected(connected: Boolean) = mutable.update { it.copy(realtimeConnected = connected) }
 
     fun screenShareStarted(at: Instant) = mutable.update { it.copy(screenShareActive = true, screenShareSince = at) }
@@ -71,6 +80,17 @@ fun isReportRecent(
     staleAfterSeconds: Long = REPORT_STALE_AFTER_SECONDS,
 ): Boolean = lastHeartbeatOk != null && now.epochSecond - lastHeartbeatOk.epochSecond <= staleAfterSeconds
 
+/**
+ * Location is reported every 15 min ([LocationReportingService.REPORT_INTERVAL_MS]). Two intervals
+ * plus 5 min of margin (the 30 s fix timeout, token refresh and network) tolerates one missed cycle
+ * — no fix, a network blip — before "Estado" stops claiming "Activo" (B2). 35 min.
+ */
+const val LOCATION_STALE_AFTER_SECONDS = 2 * LocationReportingService.REPORT_INTERVAL_MS / 1000 + 5 * 60L
+
+/** True when a location report succeeded at most [LOCATION_STALE_AFTER_SECONDS] before [now]. */
+fun isLocationReportRecent(lastReportedAt: Instant?, now: Instant): Boolean =
+    lastReportedAt != null && now.epochSecond - lastReportedAt.epochSecond <= LOCATION_STALE_AFTER_SECONDS
+
 fun servicesView(status: ServiceStatus, enforcementRecentlyActive: Boolean?, now: Instant): ServicesView {
     val last = status.lastHeartbeatOk
     val report = if (isReportRecent(last, now)) ServiceState.Active else ServiceState.Unconfirmed
@@ -84,7 +104,12 @@ fun servicesView(status: ServiceStatus, enforcementRecentlyActive: Boolean?, now
         report = report,
         lastReport = last,
         appControl = appControl,
-        location = if (status.locationRunning) ServiceState.Active else ServiceState.Inactive,
+        location = when {
+            !status.locationRunning -> ServiceState.Inactive
+            isLocationReportRecent(status.locationLastReportedAt, now) -> ServiceState.Active
+            // Running, but nothing accepted yet (or not lately): "Sin confirmar", not "Activo".
+            else -> ServiceState.Unconfirmed
+        },
         screenShareActive = status.screenShareActive,
         screenShareSince = status.screenShareSince,
     )

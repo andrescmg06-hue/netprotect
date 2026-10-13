@@ -60,7 +60,8 @@ class LocationReportingService : Service() {
         // ~15 minutes: enough to tell a tutor which zone the device is in, not to track it in
         // real time — see docs/sprint-13.md for the reasoning (and MAX_HISTORY_REPORTS in
         // backend/app/schemas/location.py, sized against this same interval).
-        private const val REPORT_INTERVAL_MS = 15 * 60_000L
+        // Not private: "Estado" derives its "Sin confirmar" threshold from it (B2).
+        internal const val REPORT_INTERVAL_MS = 15 * 60_000L
 
         // How long to wait for a fresh NETWORK_PROVIDER fix before falling back to whatever
         // last-known location the system already has cached, rather than blocking this cycle
@@ -114,7 +115,7 @@ class LocationReportingService : Service() {
                 // Sprint 41: the token handed over at start() was never renewed, so every report
                 // after its 15-minute lifetime failed silently with 401. Ask the shared session.
                 val token = BackgroundTokenRefresher.refresh(applicationContext) ?: accessToken
-                runCatching {
+                reportAndRecord {
                     client.reportLocation(
                         accessToken = token,
                         deviceId = deviceId,
@@ -195,4 +196,14 @@ class LocationReportingService : Service() {
             .setOngoing(true)
             .build()
     }
+}
+
+/**
+ * Sends one report and, only if it succeeded, stamps the instant in [ServiceStatusRegistry] (B2).
+ * A failure is swallowed as before and changes nothing; nothing about the location is logged or kept.
+ */
+internal suspend fun reportAndRecord(now: () -> Instant = Instant::now, send: suspend () -> Unit): Boolean {
+    val ok = runCatching { send() }.isSuccess
+    if (ok) ServiceStatusRegistry.locationReported(now())
+    return ok
 }
