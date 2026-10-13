@@ -64,9 +64,11 @@ fun permissionDetailSteps(permission: SupervisedPermission): List<String> = when
         LOCATION_DENIED_HINT,
     )
     SupervisedPermission.Overlay -> listOf(
-        "Toca «Activar en Ajustes». Se abre la página de este permiso para NetProtect.",
+        // Android 11+ ignores the package in ACTION_MANAGE_OVERLAY_PERMISSION and opens the general list
+        // (seen on the API 36 emulator: "Display over other apps"), so the page of NetProtect is not promised.
+        "Toca «Activar en Ajustes». Android abre una lista de apps con este permiso, no la página de NetProtect.",
         // The switch's label changes by manufacturer, so it is described instead of quoted.
-        "Activa la opción que permite mostrar NetProtect sobre otras apps.",
+        "Busca NetProtect en la lista, tócala y activa la opción que permite mostrarla sobre otras apps.",
         "Vuelve a esta pantalla. Lo comprobamos automáticamente al volver.",
     )
     SupervisedPermission.DeviceAdmin -> listOf(
