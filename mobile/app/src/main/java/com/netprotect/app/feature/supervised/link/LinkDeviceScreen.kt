@@ -47,7 +47,7 @@ fun LinkDeviceScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -58,12 +58,12 @@ fun LinkDeviceScreen(
         ) {
             BrandHeader()
             Spacer(Modifier.height(24.dp))
-            Text(text = "Vincular este dispositivo", style = NpText.Display, color = NpColors.ShieldNavy)
+            Text(text = "Vincular este dispositivo", style = NpText.Display, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Introduce el código que te dio tu tutor para vincular este dispositivo y comenzar a usar NetProtect.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
             Spacer(Modifier.height(20.dp))
             NpCard {
@@ -71,11 +71,11 @@ fun LinkDeviceScreen(
                     IconTile(icon = NpIcons.KeyRound, tone = NpTone.Info, size = 56.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Código de vinculación", style = NpText.Title, color = NpColors.ShieldNavy)
+                        Text(text = "Código de vinculación", style = NpText.Subtitle, color = NpColors.Ink)
                         Text(
                             text = "Ingresa el código de 6 dígitos que te dio tu tutor.",
                             style = NpText.Body,
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                     }
                 }
@@ -102,7 +102,7 @@ fun LinkDeviceScreen(
                 Text(
                     text = "¿No tienes un código? Pídeselo a tu tutor.",
                     style = NpText.Body,
-                    color = NpColors.SignalBlue,
+                    color = NpColors.Blue,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -116,12 +116,12 @@ fun LinkDeviceScreen(
                         Text(
                             text = "Esperando código de vinculación",
                             style = NpText.BodyStrong,
-                            color = NpColors.ShieldNavy,
+                            color = NpColors.Ink,
                         )
                         Text(
                             text = "La vinculación se comprueba con el servicio de NetProtect.",
                             style = NpText.Body,
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                     }
                 }

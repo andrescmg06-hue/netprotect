@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -47,7 +46,7 @@ fun TutorAccountScreen(
         Text(
             text = "Esta app es para el teléfono del menor",
             style = NpText.Display,
-            color = NpColors.ShieldNavy,
+            color = NpColors.Ink,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
@@ -55,7 +54,7 @@ fun TutorAccountScreen(
             text = "Tu cuenta es de tutor. Para ver y configurar los dispositivos que supervisas, " +
                 "usa el panel web de NetProtect.",
             style = NpText.Body,
-            color = NpColors.SlateMuted,
+            color = NpColors.InkMuted,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
@@ -113,7 +112,7 @@ private fun HomeBackdrop(modifier: Modifier, content: @Composable () -> Unit) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(NpColors.SkyGround, NpColors.SkyGroundEnd))),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier

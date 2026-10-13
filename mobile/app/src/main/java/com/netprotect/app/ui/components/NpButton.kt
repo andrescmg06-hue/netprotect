@@ -55,20 +55,20 @@ fun NpButton(
     enabled: Boolean = true,
     small: Boolean = false,
 ) {
-    val shape = NpShapes.Md
+    val shape = NpShapes.Field
     val minHeight = if (small) 40.dp else 48.dp
 
     val (background, baseContentColor, borderColor) = when (variant) {
-        NpButtonVariant.Primary -> Triple(NpColors.SignalBlue, NpColors.PaperWhite, Color.Transparent)
-        NpButtonVariant.Secondary -> Triple(NpColors.PaperWhite, NpColors.SignalBlueText, NpColors.SecondaryBorder)
-        NpButtonVariant.Text -> Triple(Color.Transparent, NpColors.SlateMuted, Color.Transparent)
+        NpButtonVariant.Primary -> Triple(NpColors.Blue, NpColors.Paper, Color.Transparent)
+        NpButtonVariant.Secondary -> Triple(NpColors.Paper, NpColors.BlueText, NpColors.HairlineStrong)
+        NpButtonVariant.Text -> Triple(Color.Transparent, NpColors.InkMuted, Color.Transparent)
         NpButtonVariant.Danger -> Triple(NpColors.DangerWash, NpColors.DangerText, NpColors.Danger.copy(alpha = 0.3f))
     }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    // Variante Text: al pulsar el texto pasa a SignalBlueText.
-    val contentColor = if (variant == NpButtonVariant.Text && isPressed) NpColors.SignalBlueText else baseContentColor
+    // Variante Text: al pulsar el texto pasa a BlueText.
+    val contentColor = if (variant == NpButtonVariant.Text && isPressed) NpColors.BlueText else baseContentColor
 
     Box(
         modifier = modifier
@@ -132,7 +132,7 @@ fun NpButton(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun NpButtonPreview() {
     NetProtectTheme {

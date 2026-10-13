@@ -62,7 +62,7 @@ fun LinkedDeviceScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -73,12 +73,12 @@ fun LinkedDeviceScreen(
         ) {
             BrandHeader(subtitle = "Dispositivo supervisado")
             Spacer(Modifier.height(24.dp))
-            Text(text = "Dispositivo vinculado", style = NpText.Display, color = NpColors.ShieldNavy)
+            Text(text = "Dispositivo vinculado", style = NpText.Display, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Este dispositivo está vinculado a un tutor y ya forma parte de NetProtect.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
             Spacer(Modifier.height(20.dp))
             NpCard {
@@ -88,10 +88,10 @@ fun LinkedDeviceScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = deviceName ?: "Este dispositivo",
-                            style = NpText.Title,
-                            color = NpColors.ShieldNavy,
+                            style = NpText.Subtitle,
+                            color = NpColors.Ink,
                         )
-                        Text(text = "Android $androidVersion", style = NpText.Body, color = NpColors.SlateMuted)
+                        Text(text = "Android $androidVersion", style = NpText.Body, color = NpColors.InkMuted)
                         Spacer(Modifier.height(8.dp))
                         StatusPill(text = "Vinculado", tone = NpTone.Success)
                     }
@@ -104,17 +104,17 @@ fun LinkedDeviceScreen(
                         painter = painterResource(NpIcons.User),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = NpColors.SlateMuted,
+                        tint = NpColors.InkMuted,
                     )
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Supervisado por",
                             style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                         tutors.forEach { tutor ->
-                            Text(text = tutor, style = NpText.BodyStrong, color = NpColors.ShieldNavy)
+                            Text(text = tutor, style = NpText.BodyStrong, color = NpColors.Ink)
                         }
                     }
                 }
@@ -126,14 +126,14 @@ fun LinkedDeviceScreen(
                         painter = painterResource(NpIcons.Clock),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = NpColors.SlateMuted,
+                        tint = NpColors.InkMuted,
                     )
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Última comunicación",
                             style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                         // FlowRow: at large font scales the status moves to its own line instead of
                         // being squeezed into the width left over and wrapping letter by letter.
@@ -173,11 +173,11 @@ fun LinkedDeviceScreen(
                     IconTile(icon = NpIcons.Shield, tone = permissionTone, size = 48.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Permisos del dispositivo", style = NpText.Title, color = NpColors.ShieldNavy)
+                        Text(text = "Permisos del dispositivo", style = NpText.Subtitle, color = NpColors.Ink)
                         Text(
                             text = "Para que NetProtect funcione correctamente, se requieren algunos permisos.",
                             style = NpText.Body,
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                     }
                 }
@@ -201,7 +201,7 @@ fun LinkedDeviceScreen(
                                 Text(
                                     text = "Revisa y concede los permisos necesarios para completar la configuración.",
                                     style = NpText.Body,
-                                    color = NpColors.SlateMuted,
+                                    color = NpColors.InkMuted,
                                 )
                             }
                         }
@@ -227,7 +227,7 @@ fun LinkedDeviceScreen(
                         Icon(
                             painter = painterResource(NpIcons.ChevronRight),
                             contentDescription = null,
-                            tint = NpColors.SlateMuted,
+                            tint = NpColors.InkMuted,
                         )
                     },
                 )
@@ -252,6 +252,6 @@ private fun Chevron() {
         painter = painterResource(NpIcons.ChevronRight),
         contentDescription = null,
         modifier = Modifier.size(20.dp),
-        tint = NpColors.SlateMuted,
+        tint = NpColors.InkMuted,
     )
 }

@@ -48,7 +48,7 @@ fun ScreenShareConsentScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -62,13 +62,13 @@ fun ScreenShareConsentScreen(
             Text(
                 text = "Consentimiento para ver la pantalla",
                 style = NpText.Display,
-                color = NpColors.ShieldNavy,
+                color = NpColors.Ink,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Tu tutor pidió ver la pantalla de este dispositivo ahora.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
             Spacer(Modifier.height(20.dp))
             NpCard(containerColor = NpColors.BlueWash, borderColor = NpColors.BlueWash) {
@@ -76,17 +76,17 @@ fun ScreenShareConsentScreen(
                     IconTile(icon = NpIcons.Eye, tone = NpTone.Info, size = 48.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "¿Qué permite?", style = NpText.Title, color = NpColors.ShieldNavy)
+                        Text(text = "¿Qué permite?", style = NpText.Subtitle, color = NpColors.Ink)
                         Text(
                             text = "Que tu tutor vea la pantalla de este dispositivo en tiempo real, solo durante esta sesión.",
                             style = NpText.Body,
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                     }
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text(text = "¿Cuándo se puede usar?", style = NpText.Title, color = NpColors.ShieldNavy)
+            Text(text = "¿Cuándo se puede usar?", style = NpText.Subtitle, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             NpCard {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -111,7 +111,7 @@ fun ScreenShareConsentScreen(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text(text = "Tu consentimiento", style = NpText.Title, color = NpColors.ShieldNavy)
+            Text(text = "Tu consentimiento", style = NpText.Subtitle, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             NpCard {
                 Row(
@@ -126,12 +126,12 @@ fun ScreenShareConsentScreen(
                         Text(
                             text = "Autorizo a mi tutor a ver la pantalla de este dispositivo ahora",
                             style = NpText.BodyStrong,
-                            color = NpColors.ShieldNavy,
+                            color = NpColors.Ink,
                         )
                         Text(
                             text = "Solo para esta sesión. Android te pedirá confirmarlo.",
                             style = NpText.Body,
-                            color = NpColors.SlateMuted,
+                            color = NpColors.InkMuted,
                         )
                     }
                 }
@@ -171,8 +171,8 @@ private fun ConsentRow(
         IconTile(icon = icon, tone = tone, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = NpText.BodyStrong, color = NpColors.ShieldNavy)
-            Text(text = description, style = NpText.Body, color = NpColors.SlateMuted)
+            Text(text = title, style = NpText.BodyStrong, color = NpColors.Ink)
+            Text(text = description, style = NpText.Body, color = NpColors.InkMuted)
         }
     }
 }

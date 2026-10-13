@@ -48,7 +48,7 @@ fun StatusPill(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun StatusPillPreview() {
     NetProtectTheme {

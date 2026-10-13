@@ -40,7 +40,7 @@ fun PermissionsScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -50,12 +50,12 @@ fun PermissionsScreen(
                 .padding(horizontal = 20.dp),
         ) {
             NpTopBar(onBack = onBack)
-            Text(text = "Permisos del dispositivo", style = NpText.Display, color = NpColors.ShieldNavy)
+            Text(text = "Permisos del dispositivo", style = NpText.Display, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Para que NetProtect funcione correctamente en este dispositivo, se requieren los siguientes permisos.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
             Spacer(Modifier.height(16.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

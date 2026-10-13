@@ -39,10 +39,10 @@ fun AppIcon(packageName: String, label: String, modifier: Modifier = Modifier, s
     } else {
         val tone = monogramTone(packageName)
         Box(
-            modifier = modifier.size(size).background(tone.wash, NpShapes.Md),
+            modifier = modifier.size(size).background(tone.wash, NpShapes.Field),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = monogramLetter(label, packageName), style = NpText.Title, color = tone.text)
+            Text(text = monogramLetter(label, packageName), style = NpText.Subtitle, color = tone.text)
         }
     }
 }
@@ -57,7 +57,7 @@ fun monogramLetter(label: String, packageName: String): String =
     (label.trim().firstOrNull { it.isLetterOrDigit() } ?: packageName.firstOrNull { it.isLetter() } ?: '?')
         .uppercaseChar().toString()
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun AppIconPreview() {
     NetProtectTheme { AppIcon(packageName = "com.example.nonexistent", label = "Ejemplo") }

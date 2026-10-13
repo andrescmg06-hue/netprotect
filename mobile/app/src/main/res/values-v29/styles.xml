@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NetProtect" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#090B10</item>
+        <item name="android:statusBarColor">#090B10</item>
+        <!-- The app is light-only: never let the system force-darken it (API 29+). -->
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

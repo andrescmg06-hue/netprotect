@@ -164,8 +164,8 @@ fun DesignGallery() {
             ListRow(
                 title = "Tablet de Sofía",
                 subtitle = "Android 13",
-                leading = { Icon(painterResource(NpIcons.Smartphone), contentDescription = null, tint = NpColors.SlateMuted) },
-                trailing = { Icon(painterResource(NpIcons.ChevronRight), contentDescription = null, tint = NpColors.SlateMuted) },
+                leading = { Icon(painterResource(NpIcons.Smartphone), contentDescription = null, tint = NpColors.InkMuted) },
+                trailing = { Icon(painterResource(NpIcons.ChevronRight), contentDescription = null, tint = NpColors.InkMuted) },
                 onClick = {},
             )
         }
@@ -180,7 +180,7 @@ fun DesignGallery() {
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(text = title, style = NpText.Headline, color = NpColors.ShieldNavy)
+        Text(text = title, style = NpText.Title, color = NpColors.Ink)
         content()
     }
 }

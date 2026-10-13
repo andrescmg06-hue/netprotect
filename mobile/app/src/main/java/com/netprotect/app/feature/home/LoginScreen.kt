@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -49,7 +48,7 @@ fun LoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(NpColors.SkyGround, NpColors.SkyGroundEnd))),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -65,14 +64,14 @@ fun LoginScreen(
             Text(
                 text = "Control parental",
                 style = NpText.Display,
-                color = NpColors.ShieldNavy,
+                color = NpColors.Ink,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "Inicia sesión con tu cuenta de Google para continuar como tutor o como dispositivo supervisado.",
-                style = NpText.BodyLead,
-                color = NpColors.SlateMuted,
+                style = NpText.Body,
+                color = NpColors.InkMuted,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(24.dp))
@@ -119,13 +118,13 @@ fun LoginScreen(
                 painter = painterResource(NpIcons.Info),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = NpColors.SlateMuted,
+                tint = NpColors.InkMuted,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "Solo puedes iniciar sesión con Google.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
         }
     }
@@ -141,7 +140,7 @@ private fun ServiceStatusLine(service: ServiceStatus, onRetry: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val dotColor = when (service) {
-                ServiceStatus.Checking -> NpColors.SlateSubtle
+                ServiceStatus.Checking -> NpColors.InkSubtle
                 ServiceStatus.Ready -> NpColors.Success
                 ServiceStatus.Unavailable -> NpColors.Danger
             }
@@ -158,7 +157,7 @@ private fun ServiceStatusLine(service: ServiceStatus, onRetry: () -> Unit) {
                     ServiceStatus.Unavailable -> "Servicio no disponible"
                 },
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
         }
         if (service == ServiceStatus.Unavailable) {
