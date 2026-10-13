@@ -32,8 +32,14 @@ Rama `sprint-65-consentimiento-estado`, creada desde `android-redesign` (`e94199
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
 
 - [x] T1 — Abrir el sprint. Inline. (este commit)
-- [ ] T2 — Lógica pura con tests JVM: ventana de consentimiento (hora de la solicitud, tiempo restante, textos «2 min» / «1 min 48 s»,
-  pasos) y B2 `lastReportedAt` en `ServiceStatusRegistry` y `LocationReportingService`, usado por `servicesView`. Delegado (**Opus**).
+- [x] T2 — `4a4d000`, `90862d3`. B2: `ServiceStatus.locationLastReportedAt` (solo el instante, nunca la ubicación), escrito por `reportAndRecord` solo
+  si el envío tuvo éxito y borrado al parar el servicio; `servicesView` da la ubicación «Sin confirmar» salvo con un envío dentro de
+  `LOCATION_STALE_AFTER_SECONDS` = 2 intervalos de 15 min + 5 min de margen = 35 min (el latido sigue en 300 s). Ventana de
+  consentimiento pura (`CONSENT_WINDOW_SECONDS = 120`, `consentRemainingSeconds`, `isConsentExpired`, `consentProgress`,
+  `consentCountdownText`: «Esta solicitud caduca en 2 min / 1 min 48 s / 45 s»), con el instante inyectado.
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 2m 6s,
+  162 tests, 0 fallos, lint con 0 errores. Delegado (Opus). Fuera de T2, a T3 y T5: derivar `CONSENT_TIMEOUT_MS` de la ventana;
+  los 3 pasos de la lámina; mostrar la hora del último reporte de ubicación (`ServicesView` no tiene el campo).
 - [ ] T3 — Shell: guardar la hora de la solicitud, cuenta atrás, `screen_share_stop` con motivo `dismissed` (Atrás) y `expired`
   (caducidad), sin tocar las claves de los efectos de servicio. Delegado (**Opus**: G-19, realtime y consentimiento).
 - [ ] T4 — Web: motivos `expired` y `dismissed` en `describeStopReason`, límite de espera en `requesting`, y test de backend de
