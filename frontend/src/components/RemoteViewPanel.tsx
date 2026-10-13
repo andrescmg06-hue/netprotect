@@ -103,8 +103,12 @@ export function RemoteViewPanel({
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamStartedAtRef = useRef<number | null>(null);
+  // Set by teardown: a WebRTC config that resolves after the session was closed (the 135 s limit,
+  // "Detener", unmount) must not open a peer, a socket or a new request.
+  const cancelledRef = useRef(false);
 
   const teardown = useCallback((notifyPeer: boolean) => {
+    cancelledRef.current = true;
     if (notifyPeer && socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({ type: "screen_share_stop", reason: "tutor_closed" })
@@ -158,10 +162,12 @@ export function RemoteViewPanel({
   const start = useCallback(() => {
     setElapsedSeconds(0);
     streamStartedAtRef.current = null;
+    cancelledRef.current = false;
     setState({ kind: "requesting" });
 
     fetchWebRtcConfig(accessToken, deviceId)
       .then(({ ice_servers, turn_servers }) => {
+        if (cancelledRef.current) return;
         // STUN for a direct path when one exists, plus the TURN relay (Sprint 28) for when it
         // doesn't — an emulator behind its own NAT, or two mobile networks.
         const peer = new RTCPeerConnection({
@@ -303,6 +309,8 @@ export function RemoteViewPanel({
         });
       })
       .catch((error) => {
+        // The session was already closed (135 s limit, "Detener", unmount): keep that message.
+        if (cancelledRef.current) return;
         setState({
           kind: "ended",
           message:
