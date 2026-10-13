@@ -32,7 +32,13 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   Title; Inter para Body, BodySm, Label y Eyebrow; siempre en sp), `Shape.kt`, `Elevation.kt` (0 dp), nuevos
   `Spacing.kt` y `Motion.kt` (con un helper de «reducir movimiento»), `Tone.kt`, `forceDarkAllowed` y
   `ColorTokensTest`. Delegado (**Sonnet**: renombrado amplio con una tabla de equivalencias cerrada).
-- [ ] T3 — Componentes: `NpHeroPanel` (panel navy con titular serif), `NpSeal` (sello de 4 arcos que se dibuja una sola
+- [x] T3 — `9ea6149` y `a560fdd`. `NpSeal`, `NpHeroPanel`, `NpRail`, `NpButton` v2 y `StatusPill` como chip, con sus secciones en la
+  galería. `test assembleDebug assembleDebugAndroidTest lintDebug` en verde: 93 tests unitarios y lint con 0 errores. Los 6 tests
+  instrumentados nuevos (`V2ComponentsTest`) solo se compilaron: los valida el CI. Contrastes calculados sobre el panel navy:
+  resumen 11,80:1, etiquetas 8,61:1, titular 17,39:1. Con «quitar animaciones» el sello sale completo. El resultado visual
+  **no está verificado** todavía (T4). Diferencias con las láminas: el botón y los chips usan blanco al 16 % sobre el azul como
+  ficha, el margen lateral del panel es de 28 dp (en las láminas, unos 24 dp), y el subrayado del botón de texto aparece al
+  pulsar en vez de barrerse. Los botones principales de las pantallas actuales ahora miden al menos 60 dp. Enunciado: Componentes: `NpHeroPanel` (panel navy con titular serif), `NpSeal` (sello de 4 arcos que se dibuja una sola
   vez), `NpRail` (recorrido vertical con el siguiente paso resaltado), `NpButton` v2 (≥ 60 dp, ficha de flecha) y
   `StatusPill` como chip. Incluye las secciones de `DesignGallery` y sus tests. Delegado (**Opus**: oficio visual y
   Canvas).
