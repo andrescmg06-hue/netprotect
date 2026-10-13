@@ -15,25 +15,25 @@ val privacySections: List<PrivacySection> = listOf(
     PrivacySection(
         heading = "Qué hace",
         items = listOf(
-            // SupervisedShell: HEARTBEAT_INTERVAL_MS (60 s) loop, alive only while the shell is composed;
-            // SyncWorker sends the same heartbeat on WorkManager's schedule (15 min floor, not guaranteed).
+            // SupervisedShell: HEARTBEAT_INTERVAL_MS (60 s) loop. It is a LaunchedEffect, so it keeps running while
+            // the shell is composed even with another app on screen (checked on the emulator: one heartbeat per
+            // minute with the launcher in front). Nothing is claimed about what happens once NetProtect is closed.
             // Payload: DeviceClient.sendHeartbeat (os_version, app_version, timezone, device_time,
             // usage_access_granted, service_active = EnforcementLiveness).
             PrivacyItem(
                 title = "Informa el estado del dispositivo",
-                body = "Cada minuto mientras la app esté abierta. Cuando no lo está, también puede enviarlo, " +
-                    "con menos frecuencia. Incluye la versión de Android y de NetProtect, la zona horaria y la " +
-                    "hora del teléfono, si el acceso al uso está concedido y si el control de apps está funcionando.",
+                body = "Cada minuto mientras NetProtect esté en marcha, aunque uses otras apps. Incluye la versión " +
+                    "de Android y de NetProtect, la zona horaria y la hora del teléfono, si el acceso al uso está " +
+                    "concedido y si el control de apps está funcionando.",
             ),
-            // SupervisedShell: APP_SYNC_INTERVAL_MS (5 min) loop, gated on hasUsageAccess; SyncWorker does the
-            // same in the background. Payload: ApplicationsClient.syncApplications (installed_apps with
+            // SupervisedShell: APP_SYNC_INTERVAL_MS (5 min) loop, gated on hasUsageAccess; same lifetime as the
+            // heartbeat loop (backend log: syncs at 18:15:10 and 18:20:10 with NetProtect behind another screen). Payload: ApplicationsClient.syncApplications (installed_apps with
             // name and package from AppInventoryCollector.collectInstalledApps, daily_usage = today's
             // foreground seconds per app).
             PrivacyItem(
                 title = "Envía la lista de tus apps y cuánto las usas",
                 body = "Las apps de tu teléfono y cuánto tiempo usaste cada una hoy, cada 5 minutos mientras " +
-                    "la app esté abierta. Cuando no lo está, también puede enviarlo, con menos frecuencia. " +
-                    "Solo con el acceso al uso activado.",
+                    "NetProtect esté en marcha, aunque uses otras apps. Solo con el acceso al uso activado.",
             ),
             // RuleEnforcementService: BlockOverlayController / BlockScreenActivity show the reason; each block
             // is reported with RuleEnforcementClient.reportRuleEvent (package_name, rule_type_applied, occurred_at).

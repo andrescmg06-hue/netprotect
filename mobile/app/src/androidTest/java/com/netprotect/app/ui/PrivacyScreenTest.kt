@@ -49,8 +49,8 @@ class PrivacyScreenTest {
     @Test
     fun saysWhatTheSlideLeftOutAndTheRealCadences() {
         set()
-        composeRule.onNodeWithText("Cada minuto mientras la app esté abierta.", substring = true).performScrollTo().assertExists()
-        composeRule.onNodeWithText("cada 5 minutos mientras la app esté abierta", substring = true).performScrollTo().assertExists()
+        composeRule.onNodeWithText("Cada minuto mientras NetProtect esté en marcha, aunque uses otras apps.", substring = true).performScrollTo().assertExists()
+        composeRule.onNodeWithText("cada 5 minutos mientras NetProtect esté en marcha", substring = true).performScrollTo().assertExists()
         composeRule.onNodeWithText("la versión de Android y de NetProtect, la zona horaria", substring = true)
             .performScrollTo().assertExists()
         composeRule.onNodeWithText("aproximadamente cada 15 minutos, no en tiempo real", substring = true)

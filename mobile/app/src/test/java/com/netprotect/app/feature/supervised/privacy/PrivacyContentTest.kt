@@ -27,8 +27,10 @@ class PrivacyContentTest {
     @Test
     fun saysTheRealCadences() {
         // HEARTBEAT_INTERVAL_MS, APP_SYNC_INTERVAL_MS (SupervisedShell) and REPORT_INTERVAL_MS (LocationReportingService).
-        assertTrue(joined.contains("Cada minuto mientras la app esté abierta."))
-        assertTrue(joined.contains("cada 5 minutos mientras la app esté abierta"))
+        assertTrue(joined.contains("Cada minuto mientras NetProtect esté en marcha, aunque uses otras apps."))
+        assertTrue(joined.contains("cada 5 minutos mientras NetProtect esté en marcha, aunque uses otras apps"))
+        // It must not understate what is sent: nothing may tie the sending to the app being "abierta".
+        assertTrue(!joined.contains("esté abierta"))
         assertTrue(joined.contains("aproximadamente cada 15 minutos, no en tiempo real"))
     }
 

@@ -97,7 +97,7 @@ class ServicesStatusScreenTest {
     fun lastReportIsShown() {
         set()
         composeRule.onNodeWithText("Último reporte: hace 1 min").performScrollTo().assertExists()
-        composeRule.onNodeWithText("Cada minuto mientras la app esté abierta.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Cada minuto mientras NetProtect esté en marcha.").performScrollTo().assertExists()
     }
 
     @Test
