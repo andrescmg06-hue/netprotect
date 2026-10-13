@@ -57,7 +57,12 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   teléfono pasó solo a «Este dispositivo ya no está vinculado», los servicios bajaron de 2 a 0 y el latido se detuvo; al
   restaurarlo, volvió a «Todo funciona». Defecto encontrado en la app real y corregido: los iconos de la barra de estado sobre el panel
   navy. Evidencia en `docs/sprint-64-evidence.md`. Inline.
-- [ ] T6 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: toca sesión y servicios) y CI.
+- [ ] T6 — `security-reviewer` (**Opus**): **sin hallazgos ALTA**; dos BAJA, ambos arreglados: (1) cualquier 404 de `/devices/me` contaba como
+  desvinculación (un 404 de un proxy en un despliegue habría parado los servicios de todos los teléfonos): ahora solo el 404 con
+  `detail = not_linked` (`isNotLinkedAnswer`, 3 tests JVM); (2) el descarte de respuestas tardías de `refreshLink` comparaba por
+  igualdad y podía parar un vínculo nuevo tras desvincular y volver a vincular: ahora compara por identidad (`!==`).
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 28s,
+  147 tests, 0 fallos, lint con 0 errores. Falta el CI de los 8 jobs, que corre con el PR.
 
 ## Criterios de aceptación
 

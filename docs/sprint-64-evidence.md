@@ -77,4 +77,26 @@ salir; Permisos vuelve a tener iconos oscuros (`app-real-inicio-barra-clara.png`
   (lo rehace S65); `heartbeatFailing` del shell ya no se lee (aviso del compilador); el titular de Inicio usa el último contacto
   más reciente entre el latido local y el `last_seen_at` del servidor, y Estado solo el local, así que pueden diferir unos segundos
   en un arranque en frío.
-- T6 (`security-reviewer` y CI) sigue abierta.
+- El camino del 404 «no vinculado» (la fila del dispositivo borrada) solo tiene pruebas JVM (`NotLinkedAnswerTest`); la prueba real de arriba
+  usó el otro camino (200 con la lista de tutores vacía). El CI de los 8 jobs corre con el PR.
+
+## T6 — revisión de seguridad (`security-reviewer`, Opus)
+
+Solo lectura del diff `origin/android-redesign..HEAD -- mobile/`: **sin hallazgos ALTA**. Dos BAJA, ambos arreglados:
+
+1. `getMyDevice` convertía cualquier 404 en `null` y `classifyLinkCheck` lo leía como desvinculación. Con la consulta repetida cada
+   5 min y en cada `ON_RESUME`, un 404 que no viniera del backend (Caddy en un despliegue, una ruta mal enrutada) habría parado la
+   ubicación, las reglas, el socket y el `SyncWorker` de todos los teléfonos que consultaran. Ahora solo el 404 con `detail =
+   not_linked` (lo que manda `backend/app/api/v1/endpoints/devices.py:142`) es una desvinculación; `NotLinkedAnswerTest`, 3 tests.
+2. El descarte `if (state != linked) return` comparaba por igualdad de la data class: tras `Unlinked` y un vínculo nuevo con el mismo
+   `deviceId`, una respuesta tardía podía parar el vínculo nuevo. Ahora `!==`. Fallaba hacia el lado seguro y la ventana era muy
+   estrecha.
+
+Confirmado sin hallazgos: un fallo de red, timeout, 5xx, cuerpo ilegible o 401 es `Inconclusive` (no cambia estado ni borra la
+caché); al entrar en `Unlinked` se paran latido, sync, reglas, ubicación, socket, `SyncWorker` y la vista remota; `UnlinkedScreen` no
+muestra nombre de tutor ni `deviceId`; no hay `Log`, ni `rememberSaveable` nuevos; 300 s solo cambia lo que ve el menor, no el OFFLINE
+que ve el tutor. `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` → BUILD SUCCESSFUL en 1m 28s,
+147 tests, 0 fallos, lint con 0 errores.
+
+Observación fuera de alcance, ya existía: `PendingRuleEventStore` guarda por `deviceId` eventos con nombres de apps; si se vuelve a
+vincular la misma fila con otro tutor, se le pueden enviar eventos del vínculo anterior. B1 hará más frecuente volver a vincular.
