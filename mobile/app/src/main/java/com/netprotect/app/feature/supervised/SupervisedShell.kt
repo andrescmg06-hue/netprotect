@@ -36,6 +36,7 @@ import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.DeviceIdentity
 import com.netprotect.app.core.auth.LinkedDeviceStore
 import com.netprotect.app.core.auth.TokenSession
+import com.netprotect.app.core.auth.WelcomeStore
 import com.netprotect.app.core.auth.authorized
 import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.location.LocationReportingService
@@ -72,6 +73,11 @@ import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
 import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeStep
+import com.netprotect.app.feature.supervised.welcome.shouldShowWelcome
+import com.netprotect.app.feature.supervised.welcome.welcomeBack
+import com.netprotect.app.feature.supervised.welcome.welcomeNext
 import com.netprotect.app.ui.components.LoadingState
 import com.netprotect.app.ui.theme.NpColors
 import java.time.Instant
@@ -144,6 +150,10 @@ fun SupervisedShell(
     var route by rememberSaveable { mutableStateOf(SupervisedRoute.Linked) }
     // Sprint 66: which permission PermissionDetail shows. Presentation only, never an effect key (G-19).
     var detailPermission by rememberSaveable { mutableStateOf(SupervisedPermission.UsageAccess) }
+    // Sprint 67: the welcome after a new link and its step. Presentation only, never an effect key (G-19):
+    // the services start as soon as the state is Linked, whether or not the welcome is on screen.
+    var showWelcome by rememberSaveable { mutableStateOf(false) }
+    var welcomeStep by rememberSaveable { mutableStateOf(WelcomeStep.Linked) }
     var deviceInfo by remember { mutableStateOf<MyDeviceInfo?>(null) }
     var lastHeartbeatOk by remember { mutableStateOf<Instant?>(null) }
     var heartbeatFailing by remember { mutableStateOf(false) }
@@ -275,6 +285,9 @@ fun SupervisedShell(
     // Linked lets the effects' onDispose stop the services, the socket, the heartbeat and SyncWorker.
     fun enterUnlinked() {
         LinkedDeviceStore.clear(context)
+        // A new link shows the welcome again.
+        WelcomeStore.clear(context)
+        showWelcome = false
         deviceInfo = null
         tutorLabel = null
         onConsentEvent(ConsentEvent.Stopped)
@@ -506,6 +519,11 @@ fun SupervisedShell(
             else -> route = SupervisedRoute.Linked
         }
     }
+    // Sprint 67: the welcome is drawn on the Linked route, so the handler above is off. Back goes from step 2
+    // to step 1 and does nothing on step 1: the welcome is only left with its own buttons.
+    BackHandler(enabled = state is SupervisedState.Linked && route == SupervisedRoute.Linked && showWelcome) {
+        welcomeStep = welcomeBack(welcomeStep)
+    }
     // Sprint 50: "Estado de NetProtect" shows minutes since the last report; refresh while it's open.
     LaunchedEffect(route) {
         while (route == SupervisedRoute.Services) {
@@ -567,6 +585,12 @@ fun SupervisedShell(
                                 codeInput = ""
                                 route = SupervisedRoute.Linked
                                 tutorLabel = label
+                                welcomeStep = WelcomeStep.Linked
+                                showWelcome = shouldShowWelcome(
+                                    justLinked = true,
+                                    seenForDeviceId = WelcomeStore.seenDeviceId(context),
+                                    deviceId = result.deviceId,
+                                )
                                 state = SupervisedState.Linked(result.deviceId)
                                 // Names and last contact for the linked screen; failures just leave
                                 // the pairing answer's data on screen.
@@ -606,7 +630,21 @@ fun SupervisedShell(
             )
 
             is SupervisedState.Linked -> when (route) {
-                SupervisedRoute.Linked -> LinkedDeviceScreen(
+                // Sprint 67: a screen-share request still takes the route (Consent) and the welcome comes back after it.
+                SupervisedRoute.Linked -> if (showWelcome) {
+                    WelcomeScreen(
+                        step = welcomeStep,
+                        pendingPermissions = permissions.pending,
+                        onNext = { welcomeNext(welcomeStep)?.let { welcomeStep = it } },
+                        onBack = { welcomeStep = welcomeBack(welcomeStep) },
+                        onFinish = {
+                            WelcomeStore.markSeen(context, current.deviceId)
+                            showWelcome = false
+                            // «Entendido, configurar permisos» opens Permisos; plain «Entendido» stays on Inicio.
+                            if (permissions.pending > 0) route = SupervisedRoute.Permissions
+                        },
+                    )
+                } else LinkedDeviceScreen(
                     deviceName = deviceInfo?.deviceName,
                     androidVersion = Build.VERSION.RELEASE,
                     tutors = deviceInfo?.tutors?.takeIf { it.isNotEmpty() } ?: listOfNotNull(tutorLabel),
