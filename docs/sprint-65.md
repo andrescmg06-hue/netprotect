@@ -71,7 +71,12 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
 - [x] T6 — Emulador `Pixel_8`: revisión visual a letra 1.0 y 2.0 contra las láminas 05 y 06; **prueba G-19** en la app real (3 min 11 s, mismos `ServiceRecord` y proceso, un latido por
   minuto, 6 consultas B1, sin 5xx); los avisos de control de apps y ubicación muestran el texto nuevo. Sin probar con un tutor real (vista remota de punta a punta, «Atrás» y caducidad contra la
   web, toque sobre la notificación): declarado en `docs/sprint-65-evidence.md`. Inline.
-- [ ] T7 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: consentimiento, realtime y servicios), CI y PR.
+- [x] T7 — `security-reviewer` (**Opus**): **sin hallazgos ALTA**; 5 arreglados (1 MEDIA, 4 BAJA). MEDIA: `consentRequestedAt` era `remember` y `route` `rememberSaveable`, así que al recrearse la actividad
+  (giro, tamaño de letra, tema, muerte de proceso; `MainActivity` no declara `configChanges`) volvía la pantalla de consentimiento sin cuenta atrás, sin caducar, sin avisar a la web con «Atrás» y con «Continuar»
+  aún operativo; ahora se guarda como milisegundos con un `Saver` (centinela `Long.MIN_VALUE`). BAJA: «Continuar» y «Ahora no» se ignoran sin solicitud pendiente; una solicitud nueva empieza sin marcar
+  (`rememberSaveable(requestedAt)`); no se envía `expired`/`dismissed` mientras hay una captura activa (`shouldSendConsentStop`); la web no abre peer ni socket tras cerrar la sesión (`cancelledRef`, también en
+  el `.catch` tardío); el aviso de ubicación nombra al destinatario («Tu tutor recibe una ubicación aproximada cada 15 minutos.»). `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks`
+  (sin caché) → BUILD SUCCESSFUL en 1m 17s, 180 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` → **111 tests, 0 fallos**. Falta el CI de los 8 jobs, que corre con el PR.
 
 ## Criterios de aceptación
 

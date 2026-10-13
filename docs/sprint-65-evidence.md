@@ -60,4 +60,29 @@ Control de apps: «Control de apps funcionando en este dispositivo.» · Ubicaci
   que revisarlo en la pasada de 200 %.
 - B5 es de **mejor esfuerzo y sin cola**: con el socket del teléfono caído, el tutor no se entera de que la solicitud se cerró (la web lo cubre con su límite de 135 s).
 - La ubicación «Sin confirmar» solo se vio en la galería, no con un envío real fallando.
-- T7 (`security-reviewer` y CI) sigue abierta.
+- El CI de los 8 jobs corre con el PR.
+
+## T7 — revisión de seguridad (`security-reviewer`, Opus)
+
+Solo lectura del diff `origin/android-redesign..HEAD` (`mobile/`, `frontend/`, `backend/tests/`): **sin hallazgos ALTA**; cinco, todos arreglados:
+
+1. **MEDIA** — `consentRequestedAt` (`remember`) frente a `route` (`rememberSaveable`): al recrear la actividad con el consentimiento abierto volvía `Consent` con la hora a `null`, una pantalla sin cuenta
+   atrás que nunca caducaba, «Atrás» no avisaba a la web y «Continuar» enviaba `granted=true` y abría el diálogo de Android con una solicitud ya caducada (la web la había abandonado a los 135 s). Antes no
+   pasaba. Arreglo: `rememberSaveable` con un `Saver<Instant?, Long>`; el centinela es `Long.MIN_VALUE`, no `-1` (un milisegundo válido anterior a 1970). Tras restaurar, el reloj de 1 s arranca solo y, si el plazo ya
+   pasó, caduca y manda `expired`. **Comprobado por lectura y tests JVM (ida y vuelta de −1 ms, 1960 y epoch), no en un teléfono.**
+2. **BAJA** — «Continuar» y «Ahora no» ignoran el toque si no hay solicitud pendiente (un toque en el mismo frame en que `Tick` la caducó).
+3. **BAJA** — una segunda solicitud con la pantalla aún montada aparecía con la casilla ya marcada: `authorized` pasa a `rememberSaveable(requestedAt)`. Y no se envía `expired` ni `dismissed` mientras hay una captura
+   activa (`shouldSendConsentStop`): el backend liberaría el hueco y la web cerraría una sesión que el teléfono sigue transmitiendo.
+4. **BAJA** — web: si `fetchWebRtcConfig` resolvía después del límite de 135 s o de «Detener», se abrían el peer y el socket y se enviaba otra solicitud al menor; `cancelledRef` lo corta, y también el `.catch` tardío
+   (cerrado por el orquestador) para que un error tardío no pise «El dispositivo no respondió.».
+5. **BAJA** — el aviso de ubicación ya no nombraba al destinatario: «Tu tutor recibe una ubicación aproximada cada 15 minutos.»
+
+Confirmado sin hallazgos: el `reason` de `screen_share_stop` solo lleva las constantes `dismissed` y `expired` y la web lo traduce con un `switch` de textos fijos, sin interpolar ni `dangerouslySetInnerHTML`; el `PendingIntent`
+es inmutable, explícito a `MainActivity`, sin extras y no permite saltarse el consentimiento; la notificación sigue mostrando «Detener»; `locationLastReportedAt` es solo un `Instant` en memoria; ningún `Log` ni PII
+nuevos; las claves de efecto de servicio no cambian (G-19); los textos nuevos no afirman nada falso («no graba ni guarda lo que se ve en tu pantalla» es cierto: la web lo muestra y lo descarta y el backend solo retransmite
+señalización).
+
+Verificación posterior: `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` → BUILD SUCCESSFUL en 1m 17s, 180 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en `Pixel_8`
+→ **111 tests, 0 fallos** (con `aNewRequestStartsUnchecked`). `eslint` y `tsc` de la web pasaron tras el arreglo del escritor; la línea añadida después (el guarda del `.catch`) la cubre el job `frontend` del CI.
+
+Riesgo que se deja: si la solicitud caduca justo tras una muerte de proceso, el `expired` puede salir antes de que el socket esté conectado y se pierde (envío de mejor esfuerzo, sin cola).
