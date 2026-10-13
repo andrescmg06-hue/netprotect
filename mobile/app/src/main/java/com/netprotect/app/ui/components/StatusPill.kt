@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.theme.NetProtectTheme
@@ -20,19 +21,39 @@ import com.netprotect.app.ui.theme.NpShapes
 import com.netprotect.app.ui.theme.NpText
 import com.netprotect.app.ui.theme.NpTone
 
-/** Píldora de 24 dp (`tone.wash` + `tone.text`, `NpText.Caption`) con punto de 7 dp opcional. */
+/** The six chip states of the v2 design, each with its default Spanish label and semantic tone. */
+enum class NpChipStatus(val label: String, val tone: NpTone) {
+    Ready("Listo", NpTone.Success),
+    Active("Activo", NpTone.Success),
+    Pending("Pendiente", NpTone.Warning),
+    Linked("Vinculado", NpTone.Success),
+    Error("Error", NpTone.Danger),
+    Inactive("Inactivo", NpTone.Neutral),
+}
+
+private val ChipTextStyle = NpText.BodySm.copy(fontWeight = FontWeight.SemiBold)
+
+/**
+ * Status chip: optional 7 dp dot + text in `tone.text`. [filled] puts it on a `tone.wash` pill;
+ * `filled = false` is the bare "dot + text" form (e.g. "Vinculado" under the tutor's name).
+ *
+ * The text wraps at word boundaries onto a new line instead of being clipped or broken letter by
+ * letter (S51). Callers should still give the chip its own node in a `FlowRow` next to other text,
+ * never a narrow fixed column.
+ */
 @Composable
 fun StatusPill(
     text: String,
     tone: NpTone,
     modifier: Modifier = Modifier,
     showDot: Boolean = true,
+    filled: Boolean = true,
 ) {
     Row(
         modifier = modifier
-            .heightIn(min = 24.dp)
-            .background(tone.wash, NpShapes.Pill)
-            .padding(horizontal = 10.dp),
+            .heightIn(min = 26.dp)
+            .then(if (filled) Modifier.background(tone.wash, NpShapes.Pill) else Modifier)
+            .padding(horizontal = if (filled) 10.dp else 0.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showDot) {
@@ -43,15 +64,26 @@ fun StatusPill(
             )
             Spacer(Modifier.width(6.dp))
         }
-        // Never wraps or shrinks: callers give the pill its own line when the row is full.
-        Text(text = text, style = NpText.Caption, color = tone.text, maxLines = 1, softWrap = false)
+        Text(text = text, style = ChipTextStyle, color = tone.text)
     }
+}
+
+/** [StatusPill] for one of the six design states; [text] defaults to the state's label. */
+@Composable
+fun StatusPill(
+    status: NpChipStatus,
+    modifier: Modifier = Modifier,
+    text: String = status.label,
+    showDot: Boolean = true,
+    filled: Boolean = true,
+) {
+    StatusPill(text = text, tone = status.tone, modifier = modifier, showDot = showDot, filled = filled)
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun StatusPillPreview() {
     NetProtectTheme {
-        StatusPill(text = "En línea", tone = NpTone.Success)
+        StatusPill(status = NpChipStatus.Linked)
     }
 }
