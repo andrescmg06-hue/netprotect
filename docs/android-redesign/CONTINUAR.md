@@ -11,9 +11,11 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S52–S60 | Panel web | ✅ Hechos (su propia línea; ver `docs/sprint-NN.md`) |
 | S61 | App solo supervisado (se quitó el modo tutor) | ✅ PR #19 |
 | S62 | Sistema visual v2 (tokens, Newsreader, `NpSeal`, `NpHeroPanel`, `NpRail`) | ✅ PR #20 |
-| **S63** | **Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado** | 🔶 **En curso**: T1–T4 hechas y T5 sin hallazgos de seguridad; falta subir la rama, el PR y el CI. Rama `sprint-63-acceso-vincular` (worktree `C:/Users/andre/np-s63`). Ver `docs/sprint-63.md` |
-| S64 | Inicio y Permisos (riesgo alto: G-19) → Opus | ⏭️ Siguiente. Plan: `supervisado-v2/PLAN_IMPLEMENTACION.md` |
-| S65–S67 | Consentimiento y Estado, Bloqueo/Privacidad/Detalle, casos reales y cierre | Pendiente |
+| S63 | Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado | ✅ PR #21 |
+| S64 | Inicio y Permisos, B1 (detectar la desvinculación) y G-19 | ✅ PR #22 |
+| S65 | Consentimiento en 3 pasos, Estado, B2 y B5 | ✅ PR #23 |
+| **S66** | **Bloqueo (7 variantes), Privacidad y Detalle de permiso** | 🔶 **En curso**. Rama `sprint-66-bloqueo-privacidad` (worktree `C:/Users/andre/np-s66`). Ver `docs/sprint-66.md` |
+| S67 | Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 %, TalkBack y PR `android-redesign` → `main` | ⏭️ Siguiente |
 
 Los sprints v2 (S61 en adelante) se planifican en `supervisado-v2/PLAN_IMPLEMENTACION.md`, no en `sprints/`.
 
