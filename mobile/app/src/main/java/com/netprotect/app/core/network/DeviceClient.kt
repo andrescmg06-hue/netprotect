@@ -42,7 +42,7 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             lastSeenAt = if (status.isNull("last_seen_at")) null else status.getString("last_seen_at"),
         )
     } catch (exception: ApiException) {
-        if (exception.statusCode == 404) null else throw exception
+        if (isNotLinkedAnswer(exception.statusCode, exception.message)) null else throw exception
     }
 
     /** Sprint 20: the last three arguments are the device's self-reported manipulation signals.
@@ -88,3 +88,12 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         sendJson("/api/v1/devices/$deviceId/tamper-events", "POST", body, accessToken)
     }
 }
+
+/** The `detail` the backend sends with the 404 of `/devices/me` when the account has no linked device. */
+const val NOT_LINKED_DETAIL = "not_linked"
+
+/** Sprint 64 (B1): only the backend's own "not linked" 404 means the device was unlinked. Any other 404
+ * (a proxy mid-deploy, a mis-routed path) says nothing about the link, and treating it as an unlink would
+ * stop every service on the phone. */
+fun isNotLinkedAnswer(statusCode: Int?, message: String?): Boolean =
+    statusCode == 404 && message == NOT_LINKED_DETAIL

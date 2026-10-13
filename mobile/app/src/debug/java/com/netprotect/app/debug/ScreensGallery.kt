@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +40,7 @@ import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
+import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
@@ -56,6 +60,45 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 64 (al principio para las capturas). Sin Dialog. ----
+        ScreenFrame("Inicio · todo funciona") {
+            GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30))
+        }
+        ScreenFrame("Inicio · falta un paso (2 pendientes)") {
+            GalleryHome(pendingPermissions = 2, lastContact = galleryNowS64.minusSeconds(30))
+        }
+        ScreenFrame("Inicio · falta 1 permiso") {
+            GalleryHome(pendingPermissions = 1, lastContact = galleryNowS64.minusSeconds(30))
+        }
+        ScreenFrame("Inicio · sin reporte reciente") {
+            GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(12 * 60))
+        }
+        ScreenFrame("Inicio · vista remota en curso") {
+            // As in the shell: the banner above the screen, which then must not pad for the status bar again.
+            Column(Modifier.fillMaxSize()) {
+                ActiveShareBanner(onStop = {})
+                Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.statusBars)) {
+                    GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30))
+                }
+            }
+        }
+        ScreenFrame("Permisos · dos pendientes") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = true, location = true, overlay = false, deviceAdmin = false),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+            )
+        }
+        ScreenFrame("Permisos · todos configurados") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = true),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+            )
+        }
+        ScreenFrame("UnlinkedScreen") {
+            UnlinkedScreen(onRelink = {}, onSignOut = {})
+        }
         // ---- Sprint 63 (al principio para las capturas). Sin Dialog: el diálogo se muestra como tarjeta. ----
         ScreenFrame("LoadingScreen") {
             LoadingScreen()
@@ -236,68 +279,24 @@ fun ScreensGallery() {
         ScreenFrame("BlockScreenContent · nombre largo") {
             BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
         }
-        // ---- Sprint 48 (al principio para las capturas) ----
-        ScreenFrame("LinkedDeviceScreen · 2 pendientes") {
-            LinkedDeviceScreen(
-                deviceName = "Tablet de Sofía",
-                androidVersion = "13",
-                tutors = listOf("Andrés Mosquera", "María Pérez"),
-                lastContact = galleryNowS48.minusSeconds(120),
-                reachable = true,
-                now = galleryNowS48,
-                pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
-            )
-        }
-        ScreenFrame("LinkedDeviceScreen · 0 pendientes sin conexión") {
-            LinkedDeviceScreen(
-                deviceName = "Tablet de Sofía",
-                androidVersion = "13",
-                tutors = listOf("Andrés Mosquera"),
-                lastContact = galleryNowS48.minusSeconds(120),
-                reachable = false,
-                now = galleryNowS48,
-                pendingPermissions = 0,
-                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
-            )
-        }
-        ScreenFrame("LinkedDeviceScreen · sin nombre ni contacto") {
-            LinkedDeviceScreen(
-                deviceName = null,
-                androidVersion = "13",
-                tutors = listOf("Andrés Mosquera"),
-                lastContact = null,
-                reachable = false,
-                now = galleryNowS48,
-                pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
-            )
-        }
-        ScreenFrame("PermissionsScreen · 2 pendientes") {
-            PermissionsScreen(
-                permissions = PermissionsUi(usageAccess = false, location = false, overlay = true, deviceAdmin = true),
-                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
-                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
-            )
-        }
-        ScreenFrame("PermissionsScreen · todos configurados") {
-            PermissionsScreen(
-                permissions = PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = true),
-                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
-                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
-            )
-        }
-        ScreenFrame("PermissionsScreen · todos pendientes") {
-            PermissionsScreen(
-                permissions = PermissionsUi(usageAccess = false, location = false, overlay = false, deviceAdmin = false),
-                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
-                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
-            )
-        }
+        // Sprint 48: its Inicio and Permisos frames were replaced by the Sprint 64 ones at the top.
     }
 }
-private val galleryNowS48: Instant = Instant.parse("2026-09-30T15:00:00Z")
 private val galleryNowS50: Instant = Instant.parse("2026-10-01T15:00:00Z")
+private val galleryNowS64: Instant = Instant.parse("2026-10-12T15:00:00Z")
+
+@Composable
+private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
+    LinkedDeviceScreen(
+        deviceName = "Tablet de Sofía",
+        androidVersion = "13",
+        tutors = listOf("Andrés Mosquera"),
+        lastContact = lastContact,
+        now = galleryNowS64,
+        pendingPermissions = pendingPermissions,
+        onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
+    )
+}
 
 @Composable
 private fun ScreenFrame(title: String, content: @Composable () -> Unit) {
