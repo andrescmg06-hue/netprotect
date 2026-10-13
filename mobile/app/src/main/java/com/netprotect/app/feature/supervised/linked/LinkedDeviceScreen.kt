@@ -67,6 +67,7 @@ fun LinkedDeviceScreen(
     onOpenPermissions: () -> Unit,
     onOpenServices: () -> Unit,
     onOpenMoreSettings: () -> Unit,
+    onOpenPrivacy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = homeStatus(pendingPermissions, lastContact, now)
@@ -170,7 +171,14 @@ fun LinkedDeviceScreen(
             )
             Spacer(Modifier.height(NpSpace.Xl))
             Hairline()
-            // «Privacidad» joins this list with its screen (S66).
+            // Decision 4: Privacidad is reached from Inicio, not from Más ajustes.
+            NavRow(
+                icon = NpIcons.Shield,
+                title = "Privacidad",
+                subtitle = "Qué hace NetProtect y qué no.",
+                onClick = onOpenPrivacy,
+            )
+            Hairline()
             NavRow(icon = NpIcons.SlidersHorizontal, title = "Más ajustes", onClick = onOpenMoreSettings)
             Hairline()
             Spacer(Modifier.height(NpSpace.Xl))
@@ -265,7 +273,7 @@ private fun ShortcutTile(
 }
 
 @Composable
-private fun NavRow(@DrawableRes icon: Int, title: String, onClick: () -> Unit) {
+private fun NavRow(@DrawableRes icon: Int, title: String, onClick: () -> Unit, subtitle: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -276,7 +284,10 @@ private fun NavRow(@DrawableRes icon: Int, title: String, onClick: () -> Unit) {
     ) {
         Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(22.dp), tint = NpColors.Ink)
         Spacer(Modifier.width(NpSpace.L))
-        Text(text = title, style = NpText.Subtitle, color = NpColors.Ink, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(text = title, style = NpText.Subtitle, color = NpColors.Ink)
+            if (subtitle != null) Text(text = subtitle, style = NpText.BodySm, color = NpColors.InkMuted)
+        }
         Spacer(Modifier.width(NpSpace.M))
         Icon(
             painter = painterResource(NpIcons.ChevronRight),

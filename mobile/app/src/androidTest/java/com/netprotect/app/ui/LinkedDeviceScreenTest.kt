@@ -28,6 +28,7 @@ class LinkedDeviceScreenTest {
         onOpenServices: () -> Unit = {},
         onOpenPermissions: () -> Unit = {},
         onOpenMoreSettings: () -> Unit = {},
+        onOpenPrivacy: () -> Unit = {},
     ) {
         composeRule.setContent {
             NetProtectTheme {
@@ -41,6 +42,7 @@ class LinkedDeviceScreenTest {
                     onOpenServices = onOpenServices,
                     onOpenPermissions = onOpenPermissions,
                     onOpenMoreSettings = onOpenMoreSettings,
+                    onOpenPrivacy = onOpenPrivacy,
                 )
             }
         }
@@ -134,14 +136,24 @@ class LinkedDeviceScreenTest {
     }
 
     @Test
-    fun moreSettingsOpensAndThereIsNoPrivacyOrSignOutYet() {
+    fun moreSettingsOpensAndThereIsNoSignOutHere() {
         var opened = false
         set(onOpenMoreSettings = { opened = true })
-        composeRule.onNodeWithText("Privacidad").assertDoesNotExist()
         composeRule.onNodeWithText("Cerrar sesión").assertDoesNotExist()
         composeRule.onNodeWithText("Desvincular", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("Más ajustes").performScrollTo().performClick()
         assertTrue(opened)
+    }
+
+    @Test
+    fun privacyRowIsOnInicioAndOpensPrivacy() {
+        var privacy = false
+        var moreSettings = false
+        set(onOpenPrivacy = { privacy = true }, onOpenMoreSettings = { moreSettings = true })
+        composeRule.onNodeWithText("Qué hace NetProtect y qué no.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Privacidad").performScrollTo().performClick()
+        assertTrue(privacy)
+        assertTrue(!moreSettings)
     }
 
     @Test

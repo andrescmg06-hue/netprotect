@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.netprotect.app.feature.supervised.PermissionsUi
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
+import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
 import com.netprotect.app.ui.theme.NetProtectTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,6 +40,7 @@ class PermissionsScreenTest {
                     onRequestOverlay = { calls += "requestOverlay" },
                     onRecheckOverlay = { calls += "recheckOverlay" },
                     onRequestDeviceAdmin = { calls += "requestDeviceAdmin" },
+                    onOpenDetail = { calls += "detail:${it.name}" },
                     onBack = onBack,
                 )
             }
@@ -62,21 +64,22 @@ class PermissionsScreenTest {
     fun everyPendingStepHasItsOwnButton() {
         set()
         // Overlay is the next step, device admin the other pending one: two buttons, each with its own callback.
-        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(2)
-        composeRule.onAllNodesWithText("Activar en Ajustes")[0].performScrollTo().performClick()
-        composeRule.onAllNodesWithText("Activar en Ajustes")[1].performScrollTo().performClick()
+        // Device admin opens Android's activation screen, not Settings (PLAN §2.1): «Activar protección».
+        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(1)
+        composeRule.onNodeWithText("Activar en Ajustes").performScrollTo().performClick()
+        composeRule.onNodeWithText("Activar protección").performScrollTo().performClick()
         assertEquals(listOf("requestOverlay", "requestDeviceAdmin"), calls)
     }
 
     @Test
     fun withAllPendingEachButtonCallsItsOwnCallback() {
         set(permissions = PermissionsUi(usageAccess = false, location = false, overlay = false, deviceAdmin = false))
-        // Usage access, overlay and device admin say "Activar en Ajustes"; location asks for the approximate one.
-        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(3)
+        // Only usage access and overlay open Settings; location is Android's dialog, device admin its activation screen.
+        composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(2)
         composeRule.onNodeWithText("Permitir ubicación aproximada").performScrollTo().performClick()
         composeRule.onAllNodesWithText("Activar en Ajustes")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithText("Activar en Ajustes")[1].performScrollTo().performClick()
-        composeRule.onAllNodesWithText("Activar en Ajustes")[2].performScrollTo().performClick()
+        composeRule.onNodeWithText("Activar protección").performScrollTo().performClick()
         assertEquals(listOf("requestLocation", "openUsage", "requestOverlay", "requestDeviceAdmin"), calls)
     }
 
@@ -90,7 +93,8 @@ class PermissionsScreenTest {
     @Test
     fun deviceAdminAsNextRequestsDeviceAdmin() {
         set(permissions = PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = false))
-        composeRule.onNodeWithText("Activar en Ajustes").performScrollTo().performClick()
+        composeRule.onNodeWithText("Activar en Ajustes").assertDoesNotExist()
+        composeRule.onNodeWithText("Activar protección").performScrollTo().performClick()
         assertEquals(listOf("requestDeviceAdmin"), calls)
     }
 
@@ -108,6 +112,7 @@ class PermissionsScreenTest {
         composeRule.onNodeWithText("Todos los permisos están configurados").performScrollTo().assertExists()
         composeRule.onAllNodesWithText("Configurado").assertCountEquals(4)
         composeRule.onNodeWithText("Activar en Ajustes").assertDoesNotExist()
+        composeRule.onNodeWithText("Activar protección").assertDoesNotExist()
         composeRule.onNodeWithText("Permitir", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("Si revocas un permiso en Ajustes, lo comprobamos al volver a la app.")
             .performScrollTo().assertExists()
@@ -115,6 +120,19 @@ class PermissionsScreenTest {
         assertEquals(listOf("recheckUsage", "recheckLocation", "recheckOverlay"), calls)
         composeRule.onNodeWithText("Volver al inicio").performScrollTo().performClick()
         assertTrue(back)
+    }
+
+    @Test
+    fun everyStepPendingOrConfiguredOpensItsDetail() {
+        set()
+        // Rail order: pending first (overlay, device admin), then the configured ones (usage access, location).
+        composeRule.onAllNodesWithText("Ver detalle").assertCountEquals(4)
+        repeat(4) { index -> composeRule.onAllNodesWithText("Ver detalle")[index].performScrollTo().performClick() }
+        assertEquals(
+            listOf(SupervisedPermission.Overlay, SupervisedPermission.DeviceAdmin, SupervisedPermission.UsageAccess, SupervisedPermission.Location)
+                .map { "detail:${it.name}" },
+            calls,
+        )
     }
 
     @Test

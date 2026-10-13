@@ -117,7 +117,7 @@ fun ServicesStatusScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    Text(text = "Cada minuto mientras la app esté abierta.", style = NpText.BodySm, color = NpColors.InkMuted)
+                    Text(text = "Cada minuto mientras NetProtect esté en marcha.", style = NpText.BodySm, color = NpColors.InkMuted)
                 }
                 Hairline()
                 ServiceRow(

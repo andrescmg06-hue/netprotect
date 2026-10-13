@@ -37,7 +37,10 @@ import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
+import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
+import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
@@ -60,6 +63,66 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Privacidad y Detalle de permiso (láminas 10.5 y 11). ----
+        ScreenFrame("Privacidad") {
+            PrivacyScreen(onBack = {})
+        }
+        SupervisedPermission.entries.forEach { permission ->
+            ScreenFrame("Detalle de permiso · ${permission.name} · pendiente") {
+                GalleryPermissionDetail(permission, PermissionsUi(usageAccess = true, location = true, overlay = false, deviceAdmin = false).let {
+                    // The shown permission pending, the rest as in lámina 04's two-pending case.
+                    when (permission) {
+                        SupervisedPermission.UsageAccess -> it.copy(usageAccess = false)
+                        SupervisedPermission.Location -> it.copy(location = false)
+                        else -> it
+                    }
+                })
+            }
+        }
+        ScreenFrame("Detalle de permiso · Overlay · configurado") {
+            GalleryPermissionDetail(
+                SupervisedPermission.Overlay,
+                PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = false),
+            )
+        }
+        ScreenFrame("Inicio · con la fila Privacidad") {
+            GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30))
+        }
+        ScreenFrame("Permisos · con «Ver detalle»") {
+            PermissionsScreen(
+                permissions = PermissionsUi(usageAccess = true, location = false, overlay = true, deviceAdmin = false),
+                onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onOpenDetail = {}, onBack = {},
+            )
+        }
+        // ---- Sprint 66: bloqueo restilado (lámina 07). ----
+        ScreenFrame("BlockScreenContent · BLOCK") {
+            BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DAILY_LIMIT") {
+            BlockScreenContent(packageName = "com.google.android.youtube", appLabel = "YouTube", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · WEEKLY_LIMIT") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = "Redes sociales", reason = BlockReason.WEEKLY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHEDULE") {
+            BlockScreenContent(packageName = "com.discord", appLabel = "Discord", categoryLabel = "Comunicación", reason = BlockReason.SCHEDULE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY") {
+            BlockScreenContent(packageName = "com.netflix.mediaclient", appLabel = "Netflix", categoryLabel = "Streaming", reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHOOL_MODE") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.SCHOOL_MODE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DEFAULT_POLICY") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.DEFAULT_POLICY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY sin categoría") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = null, reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · nombre largo") {
+            BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
         // ---- Sprint 65 (al principio para las capturas). Sin Dialog. ----
         ScreenFrame("Consentimiento · sin autorizar (2 min)") {
             GalleryConsent(authorized = false, requestedAt = galleryNowS65)
@@ -116,14 +179,14 @@ fun ScreensGallery() {
             PermissionsScreen(
                 permissions = PermissionsUi(usageAccess = true, location = true, overlay = false, deviceAdmin = false),
                 onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
-                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onOpenDetail = {}, onBack = {},
             )
         }
         ScreenFrame("Permisos · todos configurados") {
             PermissionsScreen(
                 permissions = PermissionsUi(usageAccess = true, location = true, overlay = true, deviceAdmin = true),
                 onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
-                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
+                onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onOpenDetail = {}, onBack = {},
             )
         }
         ScreenFrame("UnlinkedScreen") {
@@ -243,34 +306,7 @@ fun ScreensGallery() {
                 onBack = {},
             )
         }
-        // ---- Sprint 49 (al principio para las capturas) ----
-        ScreenFrame("BlockScreenContent · BLOCK") {
-            BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · DAILY_LIMIT") {
-            BlockScreenContent(packageName = "com.google.android.youtube", appLabel = "YouTube", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · WEEKLY_LIMIT") {
-            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = "Redes sociales", reason = BlockReason.WEEKLY_LIMIT, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · SCHEDULE") {
-            BlockScreenContent(packageName = "com.discord", appLabel = "Discord", categoryLabel = "Comunicación", reason = BlockReason.SCHEDULE, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · CATEGORY") {
-            BlockScreenContent(packageName = "com.netflix.mediaclient", appLabel = "Netflix", categoryLabel = "Streaming", reason = BlockReason.CATEGORY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · SCHOOL_MODE") {
-            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.SCHOOL_MODE, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · DEFAULT_POLICY") {
-            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.DEFAULT_POLICY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · CATEGORY sin categoría") {
-            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = null, reason = BlockReason.CATEGORY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · nombre largo") {
-            BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
-        }
+        // Sprint 49: its block frames were replaced by the Sprint 66 ones at the top.
         // Sprint 48: its Inicio and Permisos frames were replaced by the Sprint 64 ones at the top.
     }
 }
@@ -317,7 +353,17 @@ private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
         lastContact = lastContact,
         now = galleryNowS64,
         pendingPermissions = pendingPermissions,
-        onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
+        onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {}, onOpenPrivacy = {},
+    )
+}
+
+@Composable
+private fun GalleryPermissionDetail(permission: SupervisedPermission, permissions: PermissionsUi) {
+    PermissionDetailScreen(
+        permission = permission,
+        permissions = permissions,
+        onOpenUsageAccessSettings = {}, onRequestLocation = {}, onRequestOverlay = {}, onRequestDeviceAdmin = {},
+        onOpenAppSettings = {}, onBack = {},
     )
 }
 

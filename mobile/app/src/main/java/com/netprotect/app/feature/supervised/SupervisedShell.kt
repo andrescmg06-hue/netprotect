@@ -1,7 +1,10 @@
 package com.netprotect.app.feature.supervised
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -65,7 +68,10 @@ import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
+import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
+import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
 import com.netprotect.app.ui.components.LoadingState
 import com.netprotect.app.ui.theme.NpColors
 import java.time.Instant
@@ -136,6 +142,8 @@ fun SupervisedShell(
 
     // Sprint 48 — display-only state. Never used as an effect key (see the class comment).
     var route by rememberSaveable { mutableStateOf(SupervisedRoute.Linked) }
+    // Sprint 66: which permission PermissionDetail shows. Presentation only, never an effect key (G-19).
+    var detailPermission by rememberSaveable { mutableStateOf(SupervisedPermission.UsageAccess) }
     var deviceInfo by remember { mutableStateOf<MyDeviceInfo?>(null) }
     var lastHeartbeatOk by remember { mutableStateOf<Instant?>(null) }
     var heartbeatFailing by remember { mutableStateOf(false) }
@@ -489,12 +497,13 @@ fun SupervisedShell(
         }
     }
     BackHandler(enabled = state is SupervisedState.Linked && route != SupervisedRoute.Linked) {
-        if (route == SupervisedRoute.Consent) {
+        when (route) {
             // Back is not an answer («Ahora no» is): it closes the request and tells the tutor it was
             // dismissed, so their page stops waiting (B5).
-            onConsentEvent(ConsentEvent.Back)
-        } else {
-            route = SupervisedRoute.Linked
+            SupervisedRoute.Consent -> onConsentEvent(ConsentEvent.Back)
+            // The detail is opened from Permisos, so Back returns there, not to Inicio.
+            SupervisedRoute.PermissionDetail -> route = SupervisedRoute.Permissions
+            else -> route = SupervisedRoute.Linked
         }
     }
     // Sprint 50: "Estado de NetProtect" shows minutes since the last report; refresh while it's open.
@@ -512,6 +521,11 @@ fun SupervisedShell(
         overlay = hasOverlayPermission,
         deviceAdmin = hasDeviceAdmin,
     )
+    // The permission actions, shared by Permisos and its detail so both fire exactly the same launchers.
+    val openUsageAccessSettings = { UsageAccessPermission.openSettings(context) }
+    val requestLocation = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
+    val requestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) }
+    val requestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) }
 
     Column(modifier = Modifier.fillMaxSize().background(NpColors.Cream)) {
     // Sprint 50: visible on every supervised screen while a share really runs, besides Android's
@@ -602,21 +616,44 @@ fun SupervisedShell(
                     onOpenPermissions = { route = SupervisedRoute.Permissions },
                     onOpenServices = { route = SupervisedRoute.Services },
                     onOpenMoreSettings = { route = SupervisedRoute.MoreSettings },
+                    onOpenPrivacy = { route = SupervisedRoute.Privacy },
                 )
 
                 SupervisedRoute.Permissions -> PermissionsScreen(
                     permissions = permissions,
-                    onOpenUsageAccessSettings = { UsageAccessPermission.openSettings(context) },
+                    onOpenUsageAccessSettings = openUsageAccessSettings,
                     onRecheckUsageAccess = { hasUsageAccess = UsageAccessPermission.isGranted(context) },
-                    onRequestLocation = {
-                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    },
+                    onRequestLocation = requestLocation,
                     onRecheckLocation = { hasLocationPermission = LocationPermission.isGranted(context) },
-                    onRequestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) },
+                    onRequestOverlay = requestOverlay,
                     onRecheckOverlay = { hasOverlayPermission = OverlayPermission.isGranted(context) },
-                    onRequestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) },
+                    onRequestDeviceAdmin = requestDeviceAdmin,
+                    onOpenDetail = { permission ->
+                        detailPermission = permission
+                        route = SupervisedRoute.PermissionDetail
+                    },
                     onBack = { route = SupervisedRoute.Linked },
                 )
+
+                // Live flags: the ON_RESUME observer above re-reads them when the person comes back.
+                SupervisedRoute.PermissionDetail -> PermissionDetailScreen(
+                    permission = detailPermission,
+                    permissions = permissions,
+                    onOpenUsageAccessSettings = openUsageAccessSettings,
+                    onRequestLocation = requestLocation,
+                    onRequestOverlay = requestOverlay,
+                    onRequestDeviceAdmin = requestDeviceAdmin,
+                    // Location denied for good no longer shows Android's dialog: this app's page in Settings.
+                    onOpenAppSettings = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    },
+                    onBack = { route = SupervisedRoute.Permissions },
+                )
+
+                SupervisedRoute.Privacy -> PrivacyScreen(onBack = { route = SupervisedRoute.Linked })
 
                 SupervisedRoute.Consent -> ScreenShareConsentScreen(
                     // Exactly what the Sprint 23 card sent, then Android's own capture dialog.
