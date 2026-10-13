@@ -32,8 +32,16 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   los textos de §03 y el singular, y `isReportRecent` + `REPORT_STALE_AFTER_SECONDS = 300` compartidos por Inicio y Estado
   (antes 180 s). El límite exacto de 300 s cuenta como reciente. `testDebugUnitTest lintDebug --rerun-tasks` (sin caché) →
   BUILD SUCCESSFUL, 128 tests, 0 fallos, lint con 0 errores. Delegado (Opus).
-- [ ] T3 — Shell: B1 (`/devices/me` en `ON_RESUME` y cada 5 min), estado `Unlinked`, `Linked` con identidad estable y estado
-  de presentación aparte. Delegado (**Opus**: G-19, servicios y sesión).
+- [x] T3 — `37c78e2`, `076166d`. `SupervisedState.Linked(deviceId)` lleva solo la identidad; la etiqueta de tutores pasó a estado de
+  presentación. Los 11 efectos del shell usan ahora una sola clave, `linkedDeviceId` (más los permisos donde ya los usaban).
+  B1: `/devices/me` en `ON_RESUME` y cada 5 min; `classifyLinkCheck` devuelve `Linked`, `Unlinked` o `Inconclusive`, y
+  cualquier fallo es `Inconclusive` (no cuenta como desvinculación). Al entrar en `Unlinked` se limpia `LinkedDeviceStore`,
+  se reinician `lastHeartbeatOk` y `heartbeatFailing`, y se detiene una vista remota en curso; los `onDispose` paran servicios,
+  socket, latido y `SyncWorker`. `UnlinkedScreen` con firma final y cuerpo provisional. `testDebugUnitTest assembleDebug
+  assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 26s, 137 tests, 0 fallos, lint con
+  0 errores. Delegado (Opus). Desviaciones del escritor, aceptadas y para `security-reviewer`: (1) al arrancar, con caché y un
+  404 o sin tutores, se entra en `Unlinked` (otra cuenta de Google en el mismo teléfono vería «Tu tutor terminó el vínculo»,
+  porque cerrar sesión no borra la caché); (2) al desvincularse se detiene la vista remota activa.
 - [ ] T4 — Pantallas: Inicio con `NpHeroPanel`, Permisos con `NpRail`, `UnlinkedScreen`, frames de galería y tests.
   Delegado (**Opus**: oficio visual; un escritor distinto de T3).
 - [ ] T5 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 03, 04 y 10.4, y la **prueba G-19**: 3 min
