@@ -5,6 +5,8 @@ import com.netprotect.app.feature.supervised.block.BLOCK_COVER_NOTE
 import com.netprotect.app.feature.supervised.block.BLOCK_TITLE
 import com.netprotect.app.feature.supervised.block.blockMessage
 import com.netprotect.app.feature.supervised.block.blockPresentation
+import com.netprotect.app.feature.supervised.block.padlockInitialProgress
+import com.netprotect.app.feature.supervised.block.padlockShackleLift
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -86,8 +88,39 @@ class BlockPresentationTest {
 
     @Test
     fun theCoverNoteIsHonestWithoutExplainingHowToGetAround() {
-        assertTrue(BLOCK_COVER_NOTE.contains("segundo plano"))
+        // S66 (PLAN §2.2): the overlay covers the app's screen and does not close the app; both true.
+        assertEquals("El bloqueo cubre la pantalla de la app, pero no la cierra.", BLOCK_COVER_NOTE)
         assertFalse(BLOCK_COVER_NOTE.contains("Ajustes"))
         assertFalse(BLOCK_COVER_NOTE.contains("revoc", ignoreCase = true))
+        assertFalse(Regex("""\d{1,2}:\d{2}""").containsMatchIn(BLOCK_COVER_NOTE))
+        listOf("desbloque", "mañana", "lunes", "cuando termine").forEach {
+            assertFalse("the note promises '$it'", BLOCK_COVER_NOTE.contains(it, ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun onlyTheReasonsWithAClueDrawTheHintAsARow() {
+        // Lámina 07: the two limits, the schedule and school time show a ruled clue row; the other
+        // reasons keep their hint as the grey detail under the headline.
+        val rows = setOf(
+            BlockReason.DAILY_LIMIT,
+            BlockReason.WEEKLY_LIMIT,
+            BlockReason.SCHEDULE,
+            BlockReason.SCHOOL_MODE,
+        )
+        BlockReason.entries.forEach { reason ->
+            assertEquals("$reason", reason in rows, blockPresentation(reason, "Juegos").hintAsRow)
+        }
+    }
+
+    @Test
+    fun thePadlockStartsClosedWithReducedMotionAndEndsClosedAnyway() {
+        assertEquals(1f, padlockInitialProgress(reducedMotion = true))
+        assertEquals(0f, padlockInitialProgress(reducedMotion = false))
+        assertEquals(0f, padlockShackleLift(1f))
+        assertTrue(padlockShackleLift(0f) > 0f)
+        assertTrue(padlockShackleLift(0.5f) < padlockShackleLift(0f))
+        // Out-of-range progress (spring overshoot) never pushes the shackle below closed.
+        assertEquals(0f, padlockShackleLift(1.2f))
     }
 }

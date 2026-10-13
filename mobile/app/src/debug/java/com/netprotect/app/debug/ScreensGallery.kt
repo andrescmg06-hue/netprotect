@@ -60,6 +60,34 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Bloqueo restilado (lámina 07). ----
+        ScreenFrame("BlockScreenContent · BLOCK") {
+            BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DAILY_LIMIT") {
+            BlockScreenContent(packageName = "com.google.android.youtube", appLabel = "YouTube", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · WEEKLY_LIMIT") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = "Redes sociales", reason = BlockReason.WEEKLY_LIMIT, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHEDULE") {
+            BlockScreenContent(packageName = "com.discord", appLabel = "Discord", categoryLabel = "Comunicación", reason = BlockReason.SCHEDULE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY") {
+            BlockScreenContent(packageName = "com.netflix.mediaclient", appLabel = "Netflix", categoryLabel = "Streaming", reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · SCHOOL_MODE") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.SCHOOL_MODE, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · DEFAULT_POLICY") {
+            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.DEFAULT_POLICY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · CATEGORY sin categoría") {
+            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = null, reason = BlockReason.CATEGORY, onGoHome = {})
+        }
+        ScreenFrame("BlockScreenContent · nombre largo") {
+            BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
+        }
         // ---- Sprint 65 (al principio para las capturas). Sin Dialog. ----
         ScreenFrame("Consentimiento · sin autorizar (2 min)") {
             GalleryConsent(authorized = false, requestedAt = galleryNowS65)
@@ -243,34 +271,7 @@ fun ScreensGallery() {
                 onBack = {},
             )
         }
-        // ---- Sprint 49 (al principio para las capturas) ----
-        ScreenFrame("BlockScreenContent · BLOCK") {
-            BlockScreenContent(packageName = "com.instagram.android", appLabel = "Instagram", categoryLabel = "Redes sociales", reason = BlockReason.BLOCK, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · DAILY_LIMIT") {
-            BlockScreenContent(packageName = "com.google.android.youtube", appLabel = "YouTube", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · WEEKLY_LIMIT") {
-            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = "Redes sociales", reason = BlockReason.WEEKLY_LIMIT, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · SCHEDULE") {
-            BlockScreenContent(packageName = "com.discord", appLabel = "Discord", categoryLabel = "Comunicación", reason = BlockReason.SCHEDULE, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · CATEGORY") {
-            BlockScreenContent(packageName = "com.netflix.mediaclient", appLabel = "Netflix", categoryLabel = "Streaming", reason = BlockReason.CATEGORY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · SCHOOL_MODE") {
-            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.SCHOOL_MODE, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · DEFAULT_POLICY") {
-            BlockScreenContent(packageName = "com.android.chrome", appLabel = "Chrome", categoryLabel = null, reason = BlockReason.DEFAULT_POLICY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · CATEGORY sin categoría") {
-            BlockScreenContent(packageName = "com.ejemplo.tiktok", appLabel = "TikTok", categoryLabel = null, reason = BlockReason.CATEGORY, onGoHome = {})
-        }
-        ScreenFrame("BlockScreenContent · nombre largo") {
-            BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
-        }
+        // Sprint 49: its block frames were replaced by the Sprint 66 ones at the top.
         // Sprint 48: its Inicio and Permisos frames were replaced by the Sprint 64 ones at the top.
     }
 }
