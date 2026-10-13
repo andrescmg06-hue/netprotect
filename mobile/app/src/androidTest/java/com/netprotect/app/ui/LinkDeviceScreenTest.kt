@@ -3,11 +3,14 @@ package com.netprotect.app.ui
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.netprotect.app.feature.supervised.SIGN_OUT_CONFIRM_TAG
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.ui.theme.NetProtectTheme
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,15 +60,35 @@ class LinkDeviceScreenTest {
     }
 
     @Test
-    fun linkingDisablesLink() {
+    fun linkingShowsVinculandoDisabled() {
         set(code = "123456", linking = true)
-        composeRule.onNodeWithText("Vincular dispositivo").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithText("Vinculando…").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithText("No cierres la app.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Confirmando el código con tu tutor").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Comprobar vínculo").assertDoesNotExist()
+    }
+
+    @Test
+    fun waitingShowsThePasteHintAndItsStatus() {
+        set()
+        composeRule.onNodeWithText("Puedes pegar los 6 dígitos de una vez. El botón se activa con los 6 dígitos.")
+            .performScrollTo().assertExists()
+        composeRule.onNodeWithText("Esperando el código").performScrollTo().assertExists()
     }
 
     @Test
     fun errorShowsMessage() {
-        set(code = "123456", error = "El código no es válido o ya venció.")
-        composeRule.onNodeWithText("El código no es válido o ya venció.").performScrollTo().assertExists()
+        val message = "El código no es válido o ya venció. Pídele uno nuevo a tu tutor."
+        set(code = "123456", error = message)
+        composeRule.onNodeWithText(message).performScrollTo().assertExists()
+        composeRule.onNodeWithText("El código no se pudo usar").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun tooManyAttemptsShowsItsText() {
+        val message = "Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo."
+        set(code = "123456", error = message)
+        composeRule.onNodeWithText(message).performScrollTo().assertExists()
     }
 
     @Test
@@ -77,10 +100,26 @@ class LinkDeviceScreenTest {
     }
 
     @Test
-    fun signOutCallsOnSignOut() {
+    fun signOutAsksFirstAndConfirmCallsOnSignOut() {
         var signedOut = false
         set(onSignOut = { signedOut = true })
         composeRule.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+        composeRule.onNodeWithText("¿Cerrar sesión?").assertExists()
+        assertFalse(signedOut)
+        composeRule.onNodeWithTag(SIGN_OUT_CONFIRM_TAG).performScrollTo().performClick()
+        composeRule.waitForIdle()
         assertTrue(signedOut)
+        composeRule.onNodeWithText("¿Cerrar sesión?").assertDoesNotExist()
+    }
+
+    @Test
+    fun cancellingTheSignOutChangesNothing() {
+        var signedOut = false
+        set(onSignOut = { signedOut = true })
+        composeRule.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+        composeRule.onNodeWithText("Cancelar").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertFalse(signedOut)
+        composeRule.onNodeWithText("¿Cerrar sesión?").assertDoesNotExist()
     }
 }

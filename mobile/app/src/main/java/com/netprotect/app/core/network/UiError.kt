@@ -25,7 +25,8 @@ sealed class UiError(val message: String) {
 
 /** Request-specific backend codes that deserve their own wording. */
 private val KNOWN_DETAILS = mapOf(
-    "invalid_or_expired_code" to "El código no es válido o ya venció.",
+    // Sprint 63: the supervised child redeems it; lámina 02 tells them who can give a new one.
+    "invalid_or_expired_code" to "El código no es válido o ya venció. Pídele uno nuevo a tu tutor.",
     "no_active_code" to "No hay un código activo.",
     "could_not_allocate_code" to "No se pudo generar un código. Intenta de nuevo.",
 )

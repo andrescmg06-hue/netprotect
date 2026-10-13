@@ -51,7 +51,7 @@ class UiErrorTest {
         assertEquals(UiError.SessionExpired, SessionExpiredException().toUiError())
         val wrongCode = ApiException("invalid_or_expired_code", 401).toUiError()
         assertTrue(wrongCode is UiError.Rejected)
-        assertEquals("El código no es válido o ya venció.", wrongCode.message)
+        assertEquals("El código no es válido o ya venció. Pídele uno nuevo a tu tutor.", wrongCode.message)
     }
 
     @Test

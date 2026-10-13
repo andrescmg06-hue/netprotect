@@ -269,7 +269,7 @@ class TokenSessionTest {
         assertEquals(UiError.RateLimited, ApiException("rate_limited", 429).toUiError())
         assertEquals(UiError.ServiceUnavailable, ApiException("HTTP 503", 503).toUiError())
         assertEquals(UiError.Unknown, ApiException("validation", 422).toUiError())
-        assertEquals("El código no es válido o ya venció.", ApiException("invalid_or_expired_code", 401).toUiError().message)
+        assertEquals("El código no es válido o ya venció. Pídele uno nuevo a tu tutor.", ApiException("invalid_or_expired_code", 401).toUiError().message)
         assertFalse(UiError.NoInternet.message.contains("HTTP"))
     }
 }
