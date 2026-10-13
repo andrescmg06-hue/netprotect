@@ -621,6 +621,10 @@ fun SupervisedShell(
                             JSONObject().put("type", "screen_share_consent").put("granted", false)
                         )
                     },
+                    requestedAt = consentRequestedAt,
+                    now = now,
+                    // The arrow means the same as the system Back (BackHandler above): not an answer.
+                    onBack = { onConsentEvent(ConsentEvent.Back) },
                 )
 
                 SupervisedRoute.Services -> ServicesStatusScreen(
