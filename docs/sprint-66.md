@@ -47,7 +47,9 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   permiso. Comprobé yo cada afirmación de privacidad contra el código (`SyncWorker`, `reportRuleEvent`, campos del latido, `onDisableRequested`, manifiesto). No se implementó «Comprobando…» (la relectura es instantánea y sería una
   espera falsa). `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 26s, 194 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` → **129 tests, 0 fallos**.
   Delegado (Opus).
-- [ ] T4 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 07, 10.5 y 11, y la **prueba G-19** (3 min navegando, incluyendo Privacidad y Detalle). Inline.
+- [x] T4 — Emulador `Pixel_8`: revisión visual a letra 1.0 y 2.0 contra las láminas 07, 10.5 y 11; **bloqueo real** con YouTube (regla `BLOCK` que ya existía, sin tocar la base de datos) con navegación por gestos y por tres botones y
+  letra 1.0 y 2.0: «Ir al inicio» siempre por encima de la barra del sistema, así que los márgenes del overlay no son un problema; **prueba G-19** en la app real incluyendo Privacidad y Detalle (3 min 15 s, mismos `ServiceRecord` y proceso,
+  un latido por minuto, B1 en cada vuelta, sin 5xx). Emulador restaurado (gestos y letra 1.0). Evidencia en `docs/sprint-66-evidence.md`. Inline.
 - [ ] T5 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: que los textos de privacidad sean verdad y que el detalle solo dispare los lanzadores existentes), CI y PR.
 
 ## Criterios de aceptación
