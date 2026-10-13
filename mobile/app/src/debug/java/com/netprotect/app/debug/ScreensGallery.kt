@@ -19,8 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.rules.BlockReason
@@ -44,6 +47,8 @@ import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeStep
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
@@ -63,6 +68,22 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 67 (al principio para las capturas). Sin Dialog. Bienvenida tras vincular (láminas 13.1 y 13.2). ----
+        ScreenFrame("Bienvenida · paso 1") {
+            GalleryWelcome(WelcomeStep.Linked, pendingPermissions = 4)
+        }
+        ScreenFrame("Bienvenida · paso 2 · con permisos pendientes") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 4)
+        }
+        ScreenFrame("Bienvenida · paso 2 · todo configurado") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 0)
+        }
+        ScreenFrame("Bienvenida · paso 1 · letra 200 %") {
+            GalleryWelcome(WelcomeStep.Linked, pendingPermissions = 4, fontScale = 2f)
+        }
+        ScreenFrame("Bienvenida · paso 2 · letra 200 %") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 4, fontScale = 2f)
+        }
         // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Privacidad y Detalle de permiso (láminas 10.5 y 11). ----
         ScreenFrame("Privacidad") {
             PrivacyScreen(onBack = {})
@@ -365,6 +386,20 @@ private fun GalleryPermissionDetail(permission: SupervisedPermission, permission
         onOpenUsageAccessSettings = {}, onRequestLocation = {}, onRequestOverlay = {}, onRequestDeviceAdmin = {},
         onOpenAppSettings = {}, onBack = {},
     )
+}
+
+/** Sprint 67: the welcome as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryWelcome(step: WelcomeStep, pendingPermissions: Int, fontScale: Float? = null) {
+    val content = @Composable {
+        WelcomeScreen(step = step, pendingPermissions = pendingPermissions, onNext = {}, onBack = {}, onFinish = {})
+    }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
 }
 
 @Composable
