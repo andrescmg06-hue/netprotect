@@ -34,8 +34,12 @@ Rama `sprint-66-bloqueo-privacidad`, creada desde `android-redesign` (`40fd78d`)
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
 
 - [x] T1 — Abrir el sprint y poner `CONTINUAR.md` al día. Inline. (este commit)
-- [ ] T2 — Bloqueo restilado: las 7 variantes sobre `BlockScreenContent`, nota al pie nueva, candado animado una vez, galería y tests (`BlockPresentationTest`, `BlockScreenContentTest`).
-  Delegado (**Opus**: oficio visual; sin shell).
+- [x] T2 — `19f5133`, `5721a0b`. `BlockScreenContent` en v2: panel navy con «APP BLOQUEADA» como etiqueta, el candado (`BlockPadlock`, animado una vez, respeta «quitar animaciones» y no se reinicia al
+  recomponer) y la ficha de la app; debajo, sobre crema, el motivo como titular serif y la pista (fila con icono y filetes en límite diario, semanal, horario y modo escolar; detalle gris en los demás). Textos
+  del código intactos; solo cambia la nota al pie: «El bloqueo cubre la pantalla de la app, pero no la cierra.». Mismas firmas públicas (el overlay y `BlockScreenActivity` no se tocan). Los campos `tone` y
+  `badgeIcon` ya no se dibujan (la lámina usa un solo candado azul) y se conservan documentados. Con un solo texto por motivo, «bloqueada» muestra titular y detalle algo redundantes: se valora en T4.
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 12s, 182 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en
+  `Pixel_8` → **113 tests, 0 fallos**. Delegado (Opus). A mirar en T4: los márgenes de las barras del sistema dentro del overlay (el escritor usó un margen mínimo fijo por si la ventana no los recibe).
 - [ ] T3 — Privacidad y Detalle: pantallas, rutas `Privacy` y `PermissionDetail` en `SupervisedRoute`, el `BackHandler`, la fila de Inicio y «Ver detalle» en Permisos, el callback
   «Abrir Ajustes de la app», galería y tests. Delegado (**Opus**: toca el shell y textos de privacidad de un menor).
 - [ ] T4 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 07, 10.5 y 11, y la **prueba G-19** (3 min navegando, incluyendo Privacidad y Detalle). Inline.
