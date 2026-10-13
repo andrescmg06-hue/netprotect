@@ -50,7 +50,13 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
 - [x] T4 — Emulador `Pixel_8`: revisión visual a letra 1.0 y 2.0 contra las láminas 07, 10.5 y 11; **bloqueo real** con YouTube (regla `BLOCK` que ya existía, sin tocar la base de datos) con navegación por gestos y por tres botones y
   letra 1.0 y 2.0: «Ir al inicio» siempre por encima de la barra del sistema, así que los márgenes del overlay no son un problema; **prueba G-19** en la app real incluyendo Privacidad y Detalle (3 min 15 s, mismos `ServiceRecord` y proceso,
   un latido por minuto, B1 en cada vuelta, sin 5xx). Emulador restaurado (gestos y letra 1.0). Evidencia en `docs/sprint-66-evidence.md`. Inline.
-- [ ] T5 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: que los textos de privacidad sean verdad y que el detalle solo dispare los lanzadores existentes), CI y PR.
+- [x] T5 — `security-reviewer` (**Opus**): **sin hallazgos ALTA**; 2 arreglados, ambos medidos en el emulador antes de tocar el texto. MEDIA: Privacidad decía «cada minuto mientras la app esté abierta; cuando no lo está, también
+  puede enviarlo con menos frecuencia», y con NetProtect en segundo plano (sin cerrarla, el lanzador delante) el latido llegó cada minuto (18:21, 18:22, 18:23) y la lista de apps cada 5 (18:15:10, 18:20:10): para un menor «abierta» es «en pantalla»
+  y el texto subestimaba lo que se envía; ahora «mientras NetProtect esté en marcha, aunque uses otras apps», sin afirmar nada de lo que pasa al cerrarla (no se probó), y lo mismo en Estado (la frase era de antes del sprint).
+  BAJA: el Detalle de «Mostrar sobre otras apps» decía «se abre la página de este permiso para NetProtect»; en Android 11+ el sistema ignora el paquete y abre la lista general «Display over other apps» (visto en el emulador API 36); ahora lo dice y manda
+  buscar NetProtect. El revisor confirmó que el resto de las afirmaciones de privacidad son verdad, que `onOpenAppSettings` solo abre los ajustes de esta app, que las rutas nuevas solo se pintan en `Linked` y que ninguna clave de efecto cambió.
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 2m 39s, 194 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` → **129 tests, 0 fallos**.
+  Falta el CI de los 8 jobs, que corre con el PR.
 
 ## Criterios de aceptación
 

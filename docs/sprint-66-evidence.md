@@ -68,7 +68,28 @@ son del arranque de la app) y **consultas B1** `GET /devices/me` en cada vuelta,
 
 - **No probado en el Galaxy S25 FE ni con One UI:** los pasos de cada permiso (la página del permiso de superponer, la lista de «Acceso especial» del uso, la pantalla del administrador) son del sistema y cambian por fabricante; S67 los repasa.
 - **No probado:** las 7 variantes del bloqueo en la ventana real; solo se vio «bloqueada» (BLOCK) con YouTube. Las demás se ven en la galería; la técnica de `docs/sprint-49-evidence.md` §3 sirve para provocarlas.
+- **No probado: qué se envía al cerrar NetProtect del todo** (Atrás desde Inicio): el revisor deduce por el código que el `onDispose` del shell cancela `SyncWorker` y para los servicios; Privacidad no afirma nada al respecto.
 - **No probado:** TalkBack ni «quitar animaciones» con el candado animado (el código lo respeta; sin prueba en dispositivo).
 - **El detalle de ubicación «Abrir Ajustes de la app» no se ejercitó en el emulador** (abre `ACTION_APPLICATION_DETAILS_SETTINGS`, con el código revisado).
 - **`coturn` se reinicia en bucle desde que Docker arrancó tras el reinicio del equipo** (`Restarting (2)`); no afecta a S66 pero conviene mirarlo antes de probar la vista remota con un tutor real.
-- T5 (`security-reviewer` y CI) sigue abierta.
+- El CI de los 8 jobs corre con el PR.
+
+## T5 — revisión de seguridad (`security-reviewer`, Opus)
+
+Solo lectura del diff `origin/android-redesign..HEAD -- mobile/`: **sin hallazgos ALTA**; dos, ambos arreglados tras medirlos:
+
+1. **MEDIA — Privacidad subestimaba lo que se envía.** El texto decía «Cada minuto mientras la app esté abierta. Cuando no lo está, también puede enviarlo, con menos frecuencia» (y lo mismo para la lista de apps cada 5 min).
+   Los bucles del latido y de la sincronización de apps son `LaunchedEffect` del shell y siguen mientras el shell exista, aunque haya otra app delante. **Medido en el emulador** con NetProtect en segundo plano sin cerrarla
+   (`segundo-plano-latido.log`, `backend-segundo-plano.log`): latidos a las 18:21:15, 18:22:16 y 18:23:17 con el lanzador del sistema en primer plano; sincronizaciones de apps a las 18:15:10 y 18:20:10 (esta con NetProtect detrás de la
+   pantalla de Ajustes). Ahora: «mientras NetProtect esté en marcha, aunque uses otras apps»; sin afirmar qué pasa al cerrarla del todo. La frase estaba igual en `ServicesStatusScreen` desde antes del sprint y se corrigió también.
+   Un test prohíbe volver a ligar el envío a «esté abierta».
+2. **BAJA — el paso de superponer era falso.** Decía «Se abre la página de este permiso para NetProtect». En Android 11 y posteriores el sistema ignora el paquete de `ACTION_MANAGE_OVERLAY_PERMISSION` y abre la lista general: se comprobó en el
+   emulador API 36 (`app-real-superponer-lista-general.png`, «Display over other apps» con NetProtect «Allowed» entre otras). Ahora: «Android abre una lista de apps con este permiso, no la página de NetProtect» y «Busca NetProtect en la lista…».
+
+Confirmado sin hallazgos (el revisor lo contrastó con el código): campos del latido (`DeviceClient.sendHeartbeat`), lo que envía la lista de apps (`package_name`, `app_label`, `is_system_app`, `foreground_seconds`), el aviso de cada bloqueo con su cola,
+la ubicación aproximada (`NETWORK_PROVIDER`, solo `ACCESS_COARSE_LOCATION`), el aviso de desinstalación que no puede impedirla, y que no hay `MediaRecorder`/`ImageReader`/`MediaMuxer` en mobile, web ni backend; ninguna afirmación de retención; `onOpenAppSettings`
+con paquete fijo (`context.packageName`); las pantallas no lanzan Intents ni piden permisos; las rutas `Privacy` y `PermissionDetail` solo se pintan dentro de `Linked`; ninguna clave de efecto de servicio cambió; el candado se anima una vez y respeta
+`rememberReducedMotion`; el diff no toca `BlockOverlayController`, `BlockScreenActivity` ni el manifiesto. Omisiones menores que el revisor no reporta: al vincular se envía el nombre del dispositivo (una vez) y la última ubicación del panel web puede
+mostrarse con Google Maps Embed (decisión del Sprint 13).
+
+Verificación posterior: `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` → BUILD SUCCESSFUL en 2m 39s, 194 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en `Pixel_8` → **129 tests, 0 fallos**.
