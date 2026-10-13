@@ -57,6 +57,9 @@ class LocationReportingService : Service() {
         private const val CHANNEL_ID = "location_reporting"
         private const val NOTIFICATION_ID = 1002
 
+        /** Ongoing notification text; must match [REPORT_INTERVAL_MS]. Pinned by ForegroundNotificationTextTest. */
+        internal const val NOTIFICATION_TEXT = "Se envía una ubicación aproximada cada 15 minutos."
+
         // ~15 minutes: enough to tell a tutor which zone the device is in, not to track it in
         // real time — see docs/sprint-13.md for the reasoning (and MAX_HISTORY_REPORTS in
         // backend/app/schemas/location.py, sized against this same interval).
@@ -191,7 +194,7 @@ class LocationReportingService : Service() {
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NetProtect comparte la ubicación")
-            .setContentText("Tu tutor puede ver la ubicación aproximada de este dispositivo.")
+            .setContentText(NOTIFICATION_TEXT)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build()
