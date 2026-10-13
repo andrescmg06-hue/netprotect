@@ -57,16 +57,23 @@ data class ServicesView(
     val screenShareSince: Instant?,
 )
 
-/** A heartbeat is sent every minute while the app is open; three missed beats is no longer "active". */
-const val REPORT_STALE_AFTER_SECONDS = 3 * 60L
+/**
+ * A heartbeat is sent every minute while the app is open. 300 s matches the backend, which marks the
+ * device OFFLINE after 5 min, so the child (Inicio, Estado) and the tutor see the same thing (S64,
+ * decision 3; it was 180 s). The single threshold for both screens.
+ */
+const val REPORT_STALE_AFTER_SECONDS = 5 * 60L
+
+/** True when a successful heartbeat happened at most [staleAfterSeconds] before [now]. */
+fun isReportRecent(
+    lastHeartbeatOk: Instant?,
+    now: Instant,
+    staleAfterSeconds: Long = REPORT_STALE_AFTER_SECONDS,
+): Boolean = lastHeartbeatOk != null && now.epochSecond - lastHeartbeatOk.epochSecond <= staleAfterSeconds
 
 fun servicesView(status: ServiceStatus, enforcementRecentlyActive: Boolean?, now: Instant): ServicesView {
     val last = status.lastHeartbeatOk
-    val report = when {
-        last == null -> ServiceState.Unconfirmed
-        now.epochSecond - last.epochSecond <= REPORT_STALE_AFTER_SECONDS -> ServiceState.Active
-        else -> ServiceState.Unconfirmed
-    }
+    val report = if (isReportRecent(last, now)) ServiceState.Active else ServiceState.Unconfirmed
     val appControl = when {
         !status.enforcementRunning -> ServiceState.Inactive
         enforcementRecentlyActive == true -> ServiceState.Active

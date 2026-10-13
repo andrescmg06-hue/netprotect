@@ -48,6 +48,16 @@ class ServiceStatusTest {
     }
 
     @Test
+    fun reportThresholdIsFiveMinutesLikeTheBackend() {
+        // Same 300 s as the backend's OFFLINE mark and Inicio's "Sin reporte reciente" (was 180 s).
+        assertEquals(300L, REPORT_STALE_AFTER_SECONDS)
+        val at = { seconds: Long -> ServiceStatus(lastHeartbeatOk = now.minusSeconds(seconds)) }
+        assertEquals(ServiceState.Active, servicesView(at(240), null, now).report)
+        assertEquals(ServiceState.Active, servicesView(at(300), null, now).report)
+        assertEquals(ServiceState.Unconfirmed, servicesView(at(301), null, now).report)
+    }
+
+    @Test
     fun appControlNeedsBothTheServiceAndItsLivenessMark() {
         assertEquals(ServiceState.Inactive, servicesView(ServiceStatus(enforcementRunning = false), true, now).appControl)
         assertEquals(ServiceState.Active, servicesView(ServiceStatus(enforcementRunning = true), true, now).appControl)
