@@ -51,9 +51,12 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   titular coincida con la fila «Última comunicación»; en un arranque en frío Inicio puede decir «Todo funciona» antes del primer
   latido local mientras Estado aún no lo confirma; (2) los pasos «Pendiente» del rail no llevan botón, así que si el menor rechaza
   el «siguiente» (p. ej. ubicación denegada para siempre) los demás no se alcanzan desde esa pantalla.
-- [ ] T5 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 03, 04 y 10.4, y la **prueba G-19**: 3 min
-  navegando y `dumpsys activity services com.netprotect.app` con los mismos `ServiceRecord`, más el latido en el backend
-  cada minuto. Inline.
+- [x] T5 — Emulador `Pixel_8`: `connectedDebugAndroidTest` → 99 tests, 0 fallos. Revisión visual a letra 1.0 y 2.0 contra las láminas 03, 04
+  y 10.4. **Prueba G-19** en la app real: 3 min 11 s navegando y yendo a segundo plano, mismos `ServiceRecord`, mismo proceso, un
+  latido por minuto y una consulta B1 por cada vuelta, sin 5xx. **B1 real:** al marcar `unlinked_at` en la base de desarrollo el
+  teléfono pasó solo a «Este dispositivo ya no está vinculado», los servicios bajaron de 2 a 0 y el latido se detuvo; al
+  restaurarlo, volvió a «Todo funciona». Defecto encontrado en la app real y corregido: los iconos de la barra de estado sobre el panel
+  navy. Evidencia en `docs/sprint-64-evidence.md`. Inline.
 - [ ] T6 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: toca sesión y servicios) y CI.
 
 ## Criterios de aceptación
