@@ -42,6 +42,7 @@ object NpIcons {
     @DrawableRes val Check = R.drawable.ic_check
     @DrawableRes val CircleCheck = R.drawable.ic_circle_check
     @DrawableRes val CircleAlert = R.drawable.ic_circle_alert
+    @DrawableRes val CircleStop = R.drawable.ic_circle_stop
     @DrawableRes val Ban = R.drawable.ic_ban
     @DrawableRes val Home = R.drawable.ic_home
     @DrawableRes val GraduationCap = R.drawable.ic_graduation_cap

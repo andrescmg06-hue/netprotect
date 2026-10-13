@@ -1,5 +1,6 @@
 package com.netprotect.app.core.screenshare
 
+import com.netprotect.app.MainActivity
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import android.app.Notification
 import android.app.NotificationChannel
@@ -70,6 +71,11 @@ class ScreenShareService : Service() {
         private const val TAG = "ScreenShareService"
         private const val CHANNEL_ID = "screen_share"
         private const val NOTIFICATION_ID = 1003
+
+        /** Ongoing notification text; true only because tapping it opens the app ([CONTENT_REQUEST_CODE]),
+         * where the banner and Estado offer "Detener". Pinned by ForegroundNotificationTextTest. */
+        internal const val NOTIFICATION_TEXT = "Toca para abrir NetProtect y detener la vista."
+        private const val CONTENT_REQUEST_CODE = 1004
 
         // Capture is downscaled before it ever reaches the encoder: a tutor checking what their
         // child is doing needs to read the screen, not to receive it pixel-perfect, and the
@@ -397,9 +403,19 @@ class ScreenShareService : Service() {
             Intent(this, ScreenShareService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
+        // Opens the launcher activity with no extras: nothing about the child or the tutor travels in it.
+        val openAppIntent = PendingIntent.getActivity(
+            this,
+            CONTENT_REQUEST_CODE,
+            Intent(this, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            ),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Tu tutor está viendo esta pantalla")
-            .setContentText("La transmisión está activa. Puedes detenerla cuando quieras.")
+            .setContentText(NOTIFICATION_TEXT)
+            .setContentIntent(openAppIntent)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Detener", stopIntent)

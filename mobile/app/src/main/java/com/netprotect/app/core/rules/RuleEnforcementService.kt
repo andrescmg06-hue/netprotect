@@ -61,6 +61,9 @@ class RuleEnforcementService : Service() {
 
         private const val CHANNEL_ID = "rule_enforcement"
         private const val NOTIFICATION_ID = 1001
+
+        /** Ongoing notification text; pinned by ForegroundNotificationTextTest. */
+        internal const val NOTIFICATION_TEXT = "Control de apps funcionando en este dispositivo."
         private const val BLOCK_CHANNEL_ID = "block_screen_alert"
         private const val BLOCK_NOTIFICATION_ID = 1003
 
@@ -377,7 +380,7 @@ class RuleEnforcementService : Service() {
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NetProtect está activo")
-            .setContentText("Verificando las reglas de apps de este dispositivo.")
+            .setContentText(NOTIFICATION_TEXT)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build()

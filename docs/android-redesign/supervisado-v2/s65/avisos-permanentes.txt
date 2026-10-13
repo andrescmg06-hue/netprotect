@@ -1,0 +1,2 @@
+android.text=String (Se envía una ubicación aproximada cada 15 minutos.)
+android.text=String (Control de apps funcionando en este dispositivo.)
