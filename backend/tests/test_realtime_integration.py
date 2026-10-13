@@ -347,6 +347,41 @@ def test_a_denied_consent_is_relayed_and_audited(client) -> None:
     assert "SCREEN_SHARE_CONSENT_DENIED" in _audit_actions(client, supervised_token)
 
 
+@pytest.mark.parametrize("reason", ["dismissed", "expired"])
+def test_a_device_stop_before_answering_is_relayed_and_frees_the_slot(client, reason) -> None:
+    """Sprint 65 (B5): when the supervised person leaves the consent screen ("dismissed") or the
+    request times out on the phone ("expired"), the phone sends `screen_share_stop` with that
+    reason. A consent denial does not release the tutor's slot, a stop does — so without this,
+    the same tutor (or another one) would be told `screen_share_busy` until the socket closed.
+    """
+    tutor_token, supervised_token, device_id = _setup_linked_device(client)
+
+    with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as device_ws:
+        _authenticate_ws(device_ws, supervised_token)
+        with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as tutor_ws:
+            _authenticate_ws(tutor_ws, tutor_token)
+
+            tutor_ws.send_json({"type": "screen_share_request"})
+            assert device_ws.receive_json()["type"] == "screen_share_request"
+
+            device_ws.send_json({"type": "screen_share_stop", "reason": reason})
+            assert tutor_ws.receive_json() == {"type": "screen_share_stop", "reason": reason}
+
+            # A *different* tutor connection: the same socket asking again would succeed even if
+            # the slot were still held (begin_screen_share is idempotent per socket), so only a
+            # second connection proves the slot was really released.
+            with client.websocket_connect(f"/api/v1/devices/{device_id}/ws") as next_ws:
+                _authenticate_ws(next_ws, tutor_token)
+                next_ws.send_json({"type": "screen_share_request"})
+                assert device_ws.receive_json()["type"] == "screen_share_request"
+
+                device_ws.send_json({"type": "screen_share_offer", "sdp": "v=0\r\no=- offer"})
+                relayed = next_ws.receive_json()
+                assert relayed["type"] == "screen_share_offer"
+
+    assert "SCREEN_SHARE_STOPPED" in _audit_actions(client, supervised_token)
+
+
 def test_a_peer_cannot_send_a_frame_that_belongs_to_the_other_role(client) -> None:
     """A supervised user must not be able to fake the tutor's half of the conversation (or vice
     versa): the role is the one fixed at authentication, not anything inside the frame."""
