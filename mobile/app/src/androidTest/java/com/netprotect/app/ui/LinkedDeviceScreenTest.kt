@@ -27,7 +27,7 @@ class LinkedDeviceScreenTest {
         pendingPermissions: Int = 2,
         onOpenServices: () -> Unit = {},
         onOpenPermissions: () -> Unit = {},
-        onSignOut: () -> Unit = {},
+        onOpenMoreSettings: () -> Unit = {},
     ) {
         composeRule.setContent {
             NetProtectTheme {
@@ -41,7 +41,7 @@ class LinkedDeviceScreenTest {
                     pendingPermissions = pendingPermissions,
                     onOpenServices = onOpenServices,
                     onOpenPermissions = onOpenPermissions,
-                    onSignOut = onSignOut,
+                    onOpenMoreSettings = onOpenMoreSettings,
                 )
             }
         }
@@ -55,10 +55,13 @@ class LinkedDeviceScreenTest {
     }
 
     @Test
-    fun showsSignOutSubtitleNotDesvincular() {
-        set()
-        composeRule.onNodeWithText("Cierra la sesión en este dispositivo.").performScrollTo().assertExists()
+    fun moreSettingsReplacesSignOut() {
+        var opened = false
+        set(onOpenMoreSettings = { opened = true })
+        composeRule.onNodeWithText("Cerrar sesión").assertDoesNotExist()
         composeRule.onNodeWithText("Desvincular", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("Más ajustes").performScrollTo().performClick()
+        assertTrue(opened)
     }
 
     @Test

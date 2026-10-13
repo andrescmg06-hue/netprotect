@@ -56,6 +56,8 @@ object NpIcons {
     @DrawableRes val EyeOff = R.drawable.ic_eye_off
     @DrawableRes val Monitor = R.drawable.ic_monitor
     @DrawableRes val Wifi = R.drawable.ic_wifi
+    @DrawableRes val WifiOff = R.drawable.ic_wifi_off
+    @DrawableRes val SlidersHorizontal = R.drawable.ic_sliders_horizontal
     @DrawableRes val Settings = R.drawable.ic_settings
     @DrawableRes val Lock = R.drawable.ic_lock
     @DrawableRes val X = R.drawable.ic_x

@@ -37,5 +37,6 @@ fun lastContact(lastHeartbeatOk: Instant?, serverLastSeenAt: String?): Instant? 
 }
 
 /** Routes inside the linked supervised mode. Only the visible screen changes — never the shell's
- * state, so no service is stopped by navigating (see SupervisedShell). Consent and Services: Sprint 50. */
-enum class SupervisedRoute { Linked, Permissions, Consent, Services }
+ * state, so no service is stopped by navigating (see SupervisedShell). Consent and Services: Sprint 50;
+ * MoreSettings ("Más ajustes"): Sprint 63. */
+enum class SupervisedRoute { Linked, Permissions, Consent, Services, MoreSettings }

@@ -63,8 +63,8 @@ class TutorAccountScreenTest {
 
     @Test
     fun showsErrorMessage() {
-        set(error = "Sin conexión con el servidor. Revisa tu conexión e intenta de nuevo.")
-        composeRule.onNodeWithText("Sin conexión con el servidor. Revisa tu conexión e intenta de nuevo.")
+        set(error = "No hay conexión a Internet. Comprueba tu conexión e inténtalo de nuevo.")
+        composeRule.onNodeWithText("No hay conexión a Internet. Comprueba tu conexión e inténtalo de nuevo.")
             .performScrollTo()
             .assertExists()
     }

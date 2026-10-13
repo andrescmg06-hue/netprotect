@@ -1,0 +1,60 @@
+# Sprint 63 — Acceso, Vincular y cerrar sesión con confirmación
+
+Tercer sprint del rediseño v2 (`docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`). Láminas 01 (Acceso), 02 (Vincular)
+y 10 (Más ajustes y confirmación de cierre de sesión), más los textos de `02_PANTALLAS.md` §01, §02 y §10. Cierra la mitad de
+B-07 que quedó abierta en S61: cerrar sesión apaga la protección, así que ahora pide confirmación.
+
+Rama `sprint-63-acceso-vincular`, creada desde `android-redesign` (`93ced9e`), en el worktree `C:/Users/andre/np-s63`.
+
+## Decisiones
+
+- **Errores por causa** (decisión 5 del plan: `ACCESS_NETWORK_STATE`, un permiso normal sin diálogo):
+  - *Sin Internet:* el teléfono no tiene red. «No hay conexión a Internet. Comprueba tu conexión e inténtalo de nuevo.»
+  - *Servicio no disponible:* hay red, pero no responde el servidor (conexión rechazada, tiempo agotado o 5xx; B4: un 5xx ya no se
+    muestra como «sin conexión»). «NetProtect no puede conectarse al servicio ahora. Inténtalo de nuevo en unos momentos.»
+  - *Sesión caducada:* se pasa a la variante «Vuelve a entrar» con «Tu sesión caducó.».
+  - *Demasiados intentos* (429 al canjear el código): «Hiciste demasiados intentos. Espera unos minutos y vuelve a intentarlo.»
+  - El resto sigue con el texto genérico actual.
+- **Fotografía del login:** la de la lámina es `study.jpg` del panel web (`frontend/public/login/`, de los assets de diseño del
+  dueño). Se reutiliza en la app, redimensionada a 1080 px de ancho y con un peso de ~100 KB.
+- **Cerrar sesión pide confirmación** («¿Cerrar sesión?») donde el menor puede pulsarlo con la protección activa: Vincular
+  (arriba a la derecha) y «Más ajustes». Cerrar sesión no desvincula. En `TutorAccountScreen` y `RoleCheckFailedScreen` no hay
+  protección activa y no pide confirmación.
+- **«Más ajustes»** es una ruta nueva del shell, accesible desde Inicio, con «Cerrar sesión» y la nota «Para desvincular este
+  dispositivo, pídeselo a tu tutor. Solo tu tutor puede hacerlo.» (la lámina dice «Solo él»: se cambia, porque no se supone el
+  género del tutor). La fila «Privacidad» se añade en S66, cuando exista esa pantalla; no se muestra una fila que no lleve a
+  ninguna parte. El rediseño completo de Inicio es S64: aquí solo cambia «Cerrar sesión» por una fila «Más ajustes».
+- No cambia el backend. `SupervisedShell` solo recibe una ruta nueva y un parámetro; los efectos de los servicios no se tocan
+  (G-19).
+
+## Tareas
+
+Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
+
+- [x] T1 — Abrir el sprint. Inline. (este commit)
+- [x] T2 — `a755950`. `UiError` con `NoInternet`, `ServiceUnavailable` (sustituye a `Server`), `SessionExpired`, `RateLimited` y `Rejected`; `Offline`
+  desaparece. `NetworkState` (ConnectivityManager, `NET_CAPABILITY_INTERNET` sin exigir VALIDATED, para que un portal cautivo cuente como red)
+  se inicia en `MainActivity`. `RestoreResult.Unreachable(error)` lleva la causa (B4). Un 401 en el login sigue con su mensaje: es una
+  credencial de Google rechazada, no una sesión caducada. `test assembleDebug assembleDebugAndroidTest lintDebug` → BUILD SUCCESSFUL en 3m 1s,
+  105 tests unitarios, lint con 0 errores. Enunciado: Errores tipados: `UiError` con los casos de arriba, comprobación de red con `ConnectivityManager` y el permiso
+  `ACCESS_NETWORK_STATE`, mapeo en el login, la restauración de sesión, el chequeo de salud y Vincular, función pura con
+  tests JVM. Delegado (**Opus**: red, sesión y un permiso nuevo).
+- [x] T3 — `a18b98d`, `a6f0c7f`, `cbdffe9`. Carga, Inicio de sesión con sus variantes por causa y la foto, Vincular con
+  `NpCodeField` (6 casillas) y sus estados (esperando, vinculando, inválido o vencido, 429), «Más ajustes» y el diálogo
+  «¿Cerrar sesión?» (tarjeta con botones apilados, no el `ConfirmDialog` genérico, para que no se aplasten al 200 %), con 15
+  frames de galería al principio y tests. Un escritor Opus; el shell solo ganó la ruta `MoreSettings`. Delegado.
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug` → 116 tests, 0 errores de lint.
+- [x] T4 — `connectedDebugAndroidTest` en `Pixel_8`: 88 tests, 0 fallos. Revisión visual a letra 1.0 y 2.0 contra las láminas
+  01, 02 y 10 (capturas en `docs/android-redesign/supervisado-v2/s63/`). A 1.0, «Cerrar sesión» de Vincular bajaba a una
+  segunda línea y el pie apilaba el estado y «Comprobar vínculo»: se sustituyeron los dos botones de texto por una acción
+  compacta de 14 sp con `FlowRow`, y quedaron en una fila como en la lámina 02. Inline (el arreglo era un solo archivo).
+- [ ] T5 — `security-reviewer` (**Opus**): **sin hallazgos ALTA, MEDIA ni BAJA** (lectura del diff `origin/android-redesign..HEAD`, 8
+  commits; comprobé yo sus afirmaciones principales: ningún `Log` nuevo, un solo permiso nuevo `ACCESS_NETWORK_STATE`, `IOException`
+  pasa por `toUiError` en vez de mostrar `exception.message`). Falta el CI de los 8 jobs en verde, que corre con el PR.
+
+## Criterios de aceptación
+
+- Sin Internet y servicio caído se distinguen; un 5xx no se muestra como «sin conexión»; el 429 de Vincular tiene su texto.
+- Cerrar sesión pide confirmación en Vincular y en «Más ajustes», y los servicios no se tocan al cancelar.
+- Las pantallas siguen las láminas 01, 02 y 10 en estructura y textos, y con letra al 200 % no se corta nada.
+- `./gradlew test assembleDebug lintDebug` y los 8 jobs de CI en verde; `security-reviewer` sin ALTA.

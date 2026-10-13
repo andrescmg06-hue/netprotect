@@ -262,14 +262,14 @@ class TokenSessionTest {
 
     @Test
     fun errorsMapToSpanishCategories() {
-        assertEquals(UiError.Offline, SocketTimeoutException().toUiError())
+        assertEquals(UiError.ServiceUnavailable, SocketTimeoutException().toUiError(online = { true }))
         assertEquals(UiError.SessionExpired, SessionExpiredException().toUiError())
         assertEquals(UiError.SessionExpired, ApiException("invalid_access_token", 401).toUiError())
         assertEquals(UiError.NotFound, ApiException("device_not_found", 404).toUiError())
         assertEquals(UiError.RateLimited, ApiException("rate_limited", 429).toUiError())
-        assertEquals(UiError.Server, ApiException("HTTP 503", 503).toUiError())
+        assertEquals(UiError.ServiceUnavailable, ApiException("HTTP 503", 503).toUiError())
         assertEquals(UiError.Unknown, ApiException("validation", 422).toUiError())
-        assertEquals("El código no es válido o ya venció.", ApiException("invalid_or_expired_code", 401).toUiError().message)
-        assertFalse(UiError.Offline.message.contains("HTTP"))
+        assertEquals("El código no es válido o ya venció. Pídele uno nuevo a tu tutor.", ApiException("invalid_or_expired_code", 401).toUiError().message)
+        assertFalse(UiError.NoInternet.message.contains("HTTP"))
     }
 }

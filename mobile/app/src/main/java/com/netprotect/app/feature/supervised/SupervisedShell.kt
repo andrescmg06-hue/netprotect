@@ -54,6 +54,7 @@ import com.netprotect.app.core.status.servicesView
 import com.netprotect.app.core.sync.SyncWorker
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
+import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
@@ -469,7 +470,7 @@ fun SupervisedShell(
                     pendingPermissions = permissions.pending,
                     onOpenPermissions = { route = SupervisedRoute.Permissions },
                     onOpenServices = { route = SupervisedRoute.Services },
-                    onSignOut = { scope.launch { onSignOut() } },
+                    onOpenMoreSettings = { route = SupervisedRoute.MoreSettings },
                 )
 
                 SupervisedRoute.Permissions -> PermissionsScreen(
@@ -506,6 +507,11 @@ fun SupervisedShell(
                     view = servicesView(serviceStatus, EnforcementLiveness.isRecentlyActive(context), now),
                     now = now,
                     onStopScreenShare = { ScreenShareService.requestStop(context) },
+                    onBack = { route = SupervisedRoute.Linked },
+                )
+
+                SupervisedRoute.MoreSettings -> MoreSettingsScreen(
+                    onSignOut = { scope.launch { onSignOut() } },
                     onBack = { route = SupervisedRoute.Linked },
                 )
             }

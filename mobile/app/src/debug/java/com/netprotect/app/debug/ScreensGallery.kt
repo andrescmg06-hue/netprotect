@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.rules.BlockReason
 import com.netprotect.app.core.status.ServiceState
 import com.netprotect.app.core.status.ServicesView
@@ -28,12 +29,14 @@ import com.netprotect.app.feature.home.RoleCheckFailedScreen
 import com.netprotect.app.feature.home.ServiceStatus
 import com.netprotect.app.feature.home.TutorAccountScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
+import com.netprotect.app.feature.supervised.SignOutConfirmContent
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
+import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
@@ -53,6 +56,67 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 63 (al principio para las capturas). Sin Dialog: el diálogo se muestra como tarjeta. ----
+        ScreenFrame("LoadingScreen") {
+            LoadingScreen()
+        }
+        ScreenFrame("LoginScreen · servicio listo") {
+            LoginScreen(error = null, service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LoginScreen · servicio no disponible") {
+            LoginScreen(error = UiError.ServiceUnavailable.message, service = ServiceStatus.Unavailable, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LoginScreen · sin Internet") {
+            LoginScreen(error = UiError.NoInternet.message, service = ServiceStatus.Unavailable, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LoginScreen · tu sesión caducó") {
+            LoginScreen(error = UiError.SessionExpired.message, service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LoginScreen · comprobando") {
+            LoginScreen(error = null, service = ServiceStatus.Checking, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LoginScreen · error genérico") {
+            LoginScreen(error = "No se pudo iniciar sesión", service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
+        }
+        ScreenFrame("LinkDeviceScreen · esperando el código") {
+            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · 6 dígitos") {
+            LinkDeviceScreen(code = "482915", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · vinculando") {
+            LinkDeviceScreen(code = "482915", onCodeChange = {}, linking = true, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("LinkDeviceScreen · inválido o vencido") {
+            LinkDeviceScreen(
+                code = "482915", onCodeChange = {}, linking = false,
+                error = "El código no es válido o ya venció. Pídele uno nuevo a tu tutor.",
+                rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("LinkDeviceScreen · demasiados intentos") {
+            LinkDeviceScreen(
+                code = "482915", onCodeChange = {}, linking = false, error = UiError.RateLimited.message,
+                rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {},
+            )
+        }
+        ScreenFrame("LinkDeviceScreen · comprobando vínculo") {
+            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = true, onLink = {}, onCheckLink = {}, onSignOut = {})
+        }
+        ScreenFrame("MoreSettingsScreen") {
+            MoreSettingsScreen(onSignOut = {}, onBack = {})
+        }
+        ScreenFrame("¿Cerrar sesión? (contenido del diálogo)") {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(NpColors.Navy.copy(alpha = 0.55f))
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                SignOutConfirmContent(onConfirm = {}, onCancel = {}, modifier = Modifier.fillMaxWidth())
+            }
+        }
         // ---- Sprint 61 (al principio para las capturas) ----
         ScreenFrame("TutorAccountScreen") {
             TutorAccountScreen(loading = false, error = null, onUseAsSupervised = {}, onSignOut = {})
@@ -63,14 +127,14 @@ fun ScreensGallery() {
         ScreenFrame("TutorAccountScreen · error") {
             TutorAccountScreen(
                 loading = false,
-                error = "Sin conexión con el servidor. Revisa tu conexión e intenta de nuevo.",
+                error = "No hay conexión a Internet. Comprueba tu conexión e inténtalo de nuevo.",
                 onUseAsSupervised = {},
                 onSignOut = {},
             )
         }
         ScreenFrame("RoleCheckFailedScreen") {
             RoleCheckFailedScreen(
-                message = "El servidor tuvo un problema. Intenta de nuevo en unos minutos.",
+                message = "NetProtect no puede conectarse al servicio ahora. Inténtalo de nuevo en unos momentos.",
                 onRetry = {},
                 onSignOut = {},
             )
@@ -173,24 +237,6 @@ fun ScreensGallery() {
             BlockScreenContent(packageName = "com.ejemplo.largo", appLabel = "Una aplicación con un nombre muy largo para probar el recorte", categoryLabel = "Streaming", reason = BlockReason.DAILY_LIMIT, onGoHome = {})
         }
         // ---- Sprint 48 (al principio para las capturas) ----
-        ScreenFrame("LinkDeviceScreen · vacío") {
-            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
-        ScreenFrame("LinkDeviceScreen · 123") {
-            LinkDeviceScreen(code = "123", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
-        ScreenFrame("LinkDeviceScreen · 6 dígitos") {
-            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = false, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
-        ScreenFrame("LinkDeviceScreen · vinculando") {
-            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = true, error = null, rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
-        ScreenFrame("LinkDeviceScreen · error") {
-            LinkDeviceScreen(code = "123456", onCodeChange = {}, linking = false, error = "El código no es válido o ya venció.", rechecking = false, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
-        ScreenFrame("LinkDeviceScreen · comprobando") {
-            LinkDeviceScreen(code = "", onCodeChange = {}, linking = false, error = null, rechecking = true, onLink = {}, onCheckLink = {}, onSignOut = {})
-        }
         ScreenFrame("LinkedDeviceScreen · 2 pendientes") {
             LinkedDeviceScreen(
                 deviceName = "Tablet de Sofía",
@@ -200,7 +246,7 @@ fun ScreensGallery() {
                 reachable = true,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · 0 pendientes sin conexión") {
@@ -212,7 +258,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 0,
-                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
             )
         }
         ScreenFrame("LinkedDeviceScreen · sin nombre ni contacto") {
@@ -224,7 +270,7 @@ fun ScreensGallery() {
                 reachable = false,
                 now = galleryNowS48,
                 pendingPermissions = 2,
-                onOpenPermissions = {}, onOpenServices = {}, onSignOut = {},
+                onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {},
             )
         }
         ScreenFrame("PermissionsScreen · 2 pendientes") {
@@ -247,21 +293,6 @@ fun ScreensGallery() {
                 onOpenUsageAccessSettings = {}, onRecheckUsageAccess = {}, onRequestLocation = {}, onRecheckLocation = {},
                 onRequestOverlay = {}, onRecheckOverlay = {}, onRequestDeviceAdmin = {}, onBack = {},
             )
-        }
-        ScreenFrame("LoadingScreen") {
-            LoadingScreen()
-        }
-        ScreenFrame("LoginScreen · Checking") {
-            LoginScreen(error = null, service = ServiceStatus.Checking, onSignIn = {}, onRetryService = {})
-        }
-        ScreenFrame("LoginScreen · Ready") {
-            LoginScreen(error = null, service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
-        }
-        ScreenFrame("LoginScreen · Unavailable") {
-            LoginScreen(error = null, service = ServiceStatus.Unavailable, onSignIn = {}, onRetryService = {})
-        }
-        ScreenFrame("LoginScreen · Ready + error") {
-            LoginScreen(error = "No se pudo iniciar sesión", service = ServiceStatus.Ready, onSignIn = {}, onRetryService = {})
         }
     }
 }
