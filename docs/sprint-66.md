@@ -40,8 +40,13 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   `badgeIcon` ya no se dibujan (la lámina usa un solo candado azul) y se conservan documentados. Con un solo texto por motivo, «bloqueada» muestra titular y detalle algo redundantes: se valora en T4.
   `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 12s, 182 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en
   `Pixel_8` → **113 tests, 0 fallos**. Delegado (Opus). A mirar en T4: los márgenes de las barras del sistema dentro del overlay (el escritor usó un margen mínimo fijo por si la ventana no los recibe).
-- [ ] T3 — Privacidad y Detalle: pantallas, rutas `Privacy` y `PermissionDetail` en `SupervisedRoute`, el `BackHandler`, la fila de Inicio y «Ver detalle» en Permisos, el callback
-  «Abrir Ajustes de la app», galería y tests. Delegado (**Opus**: toca el shell y textos de privacidad de un menor).
+- [x] T3 — `89e80f2`, `e9a438c`. `PrivacyScreen` con solo lo que el código respalda (latido cada minuto con versión, zona horaria y si el acceso al uso está concedido; lista de apps y tiempo de uso cada 5 min; aviso de cada
+  bloqueo; ubicación aproximada cada 15 min; no se graba ni se guarda la pantalla; **ninguna retención**) y `PermissionDetailScreen` con pasos reales distintos por permiso (ubicación: cuadro de Android, no Ajustes;
+  administrador: pantalla de activación, solo avisa al tutor, no impide desinstalar; «Abrir Ajustes de la app» con la ubicación pendiente). El botón del administrador dice «Activar protección» (no «Activar en Ajustes»).
+  Rutas `Privacy` y `PermissionDetail` solo de presentación (`detailPermission` es `rememberSaveable`, ninguna clave de efecto cambió; «Atrás» del detalle → Permisos), fila «Privacidad» en Inicio y «Ver detalle» bajo cada
+  permiso. Comprobé yo cada afirmación de privacidad contra el código (`SyncWorker`, `reportRuleEvent`, campos del latido, `onDisableRequested`, manifiesto). No se implementó «Comprobando…» (la relectura es instantánea y sería una
+  espera falsa). `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL en 1m 26s, 194 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` → **129 tests, 0 fallos**.
+  Delegado (Opus).
 - [ ] T4 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 07, 10.5 y 11, y la **prueba G-19** (3 min navegando, incluyendo Privacidad y Detalle). Inline.
 - [ ] T5 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: que los textos de privacidad sean verdad y que el detalle solo dispare los lanzadores existentes), CI y PR.
 
