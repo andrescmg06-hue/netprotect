@@ -42,8 +42,15 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   0 errores. Delegado (Opus). Desviaciones del escritor, aceptadas y para `security-reviewer`: (1) al arrancar, con caché y un
   404 o sin tutores, se entra en `Unlinked` (otra cuenta de Google en el mismo teléfono vería «Tu tutor terminó el vínculo»,
   porque cerrar sesión no borra la caché); (2) al desvincularse se detiene la vista remota activa.
-- [ ] T4 — Pantallas: Inicio con `NpHeroPanel`, Permisos con `NpRail`, `UnlinkedScreen`, frames de galería y tests.
-  Delegado (**Opus**: oficio visual; un escritor distinto de T3).
+- [x] T4 — `94353c5`, `b00b732`, `75e3ca6`. Inicio con `NpHeroPanel` y `homeStatus` (4 estados más el de vista remota; sin fila «Privacidad»), Permisos
+  con `NpRail` (`permissionSteps` decide el «siguiente»; solo ese lleva botón), `UnlinkedScreen` restilada, 8 frames de galería de S64
+  al principio y tests. `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD
+  SUCCESSFUL en 1m 25s, 144 tests, 0 fallos, lint con 0 errores. Delegado (Opus). El shell solo perdió `reachable = !heartbeatFailing`
+  (`heartbeatFailing` ya no se lee: aviso de compilador, no error). Decisiones del escritor a revisar en T5: (1) la regla recibe
+  `lastContact` (el más reciente entre el latido local y el `last_seen_at` del servidor), no solo `lastHeartbeatOk`, para que el
+  titular coincida con la fila «Última comunicación»; en un arranque en frío Inicio puede decir «Todo funciona» antes del primer
+  latido local mientras Estado aún no lo confirma; (2) los pasos «Pendiente» del rail no llevan botón, así que si el menor rechaza
+  el «siguiente» (p. ej. ubicación denegada para siempre) los demás no se alcanzan desde esa pantalla.
 - [ ] T5 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 03, 04 y 10.4, y la **prueba G-19**: 3 min
   navegando y `dumpsys activity services com.netprotect.app` con los mismos `ServiceRecord`, más el latido en el backend
   cada minuto. Inline.
