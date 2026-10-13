@@ -55,8 +55,15 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   `test_a_device_stop_before_answering_is_relayed_and_frees_the_slot` (`dismissed` y `expired`; una segunda conexión de tutor no recibe
   `screen_share_busy`); `make test` en contenedor → **287 passed**, 0 fallos (285 antes + 2). Sin cambios de código de producción del
   backend. Sin test de componente para el temporizador de 135 s. Delegado (Sonnet).
-- [ ] T5a — Pantallas: consentimiento en 3 pasos con cuenta atrás, Estado restilado (panel «En curso», «Detener ahora»), banner, textos
-  corregidos, frames de galería y tests. Delegado (**Opus**: oficio visual).
+- [x] T5a — `e3f4f1c`, `a1c8012`, `a8cc0e8`. Consentimiento en 3 pasos (`NpStepIndicator`) con cuenta atrás y barra (`NpCountdownBar`), sin reloj cuando `requestedAt` es nulo,
+  pie fijo y flecha «Atrás» por el mismo camino que el botón del sistema; Estado v2 con el panel «En curso» y «Detener ahora» y la lista plana;
+  banner «Tu tutor está viendo tu pantalla»; se quita «no graba ni controla» por «NetProtect no graba ni guarda lo que se ve en tu pantalla.».
+  Dos textos de ubicación corregidos por el orquestador: «Todavía no recibimos una ubicación» era inexacto con un envío de hace más de 35 min
+  → «No hay una ubicación reciente confirmada», y «cada unos 15 minutos» → «aproximadamente cada 15 minutos». 7 frames de galería. El shell solo
+  cambia en la llamada (`requestedAt`, `now`, `onBack`). `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks`
+  (sin caché) → BUILD SUCCESSFUL en 2m 34s, 175 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en `Pixel_8` → **110 tests, 0 fallos**.
+  Delegado (Opus). Diferencias con las láminas, aceptadas: «Continuar» deshabilitado en azul al 55 %, no gris; pasos pendientes en `InkMuted` por
+  contraste AA; sin fila «Visualización de pantalla» en la lista (la lámina 05 no la tiene).
 - [ ] T5b — Avisos permanentes: textos de las tres notificaciones (control de apps, ubicación, vista remota) y `PendingIntent` inmutable que abre la
   app al tocar la de vista remota. Toca los servicios, sin cambiar sus efectos. Delegado (**Opus**).
 - [ ] T6 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 05 y 06, y la **prueba G-19** (3 min navegando,
