@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -51,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import com.netprotect.app.feature.supervised.SignOutConfirmDialog
 import com.netprotect.app.feature.supervised.isCompletePairingCode
 import com.netprotect.app.ui.components.NpButton
-import com.netprotect.app.ui.components.NpButtonVariant
 import com.netprotect.app.ui.components.NpCodeField
 import com.netprotect.app.ui.components.NpCodeFieldState
 import com.netprotect.app.ui.icons.NpIcons
@@ -119,11 +121,11 @@ fun LinkDeviceScreen(
                             Spacer(Modifier.width(8.dp))
                             Text(text = "DISPOSITIVO SUPERVISADO", style = NpText.Eyebrow, color = NpColors.InkMuted)
                         }
-                        NpButton(
+                        CompactAction(
                             text = "Cerrar sesión",
-                            onClick = { confirmingSignOut = true },
-                            variant = NpButtonVariant.Text,
                             icon = NpIcons.LogOut,
+                            color = NpColors.InkMuted,
+                            onClick = { confirmingSignOut = true },
                         )
                     }
                     Spacer(Modifier.height(20.dp))
@@ -228,6 +230,7 @@ private fun ErrorBanner(text: String) {
 }
 
 /** Hairline, the phase's dot + text and, except while the code is being sent, "Comprobar vínculo". */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LinkStatusFooter(phase: LinkPhase, rechecking: Boolean, onCheckLink: () -> Unit) {
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
@@ -238,29 +241,63 @@ private fun LinkStatusFooter(phase: LinkPhase, rechecking: Boolean, onCheckLink:
                 .background(NpColors.Hairline),
         )
         Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier
-                .heightIn(min = 32.dp)
-                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
+        // FlowRow: at a large font the action goes under the status instead of squeezing it.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(8.dp)
-                    .background(if (phase == LinkPhase.Failed) NpColors.DangerText else NpColors.Blue, CircleShape),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(text = linkStatusLabel(phase), style = NpText.BodySm, color = NpColors.Ink)
+                    .heightIn(min = 48.dp)
+                    .align(Alignment.CenterVertically)
+                    .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(if (phase == LinkPhase.Failed) NpColors.DangerText else NpColors.Blue, CircleShape),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(text = linkStatusLabel(phase), style = NpText.BodySm, color = NpColors.Ink)
+            }
+            if (phase != LinkPhase.Linking) {
+                CompactAction(
+                    text = "Comprobar vínculo",
+                    icon = NpIcons.RefreshCw,
+                    color = NpColors.BlueText,
+                    onClick = onCheckLink,
+                    loading = rechecking,
+                )
+            }
         }
-        if (phase != LinkPhase.Linking) {
-            NpButton(
-                text = "Comprobar vínculo",
-                onClick = onCheckLink,
-                variant = NpButtonVariant.Text,
-                icon = NpIcons.RefreshCw,
-                loading = rechecking,
-            )
+    }
+}
+
+/** The quiet text actions of lámina 02 («Cerrar sesión», «Comprobar vínculo»): 14 sp and 48 dp tall, small
+ * enough to share a row with their neighbour at the normal font size. */
+@Composable
+private fun CompactAction(
+    text: String,
+    icon: Int,
+    color: Color,
+    onClick: () -> Unit,
+    loading: Boolean = false,
+) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(enabled = !loading, role = Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (loading) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = color)
+        } else {
+            Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp), tint = color)
         }
+        Spacer(Modifier.width(8.dp))
+        Text(text = text, style = NpText.BodySm.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
 
