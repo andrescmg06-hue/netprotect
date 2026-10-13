@@ -36,6 +36,24 @@ sealed interface ConsentEvent {
 data class ConsentStep(val requestedAt: Instant?, val sendStopReason: String? = null)
 
 /**
+ * Whether a request closing unanswered may tell the tutor with a `screen_share_stop`. Not while a capture
+ * is running: the backend would end that live session for the tutor although the phone keeps sharing.
+ */
+fun shouldSendConsentStop(reason: String?, screenShareActive: Boolean): Boolean =
+    reason != null && !screenShareActive
+
+/**
+ * The pending request's arrival time as a saveable Long, so it survives the activity being recreated
+ * (rotation, font size, process death) together with the consent route; otherwise the restored screen
+ * would have no countdown and never expire. Millisecond precision; [Long.MIN_VALUE] means "none",
+ * which no real arrival time (`Instant.now()`) can be, unlike -1 (a valid pre-epoch millisecond).
+ */
+fun consentRequestedAtToMillis(requestedAt: Instant?): Long = requestedAt?.toEpochMilli() ?: Long.MIN_VALUE
+
+fun consentRequestedAtFromMillis(millis: Long): Instant? =
+    if (millis == Long.MIN_VALUE) null else Instant.ofEpochMilli(millis)
+
+/**
  * Pure transition for the pending request, so the shell only applies the result. A duplicate
  * request keeps the original time: re-sending must not stretch the child's window.
  */

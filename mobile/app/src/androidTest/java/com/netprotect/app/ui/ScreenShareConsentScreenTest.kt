@@ -1,5 +1,6 @@
 package com.netprotect.app.ui
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -67,6 +68,21 @@ class ScreenShareConsentScreenTest {
         composeRule.onNodeWithText("Marca la casilla para continuar.").assertDoesNotExist()
         composeRule.onNodeWithText("Continuar").assertIsDisplayed().assertIsEnabled().performClick()
         assertTrue(continued)
+    }
+
+    @Test
+    fun aNewRequestStartsUnchecked() {
+        val current = mutableStateOf(requestedAt)
+        composeRule.setContent {
+            NetProtectTheme {
+                ScreenShareConsentScreen(onContinue = {}, onDecline = {}, requestedAt = current.value, now = current.value)
+            }
+        }
+        tapAuthorize()
+        composeRule.onNodeWithText("Continuar").assertIsDisplayed().assertIsEnabled()
+        composeRule.runOnIdle { current.value = requestedAt.plusSeconds(300) }
+        composeRule.onNodeWithText("Marca la casilla para continuar.").assertIsDisplayed()
+        composeRule.onNodeWithText("Continuar").assertIsDisplayed().assertIsNotEnabled()
     }
 
     @Test

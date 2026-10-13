@@ -69,7 +69,8 @@ fun ScreenShareConsentScreen(
     now: Instant = Instant.now(),
     onBack: (() -> Unit)? = null,
 ) {
-    var authorized by rememberSaveable { mutableStateOf(false) }
+    // Keyed on the request: a new one arriving while this screen is still shown starts unchecked.
+    var authorized by rememberSaveable(requestedAt) { mutableStateOf(false) }
     ScreenShareConsentContent(
         authorized = authorized,
         onAuthorizedChange = { authorized = it },

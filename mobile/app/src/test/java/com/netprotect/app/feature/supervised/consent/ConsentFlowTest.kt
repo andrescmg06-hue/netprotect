@@ -2,6 +2,7 @@ package com.netprotect.app.feature.supervised.consent
 
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -69,6 +70,26 @@ class ConsentFlowTest {
             assertNull(step.requestedAt)
             assertNull(step.sendStopReason)
         }
+    }
+
+    @Test
+    fun aStopIsNotSentWhileACaptureIsActive() {
+        assertTrue(shouldSendConsentStop(SCREEN_SHARE_STOP_EXPIRED, screenShareActive = false))
+        assertTrue(shouldSendConsentStop(SCREEN_SHARE_STOP_DISMISSED, screenShareActive = false))
+        assertFalse(shouldSendConsentStop(SCREEN_SHARE_STOP_EXPIRED, screenShareActive = true))
+        assertFalse(shouldSendConsentStop(SCREEN_SHARE_STOP_DISMISSED, screenShareActive = true))
+        assertFalse(shouldSendConsentStop(null, screenShareActive = false))
+    }
+
+    @Test
+    fun theArrivalTimeSurvivesASaveAndRestore() {
+        assertNull(consentRequestedAtFromMillis(consentRequestedAtToMillis(null)))
+        assertEquals(requestedAt, consentRequestedAtFromMillis(consentRequestedAtToMillis(requestedAt)))
+        // Pre-epoch times, including -1 ms, are real instants and must not read as "no request".
+        for (beforeEpoch in listOf(Instant.ofEpochMilli(-1), Instant.parse("1960-01-01T00:00:00Z"))) {
+            assertEquals(beforeEpoch, consentRequestedAtFromMillis(consentRequestedAtToMillis(beforeEpoch)))
+        }
+        assertEquals(Instant.EPOCH, consentRequestedAtFromMillis(consentRequestedAtToMillis(Instant.EPOCH)))
     }
 
     @Test
