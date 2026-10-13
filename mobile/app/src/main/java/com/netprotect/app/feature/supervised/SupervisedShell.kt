@@ -52,7 +52,9 @@ import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import com.netprotect.app.core.status.servicesView
 import com.netprotect.app.core.sync.SyncWorker
+import com.netprotect.app.feature.supervised.consent.ConsentEvent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
+import com.netprotect.app.feature.supervised.consent.consentStep
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
@@ -73,10 +75,6 @@ private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
 
 /** Sprint 64 (B1): how often `/devices/me` is asked while linked, besides every ON_RESUME. */
 private const val LINK_CHECK_INTERVAL_MS = 5 * 60_000L
-
-/** Sprint 50: a request nobody answers closes by itself — the backend doesn't tell the device when
- * the tutor just closes the tab. Nothing is sent: a "no" is never sent on the child's behalf. */
-private const val CONSENT_TIMEOUT_MS = 2 * 60_000L
 
 private sealed interface SupervisedState {
     data object CheckingLink : SupervisedState
@@ -124,9 +122,6 @@ fun SupervisedShell(
     var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
     var hasOverlayPermission by remember { mutableStateOf(OverlayPermission.isGranted(context)) }
-    // Sprint 23: set from the signalling socket's callback (OkHttp's thread) and read by the
-    // composition — a Compose state, so the recomposition happens on its own.
-    var screenShareRequested by remember { mutableStateOf(false) }
     var screenShareSignaling by remember { mutableStateOf<ReconnectingRealtimeChannel?>(null) }
 
     // Sprint 48 — display-only state. Never used as an effect key (see the class comment).
@@ -139,10 +134,36 @@ fun SupervisedShell(
     var now by remember { mutableStateOf(Instant.now()) }
     // Sprint 64 (G-19): the tutors' names, refreshed by B1 — presentation only, never an effect key.
     var tutorLabel by remember { mutableStateOf<String?>(null) }
+    // Sprint 65: when the pending screen-share request reached the phone; null when there is none.
+    // Presentation only (the consent countdown and its expiry), never a service effect's key (G-19).
+    var consentRequestedAt by remember { mutableStateOf<Instant?>(null) }
 
     // The only key the service effects below use: null in every state but Linked, and stable while
     // linked — a B1 refresh that changes the tutors leaves it untouched.
     val linkedDeviceId = (state as? SupervisedState.Linked)?.deviceId
+
+    fun leaveConsentRoute() {
+        if (route == SupervisedRoute.Consent) route = SupervisedRoute.Linked
+    }
+
+    // Sprint 65: every change to the pending request goes through consentStep; this only applies it.
+    // The stop is best-effort and never queued or retried (ReconnectingRealtimeChannel.send): with
+    // the socket down the tutor isn't told, and the request still closes here.
+    fun onConsentEvent(event: ConsentEvent) {
+        // A request hopping to the main thread after the link ended has no one to answer it.
+        if (event is ConsentEvent.Requested && state !is SupervisedState.Linked) return
+        val step = consentStep(consentRequestedAt, event)
+        consentRequestedAt = step.requestedAt
+        step.sendStopReason?.let { reason ->
+            screenShareSignaling?.send(JSONObject().put("type", "screen_share_stop").put("reason", reason))
+        }
+        when {
+            step.requestedAt != null -> if (event is ConsentEvent.Requested) route = SupervisedRoute.Consent
+            // «Continuar» stays on the consent screen behind Android's dialog; its result brings them back.
+            event == ConsentEvent.Answered -> Unit
+            else -> leaveConsentRoute()
+        }
+    }
 
     // Android's own screen-capture consent dialog. Deliberately launched only from the card
     // below, never automatically: the tutor's request is what makes the card appear, and the
@@ -152,7 +173,8 @@ fun SupervisedShell(
     val screenCaptureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        screenShareRequested = false
+        // The answer was already given («Continuar»); a request that arrived meanwhile stays on screen.
+        if (consentRequestedAt == null) leaveConsentRoute()
         val data = result.data
         val deviceId = LinkedDeviceStore.read(context)?.deviceId
         if (result.resultCode == android.app.Activity.RESULT_OK && data != null && deviceId != null) {
@@ -234,7 +256,7 @@ fun SupervisedShell(
         LinkedDeviceStore.clear(context)
         deviceInfo = null
         tutorLabel = null
-        screenShareRequested = false
+        onConsentEvent(ConsentEvent.Stopped)
         route = SupervisedRoute.Linked
         // Linking again starts from "no report yet", not from the old link's last heartbeat.
         lastHeartbeatOk = null
@@ -413,9 +435,13 @@ fun SupervisedShell(
             tokenProvider = { session.validAccessToken() },
             onConnectedChange = ServiceStatusRegistry::realtimeConnected,
         ) { event, _ ->
+            // OkHttp's thread: the arrival time is taken here, the state changes on the main thread.
             when (event) {
-                "screen_share_request" -> screenShareRequested = true
-                "screen_share_stop" -> screenShareRequested = false
+                "screen_share_request" -> {
+                    val at = Instant.now()
+                    scope.launch { onConsentEvent(ConsentEvent.Requested(at)) }
+                }
+                "screen_share_stop" -> scope.launch { onConsentEvent(ConsentEvent.Stopped) }
             }
         }
         screenShareSignaling = channel
@@ -437,21 +463,23 @@ fun SupervisedShell(
         onDispose { SyncWorker.cancel(context) }
     }
 
-    // Sprint 50: a pending request opens the consent screen, wherever the person is; answering it,
-    // the tutor cancelling (screen_share_stop) or CONSENT_TIMEOUT_MS of silence brings them back.
-    LaunchedEffect(screenShareRequested) {
-        if (screenShareRequested) {
-            route = SupervisedRoute.Consent
-            delay(CONSENT_TIMEOUT_MS)
-            screenShareRequested = false
-        } else if (route == SupervisedRoute.Consent) {
-            route = SupervisedRoute.Linked
+    // Sprint 50/65: a pending request opens the consent screen, wherever the person is (onConsentEvent).
+    // This presentation clock runs only while a request is pending, keyed on its arrival time and on
+    // nothing a service uses: it refreshes `now` for the countdown and closes the request once
+    // CONSENT_WINDOW_SECONDS have passed, telling the tutor it expired.
+    LaunchedEffect(consentRequestedAt) {
+        val requestedAt = consentRequestedAt ?: return@LaunchedEffect
+        while (consentRequestedAt == requestedAt) {
+            now = Instant.now()
+            onConsentEvent(ConsentEvent.Tick(now))
+            delay(1_000L)
         }
     }
     BackHandler(enabled = state is SupervisedState.Linked && route != SupervisedRoute.Linked) {
         if (route == SupervisedRoute.Consent) {
-            // Back is not an answer: only the buttons send one. Leaving just hides the request.
-            screenShareRequested = false
+            // Back is not an answer («Ahora no» is): it closes the request and tells the tutor it was
+            // dismissed, so their page stops waiting (B5).
+            onConsentEvent(ConsentEvent.Back)
         } else {
             route = SupervisedRoute.Linked
         }
@@ -583,10 +611,12 @@ fun SupervisedShell(
                         screenShareSignaling?.send(
                             JSONObject().put("type", "screen_share_consent").put("granted", true)
                         )
+                        onConsentEvent(ConsentEvent.Answered)
                         screenCaptureLauncher.launch(ScreenCapture.consentIntent(context))
                     },
                     onDecline = {
-                        screenShareRequested = false
+                        onConsentEvent(ConsentEvent.Answered)
+                        leaveConsentRoute()
                         screenShareSignaling?.send(
                             JSONObject().put("type", "screen_share_consent").put("granted", false)
                         )
