@@ -24,7 +24,11 @@ Rama `sprint-62-sistema-v2`, creada desde `android-redesign` (`62867eb`), en el 
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis).
 
 - [x] T1 — Abrir el sprint. Inline. (este commit)
-- [ ] T2 — Tokens v2: `Color.kt` (renombrar y revalorar en toda la app), `Type.kt` (Newsreader 600 para Display y
+- [x] T2 — `e0631a7` (39 archivos). `test assembleDebug assembleDebugAndroidTest lintDebug` en verde: 85 tests unitarios y lint con 0 errores.
+  Newsreader es la fuente variable oficial de Google Fonts (441 KB, OFL; licencia en `mobile/third_party_licenses/`). Contrastes
+  comprobados a mano: texto ≥ 4,88:1 sobre crema; texto blanco sobre el azul de acción 4,67:1; `InkSubtle` (2,80:1) es solo
+  decorativo. Ningún `ShieldNavy` era un relleno: los 35 usos eran texto o iconos y pasaron a `Ink`; `Navy` (#0D1B2A) existe sin
+  usos hasta S63. El cuerpo pasa de 14/15 a 16 sp, así que los diseños se desplazan: lo revisa T4. Enunciado: Tokens v2: `Color.kt` (renombrar y revalorar en toda la app), `Type.kt` (Newsreader 600 para Display y
   Title; Inter para Body, BodySm, Label y Eyebrow; siempre en sp), `Shape.kt`, `Elevation.kt` (0 dp), nuevos
   `Spacing.kt` y `Motion.kt` (con un helper de «reducir movimiento»), `Tone.kt`, `forceDarkAllowed` y
   `ColorTokensTest`. Delegado (**Sonnet**: renombrado amplio con una tabla de equivalencias cerrada).
