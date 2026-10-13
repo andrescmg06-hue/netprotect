@@ -39,6 +39,14 @@ function currentStep(state: ViewerState): StepKey | null {
   }
 }
 
+/** How long the panel waits for any answer after asking to see the screen. The phone gives the
+ * supervised person 120 s to answer (consent window); the extra 15 s absorbs network delay so the
+ * phone's own "expired"/"dismissed" notice normally arrives first. Without a limit, a phone that
+ * never answers (offline, app killed) would leave this panel waiting forever and the tutor's slot
+ * held on the backend.
+ */
+const REQUEST_WAIT_LIMIT_MS = 135_000;
+
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
@@ -59,6 +67,10 @@ function describeStopReason(reason: unknown): string {
       return "La persona supervisada detuvo la transmisión.";
     case "projection_stopped":
       return "Android detuvo la captura (por ejemplo, al bloquearse la pantalla).";
+    case "expired":
+      return "La solicitud caducó: el dispositivo no respondió a tiempo.";
+    case "dismissed":
+      return "El dispositivo cerró la solicitud sin responder.";
     default:
       return "La transmisión terminó.";
   }
@@ -122,6 +134,19 @@ export function RemoteViewPanel({
     }, 1000);
     return () => clearInterval(id);
   }, [state.kind]);
+
+  // Gives up on a request nobody answered. The timer callback is the only place that calls
+  // setState; the cleanup clears it as soon as any reply moves the state out of `requesting`
+  // (or on unmount), so it can never fire late. teardown(true) is the same path "Detener" uses:
+  // it tells the backend to release the tutor's slot and closes the socket.
+  useEffect(() => {
+    if (state.kind !== "requesting") return;
+    const id = setTimeout(() => {
+      teardown(true);
+      setState({ kind: "ended", message: "El dispositivo no respondió." });
+    }, REQUEST_WAIT_LIMIT_MS);
+    return () => clearTimeout(id);
+  }, [state.kind, teardown]);
 
   const stop = useCallback(() => {
     teardown(true);
