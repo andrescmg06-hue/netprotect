@@ -39,11 +39,15 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   105 tests unitarios, lint con 0 errores. Enunciado: Errores tipados: `UiError` con los casos de arriba, comprobación de red con `ConnectivityManager` y el permiso
   `ACCESS_NETWORK_STATE`, mapeo en el login, la restauración de sesión, el chequeo de salud y Vincular, función pura con
   tests JVM. Delegado (**Opus**: red, sesión y un permiso nuevo).
-- [ ] T3 — Pantallas: Carga, Inicio de sesión (con la fotografía y las variantes de error y «Vuelve a entrar»), Vincular
-  (`NpCodeField`, estados esperando, vinculando e inválido), «Más ajustes» y el diálogo de confirmación, con sus frames de
-  galería y tests. Delegado (**Opus**: oficio visual; un escritor distinto de T2).
-- [ ] T4 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 01, 02 y 10, y arreglos. Inline (miro yo las
-  capturas; los lotes de arreglo, delegados).
+- [x] T3 — `a18b98d`, `a6f0c7f`, `cbdffe9`. Carga, Inicio de sesión con sus variantes por causa y la foto, Vincular con
+  `NpCodeField` (6 casillas) y sus estados (esperando, vinculando, inválido o vencido, 429), «Más ajustes» y el diálogo
+  «¿Cerrar sesión?» (tarjeta con botones apilados, no el `ConfirmDialog` genérico, para que no se aplasten al 200 %), con 15
+  frames de galería al principio y tests. Un escritor Opus; el shell solo ganó la ruta `MoreSettings`. Delegado.
+  `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug` → 116 tests, 0 errores de lint.
+- [x] T4 — `connectedDebugAndroidTest` en `Pixel_8`: 88 tests, 0 fallos. Revisión visual a letra 1.0 y 2.0 contra las láminas
+  01, 02 y 10 (capturas en `docs/android-redesign/supervisado-v2/s63/`). A 1.0, «Cerrar sesión» de Vincular bajaba a una
+  segunda línea y el pie apilaba el estado y «Comprobar vínculo»: se sustituyeron los dos botones de texto por una acción
+  compacta de 14 sp con `FlowRow`, y quedaron en una fila como en la lámina 02. Inline (el arreglo era un solo archivo).
 - [ ] T5 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: toca el manejo de sesión y los errores de login) y CI.
 
 ## Criterios de aceptación
