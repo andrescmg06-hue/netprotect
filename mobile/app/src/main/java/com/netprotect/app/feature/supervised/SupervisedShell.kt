@@ -555,7 +555,6 @@ fun SupervisedShell(
                     androidVersion = Build.VERSION.RELEASE,
                     tutors = deviceInfo?.tutors?.takeIf { it.isNotEmpty() } ?: listOfNotNull(tutorLabel),
                     lastContact = lastContact(lastHeartbeatOk, deviceInfo?.lastSeenAt),
-                    reachable = !heartbeatFailing,
                     now = now,
                     pendingPermissions = permissions.pending,
                     onOpenPermissions = { route = SupervisedRoute.Permissions },
