@@ -281,8 +281,9 @@ fun SupervisedShell(
     suspend fun refreshLink() {
         val linked = state as? SupervisedState.Linked ?: return
         val check = classifyLinkCheck(fetchMyDevice())
-        // The state moved while the request was in flight: this answer no longer applies.
-        if (state != linked) return
+        // The state moved while the request was in flight: this answer no longer applies. By identity, not
+        // equality: after Unlinked and a new pairing the state equals the old Linked but is a different link.
+        if (state !== linked) return
         when (check) {
             is LinkCheck.Linked -> {
                 deviceInfo = check.info
