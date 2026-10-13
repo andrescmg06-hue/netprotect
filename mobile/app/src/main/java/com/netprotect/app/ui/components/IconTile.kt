@@ -28,7 +28,7 @@ fun IconTile(
     Box(
         modifier = Modifier
             .size(size)
-            .background(tone.wash, NpShapes.Md),
+            .background(tone.wash, NpShapes.Field),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -40,7 +40,7 @@ fun IconTile(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun IconTilePreview() {
     NetProtectTheme {

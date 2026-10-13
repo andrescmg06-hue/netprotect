@@ -10,42 +10,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
-import com.netprotect.app.ui.theme.NpElevation
-import com.netprotect.app.ui.theme.NpShadow
 import com.netprotect.app.ui.theme.NpShapes
 
 /** Tarjeta (blanca por defecto; `containerColor`/`borderColor` para variantes como la zona de
- * peligro) con borde `Hairline`, sombra `NpElevation.Card` y radio 16 dp. Si `onClick` no es
+ * peligro) con borde `Hairline`, sin sombra (elevación 0) y radio 4 dp. Si `onClick` no es
  * null, es pulsable con semántica de botón (objetivo táctil ≥ 48 dp). */
 @Composable
 fun NpCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    containerColor: Color = NpColors.PaperWhite,
+    containerColor: Color = NpColors.Paper,
     borderColor: Color = NpColors.Hairline,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = NpShapes.Xl
-    // Blue-tinted whisper instead of Surface's black shadowElevation (DESIGN.md: "hairline plus
-    // whisper"); the tint only applies on API 28+, older versions fall back to the plain shadow.
-    val shadowed = modifier.fillMaxWidth().shadow(
-        elevation = NpElevation.Card,
-        shape = shape,
-        ambientColor = NpShadow.Ambient,
-        spotColor = NpShadow.Spot,
-    )
+    val shape = NpShapes.Card
+    val cardModifier = modifier.fillMaxWidth()
     val body: @Composable () -> Unit = {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            modifier = shadowed,
+            modifier = cardModifier,
             shape = shape,
             color = containerColor,
             border = BorderStroke(1.dp, borderColor),
@@ -53,7 +43,7 @@ fun NpCard(
         )
     } else {
         Surface(
-            modifier = shadowed,
+            modifier = cardModifier,
             shape = shape,
             color = containerColor,
             border = BorderStroke(1.dp, borderColor),
@@ -62,7 +52,7 @@ fun NpCard(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun NpCardPreview() {
     NetProtectTheme {

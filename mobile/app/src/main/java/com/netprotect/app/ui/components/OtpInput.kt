@@ -45,15 +45,15 @@ fun OtpInput(
                     modifier = Modifier
                         .weight(1f)
                         .height(52.dp)
-                        .background(NpColors.PaperWhite, NpShapes.Md)
+                        .background(NpColors.Paper, NpShapes.Field)
                         .border(
                             width = 2.dp,
                             color = when {
                                 isError -> NpColors.Danger
-                                isActive -> NpColors.SignalBlue
+                                isActive -> NpColors.Blue
                                 else -> NpColors.HairlineStrong
                             },
-                            shape = NpShapes.Md,
+                            shape = NpShapes.Field,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -76,7 +76,7 @@ fun OtpInput(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun OtpInputPreview() {
     NetProtectTheme {

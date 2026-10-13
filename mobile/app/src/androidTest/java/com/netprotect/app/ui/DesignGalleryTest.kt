@@ -22,7 +22,7 @@ class DesignGalleryTest {
             }
         }
         val titles = listOf(
-            "NpButton", "StatusPill", "InfoBanner", "LoadingState", "ErrorState",
+            "NpSeal", "NpHeroPanel", "NpRail", "NpButton", "StatusPill", "InfoBanner", "LoadingState", "ErrorState",
             "BrandHeader", "NpTopBar", "OtpInput", "PermissionCard", "NpCard", "ListRow",
             "ConfirmDialog",
         )

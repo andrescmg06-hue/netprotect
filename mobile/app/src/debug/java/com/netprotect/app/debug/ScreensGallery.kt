@@ -271,14 +271,14 @@ private val galleryNowS50: Instant = Instant.parse("2026-10-01T15:00:00Z")
 @Composable
 private fun ScreenFrame(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(text = title, style = NpText.Headline, color = NpColors.ShieldNavy)
+        Text(text = title, style = NpText.Title, color = NpColors.Ink)
         Spacer(Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(760.dp)
-                .background(NpColors.SkyGround)
-                .border(1.dp, NpColors.Hairline, NpShapes.Lg),
+                .background(NpColors.Cream)
+                .border(1.dp, NpColors.Hairline, NpShapes.Card),
             contentAlignment = Alignment.TopCenter,
         ) {
             content()

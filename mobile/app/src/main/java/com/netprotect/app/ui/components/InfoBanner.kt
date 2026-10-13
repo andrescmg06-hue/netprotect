@@ -37,8 +37,8 @@ fun InfoBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(tone.wash, NpShapes.Lg)
-            .border(1.dp, tone.solid.copy(alpha = 0.2f), NpShapes.Lg)
+            .background(tone.wash, NpShapes.Card)
+            .border(1.dp, tone.solid.copy(alpha = 0.2f), NpShapes.Card)
             .padding(16.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -57,7 +57,7 @@ fun InfoBanner(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun InfoBannerPreview() {
     NetProtectTheme {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.components.BrandHeader
 import com.netprotect.app.ui.components.LoadingState
@@ -26,7 +25,7 @@ fun LoadingScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(NpColors.SkyGround, NpColors.SkyGroundEnd))),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier

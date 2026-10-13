@@ -26,7 +26,7 @@ fun ActiveShareBanner(onStop: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(NpColors.SignalBlue)
+            .background(NpColors.Blue)
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -35,13 +35,13 @@ fun ActiveShareBanner(onStop: () -> Unit, modifier: Modifier = Modifier) {
             painter = painterResource(NpIcons.Eye),
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = NpColors.PaperWhite,
+            tint = NpColors.Paper,
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = "Tu tutor está viendo esta pantalla",
             style = NpText.BodyStrong,
-            color = NpColors.PaperWhite,
+            color = NpColors.Paper,
             modifier = Modifier.weight(1f),
         )
         NpButton("Detener", onStop, variant = NpButtonVariant.Secondary, small = true)

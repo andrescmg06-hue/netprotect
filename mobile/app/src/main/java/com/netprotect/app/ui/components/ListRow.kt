@@ -18,7 +18,7 @@ import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
 
-/** Fila de lista: título `BodyStrong` en `ShieldNavy`, subtítulo `Body` en `SlateMuted`, con
+/** Fila de lista: título `BodyStrong` en `Ink`, subtítulo `Body` en `InkMuted`, con
  * `leading` y `trailing` opcionales. Alto ≥ 56 dp. */
 @Composable
 fun ListRow(
@@ -42,9 +42,9 @@ fun ListRow(
             Spacer(Modifier.width(12.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = NpText.BodyStrong, color = NpColors.ShieldNavy)
+            Text(text = title, style = NpText.BodyStrong, color = NpColors.Ink)
             if (subtitle != null) {
-                Text(text = subtitle, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = subtitle, style = NpText.Body, color = NpColors.InkMuted)
             }
         }
         if (trailing != null) {
@@ -53,7 +53,7 @@ fun ListRow(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun ListRowPreview() {
     NetProtectTheme {

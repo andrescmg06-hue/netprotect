@@ -19,7 +19,7 @@ import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
 
-/** Indicador de carga: spinner en `SignalBlue` + texto; `liveRegion` polite para lectores de pantalla. */
+/** Indicador de carga: spinner en `Blue` + texto; `liveRegion` polite para lectores de pantalla. */
 @Composable
 fun LoadingState(
     modifier: Modifier = Modifier,
@@ -32,13 +32,13 @@ fun LoadingState(
             .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator(color = NpColors.SignalBlue)
+        CircularProgressIndicator(color = NpColors.Blue)
         Spacer(Modifier.height(12.dp))
-        Text(text = label, style = NpText.Body, color = NpColors.SlateMuted)
+        Text(text = label, style = NpText.Body, color = NpColors.InkMuted)
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun LoadingStatePreview() {
     NetProtectTheme {

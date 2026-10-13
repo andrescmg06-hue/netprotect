@@ -51,7 +51,7 @@ fun ServicesStatusScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -61,12 +61,12 @@ fun ServicesStatusScreen(
                 .padding(horizontal = 20.dp),
         ) {
             NpTopBar(onBack = onBack)
-            Text(text = "Estado de NetProtect", style = NpText.Display, color = NpColors.ShieldNavy)
+            Text(text = "Estado de NetProtect", style = NpText.Display, color = NpColors.Ink)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Aquí puedes ver qué funciones de NetProtect están activas en este dispositivo.",
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
             )
             Spacer(Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -170,8 +170,8 @@ private fun ServiceCard(
             IconTile(icon = icon, tone = tone, size = 48.dp)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = NpText.Title, color = NpColors.ShieldNavy)
-                Text(text = description, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = title, style = NpText.Subtitle, color = NpColors.Ink)
+                Text(text = description, style = NpText.Body, color = NpColors.InkMuted)
             }
             if (pill != null) {
                 Spacer(Modifier.width(12.dp))
@@ -197,12 +197,12 @@ private fun InfoBox(
                 painter = painterResource(icon),
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = NpColors.SignalBlue,
+                tint = NpColors.Blue,
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = line, style = NpText.BodyStrong, color = NpColors.ShieldNavy)
-                Text(text = note, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = line, style = NpText.BodyStrong, color = NpColors.Ink)
+                Text(text = note, style = NpText.Body, color = NpColors.InkMuted)
             }
         }
     }
@@ -220,14 +220,14 @@ private fun ScreenShareBox(
                 painter = painterResource(NpIcons.Eye),
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = NpColors.SignalBlue,
+                tint = NpColors.Blue,
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 if (line != null) {
-                    Text(text = line, style = NpText.BodyStrong, color = NpColors.ShieldNavy)
+                    Text(text = line, style = NpText.BodyStrong, color = NpColors.Ink)
                 }
-                Text(text = note, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = note, style = NpText.Body, color = NpColors.InkMuted)
                 Spacer(Modifier.height(12.dp))
                 NpButton(
                     text = "Detener",

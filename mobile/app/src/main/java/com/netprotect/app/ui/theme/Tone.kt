@@ -8,7 +8,7 @@ enum class NpTone(val solid: Color, val wash: Color, val text: Color) {
     Success(NpColors.Success, NpColors.SuccessWash, NpColors.SuccessText),
     Danger(NpColors.Danger, NpColors.DangerWash, NpColors.DangerText),
     Warning(NpColors.Warning, NpColors.WarningWash, NpColors.WarningText),
-    Info(NpColors.SignalBlue, NpColors.BlueWash, NpColors.SignalBlueDeep),
+    Info(NpColors.Blue, NpColors.BlueWash, NpColors.BlueText),
     Purple(NpColors.Violet, NpColors.VioletWash, NpColors.VioletText),
-    Neutral(NpColors.SlateMuted, NpColors.NeutralWash, NpColors.SlateMuted),
+    Neutral(NpColors.InkMuted, NpColors.Stone, NpColors.InkMuted),
 }

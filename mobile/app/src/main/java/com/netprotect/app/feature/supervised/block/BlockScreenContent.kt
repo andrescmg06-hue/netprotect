@@ -48,7 +48,7 @@ fun BlockScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
         Column(
             modifier = Modifier
@@ -71,14 +71,14 @@ fun BlockScreenContent(
                         painter = painterResource(NpIcons.Lock),
                         contentDescription = null,
                         modifier = Modifier.size(56.dp),
-                        tint = NpColors.ShieldNavy,
+                        tint = NpColors.Ink,
                     )
                 }
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .align(Alignment.BottomEnd)
-                        .background(NpColors.PaperWhite, CircleShape)
+                        .background(NpColors.Paper, CircleShape)
                         .border(2.dp, presentation.tone.wash, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -94,7 +94,7 @@ fun BlockScreenContent(
             Text(
                 text = presentation.title,
                 style = NpText.Display,
-                color = NpColors.ShieldNavy,
+                color = NpColors.Ink,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -102,7 +102,7 @@ fun BlockScreenContent(
             Text(
                 text = presentation.message,
                 style = NpText.Body,
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -114,13 +114,13 @@ fun BlockScreenContent(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = appLabel,
-                            style = NpText.Title,
-                            color = NpColors.ShieldNavy,
+                            style = NpText.Subtitle,
+                            color = NpColors.Ink,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                         if (categoryLabel != null) {
-                            Text(text = categoryLabel, style = NpText.Body, color = NpColors.SlateMuted)
+                            Text(text = categoryLabel, style = NpText.Body, color = NpColors.InkMuted)
                         }
                     }
                 }
@@ -154,7 +154,7 @@ fun BlockScreenContent(
             Text(
                 text = BLOCK_COVER_NOTE,
                 style = NpText.Caption.copy(fontWeight = FontWeight.Normal),
-                color = NpColors.SlateMuted,
+                color = NpColors.InkMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )

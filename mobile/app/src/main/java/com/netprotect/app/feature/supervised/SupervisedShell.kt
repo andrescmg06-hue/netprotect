@@ -390,7 +390,7 @@ fun SupervisedShell(
         deviceAdmin = hasDeviceAdmin,
     )
 
-    Column(modifier = Modifier.fillMaxSize().background(NpColors.SkyGround)) {
+    Column(modifier = Modifier.fillMaxSize().background(NpColors.Cream)) {
     // Sprint 50: visible on every supervised screen while a share really runs, besides Android's
     // own notification. It takes the status bar inset, so the screen below must not add it again.
     val sharing = serviceStatus.screenShareActive

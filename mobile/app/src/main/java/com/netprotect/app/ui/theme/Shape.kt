@@ -4,17 +4,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-/** Radios de `DESIGN.md` (8/10/14/16 + pill). */
+/** Radios v2: 4 dp en campos, botones y tarjetas; píldora solo para chips de estado. */
 object NpShapes {
-    val Sm = RoundedCornerShape(8.dp)
-    val Md = RoundedCornerShape(10.dp)
-    val Lg = RoundedCornerShape(14.dp)
-    val Xl = RoundedCornerShape(16.dp)
+    val Field = RoundedCornerShape(4.dp)
+    val Card = RoundedCornerShape(4.dp)
     val Pill = RoundedCornerShape(50)
 }
 
 val NetProtectShapes = Shapes(
-    small = NpShapes.Sm,
-    medium = NpShapes.Md,
-    large = NpShapes.Xl,
+    small = NpShapes.Field,
+    medium = NpShapes.Field,
+    large = NpShapes.Card,
 )

@@ -1,9 +1,11 @@
 package com.netprotect.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -18,62 +20,89 @@ val Inter = FontFamily(
 )
 
 /**
- * Escala tipográfica de `DESIGN.md` (tamaños en sp, interlineado = tamaño × factor, letterSpacing
- * en em). El color **no** va en los estilos: lo pone el componente.
+ * Newsreader (OFL), fuente variable empaquetada (`{res}/font/newsreader.ttf`, licencia en
+ * `mobile/third_party_licenses/NEWSREADER-OFL.txt`). Peso 600 con el eje óptico `opsz` igual al
+ * tamaño en sp, para que cada título use su diseño óptico. minSdk 26 admite fuentes variables.
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun newsreaderSemiBold(opticalSize: Float) = FontFamily(
+    Font(
+        resId = R.font.newsreader,
+        weight = FontWeight.SemiBold,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(600),
+            FontVariation.Setting("opsz", opticalSize),
+        ),
+    ),
+)
+
+val NewsreaderDisplay = newsreaderSemiBold(36f)
+val NewsreaderTitle = newsreaderSemiBold(26f)
+
+/**
+ * Escala tipográfica v2 (tamaños en sp, interlineado explícito, letterSpacing en em). El color
+ * **no** va en los estilos: lo pone el componente.
  */
 object NpText {
     val Display = TextStyle(
-        fontSize = 32.sp,
-        fontWeight = FontWeight.Bold,
-        lineHeight = 38.4.sp,
-        letterSpacing = (-0.02).em,
-    )
-    val Headline = TextStyle(
-        fontSize = 28.sp,
-        fontWeight = FontWeight.Bold,
-        lineHeight = 33.6.sp,
-        letterSpacing = (-0.01).em,
-        fontFeatureSettings = "tnum",
+        fontFamily = NewsreaderDisplay,
+        fontSize = 36.sp,
+        fontWeight = FontWeight.SemiBold,
+        lineHeight = 40.sp,
     )
     val Title = TextStyle(
-        fontSize = 18.sp,
+        fontFamily = NewsreaderTitle,
+        fontSize = 26.sp,
         fontWeight = FontWeight.SemiBold,
-        lineHeight = 21.6.sp,
+        lineHeight = 32.sp,
     )
-    val BodyLead = TextStyle(
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Normal,
-        lineHeight = 22.5.sp,
+    val Subtitle = TextStyle(
+        fontFamily = Inter,
+        fontSize = 17.sp,
+        fontWeight = FontWeight.SemiBold,
+        lineHeight = 24.sp,
     )
     val Body = TextStyle(
-        fontSize = 14.sp,
+        fontFamily = Inter,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Normal,
-        lineHeight = 21.sp,
+        lineHeight = 25.sp,
     )
     val BodyStrong = TextStyle(
-        fontSize = 14.sp,
+        fontFamily = Inter,
+        fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold,
+        lineHeight = 25.sp,
+    )
+    val BodySm = TextStyle(
+        fontFamily = Inter,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Normal,
         lineHeight = 21.sp,
     )
     val Label = TextStyle(
-        fontSize = 13.sp,
+        fontFamily = Inter,
+        fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
-        lineHeight = 19.5.sp,
+        lineHeight = 20.sp,
     )
     val Caption = TextStyle(
+        fontFamily = Inter,
         fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        lineHeight = 16.sp,
+    )
+    /** Small caps-style label; the caller applies `uppercase()`. */
+    val Eyebrow = TextStyle(
+        fontFamily = Inter,
+        fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
-        lineHeight = 18.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.14.em,
     )
-    /** Cifras que no bailan (tnum) para conteos y valores de métricas. */
-    val Numeric = TextStyle(
-        fontSize = 28.sp,
-        fontWeight = FontWeight.Bold,
-        lineHeight = 33.6.sp,
-        letterSpacing = (-0.01).em,
-        fontFeatureSettings = "tnum",
-    )
+    /** Cifras que no bailan (tnum) para valores de métricas y códigos. */
     val NumericSmall = TextStyle(
+        fontFamily = Inter,
         fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
         lineHeight = 22.5.sp,
@@ -83,10 +112,12 @@ object NpText {
 
 val NetProtectTypography = Typography(
     displayMedium = NpText.Display,
-    headlineMedium = NpText.Headline,
-    titleMedium = NpText.Title,
-    bodyLarge = NpText.BodyLead,
+    headlineMedium = NpText.Title,
+    titleMedium = NpText.Subtitle,
+    bodyLarge = NpText.Body,
     bodyMedium = NpText.Body,
+    bodySmall = NpText.BodySm,
     labelLarge = NpText.Label,
-    labelSmall = NpText.Caption,
+    labelMedium = NpText.Caption,
+    labelSmall = NpText.Eyebrow,
 )
