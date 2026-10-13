@@ -48,7 +48,9 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   01, 02 y 10 (capturas en `docs/android-redesign/supervisado-v2/s63/`). A 1.0, «Cerrar sesión» de Vincular bajaba a una
   segunda línea y el pie apilaba el estado y «Comprobar vínculo»: se sustituyeron los dos botones de texto por una acción
   compacta de 14 sp con `FlowRow`, y quedaron en una fila como en la lámina 02. Inline (el arreglo era un solo archivo).
-- [ ] T5 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: toca el manejo de sesión y los errores de login) y CI.
+- [ ] T5 — `security-reviewer` (**Opus**): **sin hallazgos ALTA, MEDIA ni BAJA** (lectura del diff `origin/android-redesign..HEAD`, 8
+  commits; comprobé yo sus afirmaciones principales: ningún `Log` nuevo, un solo permiso nuevo `ACCESS_NETWORK_STATE`, `IOException`
+  pasa por `toUiError` en vez de mostrar `exception.message`). Falta el CI de los 8 jobs en verde, que corre con el PR.
 
 ## Criterios de aceptación
 

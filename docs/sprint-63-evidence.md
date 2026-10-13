@@ -32,6 +32,20 @@ Comandos reales y su salida. Árbol de trabajo: `C:/Users/andre/np-s63`, rama `s
 
 Capturas: `docs/android-redesign/supervisado-v2/s63/`.
 
+## T5 — revisión de seguridad (`security-reviewer`, Opus)
+
+Solo lectura del diff `origin/android-redesign..HEAD -- mobile/`: **sin hallazgos**. Comprobado por el revisor: sin `Log`,
+`println` ni `printStackTrace` nuevos; los mensajes de `UiError` son textos fijos; un 401 de login no pasa por `toUiError`, así
+que no se confunde con una sesión caducada y no hay vía nueva para saltarse la renovación del token; «Cerrar sesión» sigue
+llamando a `HomeScreen.signOut()` y cancelar el diálogo no toca servicios; `SupervisedState.Linked` no cambia (G-19); el único
+permiso nuevo es `ACCESS_NETWORK_STATE`; `MoreSettings` no ofrece desvincular ni cambiar de rol. Yo comprobé con `grep` y
+`git diff` lo de los logs, el permiso y el `IOException` (su referencia `SignInError.kt:320-323` era errónea, el archivo tiene
+20 líneas, pero lo afirmado es cierto en las líneas 14-19).
+
+Observación sin severidad: con un 401 en el login se muestra el código del backend tal cual (`invalid_google_token`), como ya
+ocurría antes y como fija `SignInErrorTest`. No expone datos, pero contradice la intención de `UiError` de no mostrar códigos
+crudos; se deja para cuando se rehaga el login con errores del backend.
+
 ## Pendiente (declarado)
 
 - **No probado:** vinculación real con un código de tutor, login real de Google, el 429 contra el backend real y el cierre de
@@ -43,4 +57,4 @@ Capturas: `docs/android-redesign/supervisado-v2/s63/`.
 - Vistos de pasada, **fuera del alcance de S63**: en `ServicesStatusScreen` a 2.0 «Ubicación aproximada» se parte por letras
   y «Control de apps» queda en una columna estrecha (mismo tipo que B-06; lo rehacen S65 y S67).
 - `LoadingScreen` dice siempre «Restaurando tu sesión…», también en la espera corta tras iniciar sesión.
-- T5 (revisión de seguridad y CI) sigue abierta.
+- T5: falta el CI de los 8 jobs, que corre con el PR.
