@@ -64,10 +64,13 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
   (sin caché) → BUILD SUCCESSFUL en 2m 34s, 175 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` en `Pixel_8` → **110 tests, 0 fallos**.
   Delegado (Opus). Diferencias con las láminas, aceptadas: «Continuar» deshabilitado en azul al 55 %, no gris; pasos pendientes en `InkMuted` por
   contraste AA; sin fila «Visualización de pantalla» en la lista (la lámina 05 no la tiene).
-- [ ] T5b — Avisos permanentes: textos de las tres notificaciones (control de apps, ubicación, vista remota) y `PendingIntent` inmutable que abre la
-  app al tocar la de vista remota. Toca los servicios, sin cambiar sus efectos. Delegado (**Opus**).
-- [ ] T6 — Revisión visual en el emulador a letra 1.0 y 2.0 contra las láminas 05 y 06, y la **prueba G-19** (3 min navegando,
-  `dumpsys activity services com.netprotect.app`, latido en el backend). Inline.
+- [x] T5b — `9c51898`. Textos de las notificaciones: control de apps «Control de apps funcionando en este dispositivo.», ubicación «Se envía una ubicación aproximada cada
+  15 minutos.» (la cifra sale de `REPORT_INTERVAL_MS`, vigilada por test) y vista remota «Toca para abrir NetProtect y detener la vista.», que ahora es cierta: la notificación lleva
+  un `PendingIntent` inmutable a `MainActivity` sin extras. Los servicios no cambian en lo demás. `ForegroundNotificationTextTest` (3 tests) prohíbe «controla», «graba» y «no se puede quitar».
+  Build sin caché → 178 tests, 0 fallos, lint 0 errores. Delegado (Opus).
+- [x] T6 — Emulador `Pixel_8`: revisión visual a letra 1.0 y 2.0 contra las láminas 05 y 06; **prueba G-19** en la app real (3 min 11 s, mismos `ServiceRecord` y proceso, un latido por
+  minuto, 6 consultas B1, sin 5xx); los avisos de control de apps y ubicación muestran el texto nuevo. Sin probar con un tutor real (vista remota de punta a punta, «Atrás» y caducidad contra la
+  web, toque sobre la notificación): declarado en `docs/sprint-65-evidence.md`. Inline.
 - [ ] T7 — `verifier` (**Haiku**), `security-reviewer` (**Opus**: consentimiento, realtime y servicios), CI y PR.
 
 ## Criterios de aceptación
