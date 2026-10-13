@@ -34,7 +34,7 @@ import com.netprotect.app.feature.home.TutorAccountScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
 import com.netprotect.app.feature.supervised.SignOutConfirmContent
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
-import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
+import com.netprotect.app.feature.supervised.consent.ScreenShareConsentContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
@@ -60,6 +60,36 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 65 (al principio para las capturas). Sin Dialog. ----
+        ScreenFrame("Consentimiento · sin autorizar (2 min)") {
+            GalleryConsent(authorized = false, requestedAt = galleryNowS65)
+        }
+        ScreenFrame("Consentimiento · autorizado (1 min 48 s)") {
+            GalleryConsent(authorized = true, requestedAt = galleryNowS65.minusSeconds(12))
+        }
+        ScreenFrame("Consentimiento · sin solicitud (sin cuenta atrás)") {
+            GalleryConsent(authorized = true, requestedAt = null)
+        }
+        ScreenFrame("Estado · todo activo") {
+            GalleryServices(location = ServiceState.Active, screenShareActive = false)
+        }
+        ScreenFrame("Estado · vista remota en curso") {
+            // As in the shell: the banner above the screen, which then must not pad for the status bar again.
+            Column(Modifier.fillMaxSize()) {
+                ActiveShareBanner(onStop = {})
+                Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.statusBars)) {
+                    GalleryServices(location = ServiceState.Active, screenShareActive = true)
+                }
+            }
+        }
+        ScreenFrame("Estado · ubicación sin confirmar") {
+            GalleryServices(location = ServiceState.Unconfirmed, screenShareActive = false)
+        }
+        ScreenFrame("ActiveShareBanner") {
+            Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                ActiveShareBanner(onStop = {})
+            }
+        }
         // ---- Sprint 64 (al principio para las capturas). Sin Dialog. ----
         ScreenFrame("Inicio · todo funciona") {
             GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30))
@@ -182,25 +212,7 @@ fun ScreensGallery() {
                 onSignOut = {},
             )
         }
-        // ---- Sprint 50 ----
-        ScreenFrame("ScreenShareConsentScreen") {
-            ScreenShareConsentScreen(onContinue = {}, onDecline = {})
-        }
-        ScreenFrame("ServicesStatusScreen · todo activo") {
-            ServicesStatusScreen(
-                view = ServicesView(
-                    report = ServiceState.Active,
-                    lastReport = galleryNowS50.minusSeconds(60),
-                    appControl = ServiceState.Active,
-                    location = ServiceState.Active,
-                    screenShareActive = false,
-                    screenShareSince = null,
-                ),
-                now = galleryNowS50,
-                onStopScreenShare = {},
-                onBack = {},
-            )
-        }
+        // ---- Sprint 50 (sus frames de consentimiento, Estado todo activo / vista remota y banner los sustituyen los de S65) ----
         ScreenFrame("ServicesStatusScreen · control sin confirmar") {
             ServicesStatusScreen(
                 view = ServicesView(
@@ -210,21 +222,6 @@ fun ScreensGallery() {
                     location = ServiceState.Inactive,
                     screenShareActive = false,
                     screenShareSince = null,
-                ),
-                now = galleryNowS50,
-                onStopScreenShare = {},
-                onBack = {},
-            )
-        }
-        ScreenFrame("ServicesStatusScreen · vista remota") {
-            ServicesStatusScreen(
-                view = ServicesView(
-                    report = ServiceState.Active,
-                    lastReport = galleryNowS50.minusSeconds(60),
-                    appControl = ServiceState.Active,
-                    location = ServiceState.Active,
-                    screenShareActive = true,
-                    screenShareSince = galleryNowS50.minusSeconds(30),
                 ),
                 now = galleryNowS50,
                 onStopScreenShare = {},
@@ -245,11 +242,6 @@ fun ScreensGallery() {
                 onStopScreenShare = {},
                 onBack = {},
             )
-        }
-        ScreenFrame("ActiveShareBanner") {
-            Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
-                ActiveShareBanner(onStop = {})
-            }
         }
         // ---- Sprint 49 (al principio para las capturas) ----
         ScreenFrame("BlockScreenContent · BLOCK") {
@@ -284,6 +276,37 @@ fun ScreensGallery() {
 }
 private val galleryNowS50: Instant = Instant.parse("2026-10-01T15:00:00Z")
 private val galleryNowS64: Instant = Instant.parse("2026-10-12T15:00:00Z")
+private val galleryNowS65: Instant = Instant.parse("2026-10-13T15:00:00Z")
+
+@Composable
+private fun GalleryConsent(authorized: Boolean, requestedAt: Instant?) {
+    ScreenShareConsentContent(
+        authorized = authorized,
+        onAuthorizedChange = {},
+        onContinue = {},
+        onDecline = {},
+        requestedAt = requestedAt,
+        now = galleryNowS65,
+        onBack = {},
+    )
+}
+
+@Composable
+private fun GalleryServices(location: ServiceState, screenShareActive: Boolean) {
+    ServicesStatusScreen(
+        view = ServicesView(
+            report = ServiceState.Active,
+            lastReport = galleryNowS65.minusSeconds(60),
+            appControl = ServiceState.Active,
+            location = location,
+            screenShareActive = screenShareActive,
+            screenShareSince = if (screenShareActive) galleryNowS65.minusSeconds(30) else null,
+        ),
+        now = galleryNowS65,
+        onStopScreenShare = {},
+        onBack = {},
+    )
+}
 
 @Composable
 private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
