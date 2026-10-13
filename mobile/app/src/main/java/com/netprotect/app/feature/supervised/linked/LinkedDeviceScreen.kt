@@ -56,7 +56,7 @@ fun LinkedDeviceScreen(
     pendingPermissions: Int,
     onOpenPermissions: () -> Unit,
     onOpenServices: () -> Unit,
-    onSignOut: () -> Unit,
+    onOpenMoreSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -233,11 +233,12 @@ fun LinkedDeviceScreen(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            NpCard(onClick = onSignOut) {
+            // Sprint 63: "Cerrar sesión" lives in "Más ajustes", where it asks for confirmation.
+            NpCard(onClick = onOpenMoreSettings) {
                 ListRow(
-                    title = "Cerrar sesión",
-                    subtitle = "Cierra la sesión en este dispositivo.",
-                    leading = { IconTile(icon = NpIcons.LogOut, tone = NpTone.Danger, size = 44.dp) },
+                    title = "Más ajustes",
+                    subtitle = "Opciones de este teléfono.",
+                    leading = { IconTile(icon = NpIcons.SlidersHorizontal, tone = NpTone.Neutral, size = 44.dp) },
                     trailing = { Chevron() },
                 )
             }
