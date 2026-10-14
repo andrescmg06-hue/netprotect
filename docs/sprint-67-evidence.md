@@ -62,3 +62,21 @@ Mismos `ServiceRecord`, mismo proceso y `lastStartId=1`. Backend (`backend-heart
 - **Límites declarados:** cerrar sesión sin «Desvincular» no limpia la bandera de la bienvenida; si el permiso se quita mientras se ve la bienvenida o hay un consentimiento pendiente, el aviso se pierde; si se quitan varios a la vez se avisa del primero.
 - **Prueba con cinco personas** (`05_PRUEBA_USUARIOS.md`): fila aparte «tras S67».
 - **Tutor real desde el panel web:** vista remota de punta a punta, «Atrás» y la caducidad (S65), desvincular (S64).
+
+## T6 — revisión de seguridad (`security-reviewer`, Opus) y barrido global
+
+**S67** (`origin/android-redesign..HEAD`): sin hallazgos ALTA ni MEDIA; dos BAJA, arregladas:
+
+1. El aviso de «permiso desactivado» del administrador de dispositivo no decía que el tutor se entera, a diferencia del acceso al uso. `NetProtectDeviceAdminReceiver.onDisableRequested` llama a `TamperReportWorker.reportUninstallAttempt` y el diálogo de Android ya avisa
+   («tu tutor recibirá una alerta»). Nota nueva: «Al desactivarla, NetProtect avisa a tu tutor. Actívala de nuevo para volver a estar protegido.». Ubicación y superponer siguen sin mencionar al tutor (nada los reporta como quitados); un test lo fija.
+2. El `catch` de `ActivityNotFoundException` de `onOpenBatterySettings` solo cubría el primer `startActivity`; el respaldo (ajustes de la propia app) queda envuelto en `runCatching`.
+
+Confirmado por el revisor: el paso 2 de la bienvenida sale de `privacySections`; solo `usage_access_granted` genera `PERMISSION_REVOKED` (`backend/app/services/tamper.py:54-55`); `WelcomeStore` guarda solo el deviceId y `PermissionSnapshotStore` el deviceId y nombres de enum, ambos `MODE_PRIVATE`,
+borrados en `enterUnlinked()` y **fuera de las copias de seguridad** (`allowBackup=false` y `data_extraction_rules.xml`); cerrar sesión no los borra pero otra cuenta recibe otro `device_id` (el backend lo asigna por `supervised_user_id` y `device_instance_id`, `pairing.py:205-222`), así que `read()` devuelve null y la bienvenida se muestra;
+las pantallas nuevas no lanzan Intents; el aviso solo se calcula en `Linked`, no tapa `Unlinked` ni el consentimiento; ninguna clave de efecto cambia.
+
+**Barrido global** (`origin/main...HEAD`, 384 archivos): el único permiso nuevo del manifiesto es `ACCESS_NETWORK_STATE`; ningún componente exportado nuevo; `allowBackup=false`; sin `Bearer `, claves ni URLs embebidas; sin `Log`, `println` ni `Timber` añadidos; **ningún cambio en `backend/app`** (solo `backend/tests/test_realtime_integration.py` y
+`frontend/src/components/RemoteViewPanel.tsx`), así que la autorización de las rutas queda intacta; `ReconnectingRealtimeChannel` y `TokenStore` sin cambios; el `PendingIntent` de `ScreenShareService` es inmutable y explícito; los textos de privacidad son coherentes entre Privacidad, bienvenida, Estado y notificaciones (latido cada minuto, apps cada 5 min,
+ubicación aproximadamente cada 15 min, sin retención ni «no controla»).
+
+Verificación posterior: `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` → BUILD SUCCESSFUL en 1m 54s, 220 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` de `PermissionRevokedScreenTest`, `WelcomeScreenTest` y `BatteryScreenTest` → 18 tests, 0 fallos.
