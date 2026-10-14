@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,9 +49,12 @@ async def _tutor_link_started_at(
     same installation reuses the device row, so without this cut a new tutor would read locations
     stored before they were ever linked. It is `received_at` (the server's clock) and not
     `captured_at` (the device's own, which the supervised person controls) that is compared.
-    `require_tutor_of_device` has already guaranteed that exactly one active link exists.
+    `require_tutor_of_device` has just checked that the link exists, but it is another statement:
+    an unlink committed in between would leave nothing here, and that must answer the same uniform
+    404 as any other caller without a link, not a 500. The partial unique index
+    `uq_tutor_devices_active_link` rules out two active links.
     """
-    return (
+    linked_at = (
         await db.execute(
             select(TutorDevice.linked_at).where(
                 TutorDevice.tutor_user_id == tutor_id,
@@ -59,7 +62,10 @@ async def _tutor_link_started_at(
                 TutorDevice.unlinked_at.is_(None),
             )
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+    if linked_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
+    return linked_at
 
 
 def _client_ip(request: Request) -> str | None:
