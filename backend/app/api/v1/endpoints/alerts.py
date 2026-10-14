@@ -2,12 +2,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_tutor_of_device
 from app.db.session import get_db
 from app.models import Alert, AlertSilence, Device, User
+from app.models.alert import GEOFENCE_ENTER, GEOFENCE_EXIT
 from app.schemas.alert import (
     MAX_ALERTS,
     AlertListResponse,
@@ -23,6 +24,35 @@ router = APIRouter(tags=["alerts"])
 
 def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
+
+
+def _visible_to(tutor: User) -> ColumnElement[bool]:
+    """B-12 (Sprint 69): a geofence alert belongs to the tutor who created that geofence, so
+    only they see it or act on it; another tutor's (or an ownerless one) looks exactly like a
+    missing alert. Every other alert type is about the device itself and stays shared by all of
+    its tutors.
+    """
+    return or_(
+        Alert.alert_type.not_in((GEOFENCE_ENTER, GEOFENCE_EXIT)),
+        Alert.geofence_owner_user_id == tutor.id,
+    )
+
+
+def _silence_visible_to(tutor: User) -> ColumnElement[bool]:
+    """A silence on a geofence alert has the geofence id in its dedup_key, so it follows the
+    alert's owner: another tutor must neither list it (that would reveal the geofence) nor
+    delete it (that would re-enable alerts its owner muted). Every other silence is the
+    device's and stays shared.
+    """
+    owned_alert = exists().where(
+        Alert.device_id == AlertSilence.device_id,
+        Alert.dedup_key == AlertSilence.dedup_key,
+        Alert.geofence_owner_user_id == tutor.id,
+    )
+    return or_(
+        ~AlertSilence.dedup_key.startswith("GEOFENCE_", autoescape=True),
+        owned_alert,
+    )
 
 
 def _to_alert_response(alert: Alert) -> AlertResponse:
@@ -44,13 +74,14 @@ def _to_alert_response(alert: Alert) -> AlertResponse:
 @router.get("/devices/{device_id}/alerts", response_model=AlertListResponse)
 async def list_alerts(
     device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> AlertListResponse:
     alerts = (
         await db.execute(
             select(Alert)
-            .where(Alert.device_id == device_id)
+            .where(Alert.device_id == device_id, _visible_to(current_user))
             .order_by(Alert.last_occurred_at.desc())
             .limit(MAX_ALERTS)
         )
@@ -72,7 +103,11 @@ async def mark_alert_read(
     bumping this one's occurrence_count.
     """
     alert = (
-        await db.execute(select(Alert).where(Alert.id == alert_id, Alert.device_id == device_id))
+        await db.execute(
+            select(Alert).where(
+                Alert.id == alert_id, Alert.device_id == device_id, _visible_to(current_user)
+            )
+        )
     ).scalar_one_or_none()
     if alert is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="alert_not_found")
@@ -108,7 +143,11 @@ async def silence_alert(
     second silence call on the same dedup_key replaces the previous expiry rather than stacking.
     """
     alert = (
-        await db.execute(select(Alert).where(Alert.id == alert_id, Alert.device_id == device_id))
+        await db.execute(
+            select(Alert).where(
+                Alert.id == alert_id, Alert.device_id == device_id, _visible_to(current_user)
+            )
+        )
     ).scalar_one_or_none()
     if alert is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="alert_not_found")
@@ -150,11 +189,16 @@ async def silence_alert(
 @router.get("/devices/{device_id}/alert-silences", response_model=AlertSilenceListResponse)
 async def list_alert_silences(
     device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> AlertSilenceListResponse:
     silences = (
-        await db.execute(select(AlertSilence).where(AlertSilence.device_id == device_id))
+        await db.execute(
+            select(AlertSilence).where(
+                AlertSilence.device_id == device_id, _silence_visible_to(current_user)
+            )
+        )
     ).scalars().all()
     return AlertSilenceListResponse(
         silences=[
@@ -179,7 +223,9 @@ async def delete_alert_silence(
     silence = (
         await db.execute(
             select(AlertSilence).where(
-                AlertSilence.id == silence_id, AlertSilence.device_id == device_id
+                AlertSilence.id == silence_id,
+                AlertSilence.device_id == device_id,
+                _silence_visible_to(current_user),
             )
         )
     ).scalar_one_or_none()

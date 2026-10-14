@@ -137,6 +137,7 @@ async def report_location(
             geofence_event.geofence_name,
             geofence_event.event_type,
             geofence_event.occurred_at,
+            geofence_event.tutor_user_id,
         )
     await db.commit()
     await db.refresh(report)
