@@ -53,10 +53,11 @@ Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo ent
 
 ## Criterios de aceptación
 
-- Bienvenida, aviso de batería y «Se desactivó un permiso» siguen la estructura de las láminas 13.1 a 13.4 y no afirman nada falso (cada afirmación con su fuente).
-- Ninguna clave de efecto de servicio del shell cambia; prueba G-19 con salida real.
-- Pasada de 200 % sin textos cortados ni botones aplastados, en emulador; el 200 % en el teléfono real queda declarado como pendiente.
-- `security-reviewer` sin ALTA; `./gradlew test assembleDebug lintDebug` y los 8 jobs de CI en verde.
+- ✅ Bienvenida, aviso de batería y «Se desactivó un permiso» siguen la estructura de las láminas 13.1 a 13.4 y no afirman nada falso: el paso 2 de la bienvenida pinta los textos de Privacidad, y «permiso desactivado» solo menciona al tutor para el acceso al uso y la protección contra desinstalación, que son lo único que le llega (`docs/sprint-67-evidence.md`, T6). **Diferencias con las láminas, aceptadas y documentadas.**
+- ✅ Ninguna clave de efecto de servicio del shell cambia; prueba G-19 con salida real: `docs/android-redesign/supervisado-v2/s67/g19-serviceRecords.log` (el intento erróneo por el guion queda en `g19-intento1-guion-erroneo.log`).
+- ⏳ Pasada de 200 % sin textos cortados ni botones aplastados: **cumplida en emulador** (galería a letra 2.0 y capturas en `s67/`); **pendiente en el teléfono real** (Galaxy S25 FE) — lo hace una persona.
+- ✅ `security-reviewer` sin ALTA (ni MEDIA en S67; barrido global de `main...HEAD` limpio); `./gradlew test assembleDebug lintDebug` y los 8 jobs de CI en verde en los PR #25 y #26.
+- ⏳ TalkBack y Accessibility Scanner: **pendiente, lo hace una persona** en el teléfono (nadie lo ha oído en S62 a S67).
 
 ## Pendiente que necesita una persona (no se puede hacer desde aquí)
 

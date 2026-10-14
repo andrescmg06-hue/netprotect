@@ -687,3 +687,14 @@ Queda pendiente: TalkBack y fuente grande en el resto de las pantallas (pasan al
 del supervisado), la release real de producción y el PR de `android-redesign` a `main`, cuyo merge hace el dueño.
 
 El detalle está en `docs/sprint-51.md` (evidencia en `docs/sprint-51-evidence.md`).
+
+## Alcance de los Sprints 61 a 67
+
+Rediseño v2 del modo supervisado de Android, en siete sprints ya fusionados en `main` (PR #19 a #26): la app es solo del supervisado (S61), con un sistema visual propio (S62), Acceso, Vincular y «Más ajustes»
+con cierre de sesión confirmado (S63), Inicio y Permisos (S64), Consentimiento y Estado (S65), Bloqueo, Privacidad y Detalle de permiso (S66), y bienvenida, aviso de batería y «Se desactivó un permiso» (S67). Cierran
+tres fallos de seguridad del plan: el teléfono detecta que el tutor lo desvinculó (B1, S64), Estado no da por activa una ubicación que no se envía (B2, S65) y el tutor se entera cuando el menor sale de la solicitud de vista remota o caduca (B5, S65).
+Refrescar la lista de tutores ya no reinicia ningún servicio (G-19). Todo lo que las pantallas afirman sobre los datos del menor se contrastó con el código. El backend de producción no cambió.
+
+Verificado con evidencia real: 220 tests unitarios y 137 de UI en emulador, los 8 jobs de CI en cada PR, y pruebas en el emulador (servicios estables al navegar, desvinculación real, bloqueo real con YouTube, permiso quitado con `appops`).
+**Sin probar, y no se declara hecho:** TalkBack, letra al 200 %, «quitar animaciones» y los pasos de batería en el Galaxy S25 FE; la vista remota de punta a punta con un tutor real; y la prueba con cinco personas. La producción sigue siendo demo local.
+El detalle está en `docs/sprint-61.md` a `docs/sprint-67.md` (evidencia en sus `-evidence.md`).

@@ -1,4 +1,4 @@
-# Cómo continuar el rediseño Android (estado al 12/10/2026, tras el Sprint 51)
+# Cómo continuar el rediseño Android (estado al 14/10/2026, tras el Sprint 67: rediseño v2 fusionado en `main`)
 
 Para quien retome el trabajo. Complementa `CLAUDE_CODE_HANDOFF.md` (el proceso) con **dónde estamos**, **cómo preparar
 el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
@@ -15,7 +15,7 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S64 | Inicio y Permisos, B1 (detectar la desvinculación) y G-19 | ✅ PR #22 |
 | S65 | Consentimiento en 3 pasos, Estado, B2 y B5 | ✅ PR #23 |
 | S66 | Bloqueo (7 variantes), Privacidad y Detalle de permiso | ✅ PR #24 |
-| **S67** | **Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 %, y PR `android-redesign` → `main`** | 🔶 **En curso**. Rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Ver `docs/sprint-67.md` |
+| S67 | Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 % en emulador | ✅ PR #25 y PR final #26 a `main` |
 
 Los sprints v2 (S61 en adelante) se planifican en `supervisado-v2/PLAN_IMPLEMENTACION.md`, no en `sprints/`.
 
