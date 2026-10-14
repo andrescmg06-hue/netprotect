@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.main import app
-from app.models import GeofenceEvent
+from app.models import Geofence, GeofenceEvent
 from app.services.google_auth import GoogleIdentity
 
 pytestmark = [
@@ -391,10 +391,14 @@ async def test_reporting_location_purges_geofence_events_older_than_the_retentio
     assert settings.geofence_event_retention_days == 90
     tutor_token, supervised_token, device_id = _setup_linked_device(client)
     geofence_id = _create_geofence(client, tutor_token, device_id).json()["id"]
+    # Seeded rows carry their owner like real ones do (B-12, Sprint 69), or the tutor below
+    # would not see this event at all, purged or not.
+    geofence = await db_session.get(Geofence, uuid.UUID(geofence_id))
 
     old_event = GeofenceEvent(
         device_id=uuid.UUID(device_id),
         geofence_id=uuid.UUID(geofence_id),
+        tutor_user_id=geofence.created_by_user_id,
         geofence_name="Casa",
         event_type="ENTER",
         occurred_at=datetime(2026, 1, 1, tzinfo=UTC),

@@ -46,7 +46,12 @@ async def record_alert_for_geofence_event(
     geofence_name: str,
     event_type: str,
     occurred_at: datetime,
+    owner_user_id: uuid.UUID | None,
 ) -> None:
+    """owner_user_id is the geofence's creator (GeofenceEvent.tutor_user_id), stored on the alert
+    so only that tutor sees or acts on it (B-12, Sprint 69). The dedup_key needs no owner part: a
+    geofence_id already belongs to exactly one tutor.
+    """
     alert_type = "GEOFENCE_EXIT" if event_type == "EXIT" else "GEOFENCE_ENTER"
     level = "WARNING" if event_type == "EXIT" else "INFO"
     await _record_alert(
@@ -58,6 +63,7 @@ async def record_alert_for_geofence_event(
         occurred_at=occurred_at,
         geofence_id=geofence_id,
         geofence_name=geofence_name,
+        geofence_owner_user_id=owner_user_id,
     )
 
 
@@ -94,6 +100,7 @@ async def _record_alert(
     package_name: str | None = None,
     geofence_id: uuid.UUID | None = None,
     geofence_name: str | None = None,
+    geofence_owner_user_id: uuid.UUID | None = None,
 ) -> None:
     """Generates a tutor-facing alert from a signal that just happened, or folds it into an
     already-open one — see Alert's docstring (app/models/alert.py) for the no-time-window
@@ -132,6 +139,9 @@ async def _record_alert(
                 Alert.device_id == device_id,
                 Alert.dedup_key == dedup_key,
                 Alert.read_at.is_(None),
+                # Never fold an occurrence into an open alert another tutor (or nobody) owns,
+                # e.g. one the B-12 backfill left without an owner.
+                Alert.geofence_owner_user_id.is_not_distinct_from(geofence_owner_user_id),
             )
             .order_by(Alert.first_occurred_at, Alert.id)
             .limit(1)
@@ -151,6 +161,7 @@ async def _record_alert(
             package_name=package_name,
             geofence_id=geofence_id,
             geofence_name=geofence_name,
+            geofence_owner_user_id=geofence_owner_user_id,
             occurrence_count=1,
             first_occurred_at=occurred_at,
             last_occurred_at=occurred_at,

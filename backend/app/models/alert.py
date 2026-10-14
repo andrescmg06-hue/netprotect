@@ -86,6 +86,12 @@ class Alert(UUIDPrimaryKeyMixin, Base):
     package_name: Mapped[str | None] = mapped_column(String(255))
     geofence_id: Mapped[uuid.UUID | None] = mapped_column()
     geofence_name: Mapped[str | None] = mapped_column(String(100))
+    # GEOFENCE_ENTER/EXIT only: the creator of the geofence behind the alert, snapshotted like
+    # GeofenceEvent.tutor_user_id (B-12, Sprint 69). Null for every other alert type, which stay
+    # visible to every tutor of the device.
+    geofence_owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     occurrence_count: Mapped[int] = mapped_column(Integer, default=1)
     first_occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
