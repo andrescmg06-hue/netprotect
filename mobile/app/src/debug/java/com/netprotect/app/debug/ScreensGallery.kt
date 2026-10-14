@@ -42,6 +42,7 @@ import com.netprotect.app.feature.supervised.consent.ScreenShareConsentContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionRevokedScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
 import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
@@ -97,6 +98,15 @@ fun ScreensGallery() {
         }
         ScreenFrame("Batería · optimizada · letra 200 %") {
             GalleryBattery(ignoring = false, fontScale = 2f)
+        }
+        // «Se desactivó un permiso» (lámina 13.4): one per permission, each says something different.
+        SupervisedPermission.entries.forEach { permission ->
+            ScreenFrame("Permiso desactivado · ${permission.name}") {
+                GalleryPermissionRevoked(permission)
+            }
+        }
+        ScreenFrame("Permiso desactivado · UsageAccess · letra 200 %") {
+            GalleryPermissionRevoked(SupervisedPermission.UsageAccess, fontScale = 2f)
         }
         // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Privacidad y Detalle de permiso (láminas 10.5 y 11). ----
         ScreenFrame("Privacidad") {
@@ -421,6 +431,18 @@ private fun GalleryWelcome(step: WelcomeStep, pendingPermissions: Int, fontScale
 @Composable
 private fun GalleryBattery(ignoring: Boolean, fontScale: Float? = null) {
     val content = @Composable { BatteryScreen(ignoring = ignoring, onOpenSettings = {}, onBack = {}) }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
+}
+
+/** Sprint 67: the removed-permission notice as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryPermissionRevoked(permission: SupervisedPermission, fontScale: Float? = null) {
+    val content = @Composable { PermissionRevokedScreen(permission = permission, onActivate = {}, onHome = {}) }
     if (fontScale == null) {
         content()
     } else {
