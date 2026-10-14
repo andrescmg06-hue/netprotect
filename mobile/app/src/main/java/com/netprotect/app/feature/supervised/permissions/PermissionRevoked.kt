@@ -29,8 +29,10 @@ internal class PermissionRevokedTexts(val permissionTitle: String, val body: Str
  * RuleEnforcementService and the app sync, location gates LocationReportingService (both keyed in SupervisedShell);
  * overlay is what shows the block screen while the phone is in use (SupervisedShell's overlayPermissionLauncher
  * comment), so only "es posible que"; device admin is the uninstall-attempt receiver (NetProtectDeviceAdminReceiver).
- * Only usage access travels to the tutor: the heartbeat's usage_access_granted becomes a PERMISSION_REVOKED alert
- * (backend services/tamper.py). Nothing reports the other three as removed, so their note says nothing of the tutor.
+ * Two permissions reach the tutor: the heartbeat's usage_access_granted becomes a PERMISSION_REVOKED alert (backend
+ * services/tamper.py), and turning the device admin off fires NetProtectDeviceAdminReceiver.onDisableRequested, which
+ * reports an UNINSTALL_ATTEMPT (Android's own dialog already says the tutor gets an alert). Nothing reports location or
+ * overlay as removed, so their note says nothing of the tutor.
  */
 internal fun permissionRevokedTexts(permission: SupervisedPermission): PermissionRevokedTexts {
     val title = permissionTexts(permission).title
@@ -46,6 +48,7 @@ internal fun permissionRevokedTexts(permission: SupervisedPermission): Permissio
     }
     val note = when (permission) {
         SupervisedPermission.UsageAccess -> "Tu tutor puede ver que este permiso está desactivado."
+        SupervisedPermission.DeviceAdmin -> "Al desactivarla, NetProtect avisa a tu tutor. Actívala de nuevo para volver a estar protegido."
         else -> "Activa el permiso para que NetProtect vuelva a funcionar."
     }
     return PermissionRevokedTexts(

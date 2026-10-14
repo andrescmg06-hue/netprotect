@@ -80,10 +80,15 @@ class PermissionRevokedTest {
     }
 
     @Test
-    fun onlyUsageAccessSaysTheTutorCanSeeIt() {
-        // Only usage_access_granted travels in the heartbeat (backend services/tamper.py → PERMISSION_REVOKED).
+    fun onlyUsageAccessAndDeviceAdminMentionTheTutor() {
+        // usage_access_granted travels in the heartbeat (backend services/tamper.py → PERMISSION_REVOKED) and turning the
+        // device admin off reports an UNINSTALL_ATTEMPT (NetProtectDeviceAdminReceiver.onDisableRequested).
         assertEquals("Tu tutor puede ver que este permiso está desactivado.", permissionRevokedTexts(UsageAccess).note)
-        listOf(Location, Overlay, DeviceAdmin).forEach { permission ->
+        assertEquals(
+            "Al desactivarla, NetProtect avisa a tu tutor. Actívala de nuevo para volver a estar protegido.",
+            permissionRevokedTexts(DeviceAdmin).note,
+        )
+        listOf(Location, Overlay).forEach { permission ->
             assertEquals("Activa el permiso para que NetProtect vuelva a funcionar.", permissionRevokedTexts(permission).note)
             permissionRevokedAllTexts(permission).forEach { text ->
                 assertFalse("«$text» mentions the tutor", text.contains("tutor", ignoreCase = true))
