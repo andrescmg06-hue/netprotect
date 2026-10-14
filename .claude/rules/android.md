@@ -249,3 +249,19 @@ silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprin
   `adb reverse --list` antes de culpar al backend.
 - Al automatizar `adb` + `uiautomator`: partir el volcado con `sed 's/>/>\n/g'` (no con `tr`) y arrancar la app desde cero
   en cada pantalla en vez de depender de `KEYCODE_BACK`.
+
+## Lecciones del rediseño v2 (S61 a S67)
+
+- **Prueba G-19 (servicios estables al navegar):** en el guion, volver a la app por el intento del lanzador (`adb shell monkey -p com.netprotect.app -c android.intent.category.LAUNCHER 1`), no con `am start -n`. `am start -n`
+  crea una instancia nueva de `MainActivity` cuando el intento no coincide con el de la raíz de la tarea, y con ella un shell y servicios nuevos: parece que G-19 falla y es el guion. Se comprueba con el `ActivityRecord` y los `ServiceRecord`
+  antes y después de «Inicio del sistema» (`dumpsys activity activities` y `dumpsys activity services com.netprotect.app`) y con `adb logcat -b events -d | grep wm_create_activity`.
+- **Emulador `Pixel_8`:** nunca `adb reboot`. Tiene un PIN: tras un arranque en frío el usuario queda `RUNNING_LOCKED` (`adb shell dumpsys user`), el sistema no resuelve las actividades de la app y todos los tests Compose fallan con «Unable
+  to resolve activity». Hay que desbloquearlo a mano y comprobar `RUNNING_UNLOCKED` antes de los tests de UI. Cerrarlo con la ventana normal para que guarde su estado. Puede caerse solo (error de `qemu`): relanzarlo con
+  `-gpu swiftshader_indirect` y correr `connectedDebugAndroidTest` por tandas de clases (`-Pandroid.testInstrumentationRunnerArguments.class=a.B,a.C`; cada tanda sobrescribe el XML, copiarlo antes de la siguiente).
+- **RAM del equipo:** con el emulador (2,5 GB), Docker y Chrome quedan pocos cientos de MB; `./gradlew --stop` al terminar cada verificación. `adb.exe` es un programa de Windows: con `MSYS_NO_PATHCONV=1` usar rutas `C:/...`, no `/c/...`.
+- **Texto que afirma algo sobre los datos de un menor:** contrastarlo con el código y, si se puede, medirlo antes de escribirlo. Dos hallazgos del `security-reviewer` se confirmaron en el emulador antes de tocar el texto: con la app en segundo plano el
+  latido sigue llegando cada minuto («mientras la app esté abierta» infravaloraba el envío), y en Android 11+ `ACTION_MANAGE_OVERLAY_PERMISSION` con `package:` abre la lista general de apps, no la página de NetProtect. Si la lámina de diseño dice
+  otra cosa que el código, manda el código. No afirmar retención que no esté documentada ni nombrar fabricantes en pasos no validados.
+- **Permisos quitados en Ajustes:** Android puede matar el proceso al revocar uno (la ubicación), así que lo anterior no puede vivir solo en memoria: se guarda en `SharedPreferences` y se compara al volver. Probar con
+  `adb shell appops set com.netprotect.app SYSTEM_ALERT_WINDOW deny|allow` (superponer; restaurarlo al terminar).
+
