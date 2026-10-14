@@ -36,6 +36,7 @@ import com.netprotect.app.feature.home.ServiceStatus
 import com.netprotect.app.feature.home.TutorAccountScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
 import com.netprotect.app.feature.supervised.SignOutConfirmContent
+import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
@@ -83,6 +84,19 @@ fun ScreensGallery() {
         }
         ScreenFrame("Bienvenida · paso 2 · letra 200 %") {
             GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 4, fontScale = 2f)
+        }
+        // Aviso de batería (lámina 13.3): la fila en Inicio y su pantalla.
+        ScreenFrame("Inicio · con el aviso de batería") {
+            GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30), batteryIgnoring = false)
+        }
+        ScreenFrame("Batería · optimizada") {
+            GalleryBattery(ignoring = false)
+        }
+        ScreenFrame("Batería · revisada al volver") {
+            GalleryBattery(ignoring = true)
+        }
+        ScreenFrame("Batería · optimizada · letra 200 %") {
+            GalleryBattery(ignoring = false, fontScale = 2f)
         }
         // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Privacidad y Detalle de permiso (láminas 10.5 y 11). ----
         ScreenFrame("Privacidad") {
@@ -366,7 +380,7 @@ private fun GalleryServices(location: ServiceState, screenShareActive: Boolean) 
 }
 
 @Composable
-private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
+private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?, batteryIgnoring: Boolean = true) {
     LinkedDeviceScreen(
         deviceName = "Tablet de Sofía",
         androidVersion = "13",
@@ -375,6 +389,7 @@ private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
         now = galleryNowS64,
         pendingPermissions = pendingPermissions,
         onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {}, onOpenPrivacy = {},
+        batteryIgnoring = batteryIgnoring,
     )
 }
 
@@ -394,6 +409,18 @@ private fun GalleryWelcome(step: WelcomeStep, pendingPermissions: Int, fontScale
     val content = @Composable {
         WelcomeScreen(step = step, pendingPermissions = pendingPermissions, onNext = {}, onBack = {}, onFinish = {})
     }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
+}
+
+/** Sprint 67: the battery screen as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryBattery(ignoring: Boolean, fontScale: Float? = null) {
+    val content = @Composable { BatteryScreen(ignoring = ignoring, onOpenSettings = {}, onBack = {}) }
     if (fontScale == null) {
         content()
     } else {

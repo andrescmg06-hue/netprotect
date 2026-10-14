@@ -29,6 +29,8 @@ class LinkedDeviceScreenTest {
         onOpenPermissions: () -> Unit = {},
         onOpenMoreSettings: () -> Unit = {},
         onOpenPrivacy: () -> Unit = {},
+        batteryIgnoring: Boolean = true,
+        onOpenBattery: () -> Unit = {},
     ) {
         composeRule.setContent {
             NetProtectTheme {
@@ -43,9 +45,36 @@ class LinkedDeviceScreenTest {
                     onOpenPermissions = onOpenPermissions,
                     onOpenMoreSettings = onOpenMoreSettings,
                     onOpenPrivacy = onOpenPrivacy,
+                    batteryIgnoring = batteryIgnoring,
+                    onOpenBattery = onOpenBattery,
                 )
             }
         }
+    }
+
+    @Test
+    fun batteryRowOnlyWhenTheOptimizationApplies() {
+        set(batteryIgnoring = true)
+        composeRule.onNodeWithText("La batería puede detener NetProtect").assertDoesNotExist()
+    }
+
+    @Test
+    fun batteryRowOpensTheBatteryScreen() {
+        var opened = false
+        set(batteryIgnoring = false, onOpenBattery = { opened = true })
+        composeRule.onNodeWithText("Toca para ver cómo revisarlo.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("La batería puede detener NetProtect").performScrollTo().performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun batteryIsNotAPermissionAndLeavesTheHeadlineAlone() {
+        // Everything configured and a recent report: still «Todo funciona» and 4 of 4, with the battery row.
+        set(pendingPermissions = 0, batteryIgnoring = false)
+        composeRule.onNodeWithText("Todo funciona").performScrollTo().assertExists()
+        composeRule.onNodeWithText("4 DE 4 PERMISOS").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Revisar permisos").assertDoesNotExist()
+        composeRule.onNodeWithText("La batería puede detener NetProtect").performScrollTo().assertExists()
     }
 
     @Test
