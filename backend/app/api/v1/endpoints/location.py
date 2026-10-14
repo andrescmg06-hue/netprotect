@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +13,7 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.crypto import decrypt_coordinate, encrypt_coordinate
 from app.db.session import get_db
-from app.models import Device, DeviceLocationReport, GeofenceEvent, User
+from app.models import Device, DeviceLocationReport, GeofenceEvent, TutorDevice, User
 from app.schemas.location import (
     MAX_HISTORY_REPORTS,
     LatestLocationResponse,
@@ -37,6 +38,34 @@ def _to_response(report: DeviceLocationReport) -> LocationReportResponse:
         captured_at=report.captured_at,
         received_at=report.received_at,
     )
+
+
+async def _tutor_link_started_at(
+    db: AsyncSession, tutor_id: uuid.UUID, device_id: uuid.UUID
+) -> datetime:
+    """When this tutor's *active* link to the device began.
+
+    A tutor reads only what the server received from then on (B-09, invariant 6): relinking the
+    same installation reuses the device row, so without this cut a new tutor would read locations
+    stored before they were ever linked. It is `received_at` (the server's clock) and not
+    `captured_at` (the device's own, which the supervised person controls) that is compared.
+    `require_tutor_of_device` has just checked that the link exists, but it is another statement:
+    an unlink committed in between would leave nothing here, and that must answer the same uniform
+    404 as any other caller without a link, not a 500. The partial unique index
+    `uq_tutor_devices_active_link` rules out two active links.
+    """
+    linked_at = (
+        await db.execute(
+            select(TutorDevice.linked_at).where(
+                TutorDevice.tutor_user_id == tutor_id,
+                TutorDevice.device_id == device_id,
+                TutorDevice.unlinked_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if linked_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
+    return linked_at
 
 
 def _client_ip(request: Request) -> str | None:
@@ -152,10 +181,14 @@ async def get_latest_location(
     current_user: User = Depends(get_current_user),
     _device: Device = Depends(require_tutor_of_device),
 ) -> LatestLocationResponse:
+    link_started_at = await _tutor_link_started_at(db, current_user.id, device_id)
     report = (
         await db.execute(
             select(DeviceLocationReport)
-            .where(DeviceLocationReport.device_id == device_id)
+            .where(
+                DeviceLocationReport.device_id == device_id,
+                DeviceLocationReport.received_at >= link_started_at,
+            )
             .order_by(DeviceLocationReport.captured_at.desc())
             .limit(1)
         )
@@ -174,15 +207,20 @@ async def get_location_history(
     current_user: User = Depends(get_current_user),
     _device: Device = Depends(require_tutor_of_device),
 ) -> LocationHistoryResponse:
-    """Everything still inside the retention window for this device, most recent first. No
-    separate "expired" filter needed here beyond the window itself — the write endpoint already
-    purges anything older than location_retention_days, so nothing stale can be sitting in the
-    table to read back.
+    """Everything still inside the retention window that was received since this tutor's link
+    began, most recent first. No separate "expired" filter needed here beyond the window itself —
+    the write endpoint already purges anything older than location_retention_days, so nothing
+    stale can be sitting in the table to read back. What a tutor reads is further bounded by the
+    start of their own link (see `_tutor_link_started_at`).
     """
+    link_started_at = await _tutor_link_started_at(db, current_user.id, device_id)
     reports = (
         await db.execute(
             select(DeviceLocationReport)
-            .where(DeviceLocationReport.device_id == device_id)
+            .where(
+                DeviceLocationReport.device_id == device_id,
+                DeviceLocationReport.received_at >= link_started_at,
+            )
             .order_by(DeviceLocationReport.captured_at.desc())
             .limit(MAX_HISTORY_REPORTS)
         )
