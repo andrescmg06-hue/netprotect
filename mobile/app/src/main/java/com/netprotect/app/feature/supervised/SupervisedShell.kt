@@ -593,7 +593,10 @@ fun SupervisedShell(
         try {
             context.startActivity(BatteryOptimization.settingsIntent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (noListScreen: ActivityNotFoundException) {
-            context.startActivity(BatteryOptimization.appDetailsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            // A ROM without either screen: nothing more to open, and the app must not close over it.
+            runCatching {
+                context.startActivity(BatteryOptimization.appDetailsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
         }
     }
 
