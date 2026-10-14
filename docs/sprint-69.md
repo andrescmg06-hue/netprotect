@@ -16,15 +16,15 @@ Rama `sprint-69-b12-geovallas`, desde `main` (`f72fbc3`), en el worktree `C:/Use
 - **Dueño de la geovalla:** nueva columna `geofences.created_by_user_id` (FK a `users`). Crear, listar, editar y borrar una geovalla solo afecta a las del propio tutor; las de otro tutor responden el mismo **404 uniforme** que una inexistente (anti-IDOR).
 - **Dueño de lo derivado, con instantánea:** `geofence_events.tutor_user_id` y la columna equivalente en las alertas de geovalla (`alerts`), rellenadas al insertar con el dueño de la geovalla en ese momento. Así un tutor **sigue viendo los eventos de una geovalla suya que borró**, y los de otro nunca.
 - **Lecturas filtradas por dueño:** `GET /devices/{id}/geofences`, `.../geofences/events`, `GET /devices/{id}/history` (la parte de geovallas) y `GET /devices/{id}/alerts` (las `GEOFENCE_*`). El resto de la línea de tiempo y de las alertas no cambia. Las formas de las respuestas no cambian (solo hay menos filas).
-- **Migración de lo existente:** las geovallas, eventos y alertas ya guardados se asignan al **único tutor con vínculo activo** del dispositivo si hay exactamente uno; si hay ninguno o varios, quedan con dueño `NULL` y **nadie los ve** (no se borra nada: la retención los purgará). Se prefiere ocultar a adivinar el dueño de un dato sensible. Documentar cuántas filas quedan huérfanas.
+- **Migración de lo existente:** las geovallas, eventos y alertas ya guardados se asignan al tutor del dispositivo **solo si ese dispositivo ha tenido un único tutor en toda su historia** (contando vínculos ya cerrados) y sigue vinculado. Un dispositivo revinculado de A a B tiene hoy un único tutor activo, pero esas geovallas las dibujó A: dárselas a B reproduce la fuga que B-12 cierra (hallazgo MEDIA del `security-reviewer`, corregido). Si hay ninguno o varios, quedan con dueño `NULL` y **nadie los ve** (no se borra nada: la retención los purgará). Se prefiere ocultar a adivinar el dueño de un dato sensible. Documentar cuántas filas quedan huérfanas.
 - **Una geovalla de un tutor que ya no está vinculado deja de evaluarse:** `evaluate_geofence_transitions` solo considera geovallas cuyo creador tiene un vínculo activo con el dispositivo (si no, generaría eventos y alertas que nadie puede ver). Si el tutor vuelve, la geovalla vuelve a evaluarse. No se borra al desvincular.
 - Sin cambio de rutas. Android ya no tiene modo tutor (S61): el único cliente es el panel web, cuyas respuestas no cambian.
 
 ## Tareas
 
 - [x] T1 — Abrir el sprint. Inline. (este commit)
-- [ ] T2 — Migración, modelos, endpoints, servicio de evaluación y tests de integración, **tests primero**. Delegado (**Opus**; backend de seguridad con migración).
-- [ ] T3 — `ruff`, suite de integración completa en contenedor, prueba de la migración sobre datos existentes (con una base de pruebas con filas antes de migrar), `security-reviewer` (autorización, 404 uniforme, migración) y PR. Inline.
+- [x] T2 — Migración, modelos, endpoints, servicio de evaluación y tests de integración, **tests primero**. Delegado (**Opus**; backend de seguridad con migración).
+- [x] T3 — `ruff`, suite de integración completa en contenedor, prueba de la migración sobre datos existentes (con una base de pruebas con filas antes de migrar), `security-reviewer` (autorización, 404 uniforme, migración) y PR. Inline.
 
 ## Criterios de aceptación
 
