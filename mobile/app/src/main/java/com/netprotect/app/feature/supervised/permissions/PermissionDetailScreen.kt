@@ -180,7 +180,7 @@ fun PermissionDetailScreen(
 }
 
 @DrawableRes
-private fun permissionIcon(permission: SupervisedPermission): Int = when (permission) {
+internal fun permissionIcon(permission: SupervisedPermission): Int = when (permission) {
     SupervisedPermission.UsageAccess -> NpIcons.Clock
     SupervisedPermission.Location -> NpIcons.MapPin
     SupervisedPermission.Overlay -> NpIcons.Monitor

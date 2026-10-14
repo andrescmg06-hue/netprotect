@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.DeviceIdentity
 import com.netprotect.app.core.auth.LinkedDeviceStore
+import com.netprotect.app.core.auth.PermissionSnapshotStore
 import com.netprotect.app.core.auth.TokenSession
 import com.netprotect.app.core.auth.WelcomeStore
 import com.netprotect.app.core.auth.authorized
@@ -73,8 +74,11 @@ import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionRevokedScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
+import com.netprotect.app.feature.supervised.permissions.grantedPermissions
+import com.netprotect.app.feature.supervised.permissions.revokedPermissions
 import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
 import com.netprotect.app.feature.supervised.welcome.WelcomeScreen
 import com.netprotect.app.feature.supervised.welcome.WelcomeStep
@@ -153,6 +157,9 @@ fun SupervisedShell(
     var route by rememberSaveable { mutableStateOf(SupervisedRoute.Linked) }
     // Sprint 66: which permission PermissionDetail shows. Presentation only, never an effect key (G-19).
     var detailPermission by rememberSaveable { mutableStateOf(SupervisedPermission.UsageAccess) }
+    // Sprint 67 (lámina 13.4): which permission the PermissionRevoked route shows. Presentation only, never an
+    // effect key (G-19), like detailPermission.
+    var revokedPermission by rememberSaveable { mutableStateOf(SupervisedPermission.UsageAccess) }
     // Sprint 67: the welcome after a new link and its step. Presentation only, never an effect key (G-19):
     // the services start as soon as the state is Linked, whether or not the welcome is on screen.
     var showWelcome by rememberSaveable { mutableStateOf(false) }
@@ -257,6 +264,27 @@ fun SupervisedShell(
         }
     }
 
+    // Sprint 67 (lámina 13.4): compares the flags just read with the ones saved at the previous read for this link
+    // and, if one was removed, shows the notice. Presentation only: it sets the route and writes the snapshot,
+    // nothing a service is keyed on. The snapshot is written every time so the same removal is told once. Not
+    // over the welcome or a screen-share request; a removal found then is not told later either.
+    fun checkRevokedPermissions() {
+        val deviceId = (state as? SupervisedState.Linked)?.deviceId ?: return
+        val current = PermissionsUi(
+            usageAccess = hasUsageAccess,
+            location = hasLocationPermission,
+            overlay = hasOverlayPermission,
+            deviceAdmin = hasDeviceAdmin,
+        )
+        val revoked = revokedPermissions(PermissionSnapshotStore.read(context, deviceId), current)
+        if (revoked.isNotEmpty() && !showWelcome && consentRequestedAt == null && route != SupervisedRoute.Consent) {
+            // Several at once: the first in canonical order; Inicio's «Falta un paso» still counts every pending one.
+            revokedPermission = revoked.first()
+            route = SupervisedRoute.PermissionRevoked
+        }
+        PermissionSnapshotStore.write(context, deviceId, grantedPermissions(current))
+    }
+
     // Sprint 48: permissions are re-read whenever the app comes back to the front (e.g. from
     // Settings). A flag only changes if the permission really changed, so an effect keyed on it
     // restarts only then — revoking usage access stops RuleEnforcementService, which cannot work
@@ -270,6 +298,7 @@ fun SupervisedShell(
                 hasDeviceAdmin = DeviceAdminPermission.isActive(context)
                 hasOverlayPermission = OverlayPermission.isGranted(context)
                 batteryIgnoring = BatteryOptimization.isIgnoring(context)
+                checkRevokedPermissions()
                 now = Instant.now()
             }
         }
@@ -294,6 +323,8 @@ fun SupervisedShell(
         LinkedDeviceStore.clear(context)
         // A new link shows the welcome again.
         WelcomeStore.clear(context)
+        // The next link starts without a previous read: nothing to compare, so no notice.
+        PermissionSnapshotStore.clear(context)
         showWelcome = false
         deviceInfo = null
         tutorLabel = null
@@ -319,6 +350,9 @@ fun SupervisedShell(
                 tutorLabel = check.tutorLabel
                 LinkedDeviceStore.write(context, check.deviceId, check.tutorLabel)
                 state = SupervisedState.Linked(check.deviceId)
+                // After a restart (Android may kill the app when a permission is removed in Settings) the ON_RESUME
+                // read came before the link was known: compare here, against the snapshot saved before.
+                checkRevokedPermissions()
             }
             // The device row can outlive every tutor link: /devices/me then answers 200 with an empty
             // tutor list, which is not "linked" either. With a cache this phone was linked, so the
@@ -334,6 +368,7 @@ fun SupervisedShell(
             LinkCheck.Inconclusive -> {
                 tutorLabel = cached?.tutorLabel
                 state = cached?.let { SupervisedState.Linked(it.deviceId) } ?: SupervisedState.EnteringCode()
+                checkRevokedPermissions()
             }
         }
     }
@@ -609,6 +644,8 @@ fun SupervisedShell(
                                     deviceId = result.deviceId,
                                 )
                                 state = SupervisedState.Linked(result.deviceId)
+                                // The first read of this link: saves the snapshot, tells nothing.
+                                checkRevokedPermissions()
                                 // Names and last contact for the linked screen; failures just leave
                                 // the pairing answer's data on screen.
                                 runCatching {
@@ -716,6 +753,16 @@ fun SupervisedShell(
                     ignoring = batteryIgnoring,
                     onOpenSettings = onOpenBatterySettings,
                     onBack = { route = SupervisedRoute.Linked },
+                )
+
+                SupervisedRoute.PermissionRevoked -> PermissionRevokedScreen(
+                    permission = revokedPermission,
+                    // The detail of S66; its Back goes to Permisos like any detail.
+                    onActivate = {
+                        detailPermission = revokedPermission
+                        route = SupervisedRoute.PermissionDetail
+                    },
+                    onHome = { route = SupervisedRoute.Linked },
                 )
 
                 SupervisedRoute.Consent -> ScreenShareConsentScreen(
