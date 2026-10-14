@@ -26,7 +26,13 @@ Rama `sprint-67-casos-reales`, creada desde `android-redesign` (`182b4b7`, con S
 Ruta: **inline** = Claude directo; **delegado** = subagente escritor (modelo entre paréntesis). Un solo escritor a la vez: las tareas T2 a T4 tocan el shell.
 
 - [x] T1 — Abrir el sprint y poner `CONTINUAR.md` al día. Inline. (este commit)
-- [ ] T2 — Bienvenida de 2 pasos: pantallas, bandera, estado de presentación en el shell, frames de galería y tests. Delegado (**Opus**: shell y primera impresión del menor).
+- [x] T2 — `4ddd96b`, `92a3ece`, `5ded891`. `WelcomeScreen` de 2 pasos; el paso 2 no tiene textos propios: pinta `privacySections` y `PRIVACY_NO_RECORDING` de Privacidad (un test comprueba que es exactamente esa lista), porque la lámina 13.2 decía cosas que el código no respalda
+  tal cual («Si el dispositivo está activo», «Cada unos 15 minutos») y omitía la lista de apps, los bloqueos y el aviso de desinstalación. `WelcomeStore` guarda el deviceId para el que se completó (no un booleano) y `enterUnlinked()` lo borra. Shell: `showWelcome` y
+  `welcomeStep` son estado de presentación (`rememberSaveable`), no clave de ningún efecto ni parte de `Linked`; solo se muestra tras un vínculo nuevo (no a quien ya estaba vinculado); «Atrás» en el paso 1 no la salta; el botón final («Entendido, configurar permisos») abre
+  Permisos solo si queda algún permiso pendiente, y si no dice «Entendido» y vuelve a Inicio. `testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug --rerun-tasks` (sin caché) → BUILD SUCCESSFUL, 202 tests, 0 fallos, lint 0 errores; `connectedDebugAndroidTest` → **137 tests, 0 fallos**
+  (con los 8 de `WelcomeScreenTest`). Delegado (Opus). Límites: cerrar sesión (sin «Desvincular») no limpia la bandera; el diálogo del sistema de notificaciones sigue saliendo encima del paso 1.
+  Incidente de entorno (no del código): la primera corrida de UI abortó con «System has crashed» por falta de RAM del equipo (~2 GB libres), y un `adb reboot` mío dejó el emulador bloqueado por su PIN (124 tests Compose fallaron con «Unable to resolve activity»);
+  se desbloqueó a mano y la repetición pasó. Lección: no reiniciar el emulador con `adb reboot`, y comprobar `RUNNING_UNLOCKED` antes de los tests de UI.
 - [ ] T3 — Aviso de batería: comprobación, intent a ajustes, icono, pantalla/aviso, galería y tests. Delegado (**Opus**).
 - [ ] T4 — «Se desactivó un permiso»: detección al volver, aviso con «Activar de nuevo», galería y tests. Delegado (**Opus**: shell, `ON_RESUME`).
 - [ ] T5 — Emulador: pasada de letra 1.0 y 2.0 de las pantallas nuevas y de las que faltan, «quitar animaciones», quitar un permiso en Ajustes y recuperarlo, y la **prueba G-19**. Inline.
