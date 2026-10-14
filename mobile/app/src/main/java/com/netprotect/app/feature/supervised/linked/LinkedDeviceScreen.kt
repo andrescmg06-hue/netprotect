@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalView
@@ -39,6 +40,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.netprotect.app.core.status.isReportRecent
+import com.netprotect.app.feature.supervised.battery.BATTERY_HOME_SUBTITLE
+import com.netprotect.app.feature.supervised.battery.BATTERY_HOME_TITLE
 import com.netprotect.app.ui.components.NpButton
 import com.netprotect.app.ui.components.NpHeroPanel
 import com.netprotect.app.ui.components.SEAL_ARC_COUNT
@@ -46,6 +49,7 @@ import com.netprotect.app.ui.components.permissionsCaption
 import com.netprotect.app.ui.format.RelativeTime
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NpColors
+import com.netprotect.app.ui.theme.NpShapes
 import com.netprotect.app.ui.theme.NpSpace
 import com.netprotect.app.ui.theme.NpText
 import java.time.Instant
@@ -69,6 +73,8 @@ fun LinkedDeviceScreen(
     onOpenMoreSettings: () -> Unit,
     onOpenPrivacy: () -> Unit,
     modifier: Modifier = Modifier,
+    batteryIgnoring: Boolean = true,
+    onOpenBattery: () -> Unit = {},
 ) {
     val status = homeStatus(pendingPermissions, lastContact, now)
     val reportRecent = isReportRecent(lastContact, now)
@@ -109,6 +115,8 @@ fun LinkedDeviceScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = NpSpace.Gutter),
         ) {
+            // Sprint 67 (lámina 13.3): battery is not a permission, so it never changes the headline or the count.
+            if (!batteryIgnoring) BatteryRow(onClick = onOpenBattery)
             SideBySideOrStacked(
                 first = {
                     InfoCell(label = "Dispositivo") {
@@ -294,6 +302,36 @@ private fun NavRow(@DrawableRes icon: Int, title: String, onClick: () -> Unit, s
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = NpColors.InkMuted,
+        )
+    }
+}
+
+/** Warning row that leads to the battery screen; one button for TalkBack. */
+@Composable
+private fun BatteryRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(top = NpSpace.L)
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(NpShapes.Card)
+            .background(NpColors.WarningWash)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(NpSpace.L),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painter = painterResource(NpIcons.Battery), contentDescription = null, modifier = Modifier.size(22.dp), tint = NpColors.WarningText)
+        Spacer(Modifier.width(NpSpace.L))
+        Column(Modifier.weight(1f)) {
+            Text(text = BATTERY_HOME_TITLE, style = NpText.Subtitle, color = NpColors.Ink)
+            Text(text = BATTERY_HOME_SUBTITLE, style = NpText.BodySm, color = NpColors.InkMuted)
+        }
+        Spacer(Modifier.width(NpSpace.M))
+        Icon(
+            painter = painterResource(NpIcons.ChevronRight),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = NpColors.Ink,
         )
     }
 }

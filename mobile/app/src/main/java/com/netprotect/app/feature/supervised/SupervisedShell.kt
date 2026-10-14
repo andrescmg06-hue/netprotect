@@ -1,6 +1,7 @@
 package com.netprotect.app.feature.supervised
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -46,6 +47,7 @@ import com.netprotect.app.core.network.MyDeviceInfo
 import com.netprotect.app.core.network.PairingClient
 import com.netprotect.app.core.network.ReconnectingRealtimeChannel
 import com.netprotect.app.core.network.toUiError
+import com.netprotect.app.core.permissions.BatteryOptimization
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.OverlayPermission
@@ -57,6 +59,7 @@ import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import com.netprotect.app.core.status.servicesView
 import com.netprotect.app.core.sync.SyncWorker
+import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.consent.ConsentEvent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentScreen
 import com.netprotect.app.feature.supervised.consent.consentRequestedAtFromMillis
@@ -154,6 +157,9 @@ fun SupervisedShell(
     // the services start as soon as the state is Linked, whether or not the welcome is on screen.
     var showWelcome by rememberSaveable { mutableStateOf(false) }
     var welcomeStep by rememberSaveable { mutableStateOf(WelcomeStep.Linked) }
+    // Sprint 67 (lámina 13.3): whether battery optimization is off for NetProtect, re-read on ON_RESUME below.
+    // Presentation only (Inicio's row and the battery screen), never an effect key (G-19), and not a permission.
+    var batteryIgnoring by remember { mutableStateOf(BatteryOptimization.isIgnoring(context)) }
     var deviceInfo by remember { mutableStateOf<MyDeviceInfo?>(null) }
     var lastHeartbeatOk by remember { mutableStateOf<Instant?>(null) }
     var heartbeatFailing by remember { mutableStateOf(false) }
@@ -263,6 +269,7 @@ fun SupervisedShell(
                 hasLocationPermission = LocationPermission.isGranted(context)
                 hasDeviceAdmin = DeviceAdminPermission.isActive(context)
                 hasOverlayPermission = OverlayPermission.isGranted(context)
+                batteryIgnoring = BatteryOptimization.isIgnoring(context)
                 now = Instant.now()
             }
         }
@@ -516,6 +523,7 @@ fun SupervisedShell(
             SupervisedRoute.Consent -> onConsentEvent(ConsentEvent.Back)
             // The detail is opened from Permisos, so Back returns there, not to Inicio.
             SupervisedRoute.PermissionDetail -> route = SupervisedRoute.Permissions
+            // Battery and every other screen are opened from Inicio.
             else -> route = SupervisedRoute.Linked
         }
     }
@@ -544,6 +552,15 @@ fun SupervisedShell(
     val requestLocation = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
     val requestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) }
     val requestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) }
+    // Sprint 67: only opens Settings; the result is read on the next ON_RESUME. NetProtect's own page if a
+    // phone has no screen for the general list.
+    val onOpenBatterySettings: () -> Unit = {
+        try {
+            context.startActivity(BatteryOptimization.settingsIntent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (noListScreen: ActivityNotFoundException) {
+            context.startActivity(BatteryOptimization.appDetailsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(NpColors.Cream)) {
     // Sprint 50: visible on every supervised screen while a share really runs, besides Android's
@@ -655,6 +672,8 @@ fun SupervisedShell(
                     onOpenServices = { route = SupervisedRoute.Services },
                     onOpenMoreSettings = { route = SupervisedRoute.MoreSettings },
                     onOpenPrivacy = { route = SupervisedRoute.Privacy },
+                    batteryIgnoring = batteryIgnoring,
+                    onOpenBattery = { route = SupervisedRoute.Battery },
                 )
 
                 SupervisedRoute.Permissions -> PermissionsScreen(
@@ -692,6 +711,12 @@ fun SupervisedShell(
                 )
 
                 SupervisedRoute.Privacy -> PrivacyScreen(onBack = { route = SupervisedRoute.Linked })
+
+                SupervisedRoute.Battery -> BatteryScreen(
+                    ignoring = batteryIgnoring,
+                    onOpenSettings = onOpenBatterySettings,
+                    onBack = { route = SupervisedRoute.Linked },
+                )
 
                 SupervisedRoute.Consent -> ScreenShareConsentScreen(
                     // Exactly what the Sprint 23 card sent, then Android's own capture dialog.
