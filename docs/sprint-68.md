@@ -7,7 +7,7 @@ Rama `sprint-68-b09-historial-ubicacion`, desde `main` (`f72fbc3`), en el worktr
 
 ## Decisiones
 
-- **Regla:** un tutor solo lee informes de ubicación **recibidos desde el inicio de su vínculo activo** (`TutorDevice.linked_at` de la fila con `unlinked_at IS NULL`). Aplica a `GET /devices/{id}/location` (la última) y a
+- **Regla:** un tutor solo lee informes de ubicación **recibidos desde el inicio de su vínculo activo** (`TutorDevice.linked_at` de la fila con `unlinked_at IS NULL`). Aplica a `GET /devices/{id}/location/latest` (la última) y a
   `GET /devices/{id}/location/history`; el estado que ve un tutor antiguo, vinculado desde hace tiempo, no cambia.
 - **Se compara con `received_at`**, la hora del servidor, no con `captured_at`: este es el reloj del dispositivo y puede estar desajustado, y es lo que la persona supervisada controla.
 - Si el mismo tutor se desvincula y vuelve a vincular, la fila nueva tiene un `linked_at` nuevo: **no ve lo recibido en el periodo desvinculado**. Es deliberado: la regla es «solo lo recibido mientras el vínculo está activo».

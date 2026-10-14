@@ -48,13 +48,18 @@ def _make_account(client: TestClient, role: str) -> tuple[str, str]:
     return token, identity.email
 
 
-def _link_a_device(client: TestClient, tutor_token: str, supervised_token: str) -> str:
+def _link_a_device(
+    client: TestClient,
+    tutor_token: str,
+    supervised_token: str,
+    device_instance_id: str | None = None,
+) -> str:
     code = client.post("/api/v1/pairing/codes", headers=_auth(tutor_token)).json()["code"]
     redeemed = client.post(
         "/api/v1/pairing/redeem",
         json={
             "code": code,
-            "device_instance_id": uuid.uuid4().hex,
+            "device_instance_id": device_instance_id or uuid.uuid4().hex,
             "device_name": "Celular de Juan",
             "platform": "ANDROID",
             "os_version": "16",
@@ -222,6 +227,83 @@ def test_the_owning_tutor_can_read_the_full_history(client) -> None:
     assert len(reports) == 2
     # Most recent first.
     assert reports[0]["captured_at"] > reports[1]["captured_at"]
+
+
+# ------------------------------------------------ reads start at the tutor's own link (B-09)
+
+
+def _read(client: TestClient, tutor_token: str, device_id: str) -> tuple[dict, list]:
+    latest = client.get(f"/api/v1/devices/{device_id}/location/latest", headers=_auth(tutor_token))
+    history = client.get(
+        f"/api/v1/devices/{device_id}/location/history", headers=_auth(tutor_token)
+    )
+    assert latest.status_code == 200, latest.text
+    assert history.status_code == 200, history.text
+    return latest.json(), history.json()["reports"]
+
+
+def test_a_new_tutor_does_not_see_locations_received_before_their_link(client) -> None:
+    """B-09: relinking the same installation reuses the device row. The new tutor must see
+    nothing that was received while only the previous tutor was linked."""
+    old_tutor, _ = _make_account(client, "TUTOR")
+    new_tutor, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+
+    device_id = _link_a_device(client, old_tutor, supervised_token, instance)
+    _report_location(client, supervised_token, device_id, captured_at=_recent(20))
+    _report_location(client, supervised_token, device_id, captured_at=_recent(10))
+    unlinked = client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(old_tutor))
+    assert unlinked.status_code == 200
+
+    assert _link_a_device(client, new_tutor, supervised_token, instance) == device_id
+
+    latest, history = _read(client, new_tutor, device_id)
+    assert latest["report"] is None
+    assert history == []
+
+    # What arrives after the new link is theirs to see.
+    _report_location(client, supervised_token, device_id, captured_at=_recent(0))
+    latest, history = _read(client, new_tutor, device_id)
+    assert latest["report"] is not None
+    assert len(history) == 1
+
+
+def test_each_tutor_of_the_same_device_sees_from_their_own_link(client) -> None:
+    """Two tutors linked at the same time to one device: the one who linked first keeps the
+    whole history, the later one starts at their own link."""
+    first_tutor, _ = _make_account(client, "TUTOR")
+    second_tutor, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+
+    device_id = _link_a_device(client, first_tutor, supervised_token, instance)
+    _report_location(client, supervised_token, device_id, captured_at=_recent(10))
+    assert _link_a_device(client, second_tutor, supervised_token, instance) == device_id
+    _report_location(client, supervised_token, device_id, captured_at=_recent(0))
+
+    _, first_history = _read(client, first_tutor, device_id)
+    _, second_history = _read(client, second_tutor, device_id)
+    assert len(first_history) == 2
+    assert len(second_history) == 1
+
+
+def test_a_tutor_who_relinks_does_not_see_what_arrived_in_between(client) -> None:
+    """The rule is "only what was received while the link is active", also for the same tutor."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+
+    device_id = _link_a_device(client, tutor_token, supervised_token, instance)
+    _report_location(client, supervised_token, device_id, captured_at=_recent(10))
+    unlinked = client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(tutor_token))
+    assert unlinked.status_code == 200
+    _report_location(client, supervised_token, device_id, captured_at=_recent(5))
+    assert _link_a_device(client, tutor_token, supervised_token, instance) == device_id
+    _report_location(client, supervised_token, device_id, captured_at=_recent(0))
+
+    _, history = _read(client, tutor_token, device_id)
+    assert len(history) == 1
 
 
 # --------------------------------------------------------------------------------- retention
