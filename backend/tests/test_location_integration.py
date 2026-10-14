@@ -282,10 +282,13 @@ def test_each_tutor_of_the_same_device_sees_from_their_own_link(client) -> None:
     assert _link_a_device(client, second_tutor, supervised_token, instance) == device_id
     _report_location(client, supervised_token, device_id, captured_at=_recent(0))
 
-    _, first_history = _read(client, first_tutor, device_id)
-    _, second_history = _read(client, second_tutor, device_id)
+    first_latest, first_history = _read(client, first_tutor, device_id)
+    second_latest, second_history = _read(client, second_tutor, device_id)
     assert len(first_history) == 2
     assert len(second_history) == 1
+    # Both see the newest report as the latest; only the first also sees the older one.
+    assert first_latest["report"]["id"] == second_latest["report"]["id"] == first_history[0]["id"]
+    assert second_history[0]["id"] == first_history[0]["id"]
 
 
 def test_a_tutor_who_relinks_does_not_see_what_arrived_in_between(client) -> None:
@@ -302,8 +305,25 @@ def test_a_tutor_who_relinks_does_not_see_what_arrived_in_between(client) -> Non
     assert _link_a_device(client, tutor_token, supervised_token, instance) == device_id
     _report_location(client, supervised_token, device_id, captured_at=_recent(0))
 
-    _, history = _read(client, tutor_token, device_id)
+    latest, history = _read(client, tutor_token, device_id)
     assert len(history) == 1
+    assert history[0]["id"] == latest["report"]["id"]
+
+
+def test_pairing_again_with_the_same_tutor_keeps_their_history(client) -> None:
+    """A second code from a tutor who is still linked reuses the existing link (pairing.py), so
+    its `linked_at` — and everything the tutor could already read — stays."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+
+    device_id = _link_a_device(client, tutor_token, supervised_token, instance)
+    _report_location(client, supervised_token, device_id, captured_at=_recent(10))
+    assert _link_a_device(client, tutor_token, supervised_token, instance) == device_id
+    _report_location(client, supervised_token, device_id, captured_at=_recent(0))
+
+    _, history = _read(client, tutor_token, device_id)
+    assert len(history) == 2
 
 
 # --------------------------------------------------------------------------------- retention
