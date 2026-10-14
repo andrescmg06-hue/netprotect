@@ -1,28 +1,34 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-12 · Sprint actual: 51 (cerrado reducido, pendiente de PR)_
+_Actualizado: 2026-10-14 · Sprint actual: 67 (cierre del rediseño v2 del supervisado, a falta de PR y CI)_
 
 ## En curso
-- **S51 (endurecimiento y cierre del rediseño Android)**, rama `sprint-51-cierre` (worktree `C:/Users/andre/np-s51`).
-  Cerrado **reducido** por decisión del dueño (12/10/2026), a falta de PR y CI. Hecho: T1–T9, la parte de T10 hecha en
-  el Galaxy (build `minified` con R8, vista remota real H-02, arreglo de letra grande en «Dispositivo vinculado») y la
-  revisión de seguridad (0 ALTA, 2 MEDIA, 5 BAJA). Pendiente: TalkBack y fuente grande en el resto de pantallas (pasan
-  al S67) y los PR. Detalle y commits: `docs/sprint-51.md`.
+- **S67 (casos reales y cierre del rediseño v2)**, rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Hecho T1–T6: bienvenida de 2 pasos, aviso de batería,
+  «Se desactivó un permiso», pasada de letra 2.0, prueba G-19, revisión de seguridad global (0 ALTA; 2 BAJA arregladas). Pendiente: PR de S67 y los dos últimos pasos de abajo.
+  Detalle, commits y evidencia: `docs/sprint-67.md` y `docs/sprint-67-evidence.md`.
 
 ## Siguiente paso
-1. **PR `sprint-51-cierre` → `android-redesign`** y después **PR `android-redesign` → `main`**, con los 8 jobs de CI en
-   verde (el merge a `main` lo hace el dueño). Falta la confirmación del dueño para hacer push y abrir los PR.
-2. **S61 del rediseño v2 del supervisado:** plan en `docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`
-   (S61–S67; quita el modo tutor de la app y rehace las pantallas del supervisado). El plan está hoy **sin versionar**
-   en el checkout de OneDrive; se commitea al empezar el S61. Del backlog de seguridad del S51 entran en ese plan
-   B-07 (S61), B-08 (S64) y B-10 (S65); ver `docs/tasks.md`.
-3. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio,
-   hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real) y firma de release; la release real de
-   producción no se ha instalado.
+1. **PR `sprint-67-casos-reales` → `android-redesign`** con los 8 jobs de CI en verde.
+2. **Fusionar `main` en `android-redesign`** (`main` tiene el merge del PR #18 que `android-redesign` no tiene: 1 commit frente a 77) y **PR `android-redesign` → `main`**
+   (S61–S67); el merge a `main` lo hace el dueño. Después, `/cerrar-sprint 67`.
+3. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): Galaxy S25 FE con One UI (TalkBack y Accessibility Scanner, letra al 200 % en el teléfono, «quitar animaciones», pasos de batería,
+   quitar cada permiso en Ajustes y recuperarlo); tutor real desde el panel web (vista remota de punta a punta, «Atrás» y caducidad de S65, desvincular de S64); la prueba con cinco personas
+   (`docs/android-redesign/supervisado-v2/05_PRUEBA_USUARIOS.md`).
+4. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio, hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real)
+   y firma de release; la release real de producción no se ha instalado.
 
 **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
-- Sprint 51 (cerrado reducido, pendiente de PR): bug «todas las apps Desinstalada» (`optString` y JSON null)
+- Sprint 67 (a falta de PR): bienvenida de 2 pasos con el contenido de Privacidad, aviso de batería sin pedir la exención, aviso «Se desactivó un permiso» (con la línea base guardada en el teléfono);
+  el permiso quitado de verdad en el emulador, G-19, y la revisión de seguridad global — `docs/sprint-67.md`
+- Sprint 66 (PR #24): bloqueo en v2, Privacidad (solo lo que el código respalda) y Detalle de permiso con pasos reales; dos hallazgos medidos en el emulador antes de corregir el texto — `docs/sprint-66.md`
+- Sprint 65 (PR #23): consentimiento en 3 pasos con cuenta atrás, Estado, B2 y B5 (el tutor se entera de «Atrás» y de la caducidad); 1 MEDIA y 4 BAJA arregladas — `docs/sprint-65.md`
+- Sprint 64 (PR #22): Inicio y Permisos, B1 (el teléfono detecta la desvinculación) y G-19 — `docs/sprint-64.md`
+- Sprint 63 (PR #21): Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado — `docs/sprint-63.md`
+- Sprint 62 (PR #20): sistema visual v2 — `docs/sprint-62.md`
+- Sprint 61 (PR #19): la app es solo del supervisado — `docs/sprint-61.md`
+- Sprints 40–51 del rediseño Android: fusionados en `main` (PR #18)
+- Sprint 51 (fusionado en `main` con el PR #18): bug «todas las apps Desinstalada» (`optString` y JSON null)
   corregido; selecciones del tutor sobreviven al giro (D-02 revisada); textos al 200 %; `lintDebug` en CI; build
   `minified` para probar R8; vista remota real en el Galaxy con R8 (H-02); regresión del inventario sin pérdidas;
   seguridad sin ALTA — `docs/sprint-51.md`

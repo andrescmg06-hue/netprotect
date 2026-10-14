@@ -19,8 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.rules.BlockReason
@@ -33,17 +36,21 @@ import com.netprotect.app.feature.home.ServiceStatus
 import com.netprotect.app.feature.home.TutorAccountScreen
 import com.netprotect.app.feature.supervised.PermissionsUi
 import com.netprotect.app.feature.supervised.SignOutConfirmContent
+import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.consent.ScreenShareConsentContent
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
+import com.netprotect.app.feature.supervised.permissions.PermissionRevokedScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
 import com.netprotect.app.feature.supervised.permissions.SupervisedPermission
 import com.netprotect.app.feature.supervised.privacy.PrivacyScreen
 import com.netprotect.app.feature.supervised.services.ServicesStatusScreen
 import com.netprotect.app.feature.supervised.settings.MoreSettingsScreen
 import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeScreen
+import com.netprotect.app.feature.supervised.welcome.WelcomeStep
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpShapes
@@ -63,6 +70,44 @@ fun ScreensGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        // ---- Sprint 67 (al principio para las capturas). Sin Dialog. Bienvenida tras vincular (láminas 13.1 y 13.2). ----
+        ScreenFrame("Bienvenida · paso 1") {
+            GalleryWelcome(WelcomeStep.Linked, pendingPermissions = 4)
+        }
+        ScreenFrame("Bienvenida · paso 2 · con permisos pendientes") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 4)
+        }
+        ScreenFrame("Bienvenida · paso 2 · todo configurado") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 0)
+        }
+        ScreenFrame("Bienvenida · paso 1 · letra 200 %") {
+            GalleryWelcome(WelcomeStep.Linked, pendingPermissions = 4, fontScale = 2f)
+        }
+        ScreenFrame("Bienvenida · paso 2 · letra 200 %") {
+            GalleryWelcome(WelcomeStep.TutorCanSee, pendingPermissions = 4, fontScale = 2f)
+        }
+        // Aviso de batería (lámina 13.3): la fila en Inicio y su pantalla.
+        ScreenFrame("Inicio · con el aviso de batería") {
+            GalleryHome(pendingPermissions = 0, lastContact = galleryNowS64.minusSeconds(30), batteryIgnoring = false)
+        }
+        ScreenFrame("Batería · optimizada") {
+            GalleryBattery(ignoring = false)
+        }
+        ScreenFrame("Batería · revisada al volver") {
+            GalleryBattery(ignoring = true)
+        }
+        ScreenFrame("Batería · optimizada · letra 200 %") {
+            GalleryBattery(ignoring = false, fontScale = 2f)
+        }
+        // «Se desactivó un permiso» (lámina 13.4): one per permission, each says something different.
+        SupervisedPermission.entries.forEach { permission ->
+            ScreenFrame("Permiso desactivado · ${permission.name}") {
+                GalleryPermissionRevoked(permission)
+            }
+        }
+        ScreenFrame("Permiso desactivado · UsageAccess · letra 200 %") {
+            GalleryPermissionRevoked(SupervisedPermission.UsageAccess, fontScale = 2f)
+        }
         // ---- Sprint 66 (al principio para las capturas). Sin Dialog. Privacidad y Detalle de permiso (láminas 10.5 y 11). ----
         ScreenFrame("Privacidad") {
             PrivacyScreen(onBack = {})
@@ -345,7 +390,7 @@ private fun GalleryServices(location: ServiceState, screenShareActive: Boolean) 
 }
 
 @Composable
-private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
+private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?, batteryIgnoring: Boolean = true) {
     LinkedDeviceScreen(
         deviceName = "Tablet de Sofía",
         androidVersion = "13",
@@ -354,6 +399,7 @@ private fun GalleryHome(pendingPermissions: Int, lastContact: Instant?) {
         now = galleryNowS64,
         pendingPermissions = pendingPermissions,
         onOpenPermissions = {}, onOpenServices = {}, onOpenMoreSettings = {}, onOpenPrivacy = {},
+        batteryIgnoring = batteryIgnoring,
     )
 }
 
@@ -365,6 +411,44 @@ private fun GalleryPermissionDetail(permission: SupervisedPermission, permission
         onOpenUsageAccessSettings = {}, onRequestLocation = {}, onRequestOverlay = {}, onRequestDeviceAdmin = {},
         onOpenAppSettings = {}, onBack = {},
     )
+}
+
+/** Sprint 67: the welcome as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryWelcome(step: WelcomeStep, pendingPermissions: Int, fontScale: Float? = null) {
+    val content = @Composable {
+        WelcomeScreen(step = step, pendingPermissions = pendingPermissions, onNext = {}, onBack = {}, onFinish = {})
+    }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
+}
+
+/** Sprint 67: the battery screen as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryBattery(ignoring: Boolean, fontScale: Float? = null) {
+    val content = @Composable { BatteryScreen(ignoring = ignoring, onOpenSettings = {}, onBack = {}) }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
+}
+
+/** Sprint 67: the removed-permission notice as the shell shows it; [fontScale] 2f is the 200 % font pass. */
+@Composable
+private fun GalleryPermissionRevoked(permission: SupervisedPermission, fontScale: Float? = null) {
+    val content = @Composable { PermissionRevokedScreen(permission = permission, onActivate = {}, onHome = {}) }
+    if (fontScale == null) {
+        content()
+    } else {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { content() }
+    }
 }
 
 @Composable

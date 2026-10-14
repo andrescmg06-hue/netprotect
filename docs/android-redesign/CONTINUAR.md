@@ -14,8 +14,8 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 | S63 | Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado | ✅ PR #21 |
 | S64 | Inicio y Permisos, B1 (detectar la desvinculación) y G-19 | ✅ PR #22 |
 | S65 | Consentimiento en 3 pasos, Estado, B2 y B5 | ✅ PR #23 |
-| **S66** | **Bloqueo (7 variantes), Privacidad y Detalle de permiso** | 🔶 **En curso**. Rama `sprint-66-bloqueo-privacidad` (worktree `C:/Users/andre/np-s66`). Ver `docs/sprint-66.md` |
-| S67 | Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 %, TalkBack y PR `android-redesign` → `main` | ⏭️ Siguiente |
+| S66 | Bloqueo (7 variantes), Privacidad y Detalle de permiso | ✅ PR #24 |
+| **S67** | **Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 %, y PR `android-redesign` → `main`** | 🔶 **En curso**. Rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Ver `docs/sprint-67.md` |
 
 Los sprints v2 (S61 en adelante) se planifican en `supervisado-v2/PLAN_IMPLEMENTACION.md`, no en `sprints/`.
 

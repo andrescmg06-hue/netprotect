@@ -64,6 +64,7 @@ object NpIcons {
     @DrawableRes val X = R.drawable.ic_x
     @DrawableRes val LocateFixed = R.drawable.ic_locate_fixed
     @DrawableRes val MoreHorizontal = R.drawable.ic_more_horizontal
+    @DrawableRes val Battery = R.drawable.ic_battery
 
     @DrawableRes val GoogleG = R.drawable.ic_google_g
     @DrawableRes val LogoShield = R.drawable.logo_shield
