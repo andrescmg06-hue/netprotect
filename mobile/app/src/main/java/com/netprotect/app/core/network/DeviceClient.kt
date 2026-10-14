@@ -3,18 +3,6 @@ package com.netprotect.app.core.network
 import java.time.Instant
 import org.json.JSONObject
 
-data class DeviceSummary(
-    val id: String,
-    val name: String,
-    val platform: String,
-    val status: String,
-    val lastSeenAt: String?,
-    val timezone: String?,
-    // Sprint 44: already in the backend's DeviceResponse; null when the device never reported it.
-    val osVersion: String? = null,
-    val appVersion: String? = null,
-)
-
 data class MyDeviceInfo(
     val deviceId: String,
     val deviceName: String,
@@ -29,17 +17,6 @@ data class MyDeviceInfo(
 )
 
 class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
-
-    suspend fun listDevices(accessToken: String): List<DeviceSummary> {
-        val payload = getJson("/api/v1/devices", accessToken)
-        val devices = payload.getJSONArray("devices")
-        return (0 until devices.length()).map { index -> devices.getJSONObject(index).toSummary() }
-    }
-
-    /** Sprint 44: one device the tutor supervises (the detail screen reloads it on its own). The
-     * backend answers 404 both when it doesn't exist and when it isn't this tutor's. */
-    suspend fun getDevice(accessToken: String, deviceId: String): DeviceSummary =
-        getJson("/api/v1/devices/$deviceId", accessToken).toSummary()
 
     /** What the server currently believes about this signed-in account's own device, or null
      * if it isn't linked (server-side truth, not the local pairing cache — see
@@ -65,17 +42,7 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             lastSeenAt = if (status.isNull("last_seen_at")) null else status.getString("last_seen_at"),
         )
     } catch (exception: ApiException) {
-        if (exception.statusCode == 404) null else throw exception
-    }
-
-    suspend fun renameDevice(accessToken: String, deviceId: String, name: String): DeviceSummary {
-        val payload = sendJson(
-            "/api/v1/devices/$deviceId",
-            "PATCH",
-            JSONObject().put("name", name),
-            accessToken,
-        )
-        return payload.toSummary()
+        if (isNotLinkedAnswer(exception.statusCode, exception.message)) null else throw exception
     }
 
     /** Sprint 20: the last three arguments are the device's self-reported manipulation signals.
@@ -120,18 +87,13 @@ class DeviceClient(baseUrl: String) : HttpJsonClient(baseUrl) {
             .put("occurred_at", occurredAt.toString())
         sendJson("/api/v1/devices/$deviceId/tamper-events", "POST", body, accessToken)
     }
-
-    private fun JSONObject.toSummary(): DeviceSummary {
-        val status = getJSONObject("status")
-        return DeviceSummary(
-            id = getString("id"),
-            name = getString("name"),
-            platform = getString("platform"),
-            status = status.getString("status"),
-            lastSeenAt = status.optStringOrNull("last_seen_at"),
-            timezone = optStringOrNull("timezone"),
-            osVersion = optStringOrNull("os_version"),
-            appVersion = optStringOrNull("app_version"),
-        )
-    }
 }
+
+/** The `detail` the backend sends with the 404 of `/devices/me` when the account has no linked device. */
+const val NOT_LINKED_DETAIL = "not_linked"
+
+/** Sprint 64 (B1): only the backend's own "not linked" 404 means the device was unlinked. Any other 404
+ * (a proxy mid-deploy, a mis-routed path) says nothing about the link, and treating it as an unlink would
+ * stop every service on the phone. */
+fun isNotLinkedAnswer(statusCode: Int?, message: String?): Boolean =
+    statusCode == 404 && message == NOT_LINKED_DETAIL

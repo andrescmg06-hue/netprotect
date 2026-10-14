@@ -11,15 +11,6 @@ data class SyncApplicationsResult(
     val usageRowsSynced: Int,
 )
 
-data class DeviceApplicationSummary(
-    val packageName: String,
-    val appLabel: String,
-    val isSystemApp: Boolean,
-    val uninstalledAt: String?,
-    val latestUsageDate: String?,
-    val latestUsageSeconds: Int?,
-)
-
 class ApplicationsClient(baseUrl: String) : HttpJsonClient(baseUrl) {
 
     suspend fun syncApplications(
@@ -61,20 +52,4 @@ class ApplicationsClient(baseUrl: String) : HttpJsonClient(baseUrl) {
         )
     }
 
-    suspend fun getApplications(accessToken: String, deviceId: String): List<DeviceApplicationSummary> {
-        val payload = getJson("/api/v1/devices/$deviceId/applications", accessToken)
-        val apps = payload.getJSONArray("applications")
-        return (0 until apps.length()).map { index ->
-            val app = apps.getJSONObject(index)
-            val latestUsage = app.optJSONObject("latest_usage")
-            DeviceApplicationSummary(
-                packageName = app.getString("package_name"),
-                appLabel = app.getString("app_label"),
-                isSystemApp = app.getBoolean("is_system_app"),
-                uninstalledAt = app.optStringOrNull("uninstalled_at"),
-                latestUsageDate = latestUsage?.getString("usage_date"),
-                latestUsageSeconds = latestUsage?.getInt("foreground_seconds"),
-            )
-        }
-    }
 }

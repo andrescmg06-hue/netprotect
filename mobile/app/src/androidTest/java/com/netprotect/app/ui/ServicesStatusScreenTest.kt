@@ -1,5 +1,6 @@
 package com.netprotect.app.ui
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -58,22 +59,45 @@ class ServicesStatusScreenTest {
     }
 
     @Test
-    fun noScreenShareHidesVisualizationAndDetener() {
-        set(view = ServicesView(ServiceState.Active, now.minusSeconds(60), ServiceState.Active, ServiceState.Active, false, null))
-        composeRule.onNodeWithText("Visualización de pantalla").assertDoesNotExist()
-        composeRule.onNodeWithText("Detener").assertDoesNotExist()
+    fun unconfirmedLocationSaysNoLocationYet() {
+        set(view = ServicesView(ServiceState.Active, now.minusSeconds(60), ServiceState.Active, ServiceState.Unconfirmed, false, null))
+        composeRule.onNodeWithText("No hay una ubicación reciente confirmada. Llega a tu tutor aproximadamente cada 15 minutos.")
+            .performScrollTo().assertExists()
     }
 
     @Test
-    fun screenShareShowsVisualizationAndDetener() {
+    fun activeLocationSaysEveryFifteenMinutes() {
+        set()
+        composeRule.onNodeWithText("Comparte la ubicación aproximada. Llega a tu tutor aproximadamente cada 15 minutos.")
+            .performScrollTo().assertExists()
+    }
+
+    @Test
+    fun noScreenShareHidesThePanel() {
+        set(view = ServicesView(ServiceState.Active, now.minusSeconds(60), ServiceState.Active, ServiceState.Active, false, null))
+        composeRule.onNodeWithText("VISUALIZACIÓN DE PANTALLA").assertDoesNotExist()
+        composeRule.onNodeWithText("Detener ahora").assertDoesNotExist()
+    }
+
+    @Test
+    fun screenShareShowsThePanelAndDetenerAhoraStopsIt() {
         var stopped = false
         set(
             view = ServicesView(ServiceState.Active, now.minusSeconds(60), ServiceState.Active, ServiceState.Active, true, now.minusSeconds(30)),
             onStopScreenShare = { stopped = true },
         )
-        composeRule.onNodeWithText("Visualización de pantalla").performScrollTo().assertExists()
-        composeRule.onNodeWithText("Detener").performScrollTo().performClick()
+        composeRule.onNodeWithText("VISUALIZACIÓN DE PANTALLA").performScrollTo().assertExists()
+        composeRule.onNodeWithText("En curso").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Tu tutor está viendo tu pantalla ahora.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Detener ahora").performScrollTo().performClick()
         assertTrue(stopped)
+    }
+
+    @Test
+    fun lastReportIsShown() {
+        set()
+        composeRule.onNodeWithText("Último reporte: hace 1 min").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Cada minuto mientras NetProtect esté en marcha.").performScrollTo().assertExists()
     }
 
     @Test
@@ -83,11 +107,19 @@ class ServicesStatusScreenTest {
     }
 
     @Test
-    fun showsThreeNotificationTitles() {
+    fun showsPermanentNotificationsRow() {
         set()
-        composeRule.onNodeWithText("“NetProtect está activo” — control de apps.").performScrollTo().assertExists()
-        composeRule.onNodeWithText("“NetProtect comparte la ubicación” — ubicación.").performScrollTo().assertExists()
-        composeRule.onNodeWithText("“Tu tutor está viendo esta pantalla” — vista remota.").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Notificaciones permanentes").performScrollTo().assertExists()
+        composeRule.onNodeWithText("Android muestra un aviso mientras una función está activa.").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun saysItDoesNotRecordAndNeverThatItDoesNotControl() {
+        set(view = ServicesView(ServiceState.Active, now.minusSeconds(60), ServiceState.Active, ServiceState.Active, true, now))
+        // In the fixed footer: always on screen, with no scrollable parent for performScrollTo().
+        composeRule.onNodeWithText("NetProtect no graba ni guarda lo que se ve en tu pantalla.").assertIsDisplayed()
+        // NetProtect does block apps: no text may claim it doesn't control the device (PLAN §2.1).
+        composeRule.onNodeWithText("controla", substring = true, ignoreCase = true).assertDoesNotExist()
     }
 
     @Test
@@ -97,10 +129,11 @@ class ServicesStatusScreenTest {
     }
 
     @Test
-    fun backButtonsCallOnBack() {
+    fun volverAlInicioCallsOnBack() {
         var back = false
         set(onBack = { back = true })
-        composeRule.onNodeWithText("Volver al inicio").performScrollTo().performClick()
+        // In the fixed footer: always on screen, with no scrollable parent for performScrollTo().
+        composeRule.onNodeWithText("Volver al inicio").assertIsDisplayed().performClick()
         assertTrue(back)
     }
 
@@ -108,7 +141,7 @@ class ServicesStatusScreenTest {
     fun backArrowCallsOnBack() {
         var back = false
         set(onBack = { back = true })
-        composeRule.onNodeWithContentDescription("Atrás").performClick()
+        composeRule.onNodeWithContentDescription("Atrás").performScrollTo().performClick()
         assertTrue(back)
     }
 }

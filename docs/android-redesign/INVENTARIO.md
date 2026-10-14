@@ -1,5 +1,7 @@
 # Inventario de comportamiento actual: app Android NetProtect
 
+> **Nota (Sprint 61):** desde el Sprint 61 el modo tutor, «Elegir modo» (selección de rol) y «Cambiar de modo» ya no existen en la app, que es solo del supervisado; el tutor usa únicamente el panel web. Este inventario se conserva como línea base histórica del Sprint 40 y sus secciones sobre el tutor ya no describen el código actual.
+
 Lista de comprobación para el Sprint 51: verificar que el rediseño no perdió ninguna funcionalidad.
 Describe lo que el código hace HOY (rama `sprint-31-design-system`), no lo que debería hacer.
 Fecha del inventario: 2026-09-28.

@@ -47,7 +47,7 @@ fun NpTopBar(
                 Icon(
                     painter = painterResource(NpIcons.ArrowLeft),
                     contentDescription = "Atrás",
-                    tint = NpColors.ShieldNavy,
+                    tint = NpColors.Ink,
                 )
             }
             Spacer(Modifier.width(4.dp))
@@ -55,8 +55,8 @@ fun NpTopBar(
         if (title != null) {
             Text(
                 text = title,
-                style = NpText.Title,
-                color = NpColors.ShieldNavy,
+                style = NpText.Subtitle,
+                color = NpColors.Ink,
                 modifier = Modifier.weight(1f),
             )
         } else {
@@ -66,7 +66,7 @@ fun NpTopBar(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun NpTopBarPreview() {
     NetProtectTheme {

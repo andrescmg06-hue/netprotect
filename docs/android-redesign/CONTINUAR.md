@@ -7,12 +7,17 @@ el entorno** y **lo que ya aprendimos** haciendo nueve sprints.
 
 | Sprint | Pantallas | Estado |
 |---|---|---|
-| S40–S47 | Base, sesión, diseño, login, todo el modo tutor (mockups 1–11) | ✅ Hechos, fusionados en `android-redesign` |
-| S48 | Supervisado: Vincular, Vinculado, Permisos (12–14) + B-01 | ✅ Hecho (PR #10) |
-| S49 | App bloqueada, 7 variantes (16) | ✅ Hecho (PR #11) |
-| S50 | Consentimiento de vista remota y Servicios (15, 17) + reconexión realtime (B-02) | ✅ Hecho (PR #12 fusionado el 02/10/2026); falta H-02 en el teléfono real (se cubre en T10 del S51) |
-| **S51** | **Endurecimiento, accesibilidad, regresión, `lintDebug` en CI y PR `android-redesign` → `main`** | ✅ **Cerrado reducido el 12/10/2026** (rama `sprint-51-cierre`, worktree `C:/Users/andre/np-s51`), pendiente de PR y CI. Hecho T1–T9, seguridad (0 ALTA) y la parte de T10 hecha en el Galaxy S25 FE (build `minified` con R8, vista remota real, arreglo de letra grande en la pantalla 13). **Pendiente:** TalkBack y fuente grande en el resto de pantallas (decisión del dueño: pasan al S67), la release real de producción y los PR `sprint-51-cierre` → `android-redesign` → `main` (merge del dueño). `docs/sprint-51.md` |
-| S61–S67 | Rediseño v2 del supervisado: quita el modo tutor de la app y rehace las pantallas del supervisado (plan aprobado por el dueño) | 📋 **Plan aprobado, sin empezar.** `docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md` (hoy sin versionar en el checkout de OneDrive; se commitea al empezar el S61). S61 quita el modo tutor; S64 y S65 cubren hallazgos de seguridad del S51 (B-08, B-10); S67 repite TalkBack y fuente grande sobre las pantallas nuevas |
+| S40–S51 | Rediseño del tutor y del supervisado v1, endurecimiento | ✅ Hechos y fusionados en `main` (PR #18) |
+| S52–S60 | Panel web | ✅ Hechos (su propia línea; ver `docs/sprint-NN.md`) |
+| S61 | App solo supervisado (se quitó el modo tutor) | ✅ PR #19 |
+| S62 | Sistema visual v2 (tokens, Newsreader, `NpSeal`, `NpHeroPanel`, `NpRail`) | ✅ PR #20 |
+| S63 | Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado | ✅ PR #21 |
+| S64 | Inicio y Permisos, B1 (detectar la desvinculación) y G-19 | ✅ PR #22 |
+| S65 | Consentimiento en 3 pasos, Estado, B2 y B5 | ✅ PR #23 |
+| S66 | Bloqueo (7 variantes), Privacidad y Detalle de permiso | ✅ PR #24 |
+| **S67** | **Casos reales y cierre: bienvenida, aviso de batería, «Se desactivó un permiso», pasada de 200 %, y PR `android-redesign` → `main`** | 🔶 **En curso**. Rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Ver `docs/sprint-67.md` |
+
+Los sprints v2 (S61 en adelante) se planifican en `supervisado-v2/PLAN_IMPLEMENTACION.md`, no en `sprints/`.
 
 - **Decisiones:** las 14 de `DECISIONES.md` están **resueltas**; ningún sprint restante necesita una decisión nueva
   para empezar.

@@ -42,7 +42,7 @@ fun PermissionCard(
                     Text(
                         text = title,
                         style = NpText.BodyStrong,
-                        color = NpColors.ShieldNavy,
+                        color = NpColors.Ink,
                         modifier = Modifier.weight(1f),
                     )
                     StatusPill(
@@ -52,7 +52,7 @@ fun PermissionCard(
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(text = description, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = description, style = NpText.Body, color = NpColors.InkMuted)
                 if (!granted) {
                     Spacer(Modifier.height(12.dp))
                     NpButton(text = actionLabel, onClick = onAction, modifier = Modifier.fillMaxWidth())
@@ -71,7 +71,7 @@ fun PermissionCard(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun PermissionCardPreview() {
     NetProtectTheme {

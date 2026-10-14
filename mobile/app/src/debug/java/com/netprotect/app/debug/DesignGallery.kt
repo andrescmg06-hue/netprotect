@@ -8,13 +8,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,30 +24,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.ui.components.BrandHeader
-import com.netprotect.app.ui.components.CodeDisplay
 import com.netprotect.app.ui.components.ConfirmDialog
-import com.netprotect.app.ui.components.DayHeader
-import com.netprotect.app.ui.components.EmptyState
 import com.netprotect.app.ui.components.ErrorState
-import com.netprotect.app.ui.components.FilterChips
 import com.netprotect.app.ui.components.InfoBanner
 import com.netprotect.app.ui.components.ListRow
 import com.netprotect.app.ui.components.LoadingState
-import com.netprotect.app.ui.components.NpBottomBar
-import com.netprotect.app.ui.components.NpBottomItem
 import com.netprotect.app.ui.components.NpButton
 import com.netprotect.app.ui.components.NpButtonVariant
 import com.netprotect.app.ui.components.NpCard
+import com.netprotect.app.ui.components.NpChipStatus
+import com.netprotect.app.ui.components.NpHeroPanel
+import com.netprotect.app.ui.components.NpRail
+import com.netprotect.app.ui.components.NpRailStep
+import com.netprotect.app.ui.components.NpSeal
+import com.netprotect.app.ui.components.RailStatus
+import com.netprotect.app.ui.components.SealArcState
+import com.netprotect.app.ui.components.permissionsCaption
+import com.netprotect.app.ui.components.sealStatesFor
 import com.netprotect.app.ui.components.NpTopBar
 import com.netprotect.app.ui.components.OtpInput
 import com.netprotect.app.ui.components.PermissionCard
-import com.netprotect.app.ui.components.SectionHeader
-import com.netprotect.app.ui.components.SegmentedControl
-import com.netprotect.app.ui.components.SeverityBadge
 import com.netprotect.app.ui.components.StatusPill
-import com.netprotect.app.ui.components.TimelineItem
-import com.netprotect.app.ui.components.UsageBar
-import com.netprotect.app.ui.format.DeviceStatusLabels
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NpColors
 import com.netprotect.app.ui.theme.NpText
@@ -55,9 +54,6 @@ import com.netprotect.app.ui.theme.NpTone
  * son ilustrativos ("Tablet de Sofía") y nada de esto se usa fuera de `src/debug`. */
 @Composable
 fun DesignGallery() {
-    var segmentedIndex by remember { mutableIntStateOf(0) }
-    var chipsIndex by remember { mutableIntStateOf(0) }
-    var bottomIndex by remember { mutableIntStateOf(0) }
     var otp by remember { mutableStateOf("") }
     var showConfirm by remember { mutableStateOf(false) }
     var confirmDanger by remember { mutableStateOf(false) }
@@ -83,7 +79,110 @@ fun DesignGallery() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        Section("NpSeal") {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                NpSeal(states = sealStatesFor(readyCount = 4), size = 96.dp, contentDescription = "4 de 4 permisos")
+                NpSeal(
+                    states = listOf(SealArcState.Ready, SealArcState.Ready, SealArcState.Pending, SealArcState.Inactive),
+                    size = 96.dp,
+                )
+                NpSeal(states = sealStatesFor(readyCount = 4, reporting = false), size = 96.dp)
+            }
+        }
+
+        Section("NpHeroPanel") {
+            NpHeroPanel(
+                eyebrow = "Dispositivo supervisado",
+                headline = "Todo funciona",
+                sealStates = sealStatesFor(readyCount = 4),
+                sealCaption = permissionsCaption(4),
+                summary = "Los 4 permisos están configurados y el dispositivo se comunicó hace un momento.",
+            )
+            NpHeroPanel(
+                eyebrow = "Dispositivo supervisado",
+                headline = "Falta un paso",
+                sealStates = sealStatesFor(readyCount = 2),
+                sealCaption = permissionsCaption(2),
+                summary = "Faltan 2 permisos para que NetProtect funcione bien en este teléfono.",
+                action = {
+                    NpButton("Revisar permisos", {}, Modifier.fillMaxWidth(), trailingIcon = NpIcons.ArrowRight)
+                },
+            )
+            NpHeroPanel(
+                eyebrow = "Dispositivo supervisado",
+                headline = "Sin reporte reciente",
+                sealStates = sealStatesFor(readyCount = 4, reporting = false),
+                sealCaption = permissionsCaption(4),
+                summary = "No recibimos una actualización reciente del dispositivo. El vínculo sigue activo.",
+            )
+        }
+
+        Section("NpRail") {
+            NpRail(
+                steps = listOf(
+                    NpRailStep(
+                        "Mostrar sobre otras apps",
+                        "Necesario para mostrar la pantalla de bloqueo cuando corresponda.",
+                        RailStatus.Next,
+                        action = {
+                            NpButton(
+                                "Activar en Ajustes", {}, Modifier.fillMaxWidth(),
+                                trailingIcon = NpIcons.ExternalLink,
+                            )
+                        },
+                    ),
+                    NpRailStep(
+                        "Protección contra desinstalación",
+                        "Avisa a tu tutor si alguien intenta desinstalar NetProtect.",
+                        RailStatus.Pending,
+                    ),
+                    NpRailStep(
+                        "Acceso al uso de apps",
+                        "Permite saber cuánto tiempo se usan las apps y aplicar las reglas de tu tutor.",
+                        RailStatus.Done,
+                    ),
+                    NpRailStep(
+                        "Ubicación aproximada",
+                        "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
+                        RailStatus.Done,
+                    ),
+                ),
+            )
+            HorizontalDivider(color = NpColors.Hairline)
+            NpRail(
+                steps = listOf(
+                    NpRailStep(
+                        "Acceso al uso de apps",
+                        "Permite saber cuánto tiempo se usan las apps y aplicar las reglas de tu tutor.",
+                        RailStatus.Done,
+                    ),
+                    NpRailStep(
+                        "Ubicación aproximada",
+                        "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
+                        RailStatus.Done,
+                    ),
+                    NpRailStep(
+                        "Mostrar sobre otras apps",
+                        "Necesario para mostrar la pantalla de bloqueo cuando corresponda.",
+                        RailStatus.Done,
+                    ),
+                    NpRailStep(
+                        "Protección contra desinstalación",
+                        "Avisa a tu tutor si alguien intenta desinstalar NetProtect.",
+                        RailStatus.Done,
+                    ),
+                ),
+            )
+        }
+
         Section("NpButton") {
+            NpButton("Revisar permisos", {}, Modifier.fillMaxWidth(), trailingIcon = NpIcons.ArrowRight)
+            NpButton("Volver al inicio", {}, Modifier.fillMaxWidth(), trailingIcon = NpIcons.Home)
+            NpButton(
+                "Ya lo activé, verificar de nuevo", {}, Modifier.fillMaxWidth(),
+                variant = NpButtonVariant.Secondary, trailingIcon = NpIcons.RefreshCw,
+            )
+            NpButton("Verificar de nuevo", {}, variant = NpButtonVariant.Text, icon = NpIcons.RefreshCw)
             NpButton("Primario", {})
             NpButton("Secundario", {}, variant = NpButtonVariant.Secondary)
             NpButton("Texto", {}, variant = NpButtonVariant.Text)
@@ -100,20 +199,21 @@ fun DesignGallery() {
         }
 
         Section("StatusPill") {
+            NpChipStatus.entries.forEach { status -> StatusPill(status = status) }
+            StatusPill(status = NpChipStatus.Linked, filled = false)
+            StatusPill(text = "Sin actualización reciente", tone = NpTone.Neutral, modifier = Modifier.width(140.dp))
             listOf(
-                "ONLINE", "OFFLINE", "ALERT", "SYNCING", "RESTRICTED", "UNLINKED",
-            ).forEach { status ->
-                val (label, tone) = DeviceStatusLabels.label(status)
+                "En línea" to NpTone.Success,
+                "Desconectado" to NpTone.Neutral,
+                "Alerta" to NpTone.Danger,
+                "Sincronizando" to NpTone.Info,
+                "Restringido" to NpTone.Warning,
+                "Desvinculado" to NpTone.Neutral,
+            ).forEach { (label, tone) ->
                 StatusPill(text = label, tone = tone)
             }
             NpTone.entries.forEach { tone ->
                 StatusPill(text = tone.name, tone = tone, showDot = false)
-            }
-        }
-
-        Section("SeverityBadge") {
-            listOf("INFO", "WARNING", "HIGH", "CRITICAL").forEach { level ->
-                SeverityBadge(level = level)
             }
         }
 
@@ -124,20 +224,6 @@ fun DesignGallery() {
                 text = "El permiso de uso está desactivado.",
                 tone = NpTone.Warning,
                 icon = NpIcons.TriangleAlert,
-            )
-        }
-
-        Section("SectionHeader") {
-            SectionHeader(title = "Aplicaciones", actionLabel = "Ver todas", onAction = {})
-        }
-
-        Section("EmptyState") {
-            EmptyState(
-                icon = NpIcons.Smartphone,
-                title = "Sin dispositivos",
-                message = "Vincula un dispositivo para empezar.",
-                actionLabel = "Vincular dispositivo",
-                onAction = {},
             )
         }
 
@@ -158,76 +244,6 @@ fun DesignGallery() {
         Section("NpTopBar") {
             NpTopBar(title = "Dispositivos")
             NpTopBar(onBack = {})
-        }
-
-        Section("NpBottomBar") {
-            NpBottomBar(
-                items = listOf(
-                    NpBottomItem("Inicio", NpIcons.Home),
-                    NpBottomItem("Dispositivos", NpIcons.Smartphone, badgeCount = 3),
-                    NpBottomItem("Actividad", NpIcons.Clock),
-                    NpBottomItem("Más", NpIcons.MoreHorizontal),
-                ),
-                selectedIndex = bottomIndex,
-                onSelect = { bottomIndex = it },
-            )
-        }
-
-        Section("SegmentedControl") {
-            SegmentedControl(
-                options = listOf("Hoy", "7 días", "30 días"),
-                selectedIndex = segmentedIndex,
-                onSelect = { segmentedIndex = it },
-            )
-        }
-
-        Section("FilterChips") {
-            FilterChips(
-                options = listOf("Todas", "Redes sociales", "Juegos", "Streaming"),
-                selectedIndex = chipsIndex,
-                onSelect = { chipsIndex = it },
-            )
-        }
-
-        Section("UsageBar") {
-            UsageBar(fraction = 0f, contentDescription = "0 %")
-            UsageBar(fraction = 0.4f, contentDescription = "40 %")
-            UsageBar(fraction = 1f, contentDescription = "100 %")
-        }
-
-        Section("TimelineItem") {
-            TimelineItem(
-                icon = NpIcons.Ban,
-                tone = NpTone.Danger,
-                title = "Bloqueo de app",
-                time = "10:42 a. m.",
-                subtitle = "YouTube",
-            )
-            TimelineItem(
-                icon = NpIcons.MapPin,
-                tone = NpTone.Info,
-                title = "Salió de la geocerca",
-                time = "9:15 a. m.",
-                subtitle = "Zona escolar",
-            )
-            TimelineItem(
-                icon = NpIcons.Clock,
-                tone = NpTone.Success,
-                title = "Se alcanzó el límite",
-                time = "8:03 a. m.",
-                subtitle = "Instagram",
-                isLast = true,
-            )
-        }
-
-        Section("DayHeader") {
-            DayHeader(text = "Hoy")
-            DayHeader(text = "Ayer")
-        }
-
-        Section("CodeDisplay") {
-            CodeDisplay(code = "482 917", remainingSeconds = 143, totalSeconds = 180)
-            CodeDisplay(code = "482 917", remainingSeconds = 0, totalSeconds = 180)
         }
 
         Section("OtpInput") {
@@ -266,8 +282,8 @@ fun DesignGallery() {
             ListRow(
                 title = "Tablet de Sofía",
                 subtitle = "Android 13",
-                leading = { Icon(painterResource(NpIcons.Smartphone), contentDescription = null, tint = NpColors.SlateMuted) },
-                trailing = { Icon(painterResource(NpIcons.ChevronRight), contentDescription = null, tint = NpColors.SlateMuted) },
+                leading = { Icon(painterResource(NpIcons.Smartphone), contentDescription = null, tint = NpColors.InkMuted) },
+                trailing = { Icon(painterResource(NpIcons.ChevronRight), contentDescription = null, tint = NpColors.InkMuted) },
                 onClick = {},
             )
         }
@@ -282,7 +298,7 @@ fun DesignGallery() {
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(text = title, style = NpText.Headline, color = NpColors.ShieldNavy)
+        Text(text = title, style = NpText.Title, color = NpColors.Ink)
         content()
     }
 }

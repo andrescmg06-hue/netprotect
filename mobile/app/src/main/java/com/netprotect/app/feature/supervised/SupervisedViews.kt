@@ -37,5 +37,8 @@ fun lastContact(lastHeartbeatOk: Instant?, serverLastSeenAt: String?): Instant? 
 }
 
 /** Routes inside the linked supervised mode. Only the visible screen changes — never the shell's
- * state, so no service is stopped by navigating (see SupervisedShell). Consent and Services: Sprint 50. */
-enum class SupervisedRoute { Linked, Permissions, Consent, Services }
+ * state, so no service is stopped by navigating (see SupervisedShell). Consent and Services: Sprint 50;
+ * MoreSettings ("Más ajustes"): Sprint 63; Privacy and PermissionDetail (which permission is a separate
+ * presentation value of the shell): Sprint 66; Battery (lámina 13.3) and PermissionRevoked (lámina 13.4, which
+ * permission is again a separate presentation value): Sprint 67. */
+enum class SupervisedRoute { Linked, Permissions, Consent, Services, MoreSettings, Privacy, PermissionDetail, Battery, PermissionRevoked }

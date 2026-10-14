@@ -1,29 +1,54 @@
 package com.netprotect.app.feature.supervised.permissions
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.netprotect.app.feature.supervised.PermissionsUi
-import com.netprotect.app.ui.components.InfoBanner
-import com.netprotect.app.ui.components.NpTopBar
-import com.netprotect.app.ui.components.PermissionCard
+import com.netprotect.app.feature.supervised.pendingPermissionsLabel
+import com.netprotect.app.ui.components.NpButton
+import com.netprotect.app.ui.components.NpButtonVariant
+import com.netprotect.app.ui.components.NpRail
+import com.netprotect.app.ui.components.NpRailStep
+import com.netprotect.app.ui.components.RailStatus
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NpColors
+import com.netprotect.app.ui.theme.NpSpace
 import com.netprotect.app.ui.theme.NpText
 
-/** Pantalla «Permisos del dispositivo» del modo supervisado. Solo llama a los callbacks. */
+/**
+ * Permisos del modo supervisado (lámina 04): a rail with the pending permissions first and the next one
+ * highlighted with its button, and «Ver detalle» under each one. Only calls the callbacks; the shell launches
+ * every Intent and permission.
+ */
 @Composable
 fun PermissionsScreen(
     permissions: PermissionsUi,
@@ -34,76 +59,221 @@ fun PermissionsScreen(
     onRequestOverlay: () -> Unit,
     onRecheckOverlay: () -> Unit,
     onRequestDeviceAdmin: () -> Unit,
+    onOpenDetail: (SupervisedPermission) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    val allConfigured = permissions.pending == 0
+    // Device admin has no recheck: the shell reads it again from the activation screen's result.
+    val recheckAll = {
+        onRecheckUsageAccess()
+        onRecheckLocation()
+        onRecheckOverlay()
+    }
+    val steps = permissionSteps(permissions).map { step ->
+        val texts = permissionTexts(step.permission)
+        NpRailStep(
+            title = texts.title,
+            description = texts.description,
+            status = step.status,
+            // Every pending step has its button: the "next" one is primary, the others secondary. With only
+            // one button, a permission the child cannot grant (denied for good) would block the rest.
+            // Every step, pending or configured, also links to its detail (lámina 11).
+            action = {
+                Column {
+                    if (step.status != RailStatus.Done) {
+                        NpButton(
+                            text = texts.actionLabel,
+                            variant = if (step.status == RailStatus.Next) NpButtonVariant.Primary else NpButtonVariant.Secondary,
+                            onClick = when (step.permission) {
+                                SupervisedPermission.UsageAccess -> onOpenUsageAccessSettings
+                                SupervisedPermission.Location -> onRequestLocation
+                                SupervisedPermission.Overlay -> onRequestOverlay
+                                SupervisedPermission.DeviceAdmin -> onRequestDeviceAdmin
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = NpIcons.ExternalLink,
+                        )
+                        Spacer(Modifier.height(NpSpace.Xs))
+                    }
+                    DetailAction(title = texts.title, onClick = { onOpenDetail(step.permission) })
+                }
+            },
+        )
+    }
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(NpColors.SkyGround),
+            .background(NpColors.Cream),
     ) {
+        val screenHeight = maxHeight
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
+                .verticalScroll(rememberScrollState()),
         ) {
-            NpTopBar(onBack = onBack)
-            Text(text = "Permisos del dispositivo", style = NpText.Display, color = NpColors.ShieldNavy)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Para que NetProtect funcione correctamente en este dispositivo, se requieren los siguientes permisos.",
-                style = NpText.Body,
-                color = NpColors.SlateMuted,
+            // At least one screen tall so the buttons sit at the bottom; with a large font they follow the rail.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = screenHeight)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.padding(horizontal = NpSpace.Gutter)) {
+                    TopRow(onBack = onBack)
+                    Spacer(Modifier.height(NpSpace.S))
+                    Text(
+                        text = "Permisos",
+                        style = NpText.Display,
+                        color = NpColors.Ink,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Spacer(Modifier.height(NpSpace.S))
+                    Text(
+                        text = "NetProtect necesita estos cuatro permisos en este teléfono.",
+                        style = NpText.Body,
+                        color = NpColors.InkMuted,
+                    )
+                    Spacer(Modifier.height(NpSpace.Xl))
+                    ProgressHeader(permissions)
+                    Spacer(Modifier.height(NpSpace.Xl))
+                    NpRail(steps = steps)
+                    if (allConfigured) {
+                        Spacer(Modifier.height(NpSpace.L))
+                        Text(
+                            text = "Si revocas un permiso en Ajustes, lo comprobamos al volver a la app.",
+                            style = NpText.BodySm,
+                            color = NpColors.InkMuted,
+                            // Aligned with the rail's text column.
+                            modifier = Modifier.padding(start = 48.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(NpSpace.Xl))
+                }
+                Footer(allConfigured = allConfigured, onRecheck = recheckAll, onBack = onBack)
+            }
+        }
+    }
+}
+
+/** «Ver detalle»: the quiet 14 sp / 48 dp action of LinkDeviceScreen. The click label names the permission,
+ * since TalkBack would otherwise hear four identical «Ver detalle». */
+@Composable
+private fun DetailAction(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClickLabel = "Ver detalle de $title", onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Ver detalle",
+            style = NpText.BodySm.copy(fontWeight = FontWeight.SemiBold),
+            color = NpColors.BlueText,
+        )
+        Spacer(Modifier.width(NpSpace.Xs))
+        Icon(
+            painter = painterResource(NpIcons.ChevronRight),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = NpColors.BlueText,
+        )
+    }
+}
+
+@Composable
+private fun TopRow(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clickable(role = Role.Button, onClick = onBack),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Icon(painter = painterResource(NpIcons.ArrowLeft), contentDescription = "Atrás", tint = NpColors.Ink)
+        }
+        Spacer(Modifier.weight(1f))
+        Image(painter = painterResource(NpIcons.LogoShield), contentDescription = null, modifier = Modifier.size(24.dp))
+    }
+}
+
+/** "2 de 4 configurados" (amber) or "Todos los permisos están configurados" (green), over a 4-segment bar. */
+@Composable
+private fun ProgressHeader(permissions: PermissionsUi) {
+    val allConfigured = permissions.pending == 0
+    val color = if (allConfigured) NpColors.SuccessText else NpColors.WarningText
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (allConfigured) {
+            Icon(painter = painterResource(NpIcons.Check), contentDescription = null, modifier = Modifier.size(20.dp), tint = color)
+            Spacer(Modifier.width(NpSpace.M))
+        }
+        Text(
+            text = if (allConfigured) pendingPermissionsLabel(0) else configuredCaption(permissions),
+            style = NpText.Body.copy(fontWeight = FontWeight.SemiBold),
+            color = color,
+        )
+    }
+    Spacer(Modifier.height(NpSpace.M))
+    val configured = SupervisedPermission.entries.size - permissions.pending
+    // Decorative: the line above says the same.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics { },
+        horizontalArrangement = Arrangement.spacedBy(NpSpace.S),
+    ) {
+        repeat(SupervisedPermission.entries.size) { index ->
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(6.dp)
+                    .background(if (index < configured) NpColors.SuccessText else NpColors.Hairline),
             )
-            Spacer(Modifier.height(16.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                PermissionCard(
-                    icon = NpIcons.LayoutGrid,
-                    title = "Acceso al uso de apps",
-                    description = "Permite conocer cuánto tiempo se usan las aplicaciones y aplicar las reglas de tu tutor. Android exige activarlo en Ajustes.",
-                    granted = permissions.usageAccess,
-                    actionLabel = "Abrir Ajustes",
-                    onAction = onOpenUsageAccessSettings,
-                    secondaryLabel = "Ya lo activé, verificar de nuevo",
-                    onSecondary = onRecheckUsageAccess,
+        }
+    }
+}
+
+@Composable
+private fun Footer(allConfigured: Boolean, onRecheck: () -> Unit, onBack: () -> Unit) {
+    Column {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(NpColors.Hairline),
+        )
+        Column(Modifier.padding(horizontal = NpSpace.Gutter, vertical = NpSpace.L)) {
+            if (allConfigured) {
+                NpButton(
+                    text = "Volver al inicio",
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = NpIcons.Home,
                 )
-                PermissionCard(
-                    icon = NpIcons.MapPin,
-                    title = "Ubicación aproximada",
-                    description = "Permite reportar la última ubicación conocida y detectar geocercas con información aproximada. No se usa la ubicación precisa.",
-                    granted = permissions.location,
-                    actionLabel = "Permitir ubicación aproximada",
-                    onAction = onRequestLocation,
-                    secondaryLabel = "Ya lo activé, verificar de nuevo",
-                    onSecondary = onRecheckLocation,
+                Spacer(Modifier.height(NpSpace.S))
+                NpButton(
+                    text = "Verificar de nuevo",
+                    onClick = onRecheck,
+                    variant = NpButtonVariant.Text,
+                    icon = NpIcons.RefreshCw,
                 )
-                PermissionCard(
-                    icon = NpIcons.Monitor,
-                    title = "Mostrar sobre otras apps",
-                    description = "Necesario para mostrar la pantalla de bloqueo cuando corresponda, también con el teléfono en uso.",
-                    granted = permissions.overlay,
-                    actionLabel = "Abrir Ajustes",
-                    onAction = onRequestOverlay,
-                    secondaryLabel = "Ya lo activé, verificar de nuevo",
-                    onSecondary = onRecheckOverlay,
-                )
-                PermissionCard(
-                    icon = NpIcons.Shield,
-                    title = "Protección contra desinstalación",
-                    description = "Permite avisar al tutor si se intenta desinstalar NetProtect; no elimina el dispositivo ni cambia contraseñas.",
-                    granted = permissions.deviceAdmin,
-                    actionLabel = "Activar protección",
-                    onAction = onRequestDeviceAdmin,
+            } else {
+                NpButton(
+                    text = "Ya lo activé, verificar de nuevo",
+                    onClick = onRecheck,
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = NpButtonVariant.Secondary,
+                    trailingIcon = NpIcons.RefreshCw,
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            InfoBanner(
-                title = "Información importante",
-                text = "Solo solicitamos los permisos necesarios para las funciones de NetProtect. Puedes revocarlos en cualquier momento desde los ajustes del dispositivo.",
-            )
-            Spacer(Modifier.height(24.dp))
         }
     }
 }

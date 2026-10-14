@@ -1,12 +1,16 @@
 package com.netprotect.app.ui
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.netprotect.app.core.rules.BlockReason
 import com.netprotect.app.feature.supervised.block.BLOCK_COVER_NOTE
+import com.netprotect.app.feature.supervised.block.BLOCK_TITLE
 import com.netprotect.app.feature.supervised.block.BlockScreenContent
 import com.netprotect.app.feature.supervised.block.blockPresentation
 import com.netprotect.app.ui.theme.NetProtectTheme
@@ -62,8 +66,12 @@ class BlockScreenContentTest {
             composeRule.onNodeWithText("MiApp").assertExists()
             val p = blockPresentation(reason, "Streaming")
             composeRule.onNodeWithText(p.message).assertExists()
-            composeRule.onNodeWithText(p.hint).assertExists()
-            composeRule.onNodeWithText("Ir al inicio").performScrollTo().performClick()
+            composeRule.onNodeWithText(p.message).performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText(p.hint).performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText(BLOCK_COVER_NOTE).assertIsDisplayed()
+            // "Ir al inicio" sits in the fixed footer, outside the scrolling column: there is nothing to
+            // scroll to, so it must simply be on screen.
+            composeRule.onNodeWithText("Ir al inicio").assertIsDisplayed().performClick()
             assertTrue(wentHome)
         }
     }
@@ -129,6 +137,24 @@ class BlockScreenContentTest {
     @Test
     fun seesBlockCoverNote() {
         set(BlockReason.BLOCK)
-        composeRule.onNodeWithText(BLOCK_COVER_NOTE).assertExists()
+        composeRule.onNodeWithText(BLOCK_COVER_NOTE).assertIsDisplayed()
+        composeRule.onNodeWithText("El bloqueo cubre la pantalla de la app, pero no la cierra.").assertExists()
+        composeRule.onNodeWithText("segundo plano", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun panelShowsTheLabelAndTheAppCard() {
+        set(BlockReason.DAILY_LIMIT, categoryLabel = "Streaming")
+        composeRule.onNodeWithText(BLOCK_TITLE).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("MiApp").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Streaming").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun headlineIsTheReasonMessageAndAHeading() {
+        set(BlockReason.SCHEDULE)
+        composeRule.onNode(hasText(blockPresentation(BlockReason.SCHEDULE, "Streaming").message) and isHeading())
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }
