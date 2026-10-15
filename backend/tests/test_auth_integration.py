@@ -149,3 +149,47 @@ def test_logout_revokes_the_refresh_token() -> None:
             "/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
         )
         assert refresh_after_logout.status_code == 401
+
+
+# B-13: two simultaneous redemptions of the same refresh token must not both succeed.
+async def test_two_simultaneous_refreshes_of_one_token_issue_a_single_pair() -> None:
+    import asyncio
+
+    import httpx
+
+    from app.api.v1.endpoints import auth as auth_endpoint
+    from app.db.session import dispose_engine
+
+    tokens = _login(uuid.uuid4().hex[:8])
+    original_issue = auth_endpoint._issue_token_pair
+
+    async def slow_issue(db, user):
+        await asyncio.sleep(0.3)  # widen the window between reading and committing
+        return await original_issue(db, user)
+
+    async def no_rate_limit(*args, **kwargs) -> None:
+        return None
+
+    await dispose_engine()
+    try:
+        with (
+            patch.object(auth_endpoint, "_issue_token_pair", slow_issue),
+            patch.object(auth_endpoint, "enforce_rate_limit", no_rate_limit),
+        ):
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://testserver"
+            ) as client:
+                responses = await asyncio.gather(
+                    *(
+                        client.post(
+                            "/api/v1/auth/refresh",
+                            json={"refresh_token": tokens["refresh_token"]},
+                        )
+                        for _ in range(2)
+                    )
+                )
+    finally:
+        await dispose_engine()
+
+    assert sorted(r.status_code for r in responses) == [200, 401]
