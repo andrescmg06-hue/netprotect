@@ -28,6 +28,27 @@ def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+async def _load_own_geofence(
+    db: AsyncSession, device_id: uuid.UUID, geofence_id: uuid.UUID, tutor: User
+) -> Geofence:
+    """B-12 (Sprint 69): a tutor only edits or deletes a geofence they created. Another
+    device's, another tutor's (on this same device) or an ownerless one all get the same 404 as
+    one that doesn't exist — same reasoning as require_tutor_of_device.
+    """
+    geofence = (
+        await db.execute(
+            select(Geofence).where(
+                Geofence.id == geofence_id,
+                Geofence.device_id == device_id,
+                Geofence.created_by_user_id == tutor.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if geofence is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="geofence_not_found")
+    return geofence
+
+
 def _to_response(geofence: Geofence) -> GeofenceResponse:
     return GeofenceResponse(
         id=geofence.id,
@@ -52,10 +73,19 @@ async def create_geofence(
     """Always creates a new row — unlike AppRule, a geofence has no natural per-device unique key
     to upsert against (a tutor may legitimately want two zones with the same name someday), so
     editing is a separate PUT by id instead.
+
+    The cap counts only this tutor's own geofences on the device (B-12, Sprint 69): another
+    tutor's are invisible to them, so counting those would both block them and leak how many
+    exist.
     """
     existing_count = (
         await db.execute(
-            select(func.count()).select_from(Geofence).where(Geofence.device_id == device_id)
+            select(func.count())
+            .select_from(Geofence)
+            .where(
+                Geofence.device_id == device_id,
+                Geofence.created_by_user_id == current_user.id,
+            )
         )
     ).scalar_one()
     if existing_count >= settings.max_geofences_per_device:
@@ -70,6 +100,7 @@ async def create_geofence(
         latitude_ciphertext=encrypt_coordinate(payload.latitude),
         longitude_ciphertext=encrypt_coordinate(payload.longitude),
         radius_meters=payload.radius_meters,
+        created_by_user_id=current_user.id,
     )
     db.add(geofence)
     await db.flush()
@@ -90,12 +121,18 @@ async def create_geofence(
 @router.get("/devices/{device_id}/geofences", response_model=GeofenceListResponse)
 async def list_geofences(
     device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> GeofenceListResponse:
     geofences = (
         await db.execute(
-            select(Geofence).where(Geofence.device_id == device_id).order_by(Geofence.created_at)
+            select(Geofence)
+            .where(
+                Geofence.device_id == device_id,
+                Geofence.created_by_user_id == current_user.id,
+            )
+            .order_by(Geofence.created_at)
         )
     ).scalars().all()
 
@@ -112,15 +149,7 @@ async def update_geofence(
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> GeofenceResponse:
-    geofence = (
-        await db.execute(
-            select(Geofence).where(Geofence.id == geofence_id, Geofence.device_id == device_id)
-        )
-    ).scalar_one_or_none()
-    if geofence is None:
-        # Same 404-for-both reasoning as require_tutor_of_device: a geofence belonging to
-        # another device must look identical to one that doesn't exist.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="geofence_not_found")
+    geofence = await _load_own_geofence(db, device_id, geofence_id, current_user)
 
     geofence.name = payload.name
     geofence.latitude_ciphertext = encrypt_coordinate(payload.latitude)
@@ -151,13 +180,7 @@ async def delete_geofence(
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> DeleteGeofenceResponse:
-    geofence = (
-        await db.execute(
-            select(Geofence).where(Geofence.id == geofence_id, Geofence.device_id == device_id)
-        )
-    ).scalar_one_or_none()
-    if geofence is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="geofence_not_found")
+    geofence = await _load_own_geofence(db, device_id, geofence_id, current_user)
 
     now = datetime.now(UTC)
     name = geofence.name
@@ -180,13 +203,19 @@ async def delete_geofence(
 @router.get("/devices/{device_id}/geofences/events", response_model=GeofenceEventListResponse)
 async def list_geofence_events(
     device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> GeofenceEventListResponse:
+    """Only events of this tutor's own geofences, including ones they have since deleted
+    (GeofenceEvent.tutor_user_id is a snapshot, B-12, Sprint 69)."""
     events = (
         await db.execute(
             select(GeofenceEvent)
-            .where(GeofenceEvent.device_id == device_id)
+            .where(
+                GeofenceEvent.device_id == device_id,
+                GeofenceEvent.tutor_user_id == current_user.id,
+            )
             .order_by(GeofenceEvent.occurred_at.desc())
             .limit(MAX_GEOFENCE_EVENTS)
         )

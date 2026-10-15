@@ -39,7 +39,7 @@ fun BrandHeader(
     stacked: Boolean = false,
 ) {
     if (stacked) {
-        // Centred column with a larger mark: the "Elegir modo" screen (mockup 02).
+        // Centred column with a larger mark: the loading and tutor-account screens (mockup 02).
         Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
                 painter = painterResource(NpIcons.LogoShield),
@@ -48,15 +48,15 @@ fun BrandHeader(
             )
             Spacer(Modifier.height(8.dp))
             Row(Modifier.brandNameSemantics()) {
-                val brandStyle = NpText.Title.copy(fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp)
-                Text(text = "Net", style = brandStyle, color = NpColors.ShieldNavy)
-                Text(text = "Protect", style = brandStyle, color = NpColors.SignalBlue)
+                val brandStyle = NpText.Subtitle.copy(fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp)
+                Text(text = "Net", style = brandStyle, color = NpColors.Ink)
+                Text(text = "Protect", style = brandStyle, color = NpColors.Blue)
             }
             if (subtitle != null) {
                 Text(
                     text = subtitle.uppercase(),
                     style = NpText.Caption.copy(letterSpacing = 0.2.em),
-                    color = NpColors.SlateMuted,
+                    color = NpColors.InkMuted,
                 )
             }
         }
@@ -71,22 +71,22 @@ fun BrandHeader(
         Spacer(Modifier.width(12.dp))
         Column {
             Row(Modifier.brandNameSemantics()) {
-                val brandStyle = NpText.Title.copy(fontWeight = FontWeight.Bold, lineHeight = 25.2.sp)
-                Text(text = "Net", style = brandStyle, color = NpColors.ShieldNavy)
-                Text(text = "Protect", style = brandStyle, color = NpColors.SignalBlue)
+                val brandStyle = NpText.Subtitle.copy(fontWeight = FontWeight.Bold, lineHeight = 25.2.sp)
+                Text(text = "Net", style = brandStyle, color = NpColors.Ink)
+                Text(text = "Protect", style = brandStyle, color = NpColors.Blue)
             }
             if (subtitle != null) {
                 Text(
                     text = subtitle.uppercase(),
                     style = NpText.Caption.copy(letterSpacing = 0.2.em),
-                    color = NpColors.SlateMuted,
+                    color = NpColors.InkMuted,
                 )
             }
         }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun BrandHeaderPreview() {
     NetProtectTheme {

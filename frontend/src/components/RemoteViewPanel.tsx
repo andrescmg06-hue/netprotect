@@ -56,6 +56,14 @@ function screenCaption(kind: ViewerState["kind"]): string {
   return "Sin transmisión";
 }
 
+/** How long the panel waits for any answer after asking to see the screen. The phone gives the
+ * supervised person 120 s to answer (consent window); the extra 15 s absorbs network delay so the
+ * phone's own "expired"/"dismissed" notice normally arrives first. Without a limit, a phone that
+ * never answers (offline, app killed) would leave this panel waiting forever and the tutor's slot
+ * held on the backend.
+ */
+const REQUEST_WAIT_LIMIT_MS = 135_000;
+
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
@@ -76,6 +84,10 @@ function describeStopReason(reason: unknown): string {
       return "La persona supervisada detuvo la transmisión.";
     case "projection_stopped":
       return "Android detuvo la captura (por ejemplo, al bloquearse la pantalla).";
+    case "expired":
+      return "La solicitud caducó: el dispositivo no respondió a tiempo.";
+    case "dismissed":
+      return "El dispositivo cerró la solicitud sin responder.";
     default:
       return "La transmisión terminó.";
   }
@@ -116,8 +128,12 @@ export function RemoteViewPanel({
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamStartedAtRef = useRef<number | null>(null);
+  // Set by teardown: a WebRTC config that resolves after the session was closed (the 135 s limit,
+  // "Detener", unmount) must not open a peer, a socket or a new request.
+  const cancelledRef = useRef(false);
 
   const teardown = useCallback((notifyPeer: boolean) => {
+    cancelledRef.current = true;
     if (notifyPeer && socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({ type: "screen_share_stop", reason: "tutor_closed" })
@@ -148,6 +164,19 @@ export function RemoteViewPanel({
     return () => clearInterval(id);
   }, [state.kind]);
 
+  // Gives up on a request nobody answered. The timer callback is the only place that calls
+  // setState; the cleanup clears it as soon as any reply moves the state out of `requesting`
+  // (or on unmount), so it can never fire late. teardown(true) is the same path "Detener" uses:
+  // it tells the backend to release the tutor's slot and closes the socket.
+  useEffect(() => {
+    if (state.kind !== "requesting") return;
+    const id = setTimeout(() => {
+      teardown(true);
+      setState({ kind: "ended", message: "El dispositivo no respondió." });
+    }, REQUEST_WAIT_LIMIT_MS);
+    return () => clearTimeout(id);
+  }, [state.kind, teardown]);
+
   const stop = useCallback(() => {
     teardown(true);
     setState({ kind: "ended", message: "Cerraste la transmisión." });
@@ -158,10 +187,12 @@ export function RemoteViewPanel({
   const start = useCallback(() => {
     setElapsedSeconds(0);
     streamStartedAtRef.current = null;
+    cancelledRef.current = false;
     setState({ kind: "requesting" });
 
     fetchWebRtcConfig(accessToken, deviceId)
       .then(({ ice_servers, turn_servers }) => {
+        if (cancelledRef.current) return;
         // STUN for a direct path when one exists, plus the TURN relay (Sprint 28) for when it
         // doesn't — an emulator behind its own NAT, or two mobile networks.
         const peer = new RTCPeerConnection({
@@ -303,6 +334,8 @@ export function RemoteViewPanel({
         });
       })
       .catch((error) => {
+        // The session was already closed (135 s limit, "Detener", unmount): keep that message.
+        if (cancelledRef.current) return;
         setState({
           kind: "ended",
           message:

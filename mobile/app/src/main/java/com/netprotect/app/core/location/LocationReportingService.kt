@@ -57,10 +57,14 @@ class LocationReportingService : Service() {
         private const val CHANNEL_ID = "location_reporting"
         private const val NOTIFICATION_ID = 1002
 
+        /** Ongoing notification text; must match [REPORT_INTERVAL_MS]. Pinned by ForegroundNotificationTextTest. */
+        internal const val NOTIFICATION_TEXT = "Tu tutor recibe una ubicación aproximada cada 15 minutos."
+
         // ~15 minutes: enough to tell a tutor which zone the device is in, not to track it in
         // real time — see docs/sprint-13.md for the reasoning (and MAX_HISTORY_REPORTS in
         // backend/app/schemas/location.py, sized against this same interval).
-        private const val REPORT_INTERVAL_MS = 15 * 60_000L
+        // Not private: "Estado" derives its "Sin confirmar" threshold from it (B2).
+        internal const val REPORT_INTERVAL_MS = 15 * 60_000L
 
         // How long to wait for a fresh NETWORK_PROVIDER fix before falling back to whatever
         // last-known location the system already has cached, rather than blocking this cycle
@@ -114,7 +118,7 @@ class LocationReportingService : Service() {
                 // Sprint 41: the token handed over at start() was never renewed, so every report
                 // after its 15-minute lifetime failed silently with 401. Ask the shared session.
                 val token = BackgroundTokenRefresher.refresh(applicationContext) ?: accessToken
-                runCatching {
+                reportAndRecord {
                     client.reportLocation(
                         accessToken = token,
                         deviceId = deviceId,
@@ -190,9 +194,19 @@ class LocationReportingService : Service() {
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NetProtect comparte la ubicación")
-            .setContentText("Tu tutor puede ver la ubicación aproximada de este dispositivo.")
+            .setContentText(NOTIFICATION_TEXT)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build()
     }
+}
+
+/**
+ * Sends one report and, only if it succeeded, stamps the instant in [ServiceStatusRegistry] (B2).
+ * A failure is swallowed as before and changes nothing; nothing about the location is logged or kept.
+ */
+internal suspend fun reportAndRecord(now: () -> Instant = Instant::now, send: suspend () -> Unit): Boolean {
+    val ok = runCatching { send() }.isSuccess
+    if (ok) ServiceStatusRegistry.locationReported(now())
+    return ok
 }

@@ -42,6 +42,7 @@ object NpIcons {
     @DrawableRes val Check = R.drawable.ic_check
     @DrawableRes val CircleCheck = R.drawable.ic_circle_check
     @DrawableRes val CircleAlert = R.drawable.ic_circle_alert
+    @DrawableRes val CircleStop = R.drawable.ic_circle_stop
     @DrawableRes val Ban = R.drawable.ic_ban
     @DrawableRes val Home = R.drawable.ic_home
     @DrawableRes val GraduationCap = R.drawable.ic_graduation_cap
@@ -56,11 +57,14 @@ object NpIcons {
     @DrawableRes val EyeOff = R.drawable.ic_eye_off
     @DrawableRes val Monitor = R.drawable.ic_monitor
     @DrawableRes val Wifi = R.drawable.ic_wifi
+    @DrawableRes val WifiOff = R.drawable.ic_wifi_off
+    @DrawableRes val SlidersHorizontal = R.drawable.ic_sliders_horizontal
     @DrawableRes val Settings = R.drawable.ic_settings
     @DrawableRes val Lock = R.drawable.ic_lock
     @DrawableRes val X = R.drawable.ic_x
     @DrawableRes val LocateFixed = R.drawable.ic_locate_fixed
     @DrawableRes val MoreHorizontal = R.drawable.ic_more_horizontal
+    @DrawableRes val Battery = R.drawable.ic_battery
 
     @DrawableRes val GoogleG = R.drawable.ic_google_g
     @DrawableRes val LogoShield = R.drawable.logo_shield

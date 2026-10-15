@@ -1,7 +1,13 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-12 · Android: S51 cerrado y en `main`; siguiente S61 · Web: S60 hecho, PR #14 → `main`_
+_Actualizado: 2026-10-14 · Android: S67 y backend B-09/B-12 en `main` · Web: rediseño S52–S60 integrado con `main` y B-05 en la rama `integracion-web-redesign` (sin push)_
 
 ## En curso
+- **Integración del rediseño web con `main`**, rama `integracion-web-redesign` (worktree `C:/Users/andre/np-webint`, desde
+  `origin/web-redesign`): merge de `origin/main` (B-09, B-12, S61–S67) y de `origin/sprint-70-b05-sondeo-alertas` (B-05,
+  renovación programada del access token), para que el PR #14 llegue a `main` sin perder comportamiento. Sin push.
+- **S67 (casos reales y cierre del rediseño v2)**, rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Hecho T1–T6: bienvenida de 2 pasos, aviso de batería,
+  «Se desactivó un permiso», pasada de letra 2.0, prueba G-19, revisión de seguridad global (0 ALTA; 2 BAJA arregladas). Pendiente: PR de S67 y los dos últimos pasos de abajo.
+  Detalle, commits y evidencia: `docs/sprint-67.md` y `docs/sprint-67-evidence.md`.
 - **S60 (rediseño del panel web, cierre)**, rama `sprint-60-rediseno-web-cierre`, creada desde `fix/s54-auth-log-sin-pii`
   (`e9e4f69`). Cadena de ramas real: `sprint-52…` → `sprint-53…` → `sprint-54…` → `fix/s54-auth-log-sin-pii` → `sprint-60…`.
   Trabajo hecho y verificado en local (T1–T9; `make test` 295 passed, `ruff`, `lint`, `tsc`, `next build` y e2e 2 passed,
@@ -34,20 +40,29 @@ _Actualizado: 2026-10-12 · Android: S51 cerrado y en `main`; siguiente S61 · W
   al S67). Detalle: `docs/sprint-51.md`.
 
 ## Siguiente paso
-1. **S61 del rediseño v2 del supervisado:** plan en `docs/android-redesign/supervisado-v2/PLAN_IMPLEMENTACION.md`
-   (S61–S67; quita el modo tutor de la app y rehace las pantallas del supervisado). El plan se commitea al empezar el
-   S61. Del backlog de seguridad del S51 entran B-07 (S61), B-08 (S64) y B-10 (S65); B-09 espera priorización del
-   dueño; ver `docs/tasks.md`.
-2. **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
+1. **PR `sprint-67-casos-reales` → `android-redesign`** con los 8 jobs de CI en verde.
+2. **Fusionar `main` en `android-redesign`** (`main` tiene el merge del PR #18 que `android-redesign` no tiene: 1 commit frente a 77) y **PR `android-redesign` → `main`**
+   (S61–S67); el merge a `main` lo hace el dueño. Después, `/cerrar-sprint 67`.
+3. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): Galaxy S25 FE con One UI (TalkBack y Accessibility Scanner, letra al 200 % en el teléfono, «quitar animaciones», pasos de batería,
+   quitar cada permiso en Ajustes y recuperarlo); tutor real desde el panel web (vista remota de punta a punta, «Atrás» y caducidad de S65, desvincular de S64); la prueba con cinco personas
+   (`docs/android-redesign/supervisado-v2/05_PRUEBA_USUARIOS.md`).
+4. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio, hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real)
+   y firma de release; la release real de producción no se ha instalado.
+5. **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
    `docs/redesign/CONTINUAR.md`. La cadena completa está en el PR #14 (`web-redesign` → `main`, en borrador); falta la
    revisión humana de arriba y el merge, que decide el dueño.
-3. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio,
-   hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real) y firma de release; la release real de
-   producción no se ha instalado.
 
 **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
 ## Terminado recientemente
+- Sprint 67 (a falta de PR): bienvenida de 2 pasos con el contenido de Privacidad, aviso de batería sin pedir la exención, aviso «Se desactivó un permiso» (con la línea base guardada en el teléfono);
+  el permiso quitado de verdad en el emulador, G-19, y la revisión de seguridad global — `docs/sprint-67.md`
+- Sprint 66 (PR #24): bloqueo en v2, Privacidad (solo lo que el código respalda) y Detalle de permiso con pasos reales; dos hallazgos medidos en el emulador antes de corregir el texto — `docs/sprint-66.md`
+- Sprint 65 (PR #23): consentimiento en 3 pasos con cuenta atrás, Estado, B2 y B5 (el tutor se entera de «Atrás» y de la caducidad); 1 MEDIA y 4 BAJA arregladas — `docs/sprint-65.md`
+- Sprint 64 (PR #22): Inicio y Permisos, B1 (el teléfono detecta la desvinculación) y G-19 — `docs/sprint-64.md`
+- Sprint 63 (PR #21): Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado — `docs/sprint-63.md`
+- Sprint 62 (PR #20): sistema visual v2 — `docs/sprint-62.md`
+- Sprint 61 (PR #19): la app es solo del supervisado — `docs/sprint-61.md`
 - Sprint 60 (en local, 04/10/2026): accesibilidad (contraste AA y anillo de foco que ya no tapa la sombra del botón),
   favicon completo, logos por el optimizador de imágenes, login con foto a pantalla completa y panel de cristal, e2e
   ampliado (foco, 16 secciones, aviso de consentimiento en 390 px) y arreglo del log de rechazo de token de Google que
@@ -57,7 +72,8 @@ _Actualizado: 2026-10-12 · Android: S51 cerrado y en `main`; siguiente S61 · W
   `docs/sprint-54.md` … `docs/sprint-59.md`
 - Sprint 53: base visual del rediseño web (tokens, serif, primitivas, `DESIGN.md`, galería) —
   `docs/sprint-53.md` (+ `docs/sprint-53-evidence.md`)
-- Sprint 51 (cerrado reducido, en `main` con el PR #18): bug «todas las apps Desinstalada» (`optString` y JSON null)
+- Sprints 40–51 del rediseño Android: fusionados en `main` (PR #18)
+- Sprint 51 (fusionado en `main` con el PR #18): bug «todas las apps Desinstalada» (`optString` y JSON null)
   corregido; selecciones del tutor sobreviven al giro (D-02 revisada); textos al 200 %; `lintDebug` en CI; build
   `minified` para probar R8; vista remota real en el Galaxy con R8 (H-02); regresión del inventario sin pérdidas;
   seguridad sin ALTA — `docs/sprint-51.md`

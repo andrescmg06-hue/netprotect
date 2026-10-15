@@ -15,23 +15,30 @@ import com.netprotect.app.ui.theme.NpTone
  * - there is no "ask for more time" or "unlock" anywhere: that function doesn't exist.
  */
 data class BlockPresentation(
-    /** The badge drawn over the padlock. */
+    /** The reason's icon. Not drawn since S66: lámina 07 shows one padlock for every reason. */
     val badgeIcon: Int,
-    /** The colour family of the badge and the hint card. */
+    /** The reason's colour family. Not drawn since S66 (lámina 07 is navy, cream and blue). */
     val tone: NpTone,
+    /** The small uppercase label of the navy panel. */
     val title: String,
-    /** The sentence under the title. Same texts the old screen used. */
+    /** The serif headline of the reason. Same texts the old screen used. */
     val message: String,
-    /** The icon and sentence of the coloured card under the app card. */
+    /** The icon and sentence of the hint. */
     val hintIcon: Int,
     val hint: String,
+    /**
+     * True when [hint] is drawn as the ruled row with its icon (lámina 07: the reasons that carry a
+     * when/what clue — the two limits, the schedule and school time); false when it is the grey
+     * detail under the serif [message], so no reason loses the text it already had.
+     */
+    val hintAsRow: Boolean = false,
 )
 
 const val BLOCK_TITLE = "APP BLOQUEADA"
 
-/** Small print under the hint. It tells the truth about the limit of the mechanism without
- * explaining how to get around it (the previous text named the way). */
-const val BLOCK_COVER_NOTE = "Este bloqueo cubre la pantalla; la app puede seguir abierta en segundo plano."
+/** Small print above "Ir al inicio". It tells the truth about the limit of the mechanism (the overlay
+ * covers the app, it does not stop it) without explaining how to get around it. */
+const val BLOCK_COVER_NOTE = "El bloqueo cubre la pantalla de la app, pero no la cierra."
 
 fun blockMessage(reason: BlockReason): String = when (reason) {
     BlockReason.BLOCK -> "Tu tutor bloqueó esta app."
@@ -61,6 +68,7 @@ fun blockPresentation(reason: BlockReason, categoryLabel: String?): BlockPresent
         message = blockMessage(reason),
         hintIcon = NpIcons.Clock,
         hint = "Ya usaste el tiempo permitido por hoy. El tiempo se reinicia mañana.",
+        hintAsRow = true,
     )
     BlockReason.WEEKLY_LIMIT -> BlockPresentation(
         badgeIcon = NpIcons.Calendar,
@@ -69,6 +77,7 @@ fun blockPresentation(reason: BlockReason, categoryLabel: String?): BlockPresent
         message = blockMessage(reason),
         hintIcon = NpIcons.Calendar,
         hint = "Ya usaste el tiempo permitido esta semana. El tiempo se reinicia el lunes.",
+        hintAsRow = true,
     )
     BlockReason.SCHEDULE -> BlockPresentation(
         badgeIcon = NpIcons.Moon,
@@ -77,6 +86,7 @@ fun blockPresentation(reason: BlockReason, categoryLabel: String?): BlockPresent
         message = blockMessage(reason),
         hintIcon = NpIcons.Moon,
         hint = "Esta app tiene un horario de uso definido por tu tutor.",
+        hintAsRow = true,
     )
     BlockReason.CATEGORY -> BlockPresentation(
         badgeIcon = NpIcons.LayoutGrid,
@@ -98,6 +108,7 @@ fun blockPresentation(reason: BlockReason, categoryLabel: String?): BlockPresent
         message = blockMessage(reason),
         hintIcon = NpIcons.GraduationCap,
         hint = "En horario escolar solo puedes usar las apps que tu tutor aprobó.",
+        hintAsRow = true,
     )
     BlockReason.DEFAULT_POLICY -> BlockPresentation(
         badgeIcon = NpIcons.ShieldCheck,

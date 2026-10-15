@@ -1,5 +1,6 @@
 package com.netprotect.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,11 +26,10 @@ import androidx.compose.ui.window.Dialog
 import com.netprotect.app.ui.icons.NpIcons
 import com.netprotect.app.ui.theme.NetProtectTheme
 import com.netprotect.app.ui.theme.NpColors
-import com.netprotect.app.ui.theme.NpElevation
 import com.netprotect.app.ui.theme.NpShapes
 import com.netprotect.app.ui.theme.NpText
 
-/** Diálogo de confirmación: tarjeta blanca de radio 16 dp; icono `TriangleAlert` cuando `danger`;
+/** Diálogo de confirmación: tarjeta blanca de radio 4 dp con borde; icono `TriangleAlert` cuando `danger`;
  * el botón de confirmar es `Danger` si `danger`, si no `Primary`. Cerrar tocando fuera = `onDismiss`. */
 @Composable
 fun ConfirmDialog(
@@ -43,9 +43,9 @@ fun ConfirmDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = NpShapes.Xl,
-            color = NpColors.PaperWhite,
-            shadowElevation = NpElevation.Pop,
+            shape = NpShapes.Card,
+            color = NpColors.Paper,
+            border = BorderStroke(1.dp, NpColors.Hairline),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 if (danger) {
@@ -64,9 +64,9 @@ fun ConfirmDialog(
                     }
                     Spacer(Modifier.height(16.dp))
                 }
-                Text(text = title, style = NpText.Title, color = NpColors.ShieldNavy)
+                Text(text = title, style = NpText.Subtitle, color = NpColors.Ink)
                 Spacer(Modifier.height(8.dp))
-                Text(text = message, style = NpText.Body, color = NpColors.SlateMuted)
+                Text(text = message, style = NpText.Body, color = NpColors.InkMuted)
                 Spacer(Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -85,7 +85,7 @@ fun ConfirmDialog(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun ConfirmDialogPreview() {
     NetProtectTheme {

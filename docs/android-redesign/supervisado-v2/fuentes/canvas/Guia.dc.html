@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía de Compose</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pg{position:relative;width:1440px;height:1500px;background:#f5f3ee;box-sizing:border-box;padding:56px 64px;font-family:Inter,sans-serif;color:#11243d;overflow:hidden}
+.ey{font:600 12px/16px Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#5b6779}
+h1{margin:8px 0 6px;font:600 44px/50px 'Playfair Display',serif}
+h2{margin:0 0 12px;font:600 12px/16px Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#5b6779;padding-bottom:8px;border-bottom:1px solid #d9d6cf}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:28px}
+.sw{display:flex;align-items:center;gap:12px;padding:6px 0;font-size:13px;line-height:18px}
+.sw i{width:34px;height:34px;border-radius:2px;border:1px solid #d9d6cf;flex:none}
+.sw code,td code,.k{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#11243d}
+.sw span{color:#5b6779}
+table{border-collapse:collapse;width:100%}
+td{padding:7px 0;border-bottom:1px solid #e6e3dc;font-size:13px;line-height:18px;vertical-align:top}
+td:last-child{color:#5b6779;text-align:right;padding-left:10px}
+.sec{margin-bottom:26px}
+p.n{margin:0 0 6px;font-size:13px;line-height:19px;color:#5b6779}
+.dec li{margin:0 0 8px;font-size:13px;line-height:19px}
+ul{margin:0;padding-left:18px}
+</style>
+</helmet>
+<div class="pg">
+<div class="ey">Guía de implementación · Jetpack Compose</div>
+<h1>Tokens del modo supervisado</h1>
+<p class="n" style="font-size:15px;line-height:23px;max-width:760px">Nombres sugeridos para <span class="k">NetProtectTheme</span>. Los valores salen del sistema de diseño de la web; confirma la fuente serif antes de empaquetarla.</p>
+
+<div class="g">
+<div>
+<div class="sec"><h2>Paleta · Color</h2>
+<div class="sw"><i style="background:#f5f3ee"></i><div><code>NpCream</code> #F5F3EE<br><span>Fondo de pantalla</span></div></div>
+<div class="sw"><i style="background:#f3f1ec"></i><div><code>NpStone</code> #F3F1EC<br><span>Fichas de icono, deshabilitado</span></div></div>
+<div class="sw"><i style="background:#d9d6cf"></i><div><code>NpHairline</code> #D9D6CF<br><span>Separadores de 1 dp</span></div></div>
+<div class="sw"><i style="background:#0d1b2a"></i><div><code>NpNavy</code> #0D1B2A<br><span>Panel de identidad y bloqueo</span></div></div>
+<div class="sw"><i style="background:#11243d"></i><div><code>NpInk</code> #11243D<br><span>Texto principal</span></div></div>
+<div class="sw"><i style="background:#5b6779"></i><div><code>NpInkMuted</code> #5B6779<br><span>Texto secundario (AA sobre crema)</span></div></div>
+<div class="sw"><i style="background:#1769ff"></i><div><code>NpBlue</code> #1769FF<br><span>Acción principal, sin texto sobre crema</span></div></div>
+<div class="sw"><i style="background:#1456d9"></i><div><code>NpBlueText</code> #1456D9<br><span>Enlaces y texto azul</span></div></div>
+<div class="sw"><i style="background:#0b7a42"></i><div><code>NpOk</code> #0B7A42<br><span>Activo / listo</span></div></div>
+<div class="sw"><i style="background:#9a5000"></i><div><code>NpWarn</code> #9A5000<br><span>Pendiente</span></div></div>
+<div class="sw"><i style="background:#c4271c"></i><div><code>NpError</code> #C4271C<br><span>Error</span></div></div>
+</div>
+</div>
+
+<div>
+<div class="sec"><h2>Tipografía</h2>
+<table>
+<tr><td><code>NpDisplay</code> serif 600</td><td>36/40 sp</td></tr>
+<tr><td><code>NpTitle</code> serif 600</td><td>26/32 sp</td></tr>
+<tr><td><code>NpBody</code> Inter 400</td><td>16/25 sp</td></tr>
+<tr><td><code>NpBodySm</code> Inter 400</td><td>14/21 sp</td></tr>
+<tr><td><code>NpLabel</code> Inter 600</td><td>15/20 sp</td></tr>
+<tr><td><code>NpEyebrow</code> Inter 600, +0.14 em</td><td>11/16 sp</td></tr>
+</table>
+<p class="n" style="margin-top:10px">Siempre en <span class="k">sp</span>. Probar con escala de fuente 200 %: nada de alturas fijas en texto y los botones crecen (<span class="k">heightIn(min = 48.dp)</span>).</p></div>
+<div class="sec"><h2>Espaciado · Radios · Sombras</h2>
+<table>
+<tr><td><code>NpSpace4</code> · <code>8</code> · <code>12</code> · <code>16</code></td><td>dp</td></tr>
+<tr><td><code>NpSpace24</code> · <code>28</code> · <code>36</code></td><td>dp</td></tr>
+<tr><td><code>NpGutter</code> margen lateral</td><td>28 dp</td></tr>
+<tr><td><code>NpRadius</code> campos y botones</td><td>4 dp</td></tr>
+<tr><td><code>NpRadiusChip</code> estados</td><td>pill</td></tr>
+<tr><td><code>NpElevation</code></td><td>0 dp (usar línea)</td></tr>
+</table></div>
+<div class="sec"><h2>Movimiento</h2>
+<table>
+<tr><td><code>NpMotionFast</code> pulsación</td><td>120 ms</td></tr>
+<tr><td><code>NpMotionBase</code> transición</td><td>240 ms</td></tr>
+<tr><td><code>NpMotionSlow</code> entrada de pantalla</td><td>360 ms</td></tr>
+<tr><td><code>NpEasing</code></td><td>cubic(0.2, 0, 0, 1)</td></tr>
+</table>
+<p class="n" style="margin-top:10px">Movimiento solo ante eventos: entrada escalonada (fundido + 14 dp, 80 ms entre filas) y arcos del sello que se dibujan una vez en 1 s. Sin animaciones en bucle, salvo la vista remota en curso. Con “quitar animaciones” del sistema, todo pasa a cambio inmediato.</p></div>
+</div>
+
+<div>
+<div class="sec"><h2>Componentes</h2>
+<table>
+<tr><td><code>NpScreen</code> fondo crema, margen 28 dp</td><td>Base</td></tr>
+<tr><td><code>NpSeal</code> sello de 4 arcos animado</td><td>Inicio, Cargando</td></tr>
+<tr><td><code>NpHeroPanel</code> panel navy con titular y sello</td><td>Inicio</td></tr>
+<tr><td><code>NpRail</code> recorrido vertical con siguiente paso</td><td>Permisos</td></tr>
+<tr><td><code>NpRow</code> ficha + título + descripción</td><td>Estado</td></tr>
+
+<tr><td><code>NpStatusChip</code> punto + texto</td><td>Listo, Activo, Pendiente</td></tr>
+<tr><td><code>NpPrimaryButton</code> ≥ 60 dp, chip de flecha que se desliza</td><td>Acciones</td></tr>
+<tr><td><code>NpOutlineButton</code> borde 1,5 dp</td><td>Detener, Ahora no</td></tr>
+<tr><td><code>NpTextButton</code> ≥ 48 dp</td><td>Cerrar sesión</td></tr>
+<tr><td><code>NpCodeField</code> 6 casillas</td><td>Vincular</td></tr>
+<tr><td><code>NpBottomBar</code> línea superior</td><td>Acciones fijas</td></tr>
+<tr><td><code>NpBlockedScreen</code> panel + motivo</td><td>7 variantes</td></tr>
+</table></div>
+<div class="sec"><h2>Iconos</h2>
+<p class="n">Una sola familia lineal, trazo 1,75 dp, 22 dp (20 dp en botones). Sin emoji. Mismo conjunto en todas las pantallas; cada icono acompaña a un texto, nunca lo reemplaza.</p></div>
+<div class="sec"><h2>Decisiones tomadas</h2>
+<ul class="dec">
+<li>Cerrar sesión pide confirmación en un diálogo corto.</li>
+<li>Solo el tutor desvincula; el menor ve una pantalla propia con “Vincular de nuevo”.</li>
+<li>Privacidad y “Más ajustes” enlazadas desde Inicio.</li>
+<li>Solo tema claro; no se diseña tema oscuro.</li>
+<li>Pendiente: fuente serif definitiva (Playfair Display es aproximación).</li>
+</ul></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

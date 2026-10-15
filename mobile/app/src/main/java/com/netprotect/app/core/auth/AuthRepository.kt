@@ -9,15 +9,19 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.netprotect.app.core.network.AuthClient
 import com.netprotect.app.core.network.CurrentUser
+import com.netprotect.app.core.network.UiError
+import com.netprotect.app.core.network.toUiError
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
 /** Outcome of resuming a saved session at startup. [Unreachable] keeps the saved session: being
- * offline (or the backend being down) is not the same as being signed out. */
+ * offline (or the backend being down) is not the same as being signed out. Sprint 63 (B4): it
+ * carries the cause, [UiError.NoInternet] or [UiError.ServiceUnavailable], so a 5xx is no longer
+ * shown as "no connection". */
 sealed interface RestoreResult {
     data class Restored(val user: CurrentUser) : RestoreResult
     data object NoSession : RestoreResult
-    data object Unreachable : RestoreResult
+    data class Unreachable(val error: UiError) : RestoreResult
 }
 
 class AuthRepository(
@@ -78,11 +82,11 @@ class AuthRepository(
             throw cancelled
         } catch (_: SessionExpiredException) {
             RestoreResult.NoSession
-        } catch (_: IOException) {
-            RestoreResult.Unreachable
+        } catch (exception: IOException) {
+            RestoreResult.Unreachable(exception.toUiError())
         } catch (_: Exception) {
             // Backend answered with something unexpected (e.g. 5xx): keep the session, retry later.
-            RestoreResult.Unreachable
+            RestoreResult.Unreachable(UiError.ServiceUnavailable)
         }
     }
 

@@ -43,7 +43,7 @@ fun ErrorState(
         Text(
             text = message,
             style = NpText.Body,
-            color = NpColors.SlateMuted,
+            color = NpColors.InkMuted,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
@@ -51,7 +51,7 @@ fun ErrorState(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF5F9FF)
+@Preview(showBackground = true, backgroundColor = 0xFFF5F3EE)
 @Composable
 private fun ErrorStatePreview() {
     NetProtectTheme {

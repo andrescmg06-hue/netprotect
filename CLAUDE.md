@@ -1,7 +1,7 @@
 # NetProtect
 
-Plataforma de control parental: **una** app Android (Kotlin/Compose) que funciona como Tutor o
-Supervisado según decide el backend, un panel web (Next.js) para el tutor, y un backend
+Plataforma de control parental: **una** app Android (Kotlin/Compose) solo para el teléfono del menor
+(supervisado), un panel web (Next.js) que es la única interfaz del tutor, y un backend
 FastAPI + PostgreSQL + Redis como única fuente de verdad. Proyecto académico de Seguridad
 Informática; maneja datos de menores.
 
@@ -18,7 +18,7 @@ persona aceptando la captura de pantalla) se declara pendiente, explícitamente.
 | `backend/app/` | API: `api/v1/endpoints/`, `api/deps.py` (autorización), `models/`, `schemas/`, `services/` |
 | `backend/alembic/versions/` | Migraciones — las versionadas **no se editan** |
 | `frontend/src/` | Panel web: `components/`, `components/ui/` (primitivas), `lib/apiClient.ts` |
-| `mobile/app/src/main/java/com/netprotect/app/` | `core/` (reglas, sync, realtime, tamper) y `feature/` (tutor, supervisado) |
+| `mobile/app/src/main/java/com/netprotect/app/` | `core/` (reglas, sync, realtime, tamper) y `feature/` (home, supervisado) |
 | `infra/`, `compose*.yaml` | Caddy, coturn, monitoreo; dev / test / prod |
 | `docs/` | `progress.md` (estado), `tasks.md` (backlog), `sprint-NN.md` + `-evidence.md` (historia) |
 | `docs/android/capability-matrix.md` | Qué es viable en Android. **Consultar antes de proponer una función de control** |
