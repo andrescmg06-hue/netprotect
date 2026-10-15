@@ -1,5 +1,20 @@
 import type { AppliedRuleType, RuleType } from "@/lib/apiClient";
-import { describeDays } from "@/components/ui";
+import { describeDays, type Tone } from "@/components/ui";
+
+/** One StatusBadge tone per rule type, shared by AppRulesPanel and DeviceCategoriesPanel so the
+ * same rule never reads in two colours (Sprint 56; before, categories had no violet SCHEDULE).
+ * Red blocks, green approves, amber limits (daily and weekly alike), violet is a schedule. */
+const RULE_TYPE_TONES: Record<RuleType, Tone> = {
+  BLOCK: "danger",
+  ALLOW: "success",
+  DAILY_LIMIT: "warning",
+  WEEKLY_LIMIT: "warning",
+  SCHEDULE: "purple",
+};
+
+export function ruleTypeTone(type: RuleType): Tone {
+  return RULE_TYPE_TONES[type];
+}
 
 /** Shared by AppRulesPanel and DeviceCategoriesPanel (Sprint 24), and by the history/statistics
  * panels that list applied rule types (Sprints 15/16). `AppliedRuleType` extends `RuleType` with

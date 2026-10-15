@@ -5,7 +5,7 @@
   gap: 2px;
   padding: 3px;
   overflow-x: auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }

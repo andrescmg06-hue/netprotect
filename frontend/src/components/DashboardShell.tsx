@@ -34,6 +34,15 @@ function describeError(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/** S55: Inicio greets the tutor by first name (the h1 stays "Inicio"; the e2e reads it). Google
+ * may give no display name, so the greeting then starts with the sentence itself. */
+function overviewGreeting(user: CurrentUser): string {
+  const firstName = user.display_name?.trim().split(/\s+/)[0];
+  return firstName
+    ? `Hola, ${firstName}. Este es el estado de los dispositivos a tu cuidado.`
+    : "Este es el estado de los dispositivos a tu cuidado.";
+}
+
 /** Deep-linkable state without Next's dynamic routing: a plain URL hash
  * (#section=apps&device=<uuid>), read on mount and kept in sync with history.replaceState. This
  * avoids the Suspense-boundary requirement useSearchParams imposes on a fully client-rendered
@@ -229,11 +238,15 @@ export function DashboardShell({
 
         {/* Keyed on the section so each one mounts fresh and runs the entry animation. */}
         <main key={activeSection} className={styles.content}>
+          {/* S54: the editorial band (photo + cream veil). In band mode the breadcrumb sits over
+              the title and the device card on the right, so per-device views get both, like the
+              mockups; Inicio is the root and has no breadcrumb. No per-view quote on purpose:
+              the phrases in the mockups are placeholder copy, not product text. */}
           <PageHeader
+            band
             title={activeDefinition.label}
-            description={activeDefinition.description}
-            // Per-device views show the device card where other views show the breadcrumb (mockups).
-            breadcrumb={activeSection === "overview" || activeDefinition.perDevice ? undefined : activeDefinition.label}
+            description={activeSection === "overview" ? overviewGreeting(user) : activeDefinition.description}
+            breadcrumb={activeSection === "overview" ? undefined : activeDefinition.label}
             aside={
               activeDefinition.perDevice && activeDevice ? (
                 <DeviceSelector devices={devices} activeDevice={activeDevice} onChange={setSelectedDeviceId} />
@@ -279,12 +292,18 @@ export function DashboardShell({
           )}
 
           {activeSection === "devices" && (
-            <DevicesPanel accessToken={accessToken} state={devicesState} reload={reloadDevices} />
+            <DevicesPanel
+              accessToken={accessToken}
+              state={devicesState}
+              reload={reloadDevices}
+              onNavigate={navigate}
+              initialSelectedId={activeDeviceId}
+            />
           )}
 
           {activeSection === "pairing" && <PairingPanel accessToken={accessToken} />}
 
-          {activeSection === "audit" && <AuditPanel accessToken={accessToken} />}
+          {activeSection === "audit" && <AuditPanel accessToken={accessToken} devices={devices} />}
 
           {/* Keyed on the device (the header and its selector stay mounted, so keyboard focus
               survives the switch): a device change unmounts the old panel, so its cleanup runs —
@@ -317,12 +336,12 @@ export function DashboardShell({
                 <StatisticsPanel accessToken={accessToken} deviceId={activeDevice.id} />
               )}
               {activeSection === "alerts" && (
-                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="inbox" />
+                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="inbox" devices={devices} />
               )}
               {activeSection === "silenced" && (
-                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" />
+                <AlertsPanel accessToken={accessToken} deviceId={activeDevice.id} view="silenced" devices={devices} />
               )}
-              {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} />}
+              {activeSection === "remote" && <RemoteViewPanel accessToken={accessToken} deviceId={activeDevice.id} device={activeDevice} />}
             </div>
           )}
         </main>

@@ -1,94 +1,511 @@
-.cardHead {
-  padding: var(--space-5) var(--space-6) 0;
-}
-
-.disclosure {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.columns {
+/* Sprint 57. Map-centric: one framed workspace where the schematic takes the large left field,
+   flush to the frame, and the form is a ruled column beside it. Below, the list as a ruled
+   register, not a table in a card. */
+.workspace {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--space-6);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface-muted);
 }
 
-.emptyWrap {
-  padding: var(--space-4) var(--space-6) var(--space-6);
+.mapCol {
+  --map-min-height: 520px;
+  min-width: 0;
 }
 
-.error {
-  margin: 0;
-  padding: 0 var(--space-6) var(--space-4);
-  color: var(--color-danger-text);
-}
-
-.zoneName {
-  color: var(--color-navy);
-  font-weight: 500;
-}
-
-.coords {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-.rowActions {
+.formCol {
   display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border-left: 1px solid var(--color-border);
+  scroll-margin-top: var(--space-6);
 }
 
-.historyToggle {
-  padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--color-border);
-}
-
-.historyEmpty {
-  margin: 0;
-  padding: 0 var(--space-6) var(--space-5);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.eventCell {
+.formHead {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-3);
 }
 
-.eventDetail {
+.eyebrow {
+  margin: 0 0 var(--space-1);
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
+}
+
+.formTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  overflow-wrap: anywhere;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.stepLegend {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+  color: var(--color-navy);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.stepLegend + * {
+  clear: both;
+}
+
+.stepNumber {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
 }
 
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.prefill {
+  align-self: flex-start;
+  margin-left: calc(-1 * var(--space-3));
+}
+
+.radiusRow {
+  display: flex;
+  align-items: center;
   gap: var(--space-4);
 }
 
-@media (max-width: 1024px) {
-  .columns {
-    grid-template-columns: 1fr;
+.slider {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--color-border-strong);
+}
+
+.slider::-moz-range-track {
+  height: 2px;
+  background: var(--color-border-strong);
+}
+
+.slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -8px;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-navy);
+  outline: 1px solid var(--color-navy);
+  appearance: none;
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-navy);
+  outline: 1px solid var(--color-navy);
+}
+
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.slider:focus-visible {
+  box-shadow: none;
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.slider:focus-visible::-moz-range-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.radiusField {
+  position: relative;
+  flex: 0 0 116px;
+}
+
+.radiusInput {
+  padding-right: 32px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.unit {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-right: calc(116px + var(--space-4));
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.notice {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.notice p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.notice strong {
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.noticeIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-navy);
+}
+
+.formError {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+}
+
+/* --- Mis geocercas ---------------------------------------------------------------------- */
+
+.zones {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-navy);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-2xl);
+}
+
+.sectionMeta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.pad {
+  padding: var(--space-6) 0;
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-5) 0;
+  color: var(--color-danger-text);
+}
+
+.zoneList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zoneRow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.zoneRowActive {
+  background: var(--color-primary-softer);
+}
+
+.zoneIndex {
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.zoneMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.zoneName {
+  overflow: hidden;
+  color: var(--color-navy);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoneCoords {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.zoneRadius {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 88px;
+}
+
+.zoneRadiusValue {
+  color: var(--color-navy);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoneRadiusLabel {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.emptyArt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+}
+
+.emptyRingOuter,
+.emptyRingInner {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.emptyRingOuter {
+  inset: 0;
+  border: 1px dashed var(--color-border-strong);
+}
+
+.emptyRingInner {
+  inset: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.emptyPin {
+  position: relative;
+  color: var(--color-navy);
+}
+
+/* --- Entradas y salidas ------------------------------------------------------------------ */
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+}
+
+.eventsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.eventsTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.eventsError {
+  margin: 0;
+  color: var(--color-danger-text);
+}
+
+.eventsEmpty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.eventList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.eventRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.eventIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-soft);
+  color: var(--color-text-muted);
+}
+
+.eventIcon.enter {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.eventText {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.eventTime {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Rail and drawer layouts: the form drops under the map, which keeps its full width. */
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mapCol {
+    --map-min-height: 420px;
+  }
+
+  .formCol {
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
   }
 }
 
-@media (max-width: 480px) {
-  .grid2 {
-    grid-template-columns: 1fr;
+/* Phones: the map bleeds to the screen edges and the form reads as a plain page below it. */
+@media (max-width: 640px) {
+  .workspace {
+    margin: 0 calc(-1 * var(--page-gutter, var(--space-4)));
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .mapCol {
+    --map-min-height: 340px;
+  }
+
+  .formCol {
+    padding: var(--space-5) var(--page-gutter, var(--space-4)) var(--space-6);
+  }
+
+  .zoneRow {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "index main radius"
+      ". actions actions";
+    row-gap: var(--space-2);
+    padding: var(--space-4) 0;
+  }
+
+  .zoneIndex {
+    grid-area: index;
+  }
+
+  .zoneMain {
+    grid-area: main;
+  }
+
+  .zoneRadius {
+    grid-area: radius;
+    min-width: 0;
   }
 
   .rowActions {
+    grid-area: actions;
     justify-content: flex-start;
+    margin-left: calc(-1 * var(--space-3));
+  }
+
+  .eventRow {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .eventTime {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 380px) {
+  .grid2 {
+    grid-template-columns: 1fr;
   }
 }
