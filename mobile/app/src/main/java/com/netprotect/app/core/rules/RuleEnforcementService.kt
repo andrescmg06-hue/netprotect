@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.inventory.AppInventoryCollector
@@ -21,6 +22,8 @@ import com.netprotect.app.ui.format.CategoryLabels
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,6 +82,13 @@ class RuleEnforcementService : Service() {
         // the network renewal happens there, once for the whole process, when actually due.
         private const val TOKEN_REFRESH_INTERVAL_MS = 15_000L
 
+        // Sprint 73: after «Ir al inicio», how long the redraw watch gives the launcher's
+        // foreground event to show up in the usage events before trusting "still in front" again.
+        // Under one poll interval; going back to the blocked app is a new visit anyway.
+        private const val GO_HOME_GRACE_MS = 2_000L
+
+        private const val TAG = "RuleEnforcement"
+
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             // Sprint 20: stamped here, synchronously, and not only from the poll loop below.
             // startForegroundService() is asynchronous, and SupervisedShell's heartbeat loop
@@ -108,6 +118,8 @@ class RuleEnforcementService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var pollingJob: Job? = null
     private var realtimeClient: RealtimeClient? = null
+    // Sprint 73: set by the overlay's «Ir al inicio» (main thread), read by the poll loop.
+    private val goHomeRequestedAt = AtomicLong(0L)
 
     override fun onBind(intent: Intent?) = null
 
@@ -173,129 +185,161 @@ class RuleEnforcementService : Service() {
         // guaranteed visible to the polling loop below without adding a lock for something
         // this simple.
         val forceRulesRefresh = AtomicBoolean(false)
-        RealtimeClient(baseUrl).also { realtimeClient = it }
-            .connect(deviceId, accessToken) { event, _ ->
-                if (event == "rules_changed") forceRulesRefresh.set(true)
-            }
-        // Tracks the last *other* app we evaluated, so returning to an app already handled
-        // this "visit" doesn't spam the block screen. Reset to null whenever our own package
-        // (including the block screen itself) comes to the foreground, so leaving and coming
-        // back to the blocked app is treated as a fresh visit and re-blocked.
-        var lastHandledPackage: String? = null
+        val realtime = RealtimeClient(baseUrl).also { realtimeClient = it }
+        realtime.connect(deviceId, accessToken) { event, _ ->
+            if (event == "rules_changed") forceRulesRefresh.set(true)
+        }
+        // Sprint 73: which app the current "visit" is, decided from every foreground transition
+        // of each poll window (VisitTracker), not only from the last one — leaving a blocked app
+        // for the home screen and coming back inside the same window used to look like the same,
+        // already-blocked visit, so it was never blocked again. An own-package visit (the block
+        // screen included) resets the per-visit state and is never evaluated, so returning to a
+        // blocked app afterwards is a fresh visit and blocked again.
+        val visits = VisitTracker()
         // B-15: per-visit state for re-evaluating a daily/weekly limit while the user stays in
         // the same app. blockedThisVisit keeps the rule event to one per crossing (the overlay
         // covers the app until a new visit); nextLimitCheckAt comes from the last evaluation.
         var blockedThisVisit = false
         var nextLimitCheckAt: Long? = null
+        // Sprint 73: what the current visit's block screen shows, so the watch below can draw it
+        // again without evaluating or reporting anything.
+        var visitBlock: BlockDisplay? = null
 
-        while (serviceScope.isActive) {
-            val changedPackage = detector.pollForegroundChange()
-            val now = System.currentTimeMillis()
+        try {
+            while (serviceScope.isActive) {
+                // Sprint 73: one failing cycle (a system call throwing, an unexpected row...) used to
+                // end the coroutine and with it all enforcement until the service restarted. Now it
+                // is logged by exception type only (no package, no token) and the next cycle runs.
+                try {
+                    val visitStarted = visits.consume(detector.pollTransitions())
+                    val now = System.currentTimeMillis()
 
-            // Sprint 20: the only thing that proves this service is still alive to anything
-            // outside its process (SyncWorker, SupervisedShell's heartbeat loop). Stamped every
-            // cycle so a stale marker means the service really stopped — see EnforcementLiveness.
-            EnforcementLiveness.markActive(applicationContext)
+                    // Sprint 20: the only thing that proves this service is still alive to anything
+                    // outside its process (SyncWorker, SupervisedShell's heartbeat loop). Stamped
+                    // every cycle so a stale marker means the service really stopped — see
+                    // EnforcementLiveness.
+                    EnforcementLiveness.markActive(applicationContext)
 
-            if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
-                BackgroundTokenRefresher.refresh(applicationContext)?.let { accessToken = it }
-                lastTokenRefreshAt = now
-            }
-
-            if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)) {
-                runCatching { client.getActiveRules(accessToken, deviceId) }
-                    .onSuccess { active ->
-                        cachedRules = active.rules
-                        cachedCategoryAssignments = active.categoryAssignments
-                        cachedCategoryRules = active.categoryRules
-                        defaultPolicy = active.defaultPolicy
-                        schoolMode = active.schoolMode
-                        runCatching { rulesCacheStore.replaceAll(deviceId, active) }
+                    if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
+                        BackgroundTokenRefresher.refresh(applicationContext)?.let { accessToken = it }
+                        lastTokenRefreshAt = now
                     }
-                // Refreshed on the same beat as the rules: the user can change their launcher
-                // or default phone app at any time, and the protected set must follow.
-                protectedPackages = ProtectedPackages.resolve(applicationContext)
-                lastRulesFetchAt = now
-                // Opportunistic retry of anything evaluateAndMaybeBlock couldn't report earlier
-                // — connectivity just came back is exactly when a successful fetch above is
-                // likely, so piggyback on the same beat rather than adding a third timer.
-                runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
-            }
 
-            if (changedPackage != null && changedPackage != lastHandledPackage) {
-                // The foreground app genuinely changed: whatever overlay was covering the
-                // previous one no longer applies to what's on screen now. evaluateAndMaybeBlock
-                // below draws a fresh one if the new app is blocked too.
-                BlockOverlayController.hide(applicationContext)
-            }
+                    if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)) {
+                        runCatching { client.getActiveRules(accessToken, deviceId) }
+                            .onSuccess { active ->
+                                cachedRules = active.rules
+                                cachedCategoryAssignments = active.categoryAssignments
+                                cachedCategoryRules = active.categoryRules
+                                defaultPolicy = active.defaultPolicy
+                                schoolMode = active.schoolMode
+                                runCatching { rulesCacheStore.replaceAll(deviceId, active) }
+                            }
+                        // Refreshed on the same beat as the rules: the user can change their launcher
+                        // or default phone app at any time, and the protected set must follow.
+                        protectedPackages = ProtectedPackages.resolve(applicationContext)
+                        lastRulesFetchAt = now
+                        // Opportunistic retry of anything evaluateAndMaybeBlock couldn't report
+                        // earlier — connectivity just came back is exactly when a successful fetch
+                        // above is likely, so piggyback on the same beat rather than adding a timer.
+                        runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
+                    }
 
-            if (changedPackage == packageName) {
-                // Our own block screen coming to the front: reset the tracking so returning to
-                // a blocked app counts as a fresh visit. Never evaluated — blocking ourselves
-                // would loop.
-                lastHandledPackage = null
-                blockedThisVisit = false
-                nextLimitCheckAt = null
-            } else if (changedPackage != null && changedPackage != lastHandledPackage) {
-                lastHandledPackage = changedPackage
-                val outcome = evaluateAndMaybeBlock(
-                    foregroundPackage = changedPackage,
-                    rules = cachedRules,
-                    categoryAssignments = cachedCategoryAssignments,
-                    categoryRules = cachedCategoryRules,
-                    defaultPolicy = defaultPolicy,
-                    schoolMode = schoolMode,
-                    // Protected apps are exempt from the *default policy* only, not from a
-                    // rule the tutor wrote on purpose. The protected set includes the user's
-                    // chosen dialer and launcher, which the supervised user can change in
-                    // Settings — exempting those from every rule would turn "set this app as
-                    // my default phone app" into a three-tap way to bypass any block.
-                    exemptFromDefaultPolicy = changedPackage in protectedPackages,
-                    detector = detector,
-                    client = client,
-                    accessToken = accessToken,
-                    deviceId = deviceId,
-                    pendingEventStore = pendingEventStore,
-                )
-                blockedThisVisit = outcome.blocked
-                nextLimitCheckAt = outcome.nextLimitCheckAt
-            } else {
-                // B-15: same app still in front (no event, or a repeated one from moving between
-                // its own activities). Re-evaluated only for a daily/weekly limit whose time may
-                // have run out — not a new visit: no overlay reset, lastHandledPackage untouched.
-                val stillInFront = lastHandledPackage
-                if (stillInFront != null &&
-                    LimitRecheck.shouldRecheck(
-                        lastHandledPackage = stillInFront,
-                        changedPackage = changedPackage,
-                        blockedThisVisit = blockedThisVisit,
-                        governedByLimit = LimitRecheck.isGovernedByLimit(
-                            cachedRules, cachedCategoryAssignments, cachedCategoryRules, stillInFront,
-                        ),
-                        nextCheckAtMillis = nextLimitCheckAt,
-                        nowMillis = now,
-                    )
-                ) {
-                    val outcome = evaluateAndMaybeBlock(
-                        foregroundPackage = stillInFront,
-                        rules = cachedRules,
-                        categoryAssignments = cachedCategoryAssignments,
-                        categoryRules = cachedCategoryRules,
-                        defaultPolicy = defaultPolicy,
-                        schoolMode = schoolMode,
-                        exemptFromDefaultPolicy = stillInFront in protectedPackages,
-                        detector = detector,
-                        client = client,
-                        accessToken = accessToken,
-                        deviceId = deviceId,
-                        pendingEventStore = pendingEventStore,
-                    )
-                    blockedThisVisit = outcome.blocked
-                    nextLimitCheckAt = outcome.nextLimitCheckAt
+                    if (visitStarted) {
+                        // The foreground app genuinely changed (at least once in this window):
+                        // whatever overlay was covering the previous visit no longer applies.
+                        // evaluateAndMaybeBlock below draws a fresh one if the new visit is blocked.
+                        BlockOverlayController.hide(applicationContext)
+                        blockedThisVisit = false
+                        nextLimitCheckAt = null
+                        visitBlock = null
+                    }
+
+                    val current = visits.currentPackage
+                    if (current == null || current == packageName) {
+                        // No visit seen yet, or our own app in front: never evaluated — blocking
+                        // ourselves would loop.
+                    } else if (visitStarted) {
+                        val outcome = evaluateAndMaybeBlock(
+                            foregroundPackage = current,
+                            rules = cachedRules,
+                            categoryAssignments = cachedCategoryAssignments,
+                            categoryRules = cachedCategoryRules,
+                            defaultPolicy = defaultPolicy,
+                            schoolMode = schoolMode,
+                            // Protected apps are exempt from the *default policy* only, not from a
+                            // rule the tutor wrote on purpose. The protected set includes the user's
+                            // chosen dialer and launcher, which the supervised user can change in
+                            // Settings — exempting those from every rule would turn "set this app as
+                            // my default phone app" into a three-tap way to bypass any block.
+                            exemptFromDefaultPolicy = current in protectedPackages,
+                            detector = detector,
+                            client = client,
+                            accessToken = accessToken,
+                            deviceId = deviceId,
+                            pendingEventStore = pendingEventStore,
+                        )
+                        blockedThisVisit = outcome.blocked
+                        nextLimitCheckAt = outcome.nextLimitCheckAt
+                        visitBlock = outcome.display
+                    } else if (blockedThisVisit) {
+                        // Sprint 73: the blocked app is still the visit in front, but its block
+                        // screen is gone (taken down with no new visit seen, or removed by the
+                        // system). Draw it again — display only: this visit's rule event was already
+                        // reported. Without the overlay permission the notification fallback is not
+                        // repeated (still one per visit).
+                        val block = visitBlock
+                        if (block != null && visits.inForeground &&
+                            now - goHomeRequestedAt.get() >= GO_HOME_GRACE_MS &&
+                            !BlockOverlayController.isShowing() &&
+                            OverlayPermission.isGranted(applicationContext)
+                        ) {
+                            showBlockOverlay(block)
+                        }
+                    } else if (
+                        // B-15: same app still in front (no event, or a repeated one from moving
+                        // between its own activities). Re-evaluated only for a daily/weekly limit
+                        // whose time may have run out — not a new visit: no overlay reset.
+                        LimitRecheck.shouldRecheck(
+                            lastHandledPackage = current,
+                            changedPackage = null,
+                            blockedThisVisit = blockedThisVisit,
+                            governedByLimit = LimitRecheck.isGovernedByLimit(
+                                cachedRules, cachedCategoryAssignments, cachedCategoryRules, current,
+                            ),
+                            nextCheckAtMillis = nextLimitCheckAt,
+                            nowMillis = now,
+                        )
+                    ) {
+                        val outcome = evaluateAndMaybeBlock(
+                            foregroundPackage = current,
+                            rules = cachedRules,
+                            categoryAssignments = cachedCategoryAssignments,
+                            categoryRules = cachedCategoryRules,
+                            defaultPolicy = defaultPolicy,
+                            schoolMode = schoolMode,
+                            exemptFromDefaultPolicy = current in protectedPackages,
+                            detector = detector,
+                            client = client,
+                            accessToken = accessToken,
+                            deviceId = deviceId,
+                            pendingEventStore = pendingEventStore,
+                        )
+                        blockedThisVisit = outcome.blocked
+                        nextLimitCheckAt = outcome.nextLimitCheckAt
+                        visitBlock = outcome.display
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    Log.w(TAG, "Enforcement cycle failed: ${failure.javaClass.simpleName}")
                 }
-            }
 
-            delay(POLL_INTERVAL_MS)
+                delay(POLL_INTERVAL_MS)
+            }
+        } finally {
+            // This loop's own socket, also when only the loop ends and the service lives on.
+            realtime.disconnect()
         }
     }
 
@@ -357,15 +401,9 @@ class RuleEnforcementService : Service() {
         // The category shown is the real assigned one (never invented), or none.
         val categoryLabel = categoryAssignments.find { it.packageName == foregroundPackage }
             ?.let { CategoryLabels.categoryLabel(it.category.wireValue) }
+        val display = BlockDisplay(foregroundPackage, categoryLabel, reason)
         if (OverlayPermission.isGranted(applicationContext)) {
-            val appLabel = resolveAppLabel(foregroundPackage)
-            BlockOverlayController.show(applicationContext, foregroundPackage, appLabel, categoryLabel, reason) {
-                BlockOverlayController.hide(applicationContext)
-                startActivity(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            }
+            showBlockOverlay(display)
         } else {
             // No overlay permission yet: falls back to the notification path, which still works
             // while the device is locked (see launchBlockScreen's docstring) — better than
@@ -382,10 +420,32 @@ class RuleEnforcementService : Service() {
         if (!reported) {
             runCatching { pendingEventStore.enqueue(deviceId, foregroundPackage, reason, occurredAt) }
         }
-        return EvaluationOutcome(blocked = true, nextLimitCheckAt = null)
+        return EvaluationOutcome(blocked = true, nextLimitCheckAt = null, display = display)
     }
 
-    private class EvaluationOutcome(val blocked: Boolean, val nextLimitCheckAt: Long?)
+    private class EvaluationOutcome(
+        val blocked: Boolean,
+        val nextLimitCheckAt: Long?,
+        val display: BlockDisplay? = null,
+    )
+
+    /** What one visit's block screen shows; kept so the poll loop's watch can draw it again. */
+    private class BlockDisplay(val packageName: String, val categoryLabel: String?, val reason: BlockReason)
+
+    /** Draws the block screen overlay; the caller has checked OverlayPermission. «Ir al inicio»
+     * takes it down and opens the launcher, and notes the time so the poll loop's watch does not
+     * draw it again over the launcher before the launcher's own foreground event is logged. */
+    private fun showBlockOverlay(block: BlockDisplay) {
+        val appLabel = resolveAppLabel(block.packageName)
+        BlockOverlayController.show(applicationContext, block.packageName, appLabel, block.categoryLabel, block.reason) {
+            goHomeRequestedAt.set(System.currentTimeMillis())
+            BlockOverlayController.hide(applicationContext)
+            startActivity(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
 
     private fun Map<String, Int>.withExtra(packageName: String, extraSeconds: Int): Map<String, Int> =
         if (extraSeconds <= 0) this else this + (packageName to (this[packageName] ?: 0) + extraSeconds)

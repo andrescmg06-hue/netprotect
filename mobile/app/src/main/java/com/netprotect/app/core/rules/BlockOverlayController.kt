@@ -42,7 +42,9 @@ import com.netprotect.app.ui.theme.NetProtectTheme
  * outside any Activity.
  */
 object BlockOverlayController {
-    private var composeView: ComposeView? = null
+    // Written only on the main thread (show/hide below); @Volatile so isShowing() can read it from
+    // the poll loop's Dispatchers.Default thread without a lock (Sprint 73).
+    @Volatile private var composeView: ComposeView? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -66,6 +68,13 @@ object BlockOverlayController {
     fun hide(context: Context) {
         runOnMainThread { hideOnMainThread(context) }
     }
+
+    /** Sprint 73: whether the block screen is on screen right now, safe to call from any thread.
+     * A show() or hide() still queued for the main thread is not reflected yet, so a caller may
+     * see a stale answer for one main-thread hop; showing again is harmless (show replaces any
+     * overlay already there).
+     */
+    fun isShowing(): Boolean = composeView != null
 
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)

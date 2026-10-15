@@ -15,31 +15,37 @@ import java.time.ZoneId
 class ForegroundAppDetector(private val context: Context) {
     private var lastQueriedAt = System.currentTimeMillis()
 
-    /** Returns the package that most recently moved to the foreground since the last call, or
-     * null if nothing did. Always advances the high-water mark, so a transient null from
+    /** Sprint 73: every foreground transition (RESUMED/PAUSED) since the last call, oldest
+     * first — the whole sequence, not just the last package that came to the front, so a quick
+     * "blocked app -> home -> blocked app" inside one poll window is still seen (VisitTracker).
+     * Empty when nothing happened. Always advances the high-water mark, so a transient null from
      * queryEvents() (the device isn't "unlocked" yet — see UserManager#isUserUnlocked(), most
      * commonly right after boot) doesn't replay the same window forever.
      */
-    fun pollForegroundChange(): String? {
+    fun pollTransitions(): List<ForegroundTransition> {
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
         val events = usageStatsManager.queryEvents(lastQueriedAt, now)
         lastQueriedAt = now
-        if (events == null) return null
+        if (events == null) return emptyList()
 
-        var latestForegroundPackage: String? = null
+        val transitions = mutableListOf<ForegroundTransition>()
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            @Suppress("DEPRECATION") // ACTIVITY_RESUMED (its API 29+ replacement) isn't
-            // available down to this project's minSdk 26; MOVE_TO_FOREGROUND still works
-            // identically for this app-level (not per-Activity) use, just flagged deprecated.
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                latestForegroundPackage = event.packageName
+            @Suppress("DEPRECATION") // ACTIVITY_RESUMED/PAUSED (their API 29+ replacements) aren't
+            // available down to this project's minSdk 26; MOVE_TO_FOREGROUND/BACKGROUND carry the
+            // same values and still work identically, just flagged deprecated.
+            val kind = when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> ForegroundTransition.Kind.RESUMED
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> ForegroundTransition.Kind.PAUSED
+                else -> null
             }
+            val packageName = event.packageName
+            if (kind != null && packageName != null) transitions += ForegroundTransition(packageName, kind)
         }
-        return latestForegroundPackage
+        return transitions
     }
 
     /** Today's foreground seconds of [packageName] rebuilt from usage events (local midnight to
