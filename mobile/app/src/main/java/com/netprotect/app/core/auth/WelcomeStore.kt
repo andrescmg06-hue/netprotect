@@ -13,8 +13,6 @@ object WelcomeStore {
     /** The device the welcome was last finished for, or null if never (or since the last unlink). */
     fun seenDeviceId(context: Context): String? = prefs(context).getString(KEY_SEEN_DEVICE_ID, null)
 
-    fun isSeen(context: Context, deviceId: String): Boolean = seenDeviceId(context) == deviceId
-
     fun markSeen(context: Context, deviceId: String) {
         prefs(context).edit().putString(KEY_SEEN_DEVICE_ID, deviceId).apply()
     }

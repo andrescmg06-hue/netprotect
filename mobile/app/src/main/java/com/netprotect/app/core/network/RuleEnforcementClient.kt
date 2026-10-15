@@ -25,8 +25,8 @@ data class ActiveRules(
 )
 
 /** Only what the supervised device itself needs: fetching the rules to evaluate locally, and
- * reporting a block once it enforces one. Tutor-side rule management (create/list/delete) is a
- * separate client — this device never calls those endpoints.
+ * reporting a block once it enforces one. This app only runs on the supervised device; the tutor
+ * manages rules (create/list/delete) from the web panel, so this device never calls those endpoints.
  */
 class RuleEnforcementClient(baseUrl: String) : HttpJsonClient(baseUrl) {
 
