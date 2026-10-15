@@ -15,6 +15,8 @@ import kotlinx.coroutines.withContext
 
 /** Where the rotating refresh token is persisted (TokenStore in the app, a map in tests). */
 interface RefreshTokenStore {
+    /** Null only when there is no session. Throws [TokenStoreUnavailableException] when one is
+     * stored but cannot be read right now (Sprint 73, T5). */
     fun read(): String?
     fun save(token: String)
     fun clear()
@@ -23,6 +25,11 @@ interface RefreshTokenStore {
 /** The session can no longer be renewed: the refresh token was rejected, is missing, or the
  * user signed out while a renewal was in flight. Carries no token material in its message. */
 class SessionExpiredException : Exception("session_expired")
+
+/** Sprint 73 (T5): a session is stored but could not be read right now — a transient Android
+ * Keystore failure. Not the same as "no session": nothing is cleared, the caller retries later
+ * (it backs off like a network failure). Carries no token material. */
+class TokenStoreUnavailableException : Exception("token_store_unavailable")
 
 /** Sprint 41: the single owner of this process's tokens — the UI, the foreground services and
  * the workers all ask it for an access token instead of each keeping (or renewing) their own.
@@ -75,7 +82,12 @@ class TokenSession(
     /** Becomes true when the session ends by itself (not by signOut); the UI returns to login. */
     val expired: StateFlow<Boolean> = expiredFlag.asStateFlow()
 
-    fun hasStoredSession(): Boolean = store.read() != null
+    /** A stored session that cannot be read right now still counts: it is not a sign-out. */
+    fun hasStoredSession(): Boolean = try {
+        store.read() != null
+    } catch (_: TokenStoreUnavailableException) {
+        true
+    }
 
     /** Last known access token, possibly expired — only for callers that cannot suspend. */
     fun currentAccessToken(): String? = accessToken
@@ -102,7 +114,12 @@ class TokenSession(
      * backend. Does not wait for an in-flight renewal: the generation check discards its result. */
     fun signOut(): String? = synchronized(stateLock) {
         generation.incrementAndGet()
-        val refreshToken = store.read()
+        // Unreadable right now: the backend revocation is skipped, the local sign-out is not.
+        val refreshToken = try {
+            store.read()
+        } catch (_: TokenStoreUnavailableException) {
+            null
+        }
         store.clear()
         forget()
         refreshToken
@@ -113,7 +130,13 @@ class TokenSession(
         if (current != null && current != stale && clock() < renewAtMillis) return current
         lastFailure?.let { if (clock() < retryNotBeforeMillis) throw it }
 
-        val (startedAt, refreshToken) = synchronized(stateLock) { generation.get() to store.read() }
+        // Sprint 73 (T5): a session that exists but cannot be read now is a transient failure,
+        // backed off like an outage — never expire(), which would wipe it.
+        val (startedAt, refreshToken) = try {
+            synchronized(stateLock) { generation.get() to store.read() }
+        } catch (unreadable: TokenStoreUnavailableException) {
+            throw backOff(unreadable)
+        }
         if (refreshToken == null) throw expire(startedAt)
 
         // NonCancellable: once the POST is sent the backend has already revoked the old refresh

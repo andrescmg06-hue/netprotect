@@ -191,6 +191,53 @@ class TokenSessionTest {
         assertTrue(tokens.hasStoredSession())
     }
 
+    /** Sprint 73 (T5): a stored session the Keystore cannot read right now. */
+    private class FlakyKeystoreStore(var token: String?) : RefreshTokenStore {
+        var unreadable = false
+        override fun read(): String? = if (unreadable) throw TokenStoreUnavailableException() else token
+        override fun save(token: String) { this.token = token }
+        override fun clear() { token = null }
+    }
+
+    @Test
+    fun aTransientKeystoreFailureDoesNotEndTheSession() = runBlocking {
+        var now = 0L
+        val backend = FakeBackend("r0")
+        val store = FlakyKeystoreStore(null)
+        val tokens = TokenSession(store, backend::refresh, { now })
+        tokens.install(TokenPair("a0", "r0", 60))
+        now = 40_000 // due for renewal
+        store.unreadable = true
+
+        try {
+            tokens.validAccessToken()
+            fail("expected TokenStoreUnavailableException")
+        } catch (_: TokenStoreUnavailableException) {
+        }
+        assertFalse(tokens.expired.value)
+        assertEquals("r0", store.token)
+        assertTrue("an unreadable session is still a session", tokens.hasStoredSession())
+        assertEquals("no network call without a refresh token", 0, backend.calls.get())
+
+        // Readable again after the backoff: the very same session renews.
+        store.unreadable = false
+        now += 6_000
+        assertEquals("a1", tokens.validAccessToken())
+        assertEquals("r1", store.token)
+    }
+
+    @Test
+    fun signOutWorksEvenWhenTheKeystoreCannotBeRead() {
+        val store = FlakyKeystoreStore(null)
+        val tokens = TokenSession(store, FakeBackend("r0")::refresh, { 0L })
+        tokens.install(TokenPair("a0", "r0", 900))
+        store.unreadable = true
+
+        assertNull(tokens.signOut())
+        assertNull(store.token)
+        assertNull(tokens.currentAccessToken())
+    }
+
     @Test
     fun signOutDuringARenewalDoesNotResurrectTheSession() = runBlocking {
         val backend = FakeBackend("r0").apply { gate = CompletableDeferred() }
