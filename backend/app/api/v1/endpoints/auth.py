@@ -124,8 +124,12 @@ async def refresh_tokens(
     )
 
     token_hash = hash_refresh_token(payload.refresh_token)
+    # B-13: lock the row so two concurrent redemptions of the same refresh token are
+    # serialized; the second one sees revoked_at set and is rejected (single use).
     result = await db.execute(
-        select(UserSession).where(UserSession.refresh_token_hash == token_hash)
+        select(UserSession)
+        .where(UserSession.refresh_token_hash == token_hash)
+        .with_for_update()
     )
     session_row = result.scalar_one_or_none()
 
