@@ -65,14 +65,19 @@ alrededor de un minuto sin leer las estadísticas de uso veinte veces más a men
 
 ## Tareas
 
-- [ ] T1 — Fallo 1: visita por secuencia de eventos (lógica pura con tests), re-dibujo periódico de la pantalla de
-  bloqueo y bucle resistente a excepciones. Delegado (writer).
-- [ ] T1b — Fallo 3: reevaluar la visita en curso en cada latido de reglas (`VisitRecheck`, lógica pura con tests);
-  quitar la pantalla de bloqueo si la regla desaparece. Delegado (mismo writer), commit aparte porque T1 ya estaba cerrado.
-- [ ] T2 — Fallo 2: parada explícita (sesión, desvinculación, permiso), `START_STICKY` con configuración guardada,
-  receptor de arranque, `SyncWorker` independiente de la pantalla y como vigilante. Delegado (mismo writer).
-- [ ] T3 — Documentación: `docs/android/capability-matrix.md` y `.claude/rules/android.md` (los límites de S8/S13/S19
-  cambian). Delegado (mismo writer).
+- [x] T1 — Fallo 1: visita por secuencia de eventos (lógica pura con tests), re-dibujo periódico de la pantalla de
+  bloqueo y bucle resistente a excepciones. Delegado (writer). `1392705`.
+- [x] T1b — Fallo 3: reevaluar la visita en curso en cada latido de reglas (`VisitRecheck`, lógica pura con tests);
+  quitar la pantalla de bloqueo si la regla desaparece. Delegado (mismo writer), commit aparte porque T1 ya estaba
+  cerrado. `ea133a7`.
+- [x] T2 — Fallo 2: parada explícita (sesión, desvinculación, permiso), `START_STICKY` con configuración guardada,
+  receptor de arranque, `SyncWorker` independiente de la pantalla y como vigilante. Delegado (mismo writer). `b2f3e82`.
+- [x] T3 — Documentación: `docs/android/capability-matrix.md` y `.claude/rules/android.md` (los límites de S8/S13/S19
+  cambian). Delegado (mismo writer). Commit `docs(sprint-73): documentar el reinicio de la protección y sus límites`.
+
+Comprobado hasta aquí (ver `docs/sprint-73-evidence.md`): `compileDebugKotlin` y `testDebugUnitTest` en verde (281
+tests, 17 nuevos). **Pendiente (T4):** `assembleDebug`, `lintDebug`, `security-reviewer` y toda la prueba en el
+teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arranque, MIUI) está comprobado todavía.
 - [ ] T4 — Verificación (`verifier`: test, assembleDebug, lintDebug), `security-reviewer` (toca `core/rules`, sesión y
   arranque de servicios) y prueba real en el Redmi: re-entrada rápida a Facebook, app deslizada en Recientes, reinicio.
   Inline.

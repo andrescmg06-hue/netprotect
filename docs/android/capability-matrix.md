@@ -19,6 +19,7 @@ asumir capacidades que una aplicación Android convencional no posee.
 | Geolocalización | `LocationManager` (`GPS_PROVIDER` con precisa, `NETWORK_PROVIDER` de respaldo o único con aproximada) | `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime, pedidos juntos) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre. En Android 12+ la persona puede elegir «aproximada» igualmente | Sprint 13 — ver detalle abajo. Decisión vigente (2026-10-14): ubicación precisa, sin permiso de segundo plano |
 | Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza el permiso de ubicación ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
 | Detectar intento de desinstalación | Registro como Device Administrator (`DeviceAdminReceiver.onDisableRequested()`) — no existe ninguna API para detectar la desinstalación en sí | Activación por el usuario vía `ACTION_ADD_DEVICE_ADMIN` (pantalla del sistema); `BIND_DEVICE_ADMIN` en el receiver | No impide desinstalar: sólo obliga a desactivar el administrador primero, y eso avisa. El usuario puede retirarlo cuando quiera; el *callback* no tiene veto | Sprint 20 — ver detalle abajo |
+| Mantener la protección con la app cerrada y tras reiniciar | `START_STICKY` + `BroadcastReceiver` de `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` + `WorkManager` como vigilante | `RECEIVE_BOOT_COMPLETED` (permiso normal); tipos de FGS permitidos desde el arranque (`specialUse` sí) | Arrancar un FGS desde segundo plano solo vale con una excepción (arranque, batería sin optimizar…); la ubicación (*while-in-use*) no se puede reiniciar desde segundo plano en API 30+; HyperOS/MIUI mata la app al deslizarla en Recientes sin «Inicio automático» | Sprint 73 — ver detalle abajo |
 | Saber si un servicio propio sigue vivo desde otro proceso | Ninguna API soportada (`getRunningServices()` obsoleto y limitado al propio proceso) — marca de tiempo cooperativa (`EnforcementLiveness`) | Ninguno | Cooperativa por diseño: detecta paradas ordinarias, no a un adversario técnico decidido | Sprint 20 — ver detalle abajo |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
 | Captura de pantalla | `MediaProjection` + `ScreenCapturerAndroid` (WebRTC) | Diálogo del sistema (`createScreenCaptureIntent()`) **por sesión** + foreground service `mediaProjection` + `FOREGROUND_SERVICE_MEDIA_PROJECTION` | Un `MediaProjection` sirve para **una sola** `createVirtualDisplay()`; reutilizar el `Intent` lanza `SecurityException`. Android 15 QPR1+ la corta al bloquear la pantalla y ofrece un chip del sistema para detenerla | Sprint 23 — ver detalle abajo |
@@ -179,7 +180,10 @@ futuro necesita reconsiderarla con esa restricción explícita en mente.
 - **El servicio que sondea puede detenerse**: si el usuario fuerza el cierre de la app o del proceso
   en segundo plano (o el sistema lo mata bajo presión de memoria/Doze sin que exista un mecanismo de
   reinicio fuera de lo que el propio proyecto implemente), el sondeo se interrumpe y con él el
-  bloqueo, hasta que algo lo reinicie.
+  bloqueo, hasta que algo lo reinicie. *Actualización del Sprint 73:* el proyecto ya implementa ese
+  reinicio (`START_STICKY`, receptor de arranque y `SyncWorker` como vigilante) y cerrar la app ya no
+  para el servicio; «forzar detención» sigue parándolo todo hasta abrir la app, y HyperOS/MIUI sin
+  «Inicio automático» también. Ver la sección del Sprint 73.
 - **Requiere que el usuario haya desbloqueado el dispositivo** al menos una vez tras el arranque
   (`isUserUnlocked()`) para que `queryEvents()` devuelva datos; antes de eso, la detección no
   funciona (afecta sobre todo al primer arranque tras reiniciar el dispositivo).
@@ -415,6 +419,13 @@ sistema mata el proceso, el foreground service muere con él (mismo límite ya d
 `RuleEnforcementService` en el Sprint 8) y el reporte de ubicación se detiene hasta que la app se
 vuelva a abrir. No hay reinicio automático (`BOOT_COMPLETED`, `WorkManager` persistente) en este
 sprint — evaluar si hace falta queda para un sprint futuro si el caso de uso lo exige.
+*Actualización del Sprint 73:* cerrar la app ya no para este servicio (en Android estándar,
+deslizarla en Recientes no mata un proceso con un foreground service en marcha), y es
+`START_STICKY`. Pero un reinicio **desde segundo plano** (el sistema tras matar el proceso, o el
+arranque del teléfono) no puede leer la ubicación: es un permiso *while-in-use* y ni
+`BOOT_COMPLETED` ni el reinicio del sistema son excepciones de esa restricción; desde Android 14
+`startForeground()` lanza `SecurityException`. Por eso solo se reinicia solo en API < 30; en el resto
+el servicio se para sin fallar y vuelve al abrir la app. Ver la sección del Sprint 73.
 
 Ventaja adicional de esta decisión, verificada más abajo: al no declarar
 `ACCESS_BACKGROUND_LOCATION`, la política de Play sobre "Prominent Disclosure" de ubicación en
@@ -743,6 +754,62 @@ Las filas correspondientes de la tabla siguen marcadas como V2/Futuro.
 2. Si el emulador de Android expone el chip de la barra de estado de Android 15 QPR1+ tal como lo
    describe la documentación — no se pudo comprobar en esta máquina.
 
+## Sprint 73 — Protección con la app cerrada y reinicio: verificación detallada (15/10/2026)
+
+Hasta aquí era un límite aceptado (Sprints 8, 13 y 19): los servicios se arrancaban solo desde la
+pantalla y, además, la pantalla los paraba al cerrarse. El dueño decide que la protección debe seguir
+con la app cerrada. Fuentes consultadas antes de escribir código:
+<https://developer.android.com/about/versions/15/behavior-changes-15> y
+<https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start>.
+
+### Qué se puede arrancar desde segundo plano, y desde dónde
+
+- **Excepciones a la restricción de arrancar un FGS desde segundo plano (Android 12+)** que importan
+  aquí: recibir `ACTION_BOOT_COMPLETED`, `ACTION_LOCKED_BOOT_COMPLETED` o `ACTION_MY_PACKAGE_REPLACED`;
+  que la persona haya quitado la optimización de batería a la app; tener `SYSTEM_ALERT_WINDOW`
+  (con `targetSdk` 35+, solo si además hay una ventana superpuesta **visible** en ese momento). Fuera
+  de esas excepciones, `startForegroundService()` lanza `ForegroundServiceStartNotAllowedException`.
+- **Android 15, desde `BOOT_COMPLETED`:** un receptor de arranque **no** puede lanzar FGS de tipo
+  `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` ni `microphone` (este último
+  ya desde Android 14); lanza `ForegroundServiceStartNotAllowedException`. `specialUse` (el de
+  `RuleEnforcementService`) **no** está en la lista: se puede arrancar desde el arranque. `location`
+  tampoco está en la lista, pero tiene su propia restricción (siguiente punto).
+- **Permisos *while-in-use* (ubicación, cámara, micrófono):** «si la app está en segundo plano e
+  intenta crear un FGS de tipo `camera`, `location` o `microphone`, el sistema ve que no tiene el
+  permiso *en ese momento* y lanza `SecurityException`»; hay que arrancarlo con una actividad visible
+  salvo excepciones propias (componente del sistema, widget, notificación, `PendingIntent` de otra app
+  visible, device owner, `VoiceInteractionService`, `START_ACTIVITIES_FROM_BACKGROUND`), o tener
+  `ACCESS_BACKGROUND_LOCATION`. **El arranque del teléfono no es una de esas excepciones.** En
+  Android 11–13 el servicio llega a arrancar, pero sin acceso a la ubicación; en 14+ falla.
+
+### Qué hace el proyecto con eso
+
+| Pieza | Qué reinicia | Cuándo funciona |
+|---|---|---|
+| Efectos de `SupervisedShell` | Arrancan (idempotente) bloqueo, ubicación y `SyncWorker`; los paran solo al desvincular o retirar el permiso. Ya **no** paran nada al cerrar la pantalla | Con la app abierta (actividad visible): siempre |
+| `START_STICKY` en `RuleEnforcementService` | El propio servicio si el sistema mata el proceso; reconstruye la configuración con `BuildConfig.API_BASE_URL`, el `deviceId` de `LinkedDeviceStore`, la sesión guardada y el acceso a uso; si falta algo se para sin fallar | Cuando el sistema decide reiniciarlo y le deja pasar a primer plano; si Android lo rechaza, se para y queda el vigilante |
+| `START_STICKY` en `LocationReportingService` | Igual, pero solo en API < 30 (ver *while-in-use*); en 30+ se para y espera a que se abra la app | API 26–29 |
+| `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) | Programa `SyncWorker`, arranca el bloqueo (si hay vínculo, sesión y acceso a uso) y la ubicación solo en API < 30 | Tras desbloquear el teléfono por primera vez o actualizar la app (en MIUI/HyperOS, solo con «Inicio automático») |
+| `SyncWorker` (cada ~15 min, con red) | Si `EnforcementLiveness` dice que el bloqueo murió y siguen vínculo, sesión y acceso a uso, intenta arrancarlo (después de enviar el latido, que ya cuenta la verdad al tutor) | Solo con una excepción de arranque en segundo plano; en la práctica, con la optimización de batería quitada (pantalla «Batería»). Sin ella se rechaza y se registra |
+
+Cerrar sesión, la sesión caducada y la desvinculación paran los tres de forma explícita
+(`SupervisionServices.stopAll`) y borran la sesión o el vínculo que cualquier reinicio comprueba, así
+que ningún reinicio los revive. `EnforcementLiveness` mantiene su semántica: una parada deliberada
+limpia la marca; un servicio muerto o que no pudo arrancar la deja envejecer (`SERVICE_INACTIVE`).
+
+### Límite que no se arregla con código: HyperOS/MIUI
+
+En HyperOS/MIUI (el Redmi Note 13 del dueño, Android 15, HyperOS 2.0), deslizar la app en Recientes
+**mata el proceso entero**, servicios en primer plano incluidos, si la app no tiene «Inicio
+automático» y el ahorro de batería en «Sin restricciones». Después de eso no hay reinicio posible
+desde código: sin «Inicio automático» el sistema no reinicia el servicio pegajoso ni entrega
+`BOOT_COMPLETED`, y el trabajo de WorkManager puede no correr hasta que alguien abra la app
+(comportamiento conocido del fabricante, todavía sin medir en este teléfono). Lo concede una persona
+en Ajustes.
+Pendiente de comprobar en ese teléfono (T4 del Sprint 73): app deslizada en Recientes con y sin
+«Inicio automático», y reinicio del teléfono. Tampoco se arregla con código «Forzar detención» en
+Ajustes, en ningún fabricante: Android no entrega nada a una app detenida hasta que se abre.
+
 ## Referencias oficiales consultadas
 
 - Android Developers — `UsageStatsManager`.
@@ -772,5 +839,7 @@ Las filas correspondientes de la tabla siguen marcadas como V2/Futuro.
 - Android Developers — `MediaProjection`: consentimiento por sesión, `MediaProjection.Callback` obligatorio, foreground service `mediaProjection`, app screen sharing de Android 14 y auto-detención de Android 15 QPR1+, Sprint 23.
 - Android Developers — Cambios de comportamiento de Android 14 (`SecurityException` al reutilizar el token de proyección, `IllegalStateException` sin callback registrado), Sprint 23.
 - Maven Central — `io.getstream:stream-webrtc-android` (fork mantenido de libwebrtc, API `org.webrtc.*`), Sprint 23.
+- Android Developers — Cambios de comportamiento de Android 15 (tipos de FGS prohibidos desde `BOOT_COMPLETED`, excepción de `SYSTEM_ALERT_WINDOW` más estrecha), Sprint 73.
+- Android Developers — Restricciones para arrancar un foreground service desde segundo plano (excepciones, incluidas arranque y batería sin optimizar) y restricción de permisos *while-in-use*, Sprint 73.
 
 La matriz debe revisarse nuevamente en el sprint que implemente cada capacidad porque las políticas y restricciones de Android pueden cambiar.
