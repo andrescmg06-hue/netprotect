@@ -67,13 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [renewal, setRenewal] = useState<RenewalSchedule | null>(null);
 
   // Sprint 70 (B-05): the access token lives 15 minutes and used to be obtained once, on mount.
-  // The refresh token rotates and is single-use: redeeming the same one twice can revoke the
-  // whole session family, so every renewal goes through `renew()`, which never runs two at once.
+  // The refresh token rotates and is single-use, and /auth/refresh does not lock the session row:
+  // redeeming the same one twice either answers 401 (ending the local session) or leaves two
+  // valid sessions born from one token. So every renewal goes through `renew()`, which never
+  // runs two at once, and the mount redemption below runs only once even under StrictMode.
   // The refs hold the latest refresh token and the in-flight renewal; `generation` is bumped each
   // time the local session ends, so a renewal that resolves afterwards cannot reopen it.
   const refreshTokenRef = useRef<string | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const generationRef = useRef(0);
+  const initialLoadStartedRef = useRef(false);
 
   const adoptTokens = useCallback((tokens: TokenPair) => {
     refreshTokenRef.current = tokens.refresh_token;
@@ -136,7 +139,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(renew, Math.max(renewal.renewAt - Date.now(), 0));
     // Background tabs throttle timers, so the one above can fire long after the token expired.
     function onVisibilityChange() {
-      if (document.visibilityState === "visible" && renewal && Date.now() >= renewal.expiresAt) {
+      // renewAt too: after a failed attempt the retry waits its 30 s even if the tab is
+      // shown again and again during an outage.
+      const now = Date.now();
+      if (
+        document.visibilityState === "visible" &&
+        renewal &&
+        now >= renewal.expiresAt &&
+        now >= renewal.renewAt
+      ) {
         renew();
       }
     }
@@ -148,6 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [status, renewal, renew]);
 
   useEffect(() => {
+    // StrictMode runs mount effects twice in development; the stored token must be redeemed once.
+    if (initialLoadStartedRef.current) return;
+    initialLoadStartedRef.current = true;
     const storedRefreshToken = readStoredRefreshToken();
 
     // "No stored token" is folded into the same .then()/.catch() chain (via a rejected promise)
@@ -167,7 +181,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("authenticated");
       })
       .catch(() => {
+        // If the refresh succeeded but /auth/me failed, the server already rotated the session:
+        // revoke the new refresh token rather than leave it valid and unheld.
+        const adopted = refreshTokenRef.current;
         endLocalSession();
+        if (adopted) void logoutRequest(adopted).catch(() => {});
       });
   }, [adoptTokens, endLocalSession]);
 

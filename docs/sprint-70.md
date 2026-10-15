@@ -1,6 +1,6 @@
 # Sprint 70 — B-05: el panel web no renueva el token de acceso
 
-Rama `sprint-70-b05-sondeo-alertas` (desde `main` tras B-09). Estado: en curso.
+Rama `sprint-70-b05-sondeo-alertas` (desde `main` tras B-09). Estado: hecho (pendiente de CI y merge).
 
 ## Qué pasa hoy (investigado en el código)
 
@@ -10,7 +10,7 @@ Rama `sprint-70-b05-sondeo-alertas` (desde `main` tras B-09). Estado: en curso.
 
 ## Decisión de diseño
 
-Arreglar la causa, no el síntoma: `AuthContext` renueva el access token **antes** de que caduque, con un único temporizador y una única renovación en vuelo (el refresh token rota; dos canjes simultáneos con el mismo token podrían revocar la familia, ver G-02).
+Arreglar la causa, no el síntoma: `AuthContext` renueva el access token **antes** de que caduque, con un único temporizador y una única renovación en vuelo (el refresh token rota y es de un solo uso, y `/auth/refresh` no bloquea la fila: dos canjes simultáneos del mismo token dan un 401 que cierra la sesión o dos sesiones válidas nacidas del mismo token; no existe «familia» de tokens, ver `docs/sprint-41.md`).
 
 - Programar la renovación a `expires_in - 60 s` (mínimo 10 s) tras obtener cualquier par de tokens (carga, login o renovación).
 - Si el navegador durmió la pestaña y el token ya caducó (los temporizadores se retrasan en segundo plano), renovar también al volver a la pestaña (`visibilitychange`).
@@ -25,8 +25,8 @@ Arreglar la causa, no el síntoma: `AuthContext` renueva el access token **antes
 ## Tareas
 
 - [x] T1 — Investigar y abrir el sprint. Inline. (este commit)
-- [ ] T2 — Renovación programada en `AuthContext.tsx` y prueba E2E con Playwright (test primero: avanzar el reloj del navegador, comprobar que se llama a `/auth/refresh` y que las siguientes peticiones llevan el token nuevo). Delegado (**Opus**; sesión y tokens).
-- [ ] T3 — `npm run lint && npm run build`, E2E completo en contenedor, `security-reviewer` (sesión/tokens) y PR. Inline.
+- [x] T2 — Renovación programada en `AuthContext.tsx` y prueba E2E con Playwright (test primero: avanzar el reloj del navegador, comprobar que se llama a `/auth/refresh` y que las siguientes peticiones llevan el token nuevo). Delegado (**Opus**; sesión y tokens).
+- [x] T3 — `npm run lint && npm run build`, E2E completo en contenedor, `security-reviewer` (sesión/tokens) y PR. Inline.
 
 ## Criterios de aceptación
 
