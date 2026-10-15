@@ -78,6 +78,47 @@ alrededor de un minuto sin leer las estadísticas de uso veinte veces más a men
 Comprobado hasta aquí (ver `docs/sprint-73-evidence.md`): `compileDebugKotlin` y `testDebugUnitTest` en verde (281
 tests, 17 nuevos). **Pendiente (T4):** `assembleDebug`, `lintDebug`, `security-reviewer` y toda la prueba en el
 teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arranque, MIUI) está comprobado todavía.
+- [x] T5 — Endurecimiento tras las revisiones de seguridad y de fiabilidad (15/10/2026), mismo tipo de fallo que los
+  tres de arriba. Delegado (writer). Se corrige: (a) al arrancar o reiniciar el servicio se lee qué app está delante
+  (hoy no se evalúa hasta que el menor sale y vuelve); (b) una desvinculación con la app cerrada se detecta: el backend
+  rechaza con el 404 uniforme los envíos del supervisado sin vínculo activo y el teléfono lo trata como fin del
+  vínculo; (c) cerrar sesión borra el vínculo guardado y las cachés, para que otra cuenta no herede el dispositivo;
+  (d) la marca de vida solo se sella en ciclos que funcionan; (e) el vigilante no depende de la red; (f) una
+  evaluación que falla se reintenta en el ciclo siguiente; (g) el canal en tiempo real del servicio se reconecta;
+  (h) el bucle no puede morir en su arranque y el reinicio comprueba que sigue activo; (i) la pantalla de bloqueo
+  quitada por el sistema se detecta; (j) un evento pendiente inválido no bloquea la cola; (k) la red ya no retrasa la
+  evaluación; (l) ventanas de eventos con solape y sin duplicados; (m) un fallo pasajero del Keystore no borra la
+  sesión. Al backlog, con nota: avisar al tutor de superposición o ubicación retiradas y de la batería optimizada
+  (cambia el latido), apps en pantalla dividida o flotante, y abrir la app sin red.
+  Commits: `9e3fd44` (backend, b), `72ef7c9` (m), `81cbc53` (b en Android, c, e, j), `1ff8458` (a, d, f, g, h, i, k,
+  l) y el de documentación. Decisiones tomadas al implementar:
+  - (b) No hizo falta dependencia nueva: `require_supervised_owner_of_device` exige ahora un vínculo activo, y
+    todas las rutas que la usan son de un dispositivo vinculado (latido, ubicación, `applications/sync`,
+    `rule-events`, `rules/active`, `tamper-events`, `push-token`). `GET /policy` es solo del tutor (el teléfono la
+    recibe dentro de `rules/active`). `checkLink`/`refreshLink` usan `/devices/me`, que no pasa por ella; el canal
+    WebSocket no se tocó (no envía datos del menor; sin tutor nadie pide la vista remota). El teléfono solo acepta
+    como fin del vínculo el 404 con detalle `device_not_found` y solo si el `deviceId` es el del vínculo guardado
+    (un trabajo viejo de un vínculo anterior no puede borrar uno nuevo). Tras ese fin se recuerda que lo terminó el
+    servidor (`LinkedDeviceStore.markEndedByServer`), para que al abrir la app se vea «desvinculado» y no la
+    pantalla del código. Dos pruebas del backend que enviaban ubicación tras desvincular se ajustaron al rechazo.
+  - (c) `forgetDevice` (parar todo, olvidar el vínculo, borrar Room) en cerrar sesión, sesión caducada, abrir sin
+    sesión y entrar con una cuenta distinta de la confirmada en `SupervisedRoleCache`. La cola de eventos pendientes
+    **se borra**: solo esa sesión podría enviarla (otra cuenta recibe el 404) y no deben quedar datos del menor en un
+    teléfono sin su sesión; el coste es que, si la misma persona vuelve a entrar, los bloqueos ocurridos sin red
+    antes de cerrar sesión no llegan al tutor. **No** se guardó el id de usuario junto al vínculo: sin red no hay
+    forma de saber el usuario de la sesión guardada, y todos los caminos por los que entra otra cuenta pasan antes
+    por uno de los cuatro de arriba; la ventana que queda (entre instalar la sesión nueva y comprobar la cuenta) la
+    cierra el 404 de (b).
+  - (e) `EnforcementWatchWorker`, periódico sin restricción de red, único (`UPDATE`), se programa y cancela junto a
+    `SyncWorker` (pantalla, `BootReceiver`, `stopAll`); en `SyncWorker` el vigilante pasa al principio y el latido
+    sigue informando el estado de la marca **anterior** al reinicio.
+  - (m) Solo cuenta como «sin sesión» un fallo de descifrado irrecuperable (`AEADBadTagException`,
+    `KeyPermanentlyInvalidatedException`, `UnrecoverableKeyException`, entrada corrupta); el resto es
+    `TokenStoreUnavailableException`, que espera como un fallo de red. Al abrir la app con el Keystore caído se ve el
+    error de «servicio no disponible» y la sesión se conserva.
+  - (a) La lectura hacia atrás es de 30 min: una app abierta antes y que sigue delante no se ve hasta su siguiente
+    transición. (l) Además de no repetir eventos, se descarta un evento tardío más antiguo que otro ya entregado: si
+    se aplicara fuera de orden pondría delante una app que ya no lo está.
 - [ ] T4 — Verificación (`verifier`: test, assembleDebug, lintDebug), `security-reviewer` (toca `core/rules`, sesión y
   arranque de servicios) y prueba real en el Redmi: re-entrada rápida a Facebook, app deslizada en Recientes, reinicio.
   Inline.

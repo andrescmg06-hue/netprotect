@@ -218,6 +218,17 @@ El bloqueo decide la visita con **toda** la secuencia de eventos de cada ventana
 redibuja la pantalla de bloqueo si desaparece con la app bloqueada delante, reevalúa la visita en
 curso en cada refresco de reglas (`VisitRecheck`) y un ciclo que lanza una excepción ya no mata el
 bucle. Ver `docs/sprint-73.md` y la sección del Sprint 73 de `docs/android/capability-matrix.md`.
+**T5 (endurecimiento):** el backend responde el 404 `device_not_found` a todo lo que el teléfono envía o lee como
+vinculado si ya no hay vínculo activo, y el trabajo en segundo plano (`SyncWorker`, ubicación, bucle de bloqueo, cola)
+lo trata como fin del vínculo con `SupervisionServices.endLinkFromBackground` — solo ese detalle (`isDeviceGone`),
+nunca un 404 cualquiera, y solo para el `deviceId` del vínculo guardado. Cerrar sesión, sesión caducada, abrir sin
+sesión o entrar con otra cuenta usan `forgetDevice` (para todo, olvida el vínculo, borra Room); un sitio nuevo que
+termine una sesión debe llamarlo. El vigilante principal es `EnforcementWatchWorker` (sin restricción de red, va y se
+cancela con `SyncWorker`). El bucle evalúa la visita nueva **antes** de cualquier red, siembra la app delante al
+arrancar (`VisitTracker.seed`), lee eventos con 2 s de solape sin duplicar (`EventWindow`), reintenta una evaluación
+fallida en el ciclo siguiente, solo sella `EnforcementLiveness` en ciclos sanos y usa `ReconnectingRealtimeChannel`.
+`TokenStore` distingue «sin sesión» de «Keystore no disponible ahora» (`TokenStoreUnavailableException`): un fallo
+pasajero nunca borra la sesión.
 
 - Un archivo Kotlin nuevo no está verificado hasta que `./gradlew compileDebugKotlin` (o más)
   corre sobre él al menos una vez. Un import que falta (p. ej. `Modifier.width` sin
