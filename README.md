@@ -4,7 +4,7 @@
 
 NetProtect será una plataforma de seguridad digital y control parental con una **única aplicación Android**, destinada al teléfono del menor (supervisado) —desde el Sprint 61 ya no tiene modo tutor—, y un panel web conectado a la misma API que es la única interfaz del tutor.
 
-Este repositorio corresponde al **Sprint 1 — Arquitectura y entorno**.
+El estado actual del proyecto está en `docs/progress.md`; el historial por sprint, más abajo y en `docs/sprint-NN.md`. Para ponerlo en uso real, ver [Producción](#producción).
 
 ## Incremento funcional del Sprint 1
 
@@ -30,14 +30,14 @@ netprotect/
 ├── mobile/               Android Kotlin + Jetpack Compose
 ├── database/             documentación y futuras migraciones
 ├── docs/                 arquitectura, diagramas, planificación y seguridad
-├── infra/                infraestructura cloud futura
+├── infra/                Caddy, coturn, backups y monitorización de producción
 ├── docker/               documentación de contenedores
 ├── scripts/              verificaciones locales
 ├── tests/                estrategia de pruebas transversales
-├── .github/workflows/    CI
+├── .github/workflows/    CI y CD
 ├── compose.yaml          desarrollo
 ├── compose.test.yaml     integración/pruebas
-└── compose.prod.yaml     base de producción
+└── compose.prod.yaml     producción
 ```
 
 ## Stack base
@@ -47,10 +47,11 @@ netprotect/
 - Backend: Python, FastAPI, Pydantic, SQLAlchemy.
 - Persistencia: PostgreSQL.
 - Cache/datos temporales: Redis.
-- Tiempo real futuro: WebSockets + Firebase Cloud Messaging.
-- Autenticación futura: Google Identity / OIDC.
-- Contenedores: Docker.
-- CI/CD: GitHub Actions.
+- Tiempo real: WebSockets (Sprint 18). Firebase Cloud Messaging existe en el backend y es opcional; la app Android no tiene cliente de FCM y refresca por sondeo.
+- Autenticación: inicio de sesión con Google (ID token verificado en el backend) y sesiones propias con JWT (Sprint 3).
+- Vista remota: WebRTC con relay TURN propio (coturn, Sprints 23 y 28).
+- Contenedores: Docker; en producción, Caddy como proxy inverso con TLS.
+- CI/CD: GitHub Actions (`ci.yml`, `cd.yml` con publicación en GHCR y despliegue por SSH con aprobación).
 
 ## Requisitos
 
@@ -116,6 +117,19 @@ http://10.0.2.2:8000
 `10.0.2.2` es la ruta del emulador hacia el host local. Para un equipo físico configure `NETPROTECT_API_BASE_URL` en `mobile/local.properties`. Consulte `mobile/local.properties.example`.
 
 El build `debug` permite cleartext exclusivamente para este escenario local. El build `release` lo deshabilita y debe usar HTTPS.
+
+## Producción
+
+Seguir **`docs/go-live-checklist.md`**: es la lista única y ordenada para ponerlo en uso real (dominio, servidor, secretos, Google OAuth, GitHub, primer despliegue, TURN, monitorización, backups, release firmada de Android y pruebas con personas), con quién hace cada paso y cómo comprobarlo.
+
+Resumen de lo que exige y lo que ya protege el repositorio:
+
+- `compose.prod.yaml` levanta el stack completo detrás de Caddy (TLS automático con Let's Encrypt). Los secretos son archivos en `secrets/`, nunca variables en texto plano.
+- El backend no arranca en producción con valores vacíos, de ejemplo, de desarrollo o con `localhost` en `CORS_ORIGINS`/`ALLOWED_HOSTS`, y el error nombra la variable.
+- La release de Android se firma con un keystore propio indicado por variables (`NETPROTECT_RELEASE_KEYSTORE_*`); sin ellas, o sin la URL de la API o el client ID de Google, `./gradlew assembleRelease` falla. `NETPROTECT_VERSION_CODE` debe crecer en cada release.
+- `cd.yml` publica las imágenes solo si están las variables de producción de la web, y el despliegue falla si el backend no queda sano.
+
+Procedimiento ampliado y rollback: `docs/manuals/manual-despliegue.md`; operación diaria: `docs/manuals/manual-administrador.md`.
 
 ## Documentación previa a la implementación
 
