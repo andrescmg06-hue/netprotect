@@ -13,7 +13,8 @@ import java.time.ZoneId
  * docs/android/capability-matrix.md (Sprint 8) for the verification behind this choice.
  */
 class ForegroundAppDetector(private val context: Context) {
-    private var lastQueriedAt = System.currentTimeMillis()
+    // Sprint 73 (T5): reads overlap by EventWindow.OVERLAP_MS and never hand an event over twice.
+    private val window = EventWindow(System.currentTimeMillis())
 
     /** Sprint 73: every foreground transition (RESUMED/PAUSED) since the last call, oldest
      * first — the whole sequence, not just the last package that came to the front, so a quick
@@ -22,15 +23,20 @@ class ForegroundAppDetector(private val context: Context) {
      * queryEvents() (the device isn't "unlocked" yet — see UserManager#isUserUnlocked(), most
      * commonly right after boot) doesn't replay the same window forever.
      */
-    fun pollTransitions(): List<ForegroundTransition> {
+    fun pollTransitions(): List<ForegroundTransition> = read(window.nextStart())
+
+    /** Sprint 73 (T5): the transitions of the last [lookbackMs], to learn which app is already in
+     * front when the poll loop (re)starts (VisitTracker.seed). Later polls continue from here. */
+    fun readBack(lookbackMs: Long): List<ForegroundTransition> = read(System.currentTimeMillis() - lookbackMs)
+
+    private fun read(from: Long): List<ForegroundTransition> {
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(lastQueriedAt, now)
-        lastQueriedAt = now
-        if (events == null) return emptyList()
+        val events = usageStatsManager.queryEvents(from, now)
+            ?: return window.accept(emptyList(), now)
 
-        val transitions = mutableListOf<ForegroundTransition>()
+        val transitions = mutableListOf<TimedTransition>()
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
@@ -43,9 +49,11 @@ class ForegroundAppDetector(private val context: Context) {
                 else -> null
             }
             val packageName = event.packageName
-            if (kind != null && packageName != null) transitions += ForegroundTransition(packageName, kind)
+            if (kind != null && packageName != null) {
+                transitions += TimedTransition(event.timeStamp, ForegroundTransition(packageName, kind))
+            }
         }
-        return transitions
+        return window.accept(transitions, now)
     }
 
     /** Today's foreground seconds of [packageName] rebuilt from usage events (local midnight to

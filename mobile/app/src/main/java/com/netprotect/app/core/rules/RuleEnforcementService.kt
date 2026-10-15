@@ -15,7 +15,8 @@ import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.supervision.SupervisionServices
 import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.permissions.OverlayPermission
-import com.netprotect.app.core.network.RealtimeClient
+import com.netprotect.app.core.network.ReconnectingRealtimeChannel
+import com.netprotect.app.core.network.isDeviceGone
 import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
@@ -92,6 +93,11 @@ class RuleEnforcementService : Service() {
         // Under one poll interval; going back to the blocked app is a new visit anyway.
         private const val GO_HOME_GRACE_MS = 2_000L
 
+        // Sprint 73 (T5): how far back the loop looks, when it (re)starts, to learn which app is
+        // already in front (VisitTracker.seed). Bounded so one read stays cheap; an app opened
+        // before that and still in front is only seen at its next transition.
+        private const val SEED_LOOKBACK_MS = 30 * 60_000L
+
         private const val TAG = "RuleEnforcement"
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
@@ -128,7 +134,8 @@ class RuleEnforcementService : Service() {
     private var pollingJob: Job? = null
     // Sprint 73: the device the running loop enforces for (main thread only, like pollingJob).
     private var runningDeviceId: String? = null
-    private var realtimeClient: RealtimeClient? = null
+    // Sprint 73 (T5): the reconnecting rules_changed channel of the running loop.
+    @Volatile private var realtimeChannel: ReconnectingRealtimeChannel? = null
     // Sprint 73: set by the overlay's «Ir al inicio» (main thread), read by the poll loop.
     private val goHomeRequestedAt = AtomicLong(0L)
 
@@ -155,14 +162,17 @@ class RuleEnforcementService : Service() {
         val deviceId = intent?.getStringExtra(EXTRA_DEVICE_ID)
             ?: SupervisionServices.restorableDeviceId(this)
                 ?.takeIf { UsageAccessPermission.isGranted(this) }
+        // Sprint 73 (T5): "running" means a loop that is still active — a loop that ended (the
+        // link ended, or it died) must not make a later start a no-op.
+        val running = pollingJob?.isActive == true
         if (deviceId == null) {
-            if (pollingJob == null) stopSelf()
-            return if (pollingJob == null) START_NOT_STICKY else START_STICKY
+            if (!running) stopSelf()
+            return if (running) START_STICKY else START_NOT_STICKY
         }
         // Idempotent: the screen calls start() every time it is composed; the same device keeps
         // the loop that is already running. A different device (the link's identity changed)
         // replaces it — the old loop's socket closes in its own finally.
-        if (pollingJob != null && deviceId == runningDeviceId) return START_STICKY
+        if (running && deviceId == runningDeviceId) return START_STICKY
         pollingJob?.cancel()
         BlockOverlayController.hide(applicationContext)
 
@@ -180,27 +190,48 @@ class RuleEnforcementService : Service() {
      * EnforcementLiveness is left as it is — a dead service must still read as dead. */
     private fun giveUp(refused: Exception): Int {
         Log.w(TAG, "Could not start in the foreground: ${refused.javaClass.simpleName}")
-        if (pollingJob == null) stopSelf()
+        if (pollingJob?.isActive != true) stopSelf()
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         ServiceStatusRegistry.enforcementRunning(false)
         BlockOverlayController.hide(applicationContext)
-        realtimeClient?.disconnect()
+        realtimeChannel?.stop()
         serviceJob.cancel()
         super.onDestroy()
     }
 
+    /** Sprint 73 (T5): the loop's preparation (database, protected packages, realtime channel,
+     * look-back read) used to run outside any error handling, so one exception there ended the
+     * coroutine — and with it all blocking — while the service stayed "running" (and a restart was
+     * a no-op). Now any failure outside a cycle is logged by type and the whole loop is prepared
+     * again after one poll interval. Returns only when the link ended (the service is then stopped).
+     */
     private suspend fun runPollingLoop(baseUrl: String, initialAccessToken: String, deviceId: String) {
+        while (serviceScope.isActive) {
+            try {
+                enforce(baseUrl, initialAccessToken, deviceId)
+                return
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                Log.w(TAG, "Enforcement loop failed, preparing it again: ${failure.javaClass.simpleName}")
+            }
+            delay(POLL_INTERVAL_MS)
+        }
+    }
+
+    private suspend fun enforce(baseUrl: String, initialAccessToken: String, deviceId: String) {
         val detector = ForegroundAppDetector(applicationContext)
         val client = RuleEnforcementClient(baseUrl)
         val database = NetProtectDatabase.getInstance(applicationContext)
         val rulesCacheStore = RulesCacheStore(database)
         val pendingEventStore = PendingRuleEventStore(database)
-        // Sprint 41: the token handed over by the screen may already be stale (or empty); the
-        // realtime connect below uses it once, so start from the shared session's valid one.
-        var accessToken = BackgroundTokenRefresher.refresh(applicationContext) ?: initialAccessToken
+        // Sprint 41: the token handed over by the screen may already be stale (or empty).
+        // Sprint 73 (T5): renewed in the first cycle, AFTER evaluating the app in front with the
+        // cached rules — the network no longer delays the first block (see the cycle below).
+        var accessToken = initialAccessToken
         // Starts at ALLOW so a device whose first fetch fails keeps working normally instead of
         // blocking everything on a network error.
         var defaultPolicy = DefaultAppPolicy.ALLOW
@@ -226,213 +257,254 @@ class RuleEnforcementService : Service() {
 
         var protectedPackages = ProtectedPackages.resolve(applicationContext)
         var lastRulesFetchAt = 0L
-        var lastTokenRefreshAt = System.currentTimeMillis()
+        var lastTokenRefreshAt = 0L
         // Set from the WebSocket listener's onMessage callback, which runs on OkHttp's own
         // thread, not this coroutine — an AtomicBoolean, not a plain var, so that write is
         // guaranteed visible to the polling loop below without adding a lock for something
         // this simple.
         val forceRulesRefresh = AtomicBoolean(false)
-        val realtime = RealtimeClient(baseUrl).also { realtimeClient = it }
-        realtime.connect(deviceId, accessToken) { event, _ ->
+        // Sprint 73 (T5): a channel that reconnects by itself (growing waits, a fresh valid token
+        // from the shared session as the first frame of each attempt) — the same one the shell
+        // uses. The plain socket used before connected once: a network drop, a backend restart or
+        // a start with no network (an empty token after boot) left "rules_changed" deaf until the
+        // service restarted, and new rules then waited for the 60 s refresh.
+        val realtime = ReconnectingRealtimeChannel(
+            baseUrl = baseUrl,
+            deviceId = deviceId,
+            tokenProvider = { BackgroundTokenRefresher.refresh(applicationContext) },
+        ) { event, _ ->
             if (event == "rules_changed") forceRulesRefresh.set(true)
         }
-        // Sprint 73: which app the current "visit" is, decided from every foreground transition
-        // of each poll window (VisitTracker), not only from the last one — leaving a blocked app
-        // for the home screen and coming back inside the same window used to look like the same,
-        // already-blocked visit, so it was never blocked again. An own-package visit (the block
-        // screen included) resets the per-visit state and is never evaluated, so returning to a
-        // blocked app afterwards is a fresh visit and blocked again.
-        val visits = VisitTracker()
-        // B-15: per-visit state for re-evaluating a daily/weekly limit while the user stays in
-        // the same app. blockedThisVisit keeps the rule event to one per crossing (the overlay
-        // covers the app until a new visit); nextLimitCheckAt comes from the last evaluation.
-        var blockedThisVisit = false
-        var nextLimitCheckAt: Long? = null
-        // Sprint 73: what the current visit's block screen shows, so the watch below can draw it
-        // again without evaluating or reporting anything.
-        var visitBlock: BlockDisplay? = null
-
+        realtimeChannel = realtime
+        realtime.start(serviceScope)
         try {
-            while (serviceScope.isActive) {
-                // Sprint 73: one failing cycle (a system call throwing, an unexpected row...) used to
-                // end the coroutine and with it all enforcement until the service restarted. Now it
-                // is logged by exception type only (no package, no token) and the next cycle runs.
+            // Sprint 73: which app the current "visit" is, decided from every foreground transition
+            // of each poll window (VisitTracker), not only from the last one — leaving a blocked
+            // app for the home screen and coming back inside the same window used to look like the
+            // same, already-blocked visit, so it was never blocked again. An own-package visit (the
+            // block screen included) resets the per-visit state and is never evaluated, so
+            // returning to a blocked app afterwards is a fresh visit and blocked again.
+            val visits = VisitTracker()
+            // B-15: per-visit state for re-evaluating a daily/weekly limit while the user stays in
+            // the same app. blockedThisVisit keeps the rule event to one per crossing (the overlay
+            // covers the app until a new visit); nextLimitCheckAt comes from the last evaluation.
+            var blockedThisVisit = false
+            var nextLimitCheckAt: Long? = null
+            // Sprint 73: what the current visit's block screen shows, so the watch below can draw
+            // it again without evaluating or reporting anything.
+            var visitBlock: BlockDisplay? = null
+            // Sprint 73 (T5): the visit in front still has to be evaluated — it began, or the loop
+            // (re)started with it already in front, or its evaluation failed and is retried next
+            // cycle (before, a failed evaluation left the visit unevaluated until the next rules
+            // beat, up to 60 s, or for good at the start of a visit).
+            // At (re)start nothing used to be known about the app in front, so it was never
+            // evaluated until the child left it and came back: seeded from a look-back read now.
+            var evaluationPending = visits.seed(detector.readBack(SEED_LOOKBACK_MS))
+            // Sprint 73 (T5): set when the backend answers the uniform device_not_found.
+            var linkEnded = false
+            // Sprint 73 (T5): false when an evaluation failed this cycle; then the liveness marker
+            // is not stamped (below).
+            var cycleHealthy = true
+
+            fun apply(outcome: EvaluationOutcome) {
+                blockedThisVisit = outcome.blocked
+                nextLimitCheckAt = outcome.nextLimitCheckAt
+                visitBlock = outcome.display
+                if (outcome.deviceGone) linkEnded = true
+            }
+
+            /** Null when the evaluation threw (logged by type only). */
+            suspend fun evaluate(foregroundPackage: String, decideOnly: Boolean = false): EvaluationOutcome? =
                 try {
+                    evaluateAndMaybeBlock(
+                        foregroundPackage = foregroundPackage,
+                        rules = cachedRules,
+                        categoryAssignments = cachedCategoryAssignments,
+                        categoryRules = cachedCategoryRules,
+                        defaultPolicy = defaultPolicy,
+                        schoolMode = schoolMode,
+                        // Protected apps are exempt from the *default policy* only, not from a rule
+                        // the tutor wrote on purpose. The protected set includes the user's chosen
+                        // dialer and launcher, which the supervised user can change in Settings —
+                        // exempting those from every rule would turn "set this app as my default
+                        // phone app" into a three-tap way to bypass any block.
+                        exemptFromDefaultPolicy = foregroundPackage in protectedPackages,
+                        detector = detector,
+                        client = client,
+                        accessToken = accessToken,
+                        deviceId = deviceId,
+                        pendingEventStore = pendingEventStore,
+                        decideOnly = decideOnly,
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    Log.w(TAG, "Evaluation failed: ${failure.javaClass.simpleName}")
+                    cycleHealthy = false
+                    null
+                }
+
+            while (serviceScope.isActive) {
+                // Sprint 73: one failing cycle (a system call throwing, an unexpected row...) used
+                // to end the coroutine and with it all enforcement until the service restarted.
+                // Now it is logged by exception type only (no package, no token) and the next
+                // cycle runs.
+                try {
+                    cycleHealthy = true
                     val visitStarted = visits.consume(detector.pollTransitions())
-                    val now = System.currentTimeMillis()
+                    if (visitStarted) {
+                        // The foreground app genuinely changed (at least once in this window):
+                        // whatever overlay was covering the previous visit no longer applies.
+                        // The evaluation below draws a fresh one if the new visit is blocked.
+                        BlockOverlayController.hide(applicationContext)
+                        blockedThisVisit = false
+                        nextLimitCheckAt = null
+                        visitBlock = null
+                        evaluationPending = true
+                    }
+                    val current = visits.currentPackage
+                    // No visit seen yet, or our own app in front: never evaluated — blocking
+                    // ourselves would loop.
+                    val currentIsOtherApp = current != null && current != packageName
+                    if (!currentIsOtherApp) evaluationPending = false
 
-                    // Sprint 20: the only thing that proves this service is still alive to anything
-                    // outside its process (SyncWorker, SupervisedShell's heartbeat loop). Stamped
-                    // every cycle so a stale marker means the service really stopped — see
-                    // EnforcementLiveness.
-                    EnforcementLiveness.markActive(applicationContext)
+                    // Sprint 73 (T5): the new visit is evaluated FIRST, with the rules already in
+                    // hand (Room cache or the last fetch). The token renewal, the rules fetch and
+                    // the queue flush below can take up to 5 s each on a bad network, and used to
+                    // run before this, delaying the block screen by as much.
+                    var evaluatedThisCycle = false
+                    if (evaluationPending && current != null && currentIsOtherApp) {
+                        evaluatedThisCycle = true
+                        evaluate(current)?.let { outcome ->
+                            apply(outcome)
+                            evaluationPending = false
+                        }
+                    }
 
+                    var now = System.currentTimeMillis()
                     if (now - lastTokenRefreshAt >= TOKEN_REFRESH_INTERVAL_MS) {
                         BackgroundTokenRefresher.refresh(applicationContext)?.let { accessToken = it }
                         lastTokenRefreshAt = now
                     }
 
-                    // Sprint 73 (Fallo 3): the rules beat, every RULES_REFRESH_INTERVAL_MS or at once
-                    // on a realtime "rules_changed". The visit in front is re-evaluated on it below.
+                    // Sprint 73 (Fallo 3): the rules beat, every RULES_REFRESH_INTERVAL_MS or at
+                    // once on a realtime "rules_changed". The visit in front is re-evaluated on it.
                     val rulesBeat = now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)
+                    var fetchedFresh = false
                     if (rulesBeat) {
-                        runCatching { client.getActiveRules(accessToken, deviceId) }
-                            .onSuccess { active ->
-                                cachedRules = active.rules
-                                cachedCategoryAssignments = active.categoryAssignments
-                                cachedCategoryRules = active.categoryRules
-                                defaultPolicy = active.defaultPolicy
-                                schoolMode = active.schoolMode
-                                runCatching { rulesCacheStore.replaceAll(deviceId, active) }
-                            }
-                        // Refreshed on the same beat as the rules: the user can change their launcher
-                        // or default phone app at any time, and the protected set must follow.
+                        val fetch = runCatching { client.getActiveRules(accessToken, deviceId) }
+                        fetch.getOrNull()?.let { active ->
+                            cachedRules = active.rules
+                            cachedCategoryAssignments = active.categoryAssignments
+                            cachedCategoryRules = active.categoryRules
+                            defaultPolicy = active.defaultPolicy
+                            schoolMode = active.schoolMode
+                            runCatching { rulesCacheStore.replaceAll(deviceId, active) }
+                            fetchedFresh = true
+                        }
+                        // Sprint 73 (T5): no active link any more (the backend's uniform 404).
+                        if (fetch.exceptionOrNull()?.isDeviceGone() == true) linkEnded = true
+                        // Refreshed on the same beat as the rules: the user can change their
+                        // launcher or default phone app at any time, and the protected set must
+                        // follow.
                         protectedPackages = ProtectedPackages.resolve(applicationContext)
                         lastRulesFetchAt = now
                         // Opportunistic retry of anything evaluateAndMaybeBlock couldn't report
                         // earlier — connectivity just came back is exactly when a successful fetch
                         // above is likely, so piggyback on the same beat rather than adding a timer.
-                        runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
+                        if (!linkEnded) {
+                            val flush = runCatching { pendingEventStore.flush(client, accessToken, deviceId) }
+                            if (flush.exceptionOrNull()?.isDeviceGone() == true) linkEnded = true
+                        }
                     }
 
-                    if (visitStarted) {
-                        // The foreground app genuinely changed (at least once in this window):
-                        // whatever overlay was covering the previous visit no longer applies.
-                        // evaluateAndMaybeBlock below draws a fresh one if the new visit is blocked.
-                        BlockOverlayController.hide(applicationContext)
-                        blockedThisVisit = false
-                        nextLimitCheckAt = null
-                        visitBlock = null
-                    }
-
-                    val current = visits.currentPackage
-                    val recheck = VisitRecheck.onRulesBeat(
-                        rulesBeat = rulesBeat,
-                        currentIsOtherApp = current != null && current != packageName,
-                        visitStarted = visitStarted,
-                        inForeground = visits.inForeground,
-                        blockedThisVisit = blockedThisVisit,
-                    )
-                    if (current == null || current == packageName) {
-                        // No visit seen yet, or our own app in front: never evaluated — blocking
-                        // ourselves would loop.
-                    } else if (visitStarted) {
-                        val outcome = evaluateAndMaybeBlock(
-                            foregroundPackage = current,
-                            rules = cachedRules,
-                            categoryAssignments = cachedCategoryAssignments,
-                            categoryRules = cachedCategoryRules,
-                            defaultPolicy = defaultPolicy,
-                            schoolMode = schoolMode,
-                            // Protected apps are exempt from the *default policy* only, not from a
-                            // rule the tutor wrote on purpose. The protected set includes the user's
-                            // chosen dialer and launcher, which the supervised user can change in
-                            // Settings — exempting those from every rule would turn "set this app as
-                            // my default phone app" into a three-tap way to bypass any block.
-                            exemptFromDefaultPolicy = current in protectedPackages,
-                            detector = detector,
-                            client = client,
-                            accessToken = accessToken,
-                            deviceId = deviceId,
-                            pendingEventStore = pendingEventStore,
-                        )
-                        blockedThisVisit = outcome.blocked
-                        nextLimitCheckAt = outcome.nextLimitCheckAt
-                        visitBlock = outcome.display
-                    } else if (recheck == VisitRecheck.Action.EVALUATE) {
-                        // Sprint 73 (Fallo 3): new or changed rules (or a schedule that has just
-                        // begun) for the app already in front: blocked now if they say so, with its
-                        // rule event like any visit — at most one per block, the visit is not
-                        // blocked yet.
-                        val outcome = evaluateAndMaybeBlock(
-                            foregroundPackage = current,
-                            rules = cachedRules,
-                            categoryAssignments = cachedCategoryAssignments,
-                            categoryRules = cachedCategoryRules,
-                            defaultPolicy = defaultPolicy,
-                            schoolMode = schoolMode,
-                            exemptFromDefaultPolicy = current in protectedPackages,
-                            detector = detector,
-                            client = client,
-                            accessToken = accessToken,
-                            deviceId = deviceId,
-                            pendingEventStore = pendingEventStore,
-                        )
-                        blockedThisVisit = outcome.blocked
-                        nextLimitCheckAt = outcome.nextLimitCheckAt
-                        visitBlock = outcome.display
-                    } else if (recheck == VisitRecheck.Action.CONFIRM_BLOCK) {
-                        // Sprint 73 (Fallo 3): the visit is blocked; if the latest rules no longer
-                        // block it (the rule was removed, the schedule ended), take the block screen
-                        // down. Nothing is reported either way.
-                        val outcome = evaluateAndMaybeBlock(
-                            foregroundPackage = current,
-                            rules = cachedRules,
-                            categoryAssignments = cachedCategoryAssignments,
-                            categoryRules = cachedCategoryRules,
-                            defaultPolicy = defaultPolicy,
-                            schoolMode = schoolMode,
-                            exemptFromDefaultPolicy = current in protectedPackages,
-                            detector = detector,
-                            client = client,
-                            accessToken = accessToken,
-                            deviceId = deviceId,
-                            pendingEventStore = pendingEventStore,
-                            decideOnly = true,
-                        )
-                        if (!outcome.blocked) {
-                            BlockOverlayController.hide(applicationContext)
-                            blockedThisVisit = false
-                            nextLimitCheckAt = outcome.nextLimitCheckAt
-                            visitBlock = null
-                        }
-                    } else if (blockedThisVisit) {
-                        // Sprint 73: the blocked app is still the visit in front, but its block
-                        // screen is gone (taken down with no new visit seen, or removed by the
-                        // system). Draw it again — display only: this visit's rule event was already
-                        // reported. Without the overlay permission the notification fallback is not
-                        // repeated (still one per visit).
-                        val block = visitBlock
-                        if (block != null && visits.inForeground &&
-                            now - goHomeRequestedAt.get() >= GO_HOME_GRACE_MS &&
-                            !BlockOverlayController.isShowing() &&
-                            OverlayPermission.isGranted(applicationContext)
-                        ) {
-                            showBlockOverlay(block)
-                        }
-                    } else if (
-                        // B-15: same app still in front (no event, or a repeated one from moving
-                        // between its own activities). Re-evaluated only for a daily/weekly limit
-                        // whose time may have run out — not a new visit: no overlay reset.
-                        LimitRecheck.shouldRecheck(
-                            lastHandledPackage = current,
-                            changedPackage = null,
+                    if (!linkEnded && current != null && currentIsOtherApp) {
+                        now = System.currentTimeMillis()
+                        val recheck = VisitRecheck.onRulesBeat(
+                            rulesBeat = rulesBeat,
+                            currentIsOtherApp = true,
+                            // Just evaluated with these very rules: nothing new to check. Rules
+                            // fetched fresh in this same cycle are checked (never a second report:
+                            // EVALUATE only runs for a visit not blocked yet, CONFIRM_BLOCK never
+                            // reports).
+                            visitStarted = evaluatedThisCycle && !fetchedFresh,
+                            inForeground = visits.inForeground,
                             blockedThisVisit = blockedThisVisit,
-                            governedByLimit = LimitRecheck.isGovernedByLimit(
-                                cachedRules, cachedCategoryAssignments, cachedCategoryRules, current,
-                            ),
-                            nextCheckAtMillis = nextLimitCheckAt,
-                            nowMillis = now,
                         )
-                    ) {
-                        val outcome = evaluateAndMaybeBlock(
-                            foregroundPackage = current,
-                            rules = cachedRules,
-                            categoryAssignments = cachedCategoryAssignments,
-                            categoryRules = cachedCategoryRules,
-                            defaultPolicy = defaultPolicy,
-                            schoolMode = schoolMode,
-                            exemptFromDefaultPolicy = current in protectedPackages,
-                            detector = detector,
-                            client = client,
-                            accessToken = accessToken,
-                            deviceId = deviceId,
-                            pendingEventStore = pendingEventStore,
-                        )
-                        blockedThisVisit = outcome.blocked
-                        nextLimitCheckAt = outcome.nextLimitCheckAt
-                        visitBlock = outcome.display
+                        if (recheck == VisitRecheck.Action.EVALUATE) {
+                            // Sprint 73 (Fallo 3): new or changed rules (or a schedule that has
+                            // just begun) for the app already in front: blocked now if they say so,
+                            // with its rule event like any visit — at most one per block, the visit
+                            // is not blocked yet. A failure is retried next cycle.
+                            val outcome = evaluate(current)
+                            if (outcome != null) {
+                                apply(outcome)
+                                evaluationPending = false
+                            } else {
+                                evaluationPending = true
+                            }
+                        } else if (recheck == VisitRecheck.Action.CONFIRM_BLOCK) {
+                            // Sprint 73 (Fallo 3): the visit is blocked; if the latest rules no
+                            // longer block it (the rule was removed, the schedule ended), take the
+                            // block screen down. Nothing is reported either way.
+                            val outcome = evaluate(current, decideOnly = true)
+                            if (outcome != null && !outcome.blocked) {
+                                BlockOverlayController.hide(applicationContext)
+                                blockedThisVisit = false
+                                nextLimitCheckAt = outcome.nextLimitCheckAt
+                                visitBlock = null
+                            }
+                        } else if (evaluatedThisCycle) {
+                            // Evaluated (or tried) above this cycle: nothing more until the next.
+                        } else if (blockedThisVisit) {
+                            // Sprint 73: the blocked app is still the visit in front, but its block
+                            // screen is gone (taken down with no new visit seen, or removed by the
+                            // system). Draw it again — display only: this visit's rule event was
+                            // already reported. Without the overlay permission the notification
+                            // fallback is not repeated (still one per visit).
+                            val block = visitBlock
+                            if (block != null && visits.inForeground &&
+                                now - goHomeRequestedAt.get() >= GO_HOME_GRACE_MS &&
+                                !BlockOverlayController.isShowing() &&
+                                OverlayPermission.isGranted(applicationContext)
+                            ) {
+                                showBlockOverlay(block)
+                            }
+                        } else if (
+                            // B-15: same app still in front (no event, or a repeated one from
+                            // moving between its own activities). Re-evaluated only for a
+                            // daily/weekly limit whose time may have run out — not a new visit: no
+                            // overlay reset.
+                            LimitRecheck.shouldRecheck(
+                                lastHandledPackage = current,
+                                changedPackage = null,
+                                blockedThisVisit = blockedThisVisit,
+                                governedByLimit = LimitRecheck.isGovernedByLimit(
+                                    cachedRules, cachedCategoryAssignments, cachedCategoryRules, current,
+                                ),
+                                nextCheckAtMillis = nextLimitCheckAt,
+                                nowMillis = now,
+                            )
+                        ) {
+                            evaluate(current)?.let { apply(it) }
+                        }
                     }
+
+                    if (linkEnded) {
+                        // Sprint 73 (T5): the tutor unlinked this device (maybe with the app
+                        // closed). Forget the link, delete its data and stop everything — this
+                        // service included — instead of enforcing old rules for nobody.
+                        SupervisionServices.endLinkFromBackground(applicationContext, deviceId)
+                        return
+                    }
+
+                    // Sprint 20: the only thing that proves this service is still alive to anything
+                    // outside its process (SyncWorker, SupervisedShell's heartbeat loop).
+                    // Sprint 73 (T5): stamped only for a cycle that completed and could evaluate
+                    // (it used to be stamped at the top of every cycle, even one that then failed
+                    // every time), so a loop that cannot block anything reads as dead to the watch
+                    // and to the tutor's SERVICE_INACTIVE signal.
+                    if (cycleHealthy) EnforcementLiveness.markActive(applicationContext)
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (failure: Exception) {
@@ -442,8 +514,9 @@ class RuleEnforcementService : Service() {
                 delay(POLL_INTERVAL_MS)
             }
         } finally {
-            // This loop's own socket, also when only the loop ends and the service lives on.
-            realtime.disconnect()
+            // This loop's own channel, also when only the loop ends and the service lives on.
+            realtime.stop()
+            if (realtimeChannel === realtime) realtimeChannel = null
         }
     }
 
@@ -520,21 +593,25 @@ class RuleEnforcementService : Service() {
             launchBlockScreen(foregroundPackage, categoryLabel, reason)
         }
         val occurredAt = Instant.now()
-        val reported = runCatching {
+        val reportFailure = runCatching {
             client.reportRuleEvent(accessToken, deviceId, foregroundPackage, reason, occurredAt)
-        }.isSuccess
+        }.exceptionOrNull()
+        // Sprint 73 (T5): the uniform 404 means the link ended: nothing to queue for nobody.
+        val deviceGone = reportFailure?.isDeviceGone() == true
         // Sprint 19: a block that already happened is real regardless of whether the tutor can
         // see it right now — queued instead of dropped, see PendingRuleEventEntity's docstring.
-        if (!reported) {
+        if (reportFailure != null && !deviceGone) {
             runCatching { pendingEventStore.enqueue(deviceId, foregroundPackage, reason, occurredAt) }
         }
-        return EvaluationOutcome(blocked = true, nextLimitCheckAt = null, display = display)
+        return EvaluationOutcome(blocked = true, nextLimitCheckAt = null, display = display, deviceGone = deviceGone)
     }
 
     private class EvaluationOutcome(
         val blocked: Boolean,
         val nextLimitCheckAt: Long?,
         val display: BlockDisplay? = null,
+        // Sprint 73 (T5): the rule event was answered with device_not_found (the link ended).
+        val deviceGone: Boolean = false,
     )
 
     /** What one visit's block screen shows; kept so the poll loop's watch can draw it again. */

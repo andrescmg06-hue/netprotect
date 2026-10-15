@@ -174,3 +174,100 @@ class VisitRecheckTest {
         assertEquals(VisitRecheck.Action.NONE, action(inForeground = false))
     }
 }
+
+/** Sprint 73 (T5): seeding the tracker when the loop (re)starts, and overlapping event reads. */
+class VisitSeedAndEventWindowTest {
+
+    // ------------------------------------------------ seeding at (re)start
+
+    /** The loop restarted (reboot, update, system restart) with the child already in an app:
+     * the look-back read puts it in front and it is evaluated as a new visit. */
+    @Test
+    fun seedingLearnsTheAppAlreadyInFront() {
+        val tracker = VisitTracker()
+        val evaluate = tracker.seed(listOf(resumed(HOME), paused(HOME), resumed(FACEBOOK)))
+        assertTrue(evaluate)
+        assertEquals(FACEBOOK, tracker.currentPackage)
+        assertTrue(tracker.inForeground)
+    }
+
+    @Test
+    fun seedingWithTheLastAppPausedEvaluatesNothing() {
+        val tracker = VisitTracker()
+        // Screen turned off inside Facebook: nothing is in front.
+        assertFalse(tracker.seed(listOf(resumed(FACEBOOK), paused(FACEBOOK))))
+        assertEquals(FACEBOOK, tracker.currentPackage)
+        // Coming back to it later is a transition of the same package: no new visit by itself...
+        assertFalse(tracker.consume(listOf(resumed(FACEBOOK))))
+        assertTrue(tracker.inForeground)
+    }
+
+    @Test
+    fun seedingWithNothingReadKnowsNothing() {
+        val tracker = VisitTracker()
+        assertFalse(tracker.seed(emptyList()))
+        assertNull(tracker.currentPackage)
+    }
+
+    @Test
+    fun seedingThenANewAppIsANewVisit() {
+        val tracker = VisitTracker()
+        tracker.seed(listOf(resumed(FACEBOOK)))
+        assertTrue(tracker.consume(listOf(paused(FACEBOOK), resumed(HOME))))
+        assertEquals(HOME, tracker.currentPackage)
+    }
+
+    // ------------------------------------------------ overlapping reads without duplicates
+
+    private fun at(ms: Long, transition: ForegroundTransition) = TimedTransition(ms, transition)
+
+    @Test
+    fun eachReadStartsTwoSecondsBeforeThePreviousEnd() {
+        val window = EventWindow(initialEnd = 10_000L)
+        assertEquals(8_000L, window.nextStart())
+        window.accept(emptyList(), queriedUntil = 13_000L)
+        assertEquals(11_000L, window.nextStart())
+    }
+
+    /** An event logged late, stamped inside the previous window, is still handed over — once. */
+    @Test
+    fun aLateEventInTheOverlapIsDeliveredOnce() {
+        val window = EventWindow(initialEnd = 0L)
+        val home = at(9_000L, resumed(HOME))
+        assertEquals(listOf(resumed(HOME)), window.accept(listOf(home), queriedUntil = 10_000L))
+
+        // Read again from 8 000: the HOME event comes back (dropped), the late Facebook one is new.
+        val lateFacebook = at(9_500L, resumed(FACEBOOK))
+        assertEquals(listOf(resumed(FACEBOOK)), window.accept(listOf(home, lateFacebook), queriedUntil = 13_000L))
+
+        // And the next overlapping read hands neither over again.
+        assertEquals(emptyList<ForegroundTransition>(), window.accept(listOf(lateFacebook), queriedUntil = 16_000L))
+    }
+
+    /** The same RESUMED read twice must not open a second visit (and so a second rule event). */
+    @Test
+    fun theSameResumedReadTwiceIsOneVisit() {
+        val window = EventWindow(initialEnd = 0L)
+        val tracker = VisitTracker()
+        val facebook = at(9_000L, resumed(FACEBOOK))
+        val home = at(9_500L, resumed(HOME))
+        assertTrue(tracker.consume(window.accept(listOf(facebook), queriedUntil = 9_200L)))
+        // Overlap re-reads Facebook, plus the home screen and Facebook again with a later stamp.
+        val back = at(10_500L, resumed(FACEBOOK))
+        val second = window.accept(listOf(facebook, home, back), queriedUntil = 11_000L)
+        assertEquals(listOf(resumed(HOME), resumed(FACEBOOK)), second)
+        assertTrue(tracker.consume(second))
+        assertEquals(FACEBOOK, tracker.currentPackage)
+        // Re-read once more: nothing new, no new visit.
+        assertFalse(tracker.consume(window.accept(listOf(back), queriedUntil = 12_000L)))
+    }
+
+    /** A late event older than one already handed over would put the wrong app back in front. */
+    @Test
+    fun aLateEventOlderThanWhatWasAlreadyHandedOverIsDropped() {
+        val window = EventWindow(initialEnd = 0L)
+        window.accept(listOf(at(9_800L, resumed(HOME))), queriedUntil = 10_000L)
+        val olderLate = at(9_500L, resumed(FACEBOOK))
+        assertEquals(emptyList<ForegroundTransition>(), window.accept(listOf(olderLate), queriedUntil = 12_000L))
+    }
+}

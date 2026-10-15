@@ -7,6 +7,49 @@ data class ForegroundTransition(val packageName: String, val kind: Kind) {
     enum class Kind { RESUMED, PAUSED }
 }
 
+/** One transition with the instant the system logged it (UsageEvents.Event.timeStamp). Two reads
+ * that both return the same logged event return equal values, which is how [EventWindow] spots it. */
+data class TimedTransition(val timestampMs: Long, val transition: ForegroundTransition)
+
+/** Sprint 73 (T5): consecutive usage-event reads with a small overlap, without handing the same
+ * event over twice.
+ *
+ * Each poll used to read exactly [previous end, now). An event the system logged a moment late —
+ * stamped inside the previous window but not yet visible when that window was read — fell between
+ * two reads and was lost; a lost RESUMED can be a whole visit nobody evaluates. Now each read
+ * starts [OVERLAP_MS] before the previous end, and what is handed over drops:
+ * - events already handed over (same instant, package and kind) — so the same RESUMED never opens
+ *   a second visit and the same block is never reported twice;
+ * - events older than the newest one already handed over: applied now, out of order, a late
+ *   "RESUMED a" would wrongly put `a` back in front of the app that followed it.
+ *
+ * Pure (no Android types): unit-tested in VisitTrackerTest.
+ */
+class EventWindow(initialEnd: Long, private val overlapMs: Long = OVERLAP_MS) {
+    private var end = initialEnd
+    private var newestHandedOver = Long.MIN_VALUE
+    private var recent: Set<TimedTransition> = emptySet()
+
+    /** Where the next read starts: the previous end minus the overlap. */
+    fun nextStart(): Long = end - overlapMs
+
+    /** Takes one read of [from, queriedUntil), oldest first, and returns only what is new. */
+    fun accept(events: List<TimedTransition>, queriedUntil: Long): List<ForegroundTransition> {
+        val fresh = events.filter { it !in recent && it.timestampMs >= newestHandedOver }
+        fresh.maxOfOrNull { it.timestampMs }?.let { newestHandedOver = maxOf(newestHandedOver, it) }
+        // Only what a later read can return again, or what shares the newest instant handed over
+        // (the only older-or-equal stamp still accepted), needs remembering.
+        val horizon = minOf(queriedUntil - overlapMs, newestHandedOver)
+        recent = (recent + events).filterTo(HashSet()) { it.timestampMs >= horizon }
+        end = maxOf(end, queriedUntil)
+        return fresh.map { it.transition }
+    }
+
+    companion object {
+        const val OVERLAP_MS = 2_000L
+    }
+}
+
 /** Sprint 73: decides what a "visit" to an app is from the WHOLE sequence of transitions of each
  * poll window, not only from the last package that came to the front.
  *
@@ -54,6 +97,18 @@ class VisitTracker {
             }
         }
         return newVisitStarted
+    }
+
+    /** Sprint 73 (T5): applies a look-back read taken when the poll loop (re)starts — after a
+     * reboot, an app update or a restart by the system the loop used to know nothing about the
+     * app already in front (no visit until the child left it and came back), so that app was
+     * never evaluated. Returns true when the read leaves an app in front: the caller treats it as
+     * a new visit and evaluates it. An app whose last transition was PAUSED (screen off, say) is
+     * not in front, so nothing to evaluate; an empty read leaves nothing known.
+     */
+    fun seed(transitions: List<ForegroundTransition>): Boolean {
+        consume(transitions)
+        return currentPackage != null && inForeground
     }
 }
 

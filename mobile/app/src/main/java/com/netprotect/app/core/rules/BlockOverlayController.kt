@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -45,6 +46,10 @@ object BlockOverlayController {
     // Written only on the main thread (show/hide below); @Volatile so isShowing() can read it from
     // the poll loop's Dispatchers.Default thread without a lock (Sprint 73).
     @Volatile private var composeView: ComposeView? = null
+    // Sprint 73 (T5): whether that view is really in a window. The system can take an overlay
+    // window down by itself, leaving composeView set; written on the main thread by the view's
+    // OnAttachStateChangeListener, read by isShowing() from the poll loop.
+    @Volatile private var attached = false
     private var lifecycleOwner: OverlayLifecycleOwner? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -73,8 +78,11 @@ object BlockOverlayController {
      * A show() or hide() still queued for the main thread is not reflected yet, so a caller may
      * see a stale answer for one main-thread hop; showing again is harmless (show replaces any
      * overlay already there).
+     *
+     * Sprint 73 (T5): also false when the view was detached from its window without hide() (the
+     * system removed the overlay), so the poll loop's watch draws it again.
      */
-    fun isShowing(): Boolean = composeView != null
+    fun isShowing(): Boolean = composeView != null && attached
 
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
@@ -114,6 +122,16 @@ object BlockOverlayController {
             }
         }
 
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {
+                if (composeView === v) attached = true
+            }
+
+            override fun onViewDetachedFromWindow(v: View) {
+                if (composeView === v) attached = false
+            }
+        })
+
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -122,18 +140,22 @@ object BlockOverlayController {
             PixelFormat.TRANSLUCENT,
         )
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        // composeView is set before addView so the attach callback (same thread, possibly during
+        // addView) recognises this view; reset if the window could not be added.
+        attached = false
+        composeView = view
         runCatching { windowManager.addView(view, params) }
-            .onSuccess { composeView = view }
-            .onFailure { owner.destroy(); lifecycleOwner = null }
+            .onFailure { composeView = null; owner.destroy(); lifecycleOwner = null }
     }
 
     private fun hideOnMainThread(context: Context) {
         val view = composeView ?: return
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        composeView = null
+        attached = false
         runCatching { windowManager.removeView(view) }
         lifecycleOwner?.destroy()
         lifecycleOwner = null
-        composeView = null
     }
 }
 
