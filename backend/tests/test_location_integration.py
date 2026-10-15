@@ -301,7 +301,10 @@ def test_a_tutor_who_relinks_does_not_see_what_arrived_in_between(client) -> Non
     _report_location(client, supervised_token, device_id, captured_at=_recent(10))
     unlinked = client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(tutor_token))
     assert unlinked.status_code == 200
-    _report_location(client, supervised_token, device_id, captured_at=_recent(5))
+    # Sprint 73 (T5): while unlinked the device's report is refused outright (uniform 404), so
+    # there is nothing "in between" to hide any more — still checked below.
+    in_between = _report_location(client, supervised_token, device_id, captured_at=_recent(5))
+    assert in_between.status_code == 404
     assert _link_a_device(client, tutor_token, supervised_token, instance) == device_id
     _report_location(client, supervised_token, device_id, captured_at=_recent(0))
 

@@ -390,20 +390,27 @@ def test_a_geofence_of_an_unlinked_tutor_is_not_evaluated_until_they_link_again(
     _report_location(client, supervised, device_id, captured_at=_recent(40), **CENTER)
 
     _unlink(client, tutor, device_id)
-    # Would be an EXIT for "Casa" if its creator were still linked.
-    _report_location(client, supervised, device_id, captured_at=_recent(30), **OUTSIDE)
+    # Would be an EXIT for "Casa" if its creator were still linked. Sprint 73 (T5): with no active
+    # link the report itself is refused (uniform 404), so nothing can be evaluated.
+    refused = client.post(
+        f"/api/v1/devices/{device_id}/location",
+        json={**OUTSIDE, "accuracy_meters": 1500.0, "captured_at": _recent(30)},
+        headers=_auth(supervised),
+    )
+    assert refused.status_code == 404
 
     _link_a_device(client, tutor, supervised, device_instance_id=instance)
     assert _events(client, tutor, device_id) == []
     assert _geofence_alerts(client, tutor, device_id) == []
 
-    # Linked again: the very same geofence is evaluated as before.
-    _report_location(client, supervised, device_id, captured_at=_recent(20), **CENTER)
+    # Linked again: the very same geofence is evaluated as before (the last accepted report was
+    # inside, so leaving now is its EXIT).
+    _report_location(client, supervised, device_id, captured_at=_recent(20), **OUTSIDE)
     assert [(e["geofence_name"], e["event_type"]) for e in _events(client, tutor, device_id)] == [
-        ("Casa", "ENTER")
+        ("Casa", "EXIT")
     ]
     assert [a["alert_type"] for a in _geofence_alerts(client, tutor, device_id)] == [
-        "GEOFENCE_ENTER"
+        "GEOFENCE_EXIT"
     ]
 
 

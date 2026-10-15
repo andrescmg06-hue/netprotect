@@ -456,3 +456,101 @@ def test_devices_me_never_answers_with_another_accounts_install(client) -> None:
     )
 
     assert mine.status_code == 404
+
+
+# ------------------------------------- Sprint 73 (T5): the device's own writes need an active link
+
+
+def _supervised_calls(device_id: str) -> list[tuple[str, str, dict | None]]:
+    """Every route the supervised device uses only while linked (behind
+    require_supervised_owner_of_device)."""
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    base = f"/api/v1/devices/{device_id}"
+    return [
+        ("POST", f"{base}/heartbeat", {}),
+        (
+            "POST",
+            f"{base}/location",
+            {"latitude": 4.71, "longitude": -74.07, "accuracy_meters": 1500.0, "captured_at": now},
+        ),
+        (
+            "POST",
+            f"{base}/applications/sync",
+            {"usage_date": now[:10], "installed_apps": [], "daily_usage": []},
+        ),
+        (
+            "POST",
+            f"{base}/rule-events",
+            {"package_name": "com.example.game", "rule_type_applied": "BLOCK", "occurred_at": now},
+        ),
+        ("GET", f"{base}/rules/active", None),
+        ("POST", f"{base}/tamper-events", {"event_type": "UNINSTALL_ATTEMPT", "occurred_at": now}),
+        ("POST", f"{base}/push-token", {"fcm_token": "token-de-prueba"}),
+    ]
+
+
+def _call(client: TestClient, token: str, method: str, path: str, body: dict | None):
+    return client.request(method, path, json=body, headers=_auth(token))
+
+
+def test_after_an_unlink_every_device_write_is_the_uniform_404(client) -> None:
+    """With the app closed the phone kept sending heartbeat, usage, events and location after an
+    unlink (Sprint 73 keeps the protection running in the background). Now each of those routes
+    answers the same 404 as "not your device", which the phone reads as the end of the link."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    device_id = _link_a_device(client, tutor_token, supervised_token)
+
+    for method, path, body in _supervised_calls(device_id):
+        linked = _call(client, supervised_token, method, path, body)
+        assert linked.status_code in (200, 204), (path, linked.text)
+
+    unlinked = client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(tutor_token))
+    assert unlinked.status_code == 200
+
+    for method, path, body in _supervised_calls(device_id):
+        response = _call(client, supervised_token, method, path, body)
+        assert response.status_code == 404, (path, response.text)
+        assert response.json()["detail"] == "device_not_found", path
+
+
+def test_after_an_unlink_the_device_can_still_learn_it_and_link_again(client) -> None:
+    """What the phone needs to notice the unlink (GET /devices/me) and to pair again keeps
+    working; once linked again, its writes are accepted again."""
+    tutor_token, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+    device_id = _redeem(client, tutor_token, supervised_token, instance, "Celular de Juan")
+    client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(tutor_token))
+
+    mine = client.get(
+        "/api/v1/devices/me",
+        params={"device_instance_id": instance},
+        headers=_auth(supervised_token),
+    )
+    assert mine.status_code == 200
+    assert mine.json()["tutors"] == []
+
+    assert _redeem(client, tutor_token, supervised_token, instance, "Celular de Juan") == device_id
+    beat = client.post(
+        f"/api/v1/devices/{device_id}/heartbeat", json={}, headers=_auth(supervised_token)
+    )
+    assert beat.status_code == 200, beat.text
+    assert beat.json()["status"] == "ONLINE"
+
+
+def test_one_tutor_leaving_does_not_cut_off_a_device_another_tutor_still_supervises(
+    client,
+) -> None:
+    tutor_a, _ = _make_account(client, "TUTOR")
+    tutor_b, _ = _make_account(client, "TUTOR")
+    supervised_token, _ = _make_account(client, "SUPERVISADO")
+    instance = uuid.uuid4().hex
+    device_id = _redeem(client, tutor_a, supervised_token, instance, "Celular de Juan")
+    assert _redeem(client, tutor_b, supervised_token, instance, "Celular de Juan") == device_id
+
+    client.delete(f"/api/v1/devices/{device_id}/link", headers=_auth(tutor_a))
+
+    for method, path, body in _supervised_calls(device_id):
+        response = _call(client, supervised_token, method, path, body)
+        assert response.status_code in (200, 204), (path, response.text)
