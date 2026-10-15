@@ -11,12 +11,16 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.LocationClient
 import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
+import com.netprotect.app.core.supervision.SupervisionServices
 import java.time.Instant
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +46,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * ever requesting ACCESS_BACKGROUND_LOCATION (and without taking on the Play "Prominent
  * Disclosure" policy that permission carries). The real cost of that choice: if the system kills
  * the process or the user swipes the app away, reporting stops until NetProtect reopens — same
- * documented limit as RuleEnforcementService, not an oversight.
+ * documented limit as RuleEnforcementService, not an oversight. Sprint 73: the service is
+ * START_STICKY and no longer stopped when the screen closes, but a restart from the background
+ * can only report on Android 10 and older (see [canStartFromBackground]); on newer versions it
+ * stops itself and waits for the app to be opened.
  *
  * Precise location since 2026-10-14 (see LocationPermission): GPS_PROVIDER first when
  * ACCESS_FINE_LOCATION is granted, NETWORK_PROVIDER as its fallback and as the only provider when
@@ -81,6 +88,8 @@ class LocationReportingService : Service() {
         // tries again 15 minutes later.
         private const val MAX_LAST_KNOWN_AGE_MS = REPORT_INTERVAL_MS
 
+        private const val TAG = "LocationReporting"
+
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             val intent = Intent(context, LocationReportingService::class.java)
                 .putExtra(EXTRA_BASE_URL, baseUrl)
@@ -92,25 +101,65 @@ class LocationReportingService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, LocationReportingService::class.java))
         }
+
+        /** Sprint 73: whether this service can do its job when started with no visible Activity
+         * (boot, system restart). Location is a while-in-use permission: from Android 11 (API 30)
+         * a `location` foreground service started from the background gets no location access,
+         * and from Android 14 (API 34) startForeground() itself throws SecurityException — this
+         * project never asks for ACCESS_BACKGROUND_LOCATION (capability matrix, Sprints 13 and
+         * 73). Below API 30 there is no such restriction. Otherwise it waits for the app to open.
+         */
+        fun canStartFromBackground(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
     }
 
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var reportingJob: Job? = null
+    // Sprint 73: the device the running loop reports for (main thread only, like reportingJob).
+    private var runningDeviceId: String? = null
 
     override fun onBind(intent: Intent?) = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // Sprint 73: from the background (system restart, boot) Android 14+ refuses a location
+        // foreground service with SecurityException, and Android 12+ may refuse any foreground
+        // start (ForegroundServiceStartNotAllowedException, an IllegalStateException). Stop
+        // quietly instead of crashing; opening the app starts it again from the foreground.
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        } catch (refused: SecurityException) {
+            return giveUp(refused)
+        } catch (refused: IllegalStateException) {
+            return giveUp(refused)
+        }
 
-        if (intent == null || reportingJob != null) return START_NOT_STICKY
-        val baseUrl = intent.getStringExtra(EXTRA_BASE_URL) ?: return START_NOT_STICKY
-        val accessToken = intent.getStringExtra(EXTRA_ACCESS_TOKEN) ?: return START_NOT_STICKY
-        val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
+        // Sprint 73: with no extras (system restart) the configuration is rebuilt from what is
+        // stored, but only where a background-started location service can work at all
+        // (canStartFromBackground) and the location permission is still granted.
+        val deviceId = intent?.getStringExtra(EXTRA_DEVICE_ID)
+            ?: SupervisionServices.restorableDeviceId(this)
+                ?.takeIf { canStartFromBackground() && LocationPermission.isGranted(this) }
+        if (deviceId == null) {
+            if (reportingJob == null) stopSelf()
+            return if (reportingJob == null) START_NOT_STICKY else START_STICKY
+        }
+        // Idempotent: the same device keeps the running loop; a different one replaces it.
+        if (reportingJob != null && deviceId == runningDeviceId) return START_STICKY
+        reportingJob?.cancel()
 
+        val baseUrl = intent?.getStringExtra(EXTRA_BASE_URL) ?: BuildConfig.API_BASE_URL
+        val accessToken = intent?.getStringExtra(EXTRA_ACCESS_TOKEN).orEmpty()
+        runningDeviceId = deviceId
         reportingJob = serviceScope.launch { runReportingLoop(baseUrl, accessToken, deviceId) }
         // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
         ServiceStatusRegistry.locationRunning(true)
+        // Sprint 73: if the system kills the process it brings the service back (intent == null).
+        return START_STICKY
+    }
+
+    private fun giveUp(refused: Exception): Int {
+        Log.w(TAG, "Could not start in the foreground: ${refused.javaClass.simpleName}")
+        if (reportingJob == null) stopSelf()
         return START_NOT_STICKY
     }
 

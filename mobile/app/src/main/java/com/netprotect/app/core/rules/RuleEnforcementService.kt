@@ -9,7 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
+import com.netprotect.app.core.permissions.UsageAccessPermission
+import com.netprotect.app.core.supervision.SupervisionServices
 import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.network.RealtimeClient
@@ -42,12 +45,14 @@ import kotlinx.coroutines.launch
  * because no predefined type (camera, location, mediaPlayback...) fits "watch which app is in
  * the foreground"; that type is Android's own designated catch-all for such cases.
  *
- * No restart-on-death, no boot receiver: if the user swipes the app away or the system kills the
- * process, *enforcement itself* stops until the supervised device reopens NetProtect. That is a
- * real, documented limit of this mechanism (see BlockScreenActivity and the capability matrix),
- * unchanged by Sprint 19 — SyncWorker (core/sync/SyncWorker.kt) runs independently of this
- * service's process and keeps heartbeat/usage-sync/pending-event delivery going even then, but it
- * cannot itself watch the foreground app or block anything.
+ * Sprint 73: closing the app no longer stops this service (SupervisedShell only starts it, and
+ * stops it when unlinked, signed out or usage access is withdrawn — SupervisionServices). If the
+ * system kills the process the service is START_STICKY and rebuilds its configuration from what is
+ * stored; BootReceiver starts it after a reboot or an app update, and SyncWorker starts it again
+ * when EnforcementLiveness says it died. Android may still refuse a start from the background
+ * (see the capability matrix, Sprint 73), and HyperOS/MIUI kills the app when it is swiped from
+ * Recents unless the person allowed «Inicio automático»: then nothing restarts until it is opened.
+ * Before Sprint 73 there was no restart at all (Sprints 8–19).
  *
  * Sprint 19 (offline): this service now primes its rule cache from Room (RulesCacheStore) on
  * start instead of only the ALLOW/no-school-mode fail-safe defaults, persists every successful
@@ -95,16 +100,20 @@ class RuleEnforcementService : Service() {
             // starts in the same composition — without this, the session's first heartbeat could
             // read a marker the service hadn't stamped yet and report a SERVICE_INACTIVE that
             // never happened.
-            EnforcementLiveness.markActive(context)
+            // Sprint 73: stamped right after the start call instead of before it, still
+            // synchronously: a start refused from the background (ForegroundServiceStartNotAllowed-
+            // Exception, thrown by startForegroundService itself) must not mark a dead service live.
+            // Idempotent: a second start for the same device keeps the running loop (onStartCommand).
             val intent = Intent(context, RuleEnforcementService::class.java)
                 .putExtra(EXTRA_BASE_URL, baseUrl)
                 .putExtra(EXTRA_ACCESS_TOKEN, accessToken)
                 .putExtra(EXTRA_DEVICE_ID, deviceId)
             context.startForegroundService(intent)
+            EnforcementLiveness.markActive(context)
         }
 
         fun stop(context: Context) {
-            // A deliberate stop (screen disposed, signed out, usage access withdrawn) is not
+            // A deliberate stop (signed out, unlinked, usage access withdrawn) is not
             // tampering: clearing the marker makes the next heartbeat report "no information"
             // instead of "the service was disabled". Being killed — swiped away, force-stopped,
             // reclaimed under memory pressure — never runs this, which is exactly the case the
@@ -117,6 +126,8 @@ class RuleEnforcementService : Service() {
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var pollingJob: Job? = null
+    // Sprint 73: the device the running loop enforces for (main thread only, like pollingJob).
+    private var runningDeviceId: String? = null
     private var realtimeClient: RealtimeClient? = null
     // Sprint 73: set by the overlay's «Ir al inicio» (main thread), read by the poll loop.
     private val goHomeRequestedAt = AtomicLong(0L)
@@ -124,16 +135,52 @@ class RuleEnforcementService : Service() {
     override fun onBind(intent: Intent?) = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // Sprint 73: a restart by the system (START_STICKY, intent == null) happens with the app
+        // in the background, where Android 12+ may refuse to make the service foreground
+        // (ForegroundServiceStartNotAllowedException, an IllegalStateException). Give up quietly
+        // then: SyncWorker's watch or the next app open starts it again.
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        } catch (refused: IllegalStateException) {
+            return giveUp(refused)
+        } catch (refused: SecurityException) {
+            return giveUp(refused)
+        }
 
-        if (intent == null || pollingJob != null) return START_NOT_STICKY
-        val baseUrl = intent.getStringExtra(EXTRA_BASE_URL) ?: return START_NOT_STICKY
-        val accessToken = intent.getStringExtra(EXTRA_ACCESS_TOKEN) ?: return START_NOT_STICKY
-        val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID) ?: return START_NOT_STICKY
+        // Sprint 73: with no extras (system restart) the configuration is rebuilt from what is
+        // stored: the base URL from the build, the linked device and the session from their
+        // stores (no link or no session means sign-out/unlink, nothing to restore), and the
+        // token from the shared session inside the loop. Usage access is checked here because
+        // nothing else would stop the service if it was withdrawn while the app was closed.
+        val deviceId = intent?.getStringExtra(EXTRA_DEVICE_ID)
+            ?: SupervisionServices.restorableDeviceId(this)
+                ?.takeIf { UsageAccessPermission.isGranted(this) }
+        if (deviceId == null) {
+            if (pollingJob == null) stopSelf()
+            return if (pollingJob == null) START_NOT_STICKY else START_STICKY
+        }
+        // Idempotent: the screen calls start() every time it is composed; the same device keeps
+        // the loop that is already running. A different device (the link's identity changed)
+        // replaces it — the old loop's socket closes in its own finally.
+        if (pollingJob != null && deviceId == runningDeviceId) return START_STICKY
+        pollingJob?.cancel()
+        BlockOverlayController.hide(applicationContext)
 
+        val baseUrl = intent?.getStringExtra(EXTRA_BASE_URL) ?: BuildConfig.API_BASE_URL
+        val accessToken = intent?.getStringExtra(EXTRA_ACCESS_TOKEN).orEmpty()
+        runningDeviceId = deviceId
         pollingJob = serviceScope.launch { runPollingLoop(baseUrl, accessToken, deviceId) }
         // Sprint 50: only reports its own life to "Estado de NetProtect"; changes nothing it does.
         ServiceStatusRegistry.enforcementRunning(true)
+        // Sprint 73: if the system kills the process it brings the service back (intent == null).
+        return START_STICKY
+    }
+
+    /** Could not become foreground: stop without crashing. Not a deliberate stop, so
+     * EnforcementLiveness is left as it is — a dead service must still read as dead. */
+    private fun giveUp(refused: Exception): Int {
+        Log.w(TAG, "Could not start in the foreground: ${refused.javaClass.simpleName}")
+        if (pollingJob == null) stopSelf()
         return START_NOT_STICKY
     }
 

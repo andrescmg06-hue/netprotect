@@ -60,6 +60,7 @@ import com.netprotect.app.core.screenshare.ScreenCapture
 import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import com.netprotect.app.core.status.servicesView
+import com.netprotect.app.core.supervision.SupervisionServices
 import com.netprotect.app.core.sync.SyncWorker
 import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.consent.ConsentEvent
@@ -132,6 +133,11 @@ private sealed interface SupervisedState {
  * over time inside `SupervisedState.Linked`: every change would restart (stop + start) all of them.
  *
  * The screens only receive values and callbacks; none of them starts or stops anything.
+ *
+ * Sprint 73: the protection services and SyncWorker outlive this shell. Their effects start them
+ * (idempotently) or stop them on unlink / permission withdrawn, and nothing in onDispose stops them,
+ * so closing the app leaves the protection running; sign-out stops them in HomeScreen. Only the
+ * screen-share socket, which is useful only with the UI, still ends with the shell.
  */
 @Composable
 fun SupervisedShell(
@@ -187,6 +193,9 @@ fun SupervisedShell(
     // The only key the service effects below use: null in every state but Linked, and stable while
     // linked — a B1 refresh that changes the tutors leaves it untouched.
     val linkedDeviceId = (state as? SupervisedState.Linked)?.deviceId
+    // Sprint 73: false only while the link is first being checked. The protection effects neither
+    // start nor stop anything until it is known (see the RuleEnforcementService effect).
+    val linkKnown = state !is SupervisedState.CheckingLink
 
     fun leaveConsentRoute() {
         if (route == SupervisedRoute.Consent) route = SupervisedRoute.Linked
@@ -327,9 +336,12 @@ fun SupervisedShell(
         Result.failure(exception)
     }
 
-    // Sprint 64 (B1): the only way out of Linked besides signing out. Clearing the cache and leaving
-    // Linked lets the effects' onDispose stop the services, the socket, the heartbeat and SyncWorker.
+    // Sprint 64 (B1): the only way out of Linked besides signing out. Leaving Linked ends the socket
+    // and the heartbeat (their effects). Sprint 73: the protection services and SyncWorker are no
+    // longer stopped by a dispose, so they are stopped here explicitly (the effects would also stop
+    // them on Unlinked), and the cleared link keeps any restart (sticky, boot, watch) from reviving them.
     fun enterUnlinked() {
+        SupervisionServices.stopAll(context)
         LinkedDeviceStore.clear(context)
         // A new link shows the welcome again.
         WelcomeStore.clear(context)
@@ -487,23 +499,38 @@ fun SupervisedShell(
     // foreground — the whole point is catching when the supervised user opens some other app.
     // A foreground service, not a LaunchedEffect, is what makes that possible; see
     // RuleEnforcementService. Same hasUsageAccess gate as the sync above.
-    DisposableEffect(linkedDeviceId, hasUsageAccess) {
+    // Sprint 73: nothing is stopped in onDispose any more — closing the app (Back, swiping it from
+    // Recents) disposes this shell and used to switch the protection off with it. The body starts
+    // the service when linked with the permission (start is idempotent for the same device) and
+    // stops it only when the link state is known and says otherwise: unlinked or permission
+    // withdrawn. While the link is still being checked nothing is touched, so opening the app never
+    // interrupts a service that kept running with the app closed. Sign-out stops it explicitly
+    // (HomeScreen, SupervisionServices.stopAll).
+    DisposableEffect(linkKnown, linkedDeviceId, hasUsageAccess) {
         val deviceId = linkedDeviceId
-        if (hasUsageAccess && deviceId != null) {
-            RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+        when {
+            !linkKnown -> Unit
+            hasUsageAccess && deviceId != null ->
+                RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+            else -> RuleEnforcementService.stop(context)
         }
-        onDispose { RuleEnforcementService.stop(context) }
+        onDispose { }
     }
 
     // Independent gate from the rule-enforcement service above: reporting location doesn't need
     // usage access, and enforcing rules doesn't need location. Same foreground-start requirement
-    // (see LocationReportingService): this effect only fires while the shell is composed.
-    DisposableEffect(linkedDeviceId, hasLocationPermission) {
+    // (see LocationReportingService): this effect only fires while the shell is composed — which
+    // is why this is the start that matters for location (a background restart cannot report on
+    // Android 11+). Sprint 73: same start/stop shape as the service above, nothing in onDispose.
+    DisposableEffect(linkKnown, linkedDeviceId, hasLocationPermission) {
         val deviceId = linkedDeviceId
-        if (hasLocationPermission && deviceId != null) {
-            LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+        when {
+            !linkKnown -> Unit
+            hasLocationPermission && deviceId != null ->
+                LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+            else -> LocationReportingService.stop(context)
         }
-        onDispose { LocationReportingService.stop(context) }
+        onDispose { }
     }
 
     // Sprint 23: a second WebSocket, open only while the shell is composed, whose single job is
@@ -541,12 +568,17 @@ fun SupervisedShell(
     // Sprint 19: the background counterpart to the heartbeat/app-sync loops above — same data,
     // sent by SyncWorker on WorkManager's own schedule so it keeps happening while the app isn't
     // in the foreground. No permission gate: SyncWorker checks usage access itself.
-    DisposableEffect(linkedDeviceId) {
+    // Sprint 73: kept scheduled when the app closes (it is also the watch that restarts
+    // RuleEnforcementService); cancelled only on unlink or sign-out. schedule() uses
+    // ExistingPeriodicWorkPolicy.UPDATE on one unique name, so calling it again never duplicates it.
+    DisposableEffect(linkKnown, linkedDeviceId) {
         val deviceId = linkedDeviceId
-        if (deviceId != null) {
-            SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
+        when {
+            !linkKnown -> Unit
+            deviceId != null -> SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
+            else -> SyncWorker.cancel(context)
         }
-        onDispose { SyncWorker.cancel(context) }
+        onDispose { }
     }
 
     // Sprint 50/65: a pending request opens the consent screen, wherever the person is (onConsentEvent).

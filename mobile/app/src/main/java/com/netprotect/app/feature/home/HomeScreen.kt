@@ -42,6 +42,7 @@ import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.network.toHealthUiError
 import com.netprotect.app.core.network.toUiError
+import com.netprotect.app.core.supervision.SupervisionServices
 import com.netprotect.app.feature.supervised.SupervisedShell
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -136,6 +137,10 @@ fun HomeScreen() {
     }
 
     suspend fun signOut() {
+        // Sprint 73: SupervisedShell no longer stops the protection when it leaves the screen
+        // (closing the app must not switch it off), so signing out stops it here, first. The
+        // session cleared next also keeps any restart (sticky, boot, SyncWorker) from reviving it.
+        SupervisionServices.stopAll(context)
         authRepository.signOut()
         SupervisedRoleCache.clear(context)
         state = HomeState.SignedOut()
@@ -193,6 +198,9 @@ fun HomeScreen() {
     val sessionExpired by authRepository.session.expired.collectAsState()
     LaunchedEffect(sessionExpired) {
         if (sessionExpired && state !is HomeState.SignedOut && state !is HomeState.Loading) {
+            // Sprint 73: leaving the shell used to stop the protection; an ended session still
+            // does, now explicitly, as on sign-out.
+            SupervisionServices.stopAll(context)
             state = HomeState.SignedOut(UiError.SessionExpired.message)
         }
     }

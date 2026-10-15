@@ -20,6 +20,7 @@ import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
+import com.netprotect.app.core.supervision.SupervisionServices
 import java.time.Instant
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
@@ -81,6 +82,20 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val database = NetProtectDatabase.getInstance(applicationContext)
         runCatching {
             PendingRuleEventStore(database).flush(RuleEnforcementClient(baseUrl), accessToken, deviceId)
+        }
+
+        // Sprint 73: the watch. After the heartbeat above — which has already told the tutor the
+        // truth (a dead service reports service_active=false) — try to bring enforcement back if
+        // it died while the link, the session and usage access are all still there. A deliberate
+        // stop never gets here: sign-out and unlink cancel this worker (SupervisionServices.stopAll)
+        // and clear the link or session it checks. From a worker the app is usually in the
+        // background, where Android 12+ only allows a foreground-service start with an exemption —
+        // in practice battery optimization turned off for NetProtect (the "Batería" screen); without
+        // it the start is refused and logged, and the next app open or reboot starts the service.
+        if (EnforcementLiveness.isRecentlyActive(applicationContext) != true) {
+            SupervisionServices.restorableDeviceId(applicationContext)?.let { linked ->
+                SupervisionServices.tryStartEnforcement(applicationContext, linked)
+            }
         }
 
         return Result.success()

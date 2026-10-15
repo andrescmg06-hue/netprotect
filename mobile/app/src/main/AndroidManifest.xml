@@ -68,6 +68,10 @@
          Intent lanza SecurityException. Ver docs/android/capability-matrix.md. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
+    <!-- Sprint 73: la protección se restablece sola al encender el teléfono (BootReceiver), sin
+         esperar a que el supervisado abra la app. Permiso normal, sin diálogo. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -121,6 +125,20 @@
             android:name=".core.screenshare.ScreenShareService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- Sprint 73: reinicia la protección tras reiniciar el teléfono (BOOT_COMPLETED) o
+             actualizar la app (MY_PACKAGE_REPLACED). exported="false": ambos los envía el propio
+             sistema, que puede entregar a un receptor no exportado (la comprobación de exportado no
+             aplica al uid del sistema), y así ninguna otra app puede dispararlo. Ver
+             core/boot/BootReceiver.kt y docs/android/capability-matrix.md (Sprint 73). -->
+        <receiver
+            android:name=".core.boot.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Sprint 20 (detección de manipulación): registro como Device Administrator, NO como
              device owner. El usuario lo concede desde la pantalla del sistema
