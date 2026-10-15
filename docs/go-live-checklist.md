@@ -264,8 +264,10 @@ El contenedor `backup` hace un `pg_dump` al arrancar y cada 24 h en el volumen
 
 2. Copiarlos fuera con regularidad (otro servidor, almacenamiento de objetos…), **cifrados**: tienen
    datos de menores. Junto a ellos, pero aparte, la clave `location_encryption_key.txt` (paso 4).
-3. Probar una restauración al menos una vez, en un entorno que no sea producción (borra y recrea
-   la base):
+3. Probar una restauración al menos una vez, **nunca en el servidor de producción**: `restore.sh`
+   borra y recrea la base del proyecto de Compose donde se ejecuta, y en el servidor real ese es
+   `netprotect-prod`. Hacerlo en otra máquina con su propio checkout y su propio `.env.production`,
+   tras copiar allí el `.dump` (y la clave `location_encryption_key.txt`) al volumen de backups:
 
    ```bash
    docker compose --env-file .env.production -f compose.prod.yaml run --rm --entrypoint /scripts/restore.sh backup /backups/netprotect-<fecha>.dump
