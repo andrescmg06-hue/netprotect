@@ -88,3 +88,24 @@ Borrados: `frontend/src/components/ui/ChartCard.tsx`, `ChartCard.module.css`, su
 ### Decidido NO borrar
 
 `DonutChart` y `MetricCard` (vitrina del sistema de diseño), según las decisiones del sprint.
+
+## T3 — Repo
+
+```
+git ls-files | xargs grep -nIE "scripts/check|check\.(sh|ps1)"
+  -> 0 referencias (Makefile, README, .github, .claude, docs); las únicas coincidencias fueron
+     "shouldRecheck" en Kotlin (falso positivo)
+git ls-files | xargs grep -nIE "android-redesign/opencode"
+  -> solo docs/android-redesign/sprints/S40-linea-base-y-decisiones.md (líneas 33-34 y 115)
+diff docs/android-redesign/opencode/AGENTS.md AGENTS.md ; diff .../opencode.json opencode.json
+  -> ambos difieren: la copia de la raíz es la vigente (añade "default_agent": "implementer" y el permiso de adb);
+     la carpeta es una versión anterior de lo que S40 pidió instalar en la raíz
+```
+
+Borrados: `scripts/check.sh`, `scripts/check.ps1`, `docs/android-redesign/opencode/` (AGENTS.md, opencode.json).
+Se quedan `scripts/verify_sprint1.py` y `scripts/verify_turn.sh` (fuera del alcance).
+
+### Decidido NO tocar
+
+`docs/android-redesign/sprints/S40-linea-base-y-decisiones.md` cita la carpeta borrada, pero describe la
+instalación hecha en su momento (historia del sprint); no se reescribe. Los archivos vigentes están en la raíz.
