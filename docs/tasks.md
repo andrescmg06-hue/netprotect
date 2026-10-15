@@ -9,7 +9,8 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | B-02 | P2 | done | Reconexión del canal en tiempo real en Android | `docs/sprint-29.md` |
 | B-03 | P3 | todo | Mensaje claro cuando la misma cuenta es tutor y supervisado. **Hallazgo S43:** `POST /users/me/roles` concede cualquier rol sin condiciones (`roles.py`), así que no hay error que mostrar en la app; hace falta un cambio de backend (p. ej. rechazar el canje en `pairing.py` cuando el tutor del código es la misma cuenta) | Sprints 28–29, `docs/sprint-43.md` |
 | B-04 | P1 | done | Latidos con 500: alertas duplicadas por reportes simultáneos (`MultipleResultsFound`) | `docs/sprint-41.md` |
-| B-05 | P2 | todo | Panel web: el sondeo de alertas no renueva el token caducado (401 cada minuto) | `docs/sprint-41-evidence.md` |
+| B-05 | P2 | done | Panel web: el sondeo de alertas no renueva el token caducado (401 cada minuto). **Cerrado en S70:** la causa era que `AuthContext` nunca renovaba el access token; ahora se renueva antes de caducar | `docs/sprint-41-evidence.md` |
+| B-13 | P3 | todo | Backend: `/auth/refresh` lee y rota la sesión sin bloquear la fila (`auth.py:126-147`, sin `with_for_update`), así que dos canjes simultáneos del mismo refresh token pueden salir bien los dos y dejar dos sesiones válidas: el «un solo uso» no es atómico. El panel ya evita el doble canje (S70); falta cerrarlo en el servidor | `docs/sprint-70-evidence.md` (revisión de seguridad) |
 | B-06 | P3 | todo | Android: con letra grande, los botones de texto se aplastan en vertical. S51 corrigió la píldora de estado, la barra inferior, la duración en Estadísticas y «Dispositivo vinculado» (`FlowRow`, `615e84d`/`5042d4a`); el resto de pantallas se revisa en el S67 sobre las pantallas del rediseño v2 | `docs/sprint-41.md`, `docs/sprint-51-evidence.md` |
 | B-07 | P2 | done | Android: «Cambiar de modo» (`HomeScreen.kt:127-130`) solo borra `RolePreference`; al desmontarse `SupervisedShell` se detienen bloqueo, ubicación, realtime, sincronización y latido, sin llamada al backend, sin auditoría y sin aviso al tutor (lo ve `OFFLINE` a los 300 s, sin alerta). Preexistente. **Parcial (S61):** «Cambiar de modo» desapareció con el modo tutor (`aa63cf1`, `0217236`). Queda «Cerrar sesión», que tiene el mismo efecto: confirmación en S63 y aviso al tutor en B-11 | `docs/sprint-51-evidence.md` (T11, MEDIA a) **Cerrado en S61 (PR #19):** la app es solo del supervisado y no hay «Cambiar de modo». |
 | B-08 | P2 | done | Android: la desvinculación hecha por el tutor no se detecta mientras el dispositivo sigue vinculado. El latido devuelve 200 con estado `UNLINKED` y el cliente lo ignora (`DeviceClient.kt:87`); el latido está en `SupervisedShell.kt:241-256` y solo `checkLink()` (`:207-231`), al arrancar el shell, lo ve. Mientras tanto el teléfono sigue enviando ubicación, apps y latido, y el backend los acepta (`deps.py:92-94`). Preexistente. Sprint 64 (B1 del plan v2) | `docs/sprint-51-evidence.md` (T11, MEDIA b) **Cerrado en S64 (PR #22):** el teléfono consulta `/devices/me` al volver y cada 5 min y pasa a «Desvinculado» (B1); un fallo de red nunca cuenta como desvinculación. |
@@ -25,6 +26,8 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | H-02 | done | Persona aceptando el diálogo de captura (vista remota) — el dueño aceptó y vio el vídeo en el panel (12/10/2026; auditoría del backend y confirmación verbal, sin captura) | `docs/sprint-23-evidence.md`, `docs/sprint-51-evidence.md` (T10) |
 | H-03 | blocked | Despliegue con dominio y cuenta cloud reales | Sprint 26 |
 | H-04 | blocked | Permisos de administrador en GitHub | `docs/manuals/analisis-riesgos.md` |
+| H-05 | blocked | Revisión visual del panel rediseñado con una sesión real de Google (T5 de S54): las 16 vistas a 1440 y 390 px | `docs/sprint-54.md`, `docs/sprint-60.md` |
+| H-06 | blocked | Login rediseñado en un teléfono o a 390 px reales; Tab sobre la fila seleccionada de Alertas; modo de alto contraste de Windows; favicon en la pestaña | `docs/sprint-60-evidence.md` §5 |
 
 ## Deuda técnica
 | Id | Prioridad | Descripción |
@@ -35,6 +38,7 @@ Prioridad: P1 (bloquea) · P2 (importante) · P3 (cuando haya tiempo)
 | D-04 | P3 | Sin *type checking* en Python (no hay mypy) |
 | D-06 | P3 | `TutorScreen.kt` (963 líneas) y `apiClient.ts` (889) concentran demasiado |
 | D-07 | P3 | Sin medición de cobertura |
+| D-08 | P3 | `ruff format --check` marca 60 de 119 archivos del backend (preexistente, incluidos `auth.py` y `google_auth.py`); la CI solo corre `ruff check`, así que no falla |
 
 ## Tareas
 | Id | Prioridad | Estado | Descripción |
@@ -80,3 +84,23 @@ este archivo (CRITICAL→P1, HIGH→P2, resto→P3). Los B-01/B-02 de arriba se 
 | L-04 | P3 | todo | 11 avisos UseKtx (`SharedPreferences.edit`, `String.toUri`) y 13 de dependencias/AGP desactualizados (lint); actualizar aparte, no durante el rediseño |
 | L-05 | P2 | todo | `backend/.venv` desactualizado (falta `prometheus_client`): `pytest -m "not integration"` no se puede ejecutar local (21 errores de colección) |
 | L-06 | P2 | todo | Solo `RuleEvaluator` tiene tests en Android (35); el rediseño de UI no tiene red de seguridad hasta D-13 (S42) |
+
+## Rediseño web (S52–S60)
+Detalle: `docs/redesign/PLAN_SPRINTS.md`, `docs/sprint-60.md` y `docs/sprint-60-evidence.md`.
+
+| Id | Prioridad | Estado | Descripción — sprint |
+|---|---|---|---|
+| W-01 | P2 | todo | Barrido de autorización del backend de geocercas, eventos y aplicaciones (`require_tutor_of_device`): el `security-reviewer` de S57 solo revisó el frontend — S60 |
+| W-02 | P3 | todo | Spinner con movimiento reducido: hoy la regla global lo deja estático y el `label` es el único indicador (decisión de diseño) — S60 |
+| W-03 | P3 | todo | `DeviceCategoriesPanel.tsx:303`: la lista principal usa un `<p>` en lugar de `EmptyState` como el resto de vistas (si el diseñador lo pide; las otras 4 notas son compactas a propósito) — S60 T6 |
+| W-04 | P3 | todo | `public/brand/card-twilight.jpg` (147 KB) sin uso: usarlo o borrarlo (decisión del dueño) — S60 T5 |
+| W-05 | P3 | todo | Recapturar las 18 capturas de S59 (anteriores a `eb2db05`); faltan Apps y Silenciadas y los 390 px de casi todas las vistas — S59 |
+| W-06 | P3 | todo | `docs/redesign/CONTINUAR.md` §5 «Cómo empezar» aún habla de arrancar el S52 — S60 T1 |
+| W-07 | P3 | todo | Login: la referencia dibuja un wordmark serif propio y escribe «NetProject»; se usa el logo oficial (decisión D5 con el diseñador) — S60 T9 |
+| W-08 | P3 | todo | Login en móvil: la tarjeta tapa la cara del niño; ajustar `object-position` si se quiere — S60 T9 |
+| W-09 | P3 | todo | Pasada de contraste automática (axe) sobre las 16 vistas a 1440 y 390 px; los puntos de estado de 8 px (`#16b364` 2,74:1, `#f79009` 2,35:1) no se han medido en pantalla — S60 T2 |
+| W-10 | P3 | todo | Formulario «Nueva regla» (`AppRulesPanel.tsx`): sin `noValidate` (el de geocercas sí). Tras el bloqueo nativo del navegador sigue visible un error viejo («El nombre del paquete es obligatorio») y los mensajes de minutos de `RuleTypeFields.tsx` son inalcanzables por `min={1}` — S60 T10 |
+| W-11 | P3 | todo | Android: la caché local (`cached_app_rules`, `cached_device_policies`) conserva filas de dispositivos antiguos que ya no son el actual (`f911d720…`, `257382e5…`); no molestan, pero es residuo que habría que purgar al vincular de nuevo — S60 T10 |
+| W-12 | P3 | todo | Probar desde la pantalla Alertas y Silenciadas (marcar leída, silenciar, ver silenciadas y reactivar) y el filtro `ALERT_READ` de Auditoría: el backend está cubierto por las acciones del dueño en S60, la vista no; y reejecutar el e2e completo contra alertas sin leer reales tras corregir el regex — S60 T10 |
+| W-13 | P3 | todo | El emulador no reporta ubicación (la app usa solo `NETWORK_PROVIDER` y el emulador solo tiene GPS): probar Ubicación y geocercas con datos reales de un teléfono, y límite diario y horario en vivo — S60 T10 |
+| W-14 | P2 | todo | Volver a `npm audit --audit-level=high` sin `--omit=dev` en `.github/workflows/ci.yml` (job `frontend`) cuando exista un `braces` parcheado. Desde el 03/10/2026 GHSA-vfj7-8cjw-p6xm (`braces *`, sin parche) pone en rojo ese paso por la cadena de lint (`eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`), que no entra en el build; producción da 0 vulnerabilidades. Revisar con `npm audit` cada cierto tiempo — S60 |

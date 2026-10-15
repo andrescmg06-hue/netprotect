@@ -1,7 +1,10 @@
-import { Info, OctagonAlert, Siren, TriangleAlert, type LucideIcon } from "lucide-react";
+import { CircleAlert, Info, OctagonAlert, TriangleAlert, type LucideIcon } from "lucide-react";
 
 import type { Tone } from "@/components/ui";
 import type { Alert, AlertLevel } from "@/lib/apiClient";
+
+/** Severity order, lowest first: the order the level strip and any filter list them in. */
+export const ALERT_LEVELS: AlertLevel[] = ["INFO", "WARNING", "HIGH", "CRITICAL"];
 
 export const ALERT_LEVEL_LABEL: Record<AlertLevel, string> = {
   INFO: "Info",
@@ -10,18 +13,24 @@ export const ALERT_LEVEL_LABEL: Record<AlertLevel, string> = {
   CRITICAL: "Crítica",
 };
 
+/** Sprint 58, decision D2 (docs/redesign/fase-0-informe.md §9): red is reserved for CRÍTICA. ALTA
+ * takes the warning tone (amber wash), ADVERTENCIA stays neutral (its amber lives only in the
+ * icon, so it reads as "watch this" without competing with ALTA) and INFO is informational. The
+ * tone never carries the meaning alone: every place that shows a level also shows its label. */
 export const ALERT_LEVEL_TONE: Record<AlertLevel, Tone> = {
   INFO: "info",
-  WARNING: "warning",
-  HIGH: "danger",
-  CRITICAL: "purple",
+  WARNING: "neutral",
+  HIGH: "warning",
+  CRITICAL: "danger",
 };
 
+/** Shapes escalate with severity (circle → triangle → octagon), so the level is legible even
+ * without colour. No siren: the inbox should call for attention, not alarm. */
 export const ALERT_LEVEL_ICON: Record<AlertLevel, LucideIcon> = {
   INFO: Info,
-  WARNING: TriangleAlert,
-  HIGH: OctagonAlert,
-  CRITICAL: Siren,
+  WARNING: CircleAlert,
+  HIGH: TriangleAlert,
+  CRITICAL: OctagonAlert,
 };
 
 export function alertLabel(alert: Alert): string {

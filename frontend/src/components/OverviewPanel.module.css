@@ -1,101 +1,475 @@
-.cardHead {
-  padding: var(--space-5) var(--space-6) 0;
-}
-
-.list {
+/* Sprint 55: Inicio as an editorial page, not a grid of cards. One ledger row of figures under the
+   band, then a main column (devices, activity) and an aside (shortcuts, most-used apps) split by a
+   hairline. The layout answers to its own width (container queries), not to the window's. */
+.overview {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-10);
+  min-width: 0;
 }
 
-.row {
+/* ── Figures: one row, divided by hairlines, never boxes ── */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 var(--space-6);
+  border-left: 1px solid var(--color-border);
+}
+
+.figure:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.figureLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The figure is the <dd> after its <dt> (read "label: value") but shown first. */
+.figureValue {
+  order: -1;
+  margin: 0;
+  color: var(--color-navy);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.figureAlert {
+  color: var(--color-danger-text);
+}
+
+.figureOf {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.figureNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.noteOk {
+  color: var(--color-success-text);
+}
+
+.noteAlert {
+  color: var(--color-danger-text);
+}
+
+.noteQuiet {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+}
+
+.pending {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+}
+
+.unit {
+  color: var(--color-text-muted);
+  font-size: 0.6em;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* ── Columns ── */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: var(--space-10) var(--space-8);
+  align-items: start;
+}
+
+.main,
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-width: 0;
+}
+
+.aside {
+  padding-left: var(--space-8);
+  border-left: 1px solid var(--color-border);
+}
+
+.section {
+  min-width: 0;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Lists of rows start right at the rule, so the rule is their first line. */
+.sectionHeadFlush {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.sectionNote {
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Quiet text link: ink with a stone underline; Signal Blue only under the pointer. */
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 0.25em;
+  transition:
+    color var(--duration-fast) var(--ease),
+    text-decoration-color var(--duration-fast) var(--ease);
+}
+
+.textLink:hover {
+  color: var(--color-primary-text);
+  text-decoration-color: currentColor;
+}
+
+.textLinkAlert,
+.textLinkAlert:hover {
+  color: var(--color-danger-text);
+  text-decoration-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+}
+
+.arrow {
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+.textLink:hover .arrow {
+  transform: translateX(2px);
+}
+
+/* ── Featured device ── */
+.featured {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-5);
+}
+
+/* A specimen plate: white paper, a stone line, the outline of a phone. No photo on purpose. */
+.plate {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-navy);
+}
+
+.featuredBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.featuredHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.featuredTitle {
+  min-width: 0;
+}
+
+.featuredName {
+  margin: 0;
+  font-size: var(--text-lg);
+  overflow-wrap: anywhere;
+}
+
+.featuredMeta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.attention {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 var(--space-4);
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.bigFigure {
+  color: var(--color-navy);
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.featuredLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+/* ── Other devices: quiet rows ── */
+.others {
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
   border-top: 1px solid var(--color-border);
 }
 
-.rowButton {
+.other {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The hover wash bleeds a little past the text, so the names stay on the column's edge. */
+.otherButton {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: var(--space-4);
   min-width: 0;
-  height: 68px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
+  margin: 0 calc(-1 * var(--space-2));
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-sm);
   text-align: left;
-  cursor: pointer;
   transition: background var(--duration-fast) var(--ease);
 }
 
-.rowButton:hover {
+.otherButton:hover {
   background: var(--color-primary-softer);
 }
 
-.rowIcon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: var(--color-primary-soft);
-  color: var(--color-primary-text);
-}
-
-.rowText {
+.otherText {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
   min-width: 0;
-  gap: 2px;
 }
 
-.rowName {
-  overflow: hidden;
+.otherName {
   color: var(--color-navy);
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
-.rowMeta {
-  overflow: hidden;
+.otherMeta {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .chevron {
   flex-shrink: 0;
   color: var(--color-text-subtle);
+  transition: transform var(--duration-fast) var(--ease);
 }
 
-.alertButton {
-  flex-shrink: 0;
+.otherButton:hover .chevron {
+  transform: translateX(2px);
 }
 
-.quickActions {
+/* ── Shortcuts ── */
+.shortcuts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shortcuts li {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shortcut {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  width: calc(100% + var(--space-4));
+  margin: 0 calc(-1 * var(--space-2));
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.shortcut:hover {
+  background: var(--color-primary-softer);
+}
+
+.shortcutIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.shortcutLabel {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.shortcutCount {
+  color: var(--color-danger-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shortcutArrow {
+  flex-shrink: 0;
+  color: var(--color-text-subtle);
+  transition:
+    transform var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.shortcut:hover .shortcutArrow {
+  color: var(--color-primary-text);
+  transform: translateX(2px);
+}
+
+/* ── Most used apps ── */
+.apps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: var(--space-3);
 }
 
-@media (max-width: 640px) {
-  .rowMeta {
-    white-space: normal;
+.appName {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appTime {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Narrower containers: the rail layout, then a phone ── */
+@container (max-width: 56rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .rowButton {
-    height: auto;
-    padding: var(--space-3) 0;
+  /* Below the main column the aside opens into two columns of its own. */
+  .aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@container (max-width: 40rem) {
+  .overview,
+  .main {
+    gap: var(--space-8);
+  }
+
+  .columns {
+    row-gap: var(--space-8);
+  }
+
+  .aside {
+    display: flex;
+    gap: var(--space-8);
+  }
+
+  /* A 2 × 2 ledger: the hairlines cross in the middle, no row gap to break them. */
+  .figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: var(--space-5);
+  }
+
+  .figure {
+    padding: 0 0 0 var(--space-4);
+  }
+
+  .figure:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .figure:nth-child(-n + 2) {
+    padding-bottom: var(--space-5);
+  }
+
+  .figure:nth-child(n + 3) {
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .featured {
+    column-gap: var(--space-4);
+  }
+
+  .plate {
+    width: 48px;
+    height: 48px;
   }
 }

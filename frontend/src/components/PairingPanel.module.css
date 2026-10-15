@@ -1,114 +1,254 @@
+/* Sprint 55: the code in the one open panel (it is what the tutor acts on), the guide beside it on
+   the page. Container queries: the layout follows its own width, not the window's. */
+.layout {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--space-10);
   align-items: start;
 }
 
-.idle {
+.codePanel {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-3);
+  min-width: 0;
 }
 
-.hint {
+/* Aligned with the panel's inner top edge, so both eyebrows sit on one line. */
+.guide {
+  min-width: 0;
+  padding-top: var(--space-5);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.title {
   margin: 0;
+  font-size: var(--text-2xl);
+}
+
+.lead {
+  max-width: 52ch;
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+}
+
+/* ── The code ── */
+.codeBlock {
+  container-type: inline-size;
+  align-self: stretch;
+  margin-top: var(--space-8);
+}
+
+.code {
+  display: flex;
+  gap: var(--space-2);
+  max-width: 28rem;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 4rem;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  font-size: clamp(1.5rem, 8cqi, 2.5rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Three and three, the way a code is read aloud. */
+.cell:nth-child(3) {
+  margin-right: var(--space-3);
+}
+
+.codeLive .cell {
+  border-color: var(--color-border-strong);
+  color: var(--color-navy);
+}
+
+.countdown {
+  max-width: 28rem;
+  margin-top: var(--space-4);
+}
+
+.track {
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+}
+
+/* transform, not width: animating width thrashes layout every tick. The screen's one blue. */
+.fill {
+  width: 100%;
+  height: 100%;
+  background: var(--color-primary);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hurry .fill {
+  background: var(--color-warning);
+}
+
+.hurry .timer {
+  color: var(--color-warning-text);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.status {
+  margin: var(--space-5) 0 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
 .error {
-  margin: 0;
+  margin: var(--space-5) 0 0;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-danger);
   color: var(--color-danger-text);
   font-size: var(--text-sm);
-}
-
-.active {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6) 0 var(--space-2);
-  text-align: center;
-}
-
-.digits {
-  color: var(--color-navy);
-  font-size: 2.6rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.14em;
-}
-
-.progressTrack {
-  width: 100%;
-  max-width: 260px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--color-neutral-soft);
-  overflow: hidden;
-}
-
-.progressFill {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  transform-origin: left center;
-  /* transform, not width: animating width thrashes layout every tick. */
-  transition: transform 1s linear;
+  font-weight: 600;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin-top: var(--space-6);
 }
 
+/* ── Steps: numbered, joined by one thin line ── */
 .steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  margin: 0;
+  --step-mark: 2rem;
+  margin: var(--space-8) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .step {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--step-mark) minmax(0, 1fr);
+  column-gap: var(--space-4);
+  padding-bottom: var(--space-6);
 }
 
-.step strong {
-  display: block;
-  color: var(--color-navy);
-  font-size: var(--text-base);
+.step:last-child {
+  padding-bottom: 0;
 }
 
-.step p {
-  margin: 2px 0 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--step-mark) + var(--space-2));
+  bottom: var(--space-2);
+  left: calc(var(--step-mark) / 2 - 0.5px);
+  width: 1px;
+  background: var(--color-border);
 }
 
 .stepNumber {
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-text);
-  font-weight: 700;
+  width: var(--step-mark);
+  height: var(--step-mark);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-navy);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 900px) {
+/* While a code is live, the step the tutor is on is filled in ink. */
+.stepCurrent .stepNumber {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: var(--color-surface);
+}
+
+.stepText {
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.stepTitle {
+  margin: 0;
+  color: var(--color-navy);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.stepDetail {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@container (max-width: 50rem) {
   .columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+
+  .guide {
+    padding-top: 0;
+  }
+}
+
+@container (max-width: 30rem) {
+  .title {
+    font-size: var(--text-xl);
+  }
+
+  .codeBlock {
+    margin-top: var(--space-6);
+  }
+
+  .cell:nth-child(3) {
+    margin-right: var(--space-2);
+  }
+
+  .actions > * {
+    flex: 1 1 auto;
   }
 }

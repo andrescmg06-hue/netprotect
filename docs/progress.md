@@ -1,10 +1,43 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-14 · Sprint actual: 67 (cierre del rediseño v2 del supervisado, a falta de PR y CI)_
+_Actualizado: 2026-10-14 · Android: S67 y backend B-09/B-12 en `main` · Web: rediseño S52–S60 integrado con `main` y B-05 en la rama `integracion-web-redesign` (sin push)_
 
 ## En curso
+- **Integración del rediseño web con `main`**, rama `integracion-web-redesign` (worktree `C:/Users/andre/np-webint`, desde
+  `origin/web-redesign`): merge de `origin/main` (B-09, B-12, S61–S67) y de `origin/sprint-70-b05-sondeo-alertas` (B-05,
+  renovación programada del access token), para que el PR #14 llegue a `main` sin perder comportamiento. Sin push.
 - **S67 (casos reales y cierre del rediseño v2)**, rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Hecho T1–T6: bienvenida de 2 pasos, aviso de batería,
   «Se desactivó un permiso», pasada de letra 2.0, prueba G-19, revisión de seguridad global (0 ALTA; 2 BAJA arregladas). Pendiente: PR de S67 y los dos últimos pasos de abajo.
   Detalle, commits y evidencia: `docs/sprint-67.md` y `docs/sprint-67-evidence.md`.
+- **S60 (rediseño del panel web, cierre)**, rama `sprint-60-rediseno-web-cierre`, creada desde `fix/s54-auth-log-sin-pii`
+  (`e9e4f69`). Cadena de ramas real: `sprint-52…` → `sprint-53…` → `sprint-54…` → `fix/s54-auth-log-sin-pii` → `sprint-60…`.
+  Trabajo hecho y verificado en local (T1–T9; `make test` 295 passed, `ruff`, `lint`, `tsc`, `next build` y e2e 2 passed,
+  con control negativo del test del foco; `security-reviewer` 0 ALTA, 0 MEDIA, 1 BAJA documental corregida) y publicado en
+  el PR #16 (`sprint-60-rediseno-web-cierre` → `sprint-54-rediseno-web-marco`, que sustituye al #15, cerrado). **CI: los 8 jobs
+  en verde** sobre `3e00b9f` (run 37229445424), tras cambiar `npm audit` a `--omit=dev` por GHSA-vfj7-8cjw-p6xm (W-14).
+  El PR #16 se fusionó el 12/10/2026 y la cadena S52–S60 está en `web-redesign` (PR #14 → `main`, en borrador). **Falta:**
+  lo que solo hace una persona: revisión visual con sesión real de
+  Google (T5 de S54), login a 390 px reales y modo de alto contraste de Windows. Detalle: `docs/sprint-60.md` y
+  `docs/sprint-60-evidence.md`.
+- **S54–S59 (rediseño del panel web, marco y las 16 vistas)**: código hecho por Cristian el 04/10/2026 (`35af89d`,
+  `c76ceea`, `bdfa6e8`, `8be5abd`, `7b6b117`, `7ec38c7`/`ccde5cf`, y `eb2db05` con las correcciones y el cambio de serif a
+  Newsreader). Documentación al día desde el S60: `docs/sprint-54.md` … `docs/sprint-59.md` y sus `-evidence.md`; la
+  evidencia visual está concentrada en `docs/redesign/s59/LEEME.md` (e2e «1 passed», 18 capturas en el repo, tomadas antes
+  de `eb2db05`). Cerrado en el S60: revisión de seguridad de S57 y S59 (1 BAJA aceptada, el enlace a Google Maps) y
+  `lint`/`tsc`/build/e2e con salida real. **Pendiente del dueño**: revisión visual con sesión real de Google (T5 del
+  S54), Vista remota con un teléfono real y recaptura de las 18 capturas, que son anteriores a `eb2db05`.
+- **S53 (rediseño del panel web, base visual)**, rama `sprint-53-rediseno-web-base-visual` (sale de la del S52). Hecho:
+  línea base de 34 capturas, tokens nuevos, serif, primitivas con las mismas props, fotos, `DESIGN.md` reescrito y
+  galería; lint, tipos y build en verde. Detalle: `docs/sprint-53.md` y `docs/sprint-53-evidence.md`. Pendiente:
+  `/cerrar-sprint 53` (lo lanza el dueño), D1 (serif, hoy Newsreader, abierta para el diseñador) y D5 (logo).
+- **S52 (rediseño del panel web, Fase 0, sin código)**, rama `sprint-52-rediseno-web-fase-0`. Informe
+  `docs/redesign/fase-0-informe.md` **aprobado por el dueño el 04/10/2026**; evidencia en `docs/sprint-52-evidence.md`.
+  Pendiente: T8 (capturas base, necesitan sesión de tutor), tipografía serif y logo oficial (decisiones D1 y D5 del
+  informe) y `/cerrar-sprint 52`. Siguiente: S53 (base visual: tokens, serif, primitivas, `DESIGN.md`).
+- **S51 (endurecimiento y cierre del rediseño Android)**: cerrado **reducido** por decisión del dueño (12/10/2026) e
+  integrado en `main` (PR #17 → `android-redesign`, PR #18 → `main`, CI 8/8 en verde). Hecho: T1–T9, la parte de T10
+  hecha en el Galaxy (build `minified` con R8, vista remota real H-02, letra grande en «Dispositivo vinculado») y la
+  revisión de seguridad (0 ALTA, 2 MEDIA, 5 BAJA). Pendiente: TalkBack y fuente grande en el resto de pantallas (pasan
+  al S67). Detalle: `docs/sprint-51.md`.
 
 ## Siguiente paso
 1. **PR `sprint-67-casos-reales` → `android-redesign`** con los 8 jobs de CI en verde.
@@ -15,6 +48,9 @@ _Actualizado: 2026-10-14 · Sprint actual: 67 (cierre del rediseño v2 del super
    (`docs/android-redesign/supervisado-v2/05_PRUEBA_USUARIOS.md`).
 4. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio, hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real)
    y firma de release; la release real de producción no se ha instalado.
+5. **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
+   `docs/redesign/CONTINUAR.md`. La cadena completa está en el PR #14 (`web-redesign` → `main`, en borrador); falta la
+   revisión humana de arriba y el merge, que decide el dueño.
 
 **Para retomar: `docs/android-redesign/CONTINUAR.md`.**
 
@@ -27,6 +63,15 @@ _Actualizado: 2026-10-14 · Sprint actual: 67 (cierre del rediseño v2 del super
 - Sprint 63 (PR #21): Acceso, Vincular y «Más ajustes» con cierre de sesión confirmado — `docs/sprint-63.md`
 - Sprint 62 (PR #20): sistema visual v2 — `docs/sprint-62.md`
 - Sprint 61 (PR #19): la app es solo del supervisado — `docs/sprint-61.md`
+- Sprint 60 (en local, 04/10/2026): accesibilidad (contraste AA y anillo de foco que ya no tapa la sombra del botón),
+  favicon completo, logos por el optimizador de imágenes, login con foto a pantalla completa y panel de cristal, e2e
+  ampliado (foco, 16 secciones, aviso de consentimiento en 390 px) y arreglo del log de rechazo de token de Google que
+  copiaba texto del token — `docs/sprint-60.md` (+ `docs/sprint-60-evidence.md`)
+- Sprints 54–59 (código, 04/10/2026): marco (login, sidebar navy, header, banda) y recomposición editorial de las 16
+  vistas del panel web, con solo datos reales; serif Newsreader; e2e en verde sobre el conjunto —
+  `docs/sprint-54.md` … `docs/sprint-59.md`
+- Sprint 53: base visual del rediseño web (tokens, serif, primitivas, `DESIGN.md`, galería) —
+  `docs/sprint-53.md` (+ `docs/sprint-53-evidence.md`)
 - Sprints 40–51 del rediseño Android: fusionados en `main` (PR #18)
 - Sprint 51 (fusionado en `main` con el PR #18): bug «todas las apps Desinstalada» (`optString` y JSON null)
   corregido; selecciones del tutor sobreviven al giro (D-02 revisada); textos al 200 %; `lintDebug` en CI; build

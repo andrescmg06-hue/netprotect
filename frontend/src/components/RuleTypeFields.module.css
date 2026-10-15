@@ -1,11 +1,130 @@
+/* Sprint 56: the rule type is a list of rows, not a dropdown. Each row carries the type's colour
+   as a small square marker (the same tone the rule's badge uses), so the choice already reads in
+   the colour the rule will have once saved. */
+.types {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend + .type {
+  border-top: 1px solid var(--color-border);
+}
+
+.legend {
+  float: left;
+  width: 100%;
+  padding: 0 0 var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.type {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.type:hover {
+  background: var(--color-primary-softer);
+}
+
+.typeSelected {
+  background: var(--color-surface);
+}
+
+.typeSelected:hover {
+  background: var(--color-surface);
+}
+
+/* The native radio stays in the accessibility tree and keyboard order; the row is its label. */
+.radio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.type:has(.radio:focus-visible) {
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.marker {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.danger {
+  background: var(--color-danger);
+}
+
+.success {
+  background: var(--color-success);
+}
+
+.warning {
+  background: var(--color-warning);
+}
+
+.purple {
+  background: var(--color-purple);
+}
+
+.info {
+  background: var(--color-primary);
+}
+
+.neutral {
+  background: var(--color-border-strong);
+}
+
+.typeText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.typeLabel {
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.typeMeaning {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.typeCheck {
+  display: grid;
+  place-items: center;
+  color: var(--color-navy);
+}
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .timeRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
-}
-
-@media (max-width: 480px) {
-  .timeRow {
-    grid-template-columns: 1fr;
-  }
 }
