@@ -43,11 +43,11 @@ un diseño anterior montados, todas las dependencias en uso. Sobra:
 
 ## Tareas
 
-- [ ] T1 — Android: quitar iconos, drawables y símbolos sin uso; comentario y README. Delegado (writer).
-- [ ] T2 — Web: quitar `ChartCard` y `card-twilight.jpg` (cierra W-04). Delegado (mismo writer).
-- [ ] T3 — Repo: quitar `scripts/check.*` y `docs/android-redesign/opencode/`. Delegado (mismo writer).
-- [ ] T4 — Diseño vigente en un solo sitio: avisos de histórico en los kits, `CONTINUAR.md` web al día
-  (W-06), README de `android-redesign`, y la regla en `.claude/rules/`. Delegado (mismo writer).
+- [x] T1 — Android: quitar iconos, drawables y símbolos sin uso; comentario y README. Delegado (writer). Commit `77764d1`.
+- [x] T2 — Web: quitar `ChartCard` y `card-twilight.jpg` (cierra W-04). Delegado (mismo writer). Commit `cbcbee8`.
+- [x] T3 — Repo: quitar `scripts/check.*` y `docs/android-redesign/opencode/`. Delegado (mismo writer). Commit `f31e8fd`.
+- [x] T4 — Diseño vigente en un solo sitio: avisos de histórico en los kits, `CONTINUAR.md` web al día
+  (W-06), README de `android-redesign`, y la regla en `.claude/rules/`. Delegado (mismo writer). Commit `13a7a99`.
 - [ ] T5 — Verificación (`verifier`: frontend lint+build, Android test+assembleDebug+lintDebug),
   `security-reviewer` (toca `core/auth/WelcomeStore.kt`), `progress.md` y PR. Inline.
 
