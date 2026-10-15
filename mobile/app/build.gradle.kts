@@ -25,16 +25,39 @@ val localProperties = Properties().apply {
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-val debugApiBaseUrl = providers.environmentVariable("NETPROTECT_API_BASE_URL").orNull
-    ?: localProperties.getProperty("NETPROTECT_API_BASE_URL")
-    ?: "http://10.0.2.2:8000"
+// Environment first (CI), then local.properties (a developer machine); blank counts as unset.
+fun buildSetting(name: String): String? =
+    (providers.environmentVariable(name).orNull ?: localProperties.getProperty(name))
+        ?.takeIf { it.isNotBlank() }
 
-val releaseApiBaseUrl = providers.environmentVariable("NETPROTECT_RELEASE_API_BASE_URL").orNull
-    ?: "https://api.netprotect.invalid"
+val debugApiBaseUrl = buildSetting("NETPROTECT_API_BASE_URL") ?: "http://10.0.2.2:8000"
 
-val googleWebClientId = providers.environmentVariable("NETPROTECT_GOOGLE_WEB_CLIENT_ID").orNull
-    ?: localProperties.getProperty("NETPROTECT_GOOGLE_WEB_CLIENT_ID")
-    ?: ""
+// Sprint 71: the `.invalid` fallback only lets Gradle configure the release variant; the
+// taskGraph check at the bottom refuses to package a release that still uses it.
+val releaseApiBaseUrlSetting = buildSetting("NETPROTECT_RELEASE_API_BASE_URL")
+val releaseApiBaseUrl = releaseApiBaseUrlSetting ?: "https://api.netprotect.invalid"
+
+val googleWebClientId = buildSetting("NETPROTECT_GOOGLE_WEB_CLIENT_ID") ?: ""
+
+// Sprint 71: release signing comes only from these four settings, never from a keystore in the
+// repository. All four or none: a partial set is reported by the release check below.
+val releaseSigningSettings = listOf(
+    "NETPROTECT_RELEASE_KEYSTORE_FILE",
+    "NETPROTECT_RELEASE_KEYSTORE_PASSWORD",
+    "NETPROTECT_RELEASE_KEY_ALIAS",
+    "NETPROTECT_RELEASE_KEY_PASSWORD",
+).associateWith { buildSetting(it) }
+val releaseKeystoreFile = releaseSigningSettings["NETPROTECT_RELEASE_KEYSTORE_FILE"]?.let { file(it) }
+val hasReleaseSigning = releaseSigningSettings.values.all { it != null } && releaseKeystoreFile!!.isFile
+
+// Sprint 71: an installed APK only accepts an update with a higher versionCode, so each release
+// must set its own. Unset keeps the previous fixed values, so debug builds don't change.
+val appVersionCode = providers.environmentVariable("NETPROTECT_VERSION_CODE").orNull?.let { raw ->
+    raw.trim().toIntOrNull()?.takeIf { it > 0 }
+        ?: throw GradleException("NETPROTECT_VERSION_CODE must be a positive integer, got '$raw'.")
+} ?: 1
+val appVersionName = providers.environmentVariable("NETPROTECT_VERSION_NAME").orNull
+    ?.takeIf { it.isNotBlank() } ?: "0.1.0-sprint1"
 
 android {
     namespace = "com.netprotect.app"
@@ -44,11 +67,22 @@ android {
         applicationId = "com.netprotect.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-sprint1"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", googleWebClientId.asBuildConfigString())
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseSigningSettings["NETPROTECT_RELEASE_KEYSTORE_PASSWORD"]
+                keyAlias = releaseSigningSettings["NETPROTECT_RELEASE_KEY_ALIAS"]
+                keyPassword = releaseSigningSettings["NETPROTECT_RELEASE_KEY_PASSWORD"]
+            }
+        }
     }
 
     buildTypes {
@@ -60,6 +94,9 @@ android {
             isMinifyEnabled = true
             buildConfigField("String", "API_BASE_URL", releaseApiBaseUrl.asBuildConfigString())
             manifestPlaceholders["usesCleartextTraffic"] = "false"
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -159,5 +196,38 @@ gradle.taskGraph.whenReady {
     val packagesMinified = allTasks.any { it.project == project && it.name in artifactTasks }
     if (System.getenv("CI") != null && packagesMinified) {
         throw GradleException("The 'minified' build type is for local testing only and cannot be packaged in CI.")
+    }
+}
+
+// Sprint 71: a release APK/AAB that points at the `.invalid` placeholder, has no Google client ID
+// or is unsigned would install and then fail for real users, so packaging one fails the build
+// instead. Checked only when a release artifact task is actually scheduled — same reasoning as
+// the 'minified' guard above — so debug, test, lint and 'minified' builds never need these values.
+gradle.taskGraph.whenReady {
+    val releaseArtifactTasks = setOf("assembleRelease", "packageRelease", "bundleRelease", "packageReleaseBundle")
+    if (allTasks.none { it.project == project && it.name in releaseArtifactTasks }) return@whenReady
+
+    val problems = mutableListOf<String>()
+    when {
+        releaseApiBaseUrlSetting == null ->
+            problems += "NETPROTECT_RELEASE_API_BASE_URL is not set (the production API URL)."
+        !releaseApiBaseUrlSetting.startsWith("https://") ->
+            problems += "NETPROTECT_RELEASE_API_BASE_URL must start with https:// (release disables cleartext)."
+        Regex("""\.(invalid|example)\b|\bexample\.(com|net|org)\b""").containsMatchIn(releaseApiBaseUrlSetting) ->
+            problems += "NETPROTECT_RELEASE_API_BASE_URL is still an example domain: $releaseApiBaseUrlSetting"
+    }
+    if (googleWebClientId.isBlank()) {
+        problems += "NETPROTECT_GOOGLE_WEB_CLIENT_ID is not set (the production Google web client ID)."
+    } else if (googleWebClientId.startsWith("tu-id-de-cliente")) {
+        problems += "NETPROTECT_GOOGLE_WEB_CLIENT_ID is still the value from local.properties.example."
+    }
+    releaseSigningSettings.filterValues { it == null }.keys.forEach {
+        problems += "$it is not set (release signing)."
+    }
+    if (releaseKeystoreFile != null && !releaseKeystoreFile.isFile) {
+        problems += "NETPROTECT_RELEASE_KEYSTORE_FILE points to a missing file: ${releaseKeystoreFile.path}"
+    }
+    if (problems.isNotEmpty()) {
+        throw GradleException("Cannot package a release build:\n- " + problems.joinToString("\n- "))
     }
 }
