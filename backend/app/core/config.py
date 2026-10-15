@@ -1,8 +1,44 @@
+import ipaddress
+import re
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Sprint 71: values copied from an example file and never replaced. `REPLACE_WITH` is the marker
+# the .env.*.example files use; the domains are the ones RFC 2606/6761 reserve for documentation
+# and guaranteed-invalid names. Anchored on both sides so a real host that merely contains the
+# word (myexample.com, examples.net) is not mistaken for one.
+_PLACEHOLDER_PATTERN = re.compile(
+    r"replace_with"
+    r"|(?<![a-z0-9-])example\.(?:com|net|org)(?![a-z0-9-])"
+    r"|\.(?:example|invalid)(?![a-z0-9-])",
+    re.IGNORECASE,
+)
+
+
+def _host_of(item: str) -> str:
+    """Host part of either a CORS origin (`https://host:port`) or an ALLOWED_HOSTS entry."""
+    try:
+        parsed = urlsplit(item if "://" in item else f"//{item}")
+        return (parsed.hostname or "").lower()
+    except ValueError:
+        return item.lower()
+
+
+def _is_loopback(host: str) -> bool:
+    # Bare `localhost` only: `*.localhost` names (web.localhost/api.localhost) are how
+    # docs/sprint-26-evidence.md rehearses this very configuration with Caddy's internal CA, and
+    # they can never obtain a public certificate, so they cannot reach real users by mistake.
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 class Settings(BaseSettings):
@@ -162,6 +198,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        # A failed validation would otherwise print `input_value={...}` with part of the loaded
+        # settings, secrets included, into the startup log (Sprint 71).
+        hide_input_in_errors=True,
     )
 
     @property
@@ -189,9 +228,55 @@ class Settings(BaseSettings):
         a misconfiguration that would otherwise only surface once someone actually exploited it.
         Compares against each field's own declared default rather than hardcoding the literal a
         second time here, so this check can't silently drift out of sync with config.py above.
+
+        Sprint 71 extends it to every other way production could boot pointing at nothing real:
+        a blank required value, a placeholder left over from an example file, or a loopback or
+        wildcard CORS origin/allowed host. Every problem is collected and reported together,
+        each naming its environment variable, so one failed start shows the whole list.
         """
         if self.app_env != "production":
             return self
+
+        problems: list[str] = []
+
+        # GOOGLE_WEB_CLIENT_ID: nobody can sign in without it. TURN_URLS: compose.prod.yaml
+        # already declares it mandatory (`:?`); checked here too so a blank value can't slip
+        # through a deploy path that doesn't use that file.
+        for env_var, field_name in (
+            ("GOOGLE_WEB_CLIENT_ID", "google_web_client_id"),
+            ("CORS_ORIGINS", "cors_origins"),
+            ("ALLOWED_HOSTS", "allowed_hosts"),
+            ("TURN_URLS", "turn_urls"),
+        ):
+            if not [item for item in getattr(self, field_name).split(",") if item.strip()]:
+                problems.append(f"{env_var} is empty")
+
+        for field_name, field in type(self).model_fields.items():
+            value = getattr(self, field_name)
+            if field.annotation is str and _PLACEHOLDER_PATTERN.search(value):
+                problems.append(f"{field_name.upper()} still holds an example placeholder")
+
+        for env_var, items in (
+            ("CORS_ORIGINS", self.cors_origins_list),
+            ("ALLOWED_HOSTS", self.allowed_hosts_list),
+        ):
+            for item in items:
+                if "*" in item:
+                    problems.append(f"{env_var} contains a wildcard ({item})")
+                elif _is_loopback(_host_of(item)):
+                    problems.append(f"{env_var} contains a loopback address ({item})")
+
+        # Blank/blank is the supported "push disabled" state (app/services/push.py); one without
+        # the other would disable push just as silently while looking configured.
+        if bool(self.fcm_project_id) != bool(self.fcm_service_account_file):
+            missing = "FCM_SERVICE_ACCOUNT_FILE" if self.fcm_project_id else "FCM_PROJECT_ID"
+            problems.append(f"{missing} is empty but the other FCM setting is set")
+        elif self.fcm_service_account_file:
+            # compose.prod.yaml mounts /dev/null when no key file is provided, which is not a
+            # regular file; a missing or empty key would otherwise only show up as failed pushes.
+            key_file = Path(self.fcm_service_account_file)
+            if not key_file.is_file() or key_file.stat().st_size == 0:
+                problems.append("FCM_SERVICE_ACCOUNT_FILE does not point to a non-empty file")
 
         defaults = type(self).model_fields
         unsafe = [
@@ -207,10 +292,11 @@ class Settings(BaseSettings):
             if getattr(self, field_name) == defaults[field_name].default
         ]
         if unsafe:
-            raise ValueError(
-                "app_env=production but still using development default secrets for: "
-                + ", ".join(unsafe)
+            problems.insert(
+                0, "still using development default secrets for: " + ", ".join(unsafe)
             )
+        if problems:
+            raise ValueError("app_env=production but " + "; ".join(problems))
         return self
 
 
