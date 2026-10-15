@@ -1,18 +1,27 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  ApiError,
   type CurrentUser,
   fetchCurrentUser,
   loginWithGoogle,
   logout as logoutRequest,
   refreshTokens,
+  type TokenPair,
 } from "@/lib/apiClient";
 
 const REFRESH_TOKEN_STORAGE_KEY = "netprotect.refresh_token";
 
+const RENEW_BEFORE_EXPIRY_MS = 60_000;
+const MIN_RENEW_DELAY_MS = 10_000;
+const RETRY_AFTER_FAILURE_MS = 30_000;
+
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
+/** When the current access token expires and when the next renewal attempt is due (epoch ms). */
+type RenewalSchedule = { expiresAt: number; renewAt: number };
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -55,6 +64,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [renewal, setRenewal] = useState<RenewalSchedule | null>(null);
+
+  // Sprint 70 (B-05): the access token lives 15 minutes and used to be obtained once, on mount.
+  // The refresh token rotates and is single-use: redeeming the same one twice can revoke the
+  // whole session family, so every renewal goes through `renew()`, which never runs two at once.
+  // The refs hold the latest refresh token and the in-flight renewal; `generation` is bumped each
+  // time the local session ends, so a renewal that resolves afterwards cannot reopen it.
+  const refreshTokenRef = useRef<string | null>(null);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const generationRef = useRef(0);
+
+  const adoptTokens = useCallback((tokens: TokenPair) => {
+    refreshTokenRef.current = tokens.refresh_token;
+    storeRefreshToken(tokens.refresh_token);
+    setAccessToken(tokens.access_token);
+    const now = Date.now();
+    const lifetime = tokens.expires_in * 1000;
+    setRenewal({
+      expiresAt: now + lifetime,
+      renewAt: now + Math.max(lifetime - RENEW_BEFORE_EXPIRY_MS, MIN_RENEW_DELAY_MS),
+    });
+  }, []);
+
+  const endLocalSession = useCallback(() => {
+    generationRef.current += 1;
+    inFlightRef.current = null;
+    refreshTokenRef.current = null;
+    storeRefreshToken(null);
+    setRenewal(null);
+    setAccessToken(null);
+    setUser(null);
+    setStatus("unauthenticated");
+  }, []);
+
+  const renew = useCallback(() => {
+    const refreshToken = refreshTokenRef.current;
+    if (inFlightRef.current || !refreshToken) return;
+    const generation = generationRef.current;
+    const attempt: Promise<void> = refreshTokens(refreshToken)
+      .then(
+        (tokens) => {
+          if (generation !== generationRef.current) {
+            // Signed out meanwhile: the server already rotated the session, so revoke the new
+            // refresh token instead of leaving it valid and unheld.
+            void logoutRequest(tokens.refresh_token).catch(() => {});
+            return;
+          }
+          adoptTokens(tokens);
+        },
+        (error: unknown) => {
+          if (generation !== generationRef.current) return;
+          if (error instanceof ApiError && error.status === 401) {
+            endLocalSession();
+            return;
+          }
+          // Network error, 5xx, rate limit: keep the session and retry with the same token. If the
+          // server did spend it before the failure, the retry gets a 401 and ends the session.
+          const retryAt = Date.now() + RETRY_AFTER_FAILURE_MS;
+          setRenewal((current) => current && { ...current, renewAt: retryAt });
+        }
+      )
+      .finally(() => {
+        if (inFlightRef.current === attempt) inFlightRef.current = null;
+      });
+    inFlightRef.current = attempt;
+  }, [adoptTokens, endLocalSession]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !renewal) return;
+    const timer = window.setTimeout(renew, Math.max(renewal.renewAt - Date.now(), 0));
+    // Background tabs throttle timers, so the one above can fire long after the token expired.
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible" && renewal && Date.now() >= renewal.expiresAt) {
+        renew();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [status, renewal, renew]);
 
   useEffect(() => {
     const storedRefreshToken = readStoredRefreshToken();
@@ -68,8 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : Promise.reject(new Error("no_stored_refresh_token"))
     )
       .then((tokens) => {
-        storeRefreshToken(tokens.refresh_token);
-        setAccessToken(tokens.access_token);
+        adoptTokens(tokens);
         return fetchCurrentUser(tokens.access_token);
       })
       .then((currentUser) => {
@@ -77,34 +167,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("authenticated");
       })
       .catch(() => {
-        storeRefreshToken(null);
-        setAccessToken(null);
-        setUser(null);
-        setStatus("unauthenticated");
+        endLocalSession();
       });
-  }, []);
+  }, [adoptTokens, endLocalSession]);
 
-  const signInWithGoogleIdToken = useCallback(async (idToken: string) => {
-    const tokens = await loginWithGoogle(idToken);
-    storeRefreshToken(tokens.refresh_token);
-    setAccessToken(tokens.access_token);
-    const currentUser = await fetchCurrentUser(tokens.access_token);
-    setUser(currentUser);
-    setStatus("authenticated");
-  }, []);
+  const signInWithGoogleIdToken = useCallback(
+    async (idToken: string) => {
+      const tokens = await loginWithGoogle(idToken);
+      adoptTokens(tokens);
+      const currentUser = await fetchCurrentUser(tokens.access_token);
+      setUser(currentUser);
+      setStatus("authenticated");
+    },
+    [adoptTokens]
+  );
 
   const signOut = useCallback(async () => {
-    const storedRefreshToken = readStoredRefreshToken();
-    storeRefreshToken(null);
-    setAccessToken(null);
-    setUser(null);
-    setStatus("unauthenticated");
+    const storedRefreshToken = refreshTokenRef.current ?? readStoredRefreshToken();
+    endLocalSession();
     if (storedRefreshToken) {
       await logoutRequest(storedRefreshToken).catch(() => {
         // best-effort: the local session is already cleared either way
       });
     }
-  }, []);
+  }, [endLocalSession]);
 
   const value = useMemo(
     () => ({ status, user, accessToken, signInWithGoogleIdToken, signOut }),

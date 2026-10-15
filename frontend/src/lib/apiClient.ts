@@ -14,9 +14,20 @@ export type CurrentUser = {
   avatar_url: string | null;
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+// Sprint 70: an ApiError (same message as before) so AuthContext can tell a rejected refresh
+// token (401) from a network failure or a 5xx when renewing.
 async function parseJsonOrThrow<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    throw new ApiError(`HTTP ${response.status}`, response.status);
   }
   return (await response.json()) as T;
 }
@@ -53,15 +64,6 @@ export function fetchCurrentUser(accessToken: string): Promise<CurrentUser> {
   return fetch(`${API_BASE_URL}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   }).then((response) => parseJsonOrThrow<CurrentUser>(response));
-}
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number
-  ) {
-    super(message);
-  }
 }
 
 async function requestJson<T>(

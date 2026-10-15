@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, type Request, expect, test } from "@playwright/test";
 
 /** Sprint 25: real browser, real backend (see global-setup.ts), against the production build
  * (`next build && node .next/standalone/server.js` — see playwright.config.ts). Seeds a tutor
@@ -36,6 +36,25 @@ function title(page: Page) {
 test("a returning tutor can navigate the whole dashboard and see real backend data", async ({
   page,
 }) => {
+  // Sprint 70 (B-05): the last step fast-forwards the browser clock past the access token's
+  // 15-minute lifetime, so the clock is installed before the app loads. Until then it flows in
+  // real time, so the earlier steps run exactly as before.
+  await page.clock.install();
+
+  const refreshRequests: Request[] = [];
+  const alertResponses: { bearer: string | undefined; status: number }[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/v1/auth/refresh")) {
+      refreshRequests.push(request);
+    }
+  });
+  page.on("response", (response) => {
+    const request = response.request();
+    if (request.method() === "GET" && /\/api\/v1\/devices\/[^/]+\/alerts$/.test(request.url())) {
+      alertResponses.push({ bearer: request.headers()["authorization"], status: response.status() });
+    }
+  });
+
   await page.addInitScript((token) => {
     window.sessionStorage.setItem("netprotect.refresh_token", token);
   }, session.tutorRefreshToken);
@@ -68,5 +87,48 @@ test("a returning tutor can navigate the whole dashboard and see real backend da
     // selection is needed before the rule for it shows up. Sprint 35's own form repeats the same
     // package name inside its "Ej. ..." hint, so match the rule row's exact text, not the hint's.
     await expect(page.getByText(session.packageName, { exact: true })).toBeVisible();
+  });
+
+  // Sprint 70 (B-05): the panel used to spend the refresh token once, on mount, and never again —
+  // 15 minutes later every call (the minute-by-minute alerts poll included) got 401. The backend
+  // checks token expiry against its own real clock, so the old token would still be accepted
+  // here: what this step proves is that the page itself renews, once per cycle, and switches its
+  // calls to the new token, without reloading.
+  await test.step("renews the access token before it expires and keeps the session", async () => {
+    await expect.poll(() => alertResponses.length).toBeGreaterThan(0);
+    expect(refreshRequests, "only the mount-time refresh so far").toHaveLength(1);
+
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const bearerBefore = alertResponses[alertResponses.length - 1].bearer;
+      const seenAlerts = alertResponses.length;
+
+      // expires_in is 900 s; the renewal is due 60 s before that.
+      await page.clock.runFor("13:00");
+      expect(refreshRequests, `cycle ${cycle}: no renewal before it is due`).toHaveLength(cycle);
+      await page.clock.runFor("02:30");
+      await expect
+        .poll(() => refreshRequests.length, {
+          message: `cycle ${cycle}: POST /auth/refresh after the access token's lifetime`,
+          timeout: 10_000,
+        })
+        .toBe(cycle + 1);
+
+      // The alerts poll re-runs with the new token (its effect depends on accessToken).
+      await expect
+        .poll(
+          () => alertResponses.slice(seenAlerts).find((entry) => entry.bearer !== bearerBefore)?.status,
+          { message: `cycle ${cycle}: alerts fetched with a new bearer token`, timeout: 10_000 }
+        )
+        .toBe(200);
+      await expect(nav(page)).toBeVisible();
+
+      // The rotated refresh token replaces the spent one in sessionStorage.
+      const issued = (await (await refreshRequests[cycle].response())!.json()) as { refresh_token: string };
+      expect(
+        await page.evaluate(() => window.sessionStorage.getItem("netprotect.refresh_token"))
+      ).toBe(issued.refresh_token);
+      // One renewal per cycle: nothing else spent the token meanwhile.
+      expect(refreshRequests).toHaveLength(cycle + 1);
+    }
   });
 });
