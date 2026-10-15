@@ -69,3 +69,22 @@ Borrados: `NpMotion.SLOW_MS`, `NpMotion.StaggerMs`, `NpMotion.EnterOffset` (y el
 ### Decidido NO borrar
 
 Ninguno de los candidatos de T1 tenía uso; no hubo excepciones.
+
+## T2 — Web
+
+```
+grep -rnE "ChartCard|card-twilight" frontend --exclude-dir=node_modules --exclude-dir=.next --exclude=tsconfig.tsbuildinfo -I
+  -> solo ui/ChartCard.tsx (su propia definición/import del CSS) y la línea del barrel ui/index.ts
+grep -rnE "card-twilight|ChartCard" frontend/next.config* frontend/e2e frontend/src (css, ts, tsx, mjs, js)
+  -> solo el barrel ui/index.ts (aparte de ChartCard.tsx)
+git ls-files | xargs grep -lIE "ChartCard|card-twilight"
+  -> fuera de frontend/ solo documentos históricos (sprint-37, sprint-60, plan-frontend, fase-0-informe, tasks)
+```
+
+Borrados: `frontend/src/components/ui/ChartCard.tsx`, `ChartCard.module.css`, su línea en `ui/index.ts`,
+`frontend/public/brand/card-twilight.jpg`. `docs/tasks.md` W-04 pasa a done.
+`npx tsc --noEmit` en `frontend/`: sin errores.
+
+### Decidido NO borrar
+
+`DonutChart` y `MetricCard` (vitrina del sistema de diseño), según las decisiones del sprint.

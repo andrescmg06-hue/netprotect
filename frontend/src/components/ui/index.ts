@@ -2,7 +2,6 @@ export { AppIcon } from "./AppIcon";
 export { BarList, type BarListItem } from "./BarList";
 export { Button } from "./Button";
 export { Card, CardHeader } from "./Card";
-export { ChartCard } from "./ChartCard";
 export { DataTable, type Column } from "./DataTable";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ALL_DAYS_MASK, DayPicker, describeDays } from "./DayPicker";
