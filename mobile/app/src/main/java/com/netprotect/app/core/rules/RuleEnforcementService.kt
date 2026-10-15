@@ -182,6 +182,11 @@ class RuleEnforcementService : Service() {
         // (including the block screen itself) comes to the foreground, so leaving and coming
         // back to the blocked app is treated as a fresh visit and re-blocked.
         var lastHandledPackage: String? = null
+        // B-15: per-visit state for re-evaluating a daily/weekly limit while the user stays in
+        // the same app. blockedThisVisit keeps the rule event to one per crossing (the overlay
+        // covers the app until a new visit); nextLimitCheckAt comes from the last evaluation.
+        var blockedThisVisit = false
+        var nextLimitCheckAt: Long? = null
 
         while (serviceScope.isActive) {
             val changedPackage = detector.pollForegroundChange()
@@ -229,9 +234,11 @@ class RuleEnforcementService : Service() {
                 // a blocked app counts as a fresh visit. Never evaluated — blocking ourselves
                 // would loop.
                 lastHandledPackage = null
+                blockedThisVisit = false
+                nextLimitCheckAt = null
             } else if (changedPackage != null && changedPackage != lastHandledPackage) {
                 lastHandledPackage = changedPackage
-                evaluateAndMaybeBlock(
+                val outcome = evaluateAndMaybeBlock(
                     foregroundPackage = changedPackage,
                     rules = cachedRules,
                     categoryAssignments = cachedCategoryAssignments,
@@ -244,11 +251,48 @@ class RuleEnforcementService : Service() {
                     // Settings — exempting those from every rule would turn "set this app as
                     // my default phone app" into a three-tap way to bypass any block.
                     exemptFromDefaultPolicy = changedPackage in protectedPackages,
+                    detector = detector,
                     client = client,
                     accessToken = accessToken,
                     deviceId = deviceId,
                     pendingEventStore = pendingEventStore,
                 )
+                blockedThisVisit = outcome.blocked
+                nextLimitCheckAt = outcome.nextLimitCheckAt
+            } else {
+                // B-15: same app still in front (no event, or a repeated one from moving between
+                // its own activities). Re-evaluated only for a daily/weekly limit whose time may
+                // have run out — not a new visit: no overlay reset, lastHandledPackage untouched.
+                val stillInFront = lastHandledPackage
+                if (stillInFront != null &&
+                    LimitRecheck.shouldRecheck(
+                        lastHandledPackage = stillInFront,
+                        changedPackage = changedPackage,
+                        blockedThisVisit = blockedThisVisit,
+                        governedByLimit = LimitRecheck.isGovernedByLimit(
+                            cachedRules, cachedCategoryAssignments, cachedCategoryRules, stillInFront,
+                        ),
+                        nextCheckAtMillis = nextLimitCheckAt,
+                        nowMillis = now,
+                    )
+                ) {
+                    val outcome = evaluateAndMaybeBlock(
+                        foregroundPackage = stillInFront,
+                        rules = cachedRules,
+                        categoryAssignments = cachedCategoryAssignments,
+                        categoryRules = cachedCategoryRules,
+                        defaultPolicy = defaultPolicy,
+                        schoolMode = schoolMode,
+                        exemptFromDefaultPolicy = stillInFront in protectedPackages,
+                        detector = detector,
+                        client = client,
+                        accessToken = accessToken,
+                        deviceId = deviceId,
+                        pendingEventStore = pendingEventStore,
+                    )
+                    blockedThisVisit = outcome.blocked
+                    nextLimitCheckAt = outcome.nextLimitCheckAt
+                }
             }
 
             delay(POLL_INTERVAL_MS)
@@ -263,15 +307,37 @@ class RuleEnforcementService : Service() {
         defaultPolicy: DefaultAppPolicy,
         schoolMode: SchoolMode,
         exemptFromDefaultPolicy: Boolean,
+        detector: ForegroundAppDetector,
         client: RuleEnforcementClient,
         accessToken: String,
         deviceId: String,
         pendingEventStore: PendingRuleEventStore,
-    ) {
-        val todayUsage = AppInventoryCollector.collectTodayUsage(applicationContext)
+    ): EvaluationOutcome {
+        val statsToday = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
-        val weekUsage = AppInventoryCollector.collectWeekUsage(applicationContext)
+        val statsWeek = AppInventoryCollector.collectWeekUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
+        // B-15: queryUsageStats may not include the session still open for the app in front, so
+        // the limit would only be reached after the user leaves it. Only the missing difference
+        // is added (see LimitRecheck.missingSeconds), and only for this evaluation — nothing here
+        // changes what AppInventoryCollector syncs to the tutor.
+        val missing = if (LimitRecheck.isGovernedByLimit(rules, categoryAssignments, categoryRules, foregroundPackage)) {
+            LimitRecheck.missingSeconds(
+                statsTodaySeconds = statsToday[foregroundPackage] ?: 0,
+                eventsTodaySeconds = runCatching { detector.todayForegroundSeconds(foregroundPackage) }.getOrNull(),
+            )
+        } else {
+            0
+        }
+        val todayUsage = statsToday.withExtra(foregroundPackage, missing)
+        val weekUsage = statsWeek.withExtra(foregroundPackage, missing)
+        val nextLimitCheckAt = LimitRecheck.nextCheckAt(
+            System.currentTimeMillis(),
+            LimitRecheck.limitRemainingSeconds(
+                rules, categoryAssignments, categoryRules, foregroundPackage, todayUsage, weekUsage,
+            ),
+        )
+        val notBlocked = EvaluationOutcome(blocked = false, nextLimitCheckAt = nextLimitCheckAt)
         val reason = RuleEvaluator.evaluate(
             rules,
             categoryAssignments,
@@ -283,9 +349,9 @@ class RuleEnforcementService : Service() {
             defaultPolicy,
             schoolMode,
         )
-        if (reason == null) return
+        if (reason == null) return notBlocked
         val exemptReasons = setOf(BlockReason.DEFAULT_POLICY, BlockReason.SCHOOL_MODE)
-        if (exemptFromDefaultPolicy && reason in exemptReasons) return
+        if (exemptFromDefaultPolicy && reason in exemptReasons) return notBlocked
 
         // Sprint 49: only the display changes — which app is blocked, when and why is decided above.
         // The category shown is the real assigned one (never invented), or none.
@@ -316,7 +382,13 @@ class RuleEnforcementService : Service() {
         if (!reported) {
             runCatching { pendingEventStore.enqueue(deviceId, foregroundPackage, reason, occurredAt) }
         }
+        return EvaluationOutcome(blocked = true, nextLimitCheckAt = null)
     }
+
+    private class EvaluationOutcome(val blocked: Boolean, val nextLimitCheckAt: Long?)
+
+    private fun Map<String, Int>.withExtra(packageName: String, extraSeconds: Int): Map<String, Int> =
+        if (extraSeconds <= 0) this else this + (packageName to (this[packageName] ?: 0) + extraSeconds)
 
     /** Verified live (17/09/2026, API 36 emulator): a foreground service with no visible
      * Activity can no longer open one with a plain startActivity() — ActivityTaskManager logs

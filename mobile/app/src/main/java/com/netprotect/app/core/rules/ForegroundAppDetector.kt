@@ -3,6 +3,8 @@ package com.netprotect.app.core.rules
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** Polls UsageStatsManager.queryEvents() for MOVE_TO_FOREGROUND events — the only way to learn
  * what app another process brought to the foreground without device owner privileges.
@@ -38,5 +40,39 @@ class ForegroundAppDetector(private val context: Context) {
             }
         }
         return latestForegroundPackage
+    }
+
+    /** Today's foreground seconds of [packageName] rebuilt from usage events (local midnight to
+     * now), counting a session that is still open — which queryUsageStats may leave out until
+     * the app pauses (B-15). Used only to enforce limits (LimitRecheck.missingSeconds); what is
+     * synced to the tutor still comes from AppInventoryCollector alone. Null when the events are
+     * unavailable (user not unlocked yet).
+     */
+    fun todayForegroundSeconds(packageName: String): Int? {
+        val usageStatsManager =
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val windowStart = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val now = System.currentTimeMillis()
+        val events = usageStatsManager.queryEvents(windowStart, now) ?: return null
+
+        val samples = mutableListOf<LimitRecheck.UsageEventSample>()
+        val event = UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            @Suppress("DEPRECATION") // Same constants as ACTIVITY_RESUMED/PAUSED (API 29+), see above.
+            val kind = when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND ->
+                    if (event.packageName == packageName) {
+                        LimitRecheck.UsageEventKind.RESUMED
+                    } else {
+                        LimitRecheck.UsageEventKind.OTHER_RESUMED
+                    }
+                UsageEvents.Event.MOVE_TO_BACKGROUND ->
+                    if (event.packageName == packageName) LimitRecheck.UsageEventKind.PAUSED else null
+                else -> null
+            }
+            if (kind != null) samples += LimitRecheck.UsageEventSample(event.timeStamp, kind)
+        }
+        return (LimitRecheck.foregroundMillisFromEvents(samples, windowStart, now) / 1_000L).toInt()
     }
 }
