@@ -132,6 +132,11 @@ desarrollo de quien la ejecute. Ver `docs/sprint-25.md` y `docs/sprint-25-eviden
   El fixture compartido en `backend/tests/conftest.py` crea su propio motor por test; usarlo siempre.
 - Las pruebas que ejercitan rate limiting necesitan una IP/host único por test — los contadores viven
   15 minutos en Redis y se filtran entre pruebas si comparten dirección.
+- **Nunca registrar ni propagar `str(exc)` de una excepción de `google-auth`** (`MalformedError`, `InvalidValue`): para un
+  token malformado el mensaje incrusta el token completo o su payload (email, `sub`, nombre) y el texto lo controla quien
+  llama (log injection). `google_auth._rejection_reason` traduce a etiquetas fijas y se relanza con `from None`, porque la
+  causa también lleva el token. Hay un test que siembra un secreto en el mensaje y comprueba `str`, `repr` y `__cause__`.
+  Detalle y evidencia: `docs/sprint-60-evidence.md`.
 - Una excepción dentro de la tarea de un **WebSocket** no se ve: no aparece traza en la salida de
   pytest ni se cierra el socket. Se manifiesta como una prueba **colgada para siempre**, no como
   una prueba en rojo (en el Sprint 23 dejó un contenedor ocho horas en `[ 55%]`). Si una prueba de

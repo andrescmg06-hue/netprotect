@@ -36,6 +36,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // Next 16 only allows quality 75 by default and silently coerces any other `quality` prop to
+  // it. The brand logos ask for 90 (ui/Logo.tsx) so the wordmark edges stay crisp.
+  images: {
+    qualities: [75, 90],
+  },
   async headers() {
     return [
       {

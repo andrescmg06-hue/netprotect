@@ -1,79 +1,242 @@
-.wrap {
+/* Sprint 57: the schematic fills whatever its section gives it. The parent sets the height with
+   --map-min-height (it inherits), so the same component is the large surface of Geocercas and the
+   side map of Ubicación. Paper white sheet, stone grid, navy ink, blue only for the one emphasis. */
+.map {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-6);
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: var(--map-min-height, 360px);
+  overflow: hidden;
+  background: var(--color-surface);
 }
 
 .svg {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
-  height: 320px;
-  background: var(--color-primary-softer);
-  border-radius: var(--radius-lg);
+  height: 100%;
 }
 
-.zoneLabel {
+.grid line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+  shape-rendering: crispEdges;
+}
+
+.zone {
   fill: var(--color-navy);
-  font-size: 10px;
-  font-weight: 600;
+  fill-opacity: 0.05;
+  stroke: var(--color-navy);
+  stroke-opacity: 0.7;
+  stroke-width: 1.5;
 }
 
-.locationRing {
+.zoneActive {
+  fill: var(--color-navy);
+  fill-opacity: 0.1;
+  stroke: var(--color-navy);
+  stroke-width: 2.5;
+}
+
+.zoneCenter {
+  fill: var(--color-navy);
+}
+
+.ghost {
   fill: none;
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 5;
+}
+
+.draft {
+  fill: var(--color-primary);
+  fill-opacity: 0.08;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+}
+
+.crosshair {
+  fill: none;
+  stroke: var(--color-primary-text);
+  stroke-width: 1.5;
+}
+
+.halo {
+  fill: var(--color-primary);
+  fill-opacity: 0.1;
+  stroke: var(--color-primary);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+}
+
+.deviceRing {
+  fill: var(--color-surface);
+  stroke: var(--color-primary);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+}
+
+.deviceDot {
+  fill: var(--color-primary);
+}
+
+.lastRing {
+  fill: var(--color-surface);
   stroke: var(--color-navy);
   stroke-width: 2;
 }
 
-.locationDot {
+.lastDot {
   fill: var(--color-navy);
+}
+
+/* SVG text with a paper halo so a label stays legible over grid lines and circle edges. */
+.label {
+  font-size: 12px;
+  paint-order: stroke fill;
+  stroke: var(--color-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  font-variant-numeric: tabular-nums;
+}
+
+.labelName {
+  fill: var(--color-navy);
+  font-weight: 600;
+}
+
+.labelNameActive {
+  fill: var(--color-navy);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.draftName {
+  fill: var(--color-primary-text);
+  font-weight: 600;
+}
+
+.labelMeta {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.scale path {
+  fill: none;
+  stroke: var(--color-navy);
+  stroke-width: 1.5;
+}
+
+.scale text {
+  fill: var(--color-navy);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.north path {
+  fill: var(--color-navy);
+}
+
+.north text {
+  fill: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+.emptyNote {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.emptyNote p {
+  max-width: 300px;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
 }
 
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-6);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.legendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
 }
 
 .legendItem {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.locationSwatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-navy);
-  flex-shrink: 0;
-}
-
-.caption {
-  margin: 0;
+  gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--text-xs);
 }
 
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-8) var(--space-6);
-  color: var(--color-text-muted);
-  text-align: center;
+.swatchZone,
+.swatchDraft,
+.swatchDevice,
+.swatchLast {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
 }
 
-.empty p {
-  margin: 0;
-  font-size: var(--text-sm);
+.swatchZone {
+  border: 1.5px solid var(--color-navy);
+}
+
+.swatchDraft {
+  border: 1.5px dashed var(--color-primary);
+}
+
+.swatchDevice {
+  background: var(--color-primary);
+  outline: 3px solid var(--color-primary-soft);
+}
+
+.swatchLast {
+  border: 2px solid var(--color-navy);
+  background: var(--color-surface);
+}
+
+.caption {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 640px) {
+  .legend {
+    padding: var(--space-3) var(--space-4);
+  }
 }
