@@ -56,3 +56,50 @@ class VisitTracker {
         return newVisitStarted
     }
 }
+
+/** Sprint 73 (Fallo 3): what to do with the visit already in front on a rules beat.
+ *
+ * A visit used to be evaluated only when it began (plus B-15's limit re-checks), so a block rule
+ * the tutor created while the child was already inside that app did nothing until the app was
+ * closed and opened again; the same for a SCHEDULE (or school mode) whose time began mid-visit.
+ *
+ * Why on the rules beat, and not every 3 s poll: the beat already comes at once on a realtime
+ * "rules_changed" (new rules apply within one poll) and otherwise every 60 s, whether the fetch
+ * worked or not — so a schedule that starts while offline still blocks from the cached rules.
+ * Schedules are minute-granular, so a re-evaluation per minute bounds that delay to about a
+ * minute; doing it every poll would read the usage stats (two queryUsageStats calls) twenty times
+ * more often for no gain. Pure: unit-tested in VisitTrackerTest.
+ */
+object VisitRecheck {
+    enum class Action {
+        /** Nothing to do this cycle. */
+        NONE,
+
+        /** Evaluate the visit in front with the latest rules; a block reports its rule event. */
+        EVALUATE,
+
+        /** The visit is blocked: check, without reporting, that the latest rules still block it. */
+        CONFIRM_BLOCK,
+    }
+
+    /**
+     * @param rulesBeat the rules were just (re)fetched or due this cycle.
+     * @param currentIsOtherApp a visit exists and it is not this app's own package (never evaluated).
+     * @param visitStarted the visit began this cycle: it is being evaluated anyway.
+     * @param inForeground the visit's app is still in front (last transition RESUMED).
+     * @param blockedThisVisit the visit was already blocked (its event already reported).
+     */
+    fun onRulesBeat(
+        rulesBeat: Boolean,
+        currentIsOtherApp: Boolean,
+        visitStarted: Boolean,
+        inForeground: Boolean,
+        blockedThisVisit: Boolean,
+    ): Action = when {
+        !rulesBeat || !currentIsOtherApp || visitStarted -> Action.NONE
+        // Even if it is no longer in front: a removed rule should not leave its screen behind.
+        blockedThisVisit -> Action.CONFIRM_BLOCK
+        inForeground -> Action.EVALUATE
+        else -> Action.NONE
+    }
+}

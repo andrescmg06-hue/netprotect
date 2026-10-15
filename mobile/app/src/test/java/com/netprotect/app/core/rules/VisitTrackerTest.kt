@@ -129,3 +129,48 @@ class VisitTrackerTest {
         assertTrue(tracker.inForeground)
     }
 }
+
+class VisitRecheckTest {
+    private fun action(
+        rulesBeat: Boolean = true,
+        otherApp: Boolean = true,
+        visitStarted: Boolean = false,
+        inForeground: Boolean = true,
+        blocked: Boolean = false,
+    ) = VisitRecheck.onRulesBeat(rulesBeat, otherApp, visitStarted, inForeground, blocked)
+
+    /** Sprint 73, Fallo 3: a rule created while the child is already inside the app. */
+    @Test
+    fun newRulesReEvaluateTheAppAlreadyInFront() {
+        assertEquals(VisitRecheck.Action.EVALUATE, action())
+    }
+
+    @Test
+    fun withoutARulesBeatNothingIsReEvaluated() {
+        assertEquals(VisitRecheck.Action.NONE, action(rulesBeat = false))
+        assertEquals(VisitRecheck.Action.NONE, action(rulesBeat = false, blocked = true))
+    }
+
+    @Test
+    fun aBlockedVisitIsOnlyConfirmedNeverReportedAgain() {
+        assertEquals(VisitRecheck.Action.CONFIRM_BLOCK, action(blocked = true))
+        // Also once it left the front: a removed rule must not leave its block screen behind.
+        assertEquals(VisitRecheck.Action.CONFIRM_BLOCK, action(blocked = true, inForeground = false))
+    }
+
+    @Test
+    fun ownPackageOrNoVisitIsNeverEvaluated() {
+        assertEquals(VisitRecheck.Action.NONE, action(otherApp = false))
+        assertEquals(VisitRecheck.Action.NONE, action(otherApp = false, blocked = true))
+    }
+
+    @Test
+    fun aVisitThatJustStartedIsAlreadyBeingEvaluated() {
+        assertEquals(VisitRecheck.Action.NONE, action(visitStarted = true))
+    }
+
+    @Test
+    fun anAppNoLongerInFrontIsNotBlockedLate() {
+        assertEquals(VisitRecheck.Action.NONE, action(inForeground = false))
+    }
+}

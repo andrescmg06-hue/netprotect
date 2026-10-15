@@ -42,10 +42,33 @@ guardado); se arrancan al encender el teléfono o actualizar la app; y `SyncWork
 «Inicio automático» y el ahorro de batería en «Sin restricciones». Eso lo concede una persona en Ajustes; se comprueba
 en este teléfono y se documenta.
 
+## Fallo 3 — Una regla nueva no bloquea la app que ya se está usando
+
+Lo encontró el dueño en la misma prueba: si el tutor crea una regla de bloqueo mientras el menor **ya** está dentro de
+esa app, no se bloquea hasta que la cierra y la vuelve a abrir. Lo mismo con una regla de horario (`SCHEDULE`) o el modo
+escolar que empiezan con la app abierta.
+
+**Causa raíz:** el bucle de `RuleEnforcementService` sí refresca las reglas (cada 60 s, o al instante con el aviso
+`rules_changed` del canal en tiempo real: `RuleEnforcementService.kt:205-223` en `e5b0a81`), pero la visita en curso solo
+se evaluaba al empezar (`:225-262`). Lo único que se reevaluaba a mitad de visita era un límite diario o semanal (B-15,
+`:262-296`, filtrado por `LimitRecheck.isGovernedByLimit`); un `BLOCK` o un `SCHEDULE` nuevos no entraban por ahí.
+
+**Arreglo:** en cada «latido de reglas» (el refresco de 60 s o el inmediato por `rules_changed`, haya funcionado la
+descarga o no, para que un horario que empieza sin conexión también bloquee con las reglas guardadas), la visita en curso
+de otra app que sigue delante y no está bloqueada se vuelve a evaluar con las reglas vigentes: si ahora toca bloquearla, se
+bloquea y se reporta el evento como en cualquier visita (uno por bloqueo, nunca repetido para una visita ya bloqueada). Si
+la visita ya estaba bloqueada y las reglas nuevas ya no la bloquean (se quitó la regla, terminó el horario), se quita la
+pantalla de bloqueo sin reportar nada. La decisión «¿qué hacer con la visita en curso?» es una función pura
+(`VisitRecheck.onRulesBeat`) con tests. Por qué en el latido y no en cada ciclo de 3 s: los cambios del tutor llegan al
+instante por `rules_changed`, y los horarios van por minutos, así que reevaluar una vez por minuto acota el retraso a
+alrededor de un minuto sin leer las estadísticas de uso veinte veces más a menudo.
+
 ## Tareas
 
 - [ ] T1 — Fallo 1: visita por secuencia de eventos (lógica pura con tests), re-dibujo periódico de la pantalla de
   bloqueo y bucle resistente a excepciones. Delegado (writer).
+- [ ] T1b — Fallo 3: reevaluar la visita en curso en cada latido de reglas (`VisitRecheck`, lógica pura con tests);
+  quitar la pantalla de bloqueo si la regla desaparece. Delegado (mismo writer), commit aparte porque T1 ya estaba cerrado.
 - [ ] T2 — Fallo 2: parada explícita (sesión, desvinculación, permiso), `START_STICKY` con configuración guardada,
   receptor de arranque, `SyncWorker` independiente de la pantalla y como vigilante. Delegado (mismo writer).
 - [ ] T3 — Documentación: `docs/android/capability-matrix.md` y `.claude/rules/android.md` (los límites de S8/S13/S19
@@ -60,3 +83,7 @@ en este teléfono y se documenta.
 2. Si la pantalla de bloqueo desaparece y la app bloqueada sigue delante, vuelve en el siguiente ciclo (≤ 3 s).
 3. Con la app cerrada (Atrás y deslizada en Recientes, con «Inicio automático» concedido) el bloqueo sigue funcionando.
 4. Cerrar sesión y la desvinculación siguen deteniendo todo, como antes.
+5. Una regla de bloqueo creada mientras el menor ya está dentro de esa app la bloquea sin cerrarla: al instante si llega
+   el aviso `rules_changed` (≤ 3 s), y como mucho en el siguiente refresco de reglas (≤ 60 s) si no llega. Un horario que
+   empieza con la app abierta la bloquea en ≤ 1 min. Si la regla se quita, la pantalla de bloqueo desaparece en ese mismo
+   plazo. Nunca se reporta un segundo evento de bloqueo para una visita ya bloqueada (tests de `VisitRecheck`).

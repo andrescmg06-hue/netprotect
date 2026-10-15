@@ -272,7 +272,10 @@ class RuleEnforcementService : Service() {
                         lastTokenRefreshAt = now
                     }
 
-                    if (now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)) {
+                    // Sprint 73 (Fallo 3): the rules beat, every RULES_REFRESH_INTERVAL_MS or at once
+                    // on a realtime "rules_changed". The visit in front is re-evaluated on it below.
+                    val rulesBeat = now - lastRulesFetchAt >= RULES_REFRESH_INTERVAL_MS || forceRulesRefresh.getAndSet(false)
+                    if (rulesBeat) {
                         runCatching { client.getActiveRules(accessToken, deviceId) }
                             .onSuccess { active ->
                                 cachedRules = active.rules
@@ -303,6 +306,13 @@ class RuleEnforcementService : Service() {
                     }
 
                     val current = visits.currentPackage
+                    val recheck = VisitRecheck.onRulesBeat(
+                        rulesBeat = rulesBeat,
+                        currentIsOtherApp = current != null && current != packageName,
+                        visitStarted = visitStarted,
+                        inForeground = visits.inForeground,
+                        blockedThisVisit = blockedThisVisit,
+                    )
                     if (current == null || current == packageName) {
                         // No visit seen yet, or our own app in front: never evaluated — blocking
                         // ourselves would loop.
@@ -329,6 +339,53 @@ class RuleEnforcementService : Service() {
                         blockedThisVisit = outcome.blocked
                         nextLimitCheckAt = outcome.nextLimitCheckAt
                         visitBlock = outcome.display
+                    } else if (recheck == VisitRecheck.Action.EVALUATE) {
+                        // Sprint 73 (Fallo 3): new or changed rules (or a schedule that has just
+                        // begun) for the app already in front: blocked now if they say so, with its
+                        // rule event like any visit — at most one per block, the visit is not
+                        // blocked yet.
+                        val outcome = evaluateAndMaybeBlock(
+                            foregroundPackage = current,
+                            rules = cachedRules,
+                            categoryAssignments = cachedCategoryAssignments,
+                            categoryRules = cachedCategoryRules,
+                            defaultPolicy = defaultPolicy,
+                            schoolMode = schoolMode,
+                            exemptFromDefaultPolicy = current in protectedPackages,
+                            detector = detector,
+                            client = client,
+                            accessToken = accessToken,
+                            deviceId = deviceId,
+                            pendingEventStore = pendingEventStore,
+                        )
+                        blockedThisVisit = outcome.blocked
+                        nextLimitCheckAt = outcome.nextLimitCheckAt
+                        visitBlock = outcome.display
+                    } else if (recheck == VisitRecheck.Action.CONFIRM_BLOCK) {
+                        // Sprint 73 (Fallo 3): the visit is blocked; if the latest rules no longer
+                        // block it (the rule was removed, the schedule ended), take the block screen
+                        // down. Nothing is reported either way.
+                        val outcome = evaluateAndMaybeBlock(
+                            foregroundPackage = current,
+                            rules = cachedRules,
+                            categoryAssignments = cachedCategoryAssignments,
+                            categoryRules = cachedCategoryRules,
+                            defaultPolicy = defaultPolicy,
+                            schoolMode = schoolMode,
+                            exemptFromDefaultPolicy = current in protectedPackages,
+                            detector = detector,
+                            client = client,
+                            accessToken = accessToken,
+                            deviceId = deviceId,
+                            pendingEventStore = pendingEventStore,
+                            decideOnly = true,
+                        )
+                        if (!outcome.blocked) {
+                            BlockOverlayController.hide(applicationContext)
+                            blockedThisVisit = false
+                            nextLimitCheckAt = outcome.nextLimitCheckAt
+                            visitBlock = null
+                        }
                     } else if (blockedThisVisit) {
                         // Sprint 73: the blocked app is still the visit in front, but its block
                         // screen is gone (taken down with no new visit seen, or removed by the
@@ -403,6 +460,9 @@ class RuleEnforcementService : Service() {
         accessToken: String,
         deviceId: String,
         pendingEventStore: PendingRuleEventStore,
+        // Sprint 73 (Fallo 3): only decide — no block screen, no rule event. Used to confirm that
+        // a visit already blocked is still blocked under the latest rules.
+        decideOnly: Boolean = false,
     ): EvaluationOutcome {
         val statsToday = AppInventoryCollector.collectTodayUsage(applicationContext)
             .associate { it.packageName to it.foregroundSeconds }
@@ -449,6 +509,7 @@ class RuleEnforcementService : Service() {
         val categoryLabel = categoryAssignments.find { it.packageName == foregroundPackage }
             ?.let { CategoryLabels.categoryLabel(it.category.wireValue) }
         val display = BlockDisplay(foregroundPackage, categoryLabel, reason)
+        if (decideOnly) return EvaluationOutcome(blocked = true, nextLimitCheckAt = null, display = display)
         if (OverlayPermission.isGranted(applicationContext)) {
             showBlockOverlay(display)
         } else {
