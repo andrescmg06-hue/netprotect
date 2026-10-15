@@ -8,8 +8,13 @@ import com.netprotect.app.core.auth.TokenProvider
 import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
+import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.rules.RuleEnforcementService
+import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.sync.SyncWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /** Sprint 73: the protection (RuleEnforcementService, LocationReportingService, SyncWorker) no
  * longer lives and dies with SupervisedShell. Closing the app (Back, or swiping it from Recents)
@@ -35,13 +40,69 @@ object SupervisionServices {
     }
 
     /** Deliberate stop of everything that keeps protecting with the app closed: sign-out, unlink,
-     * session ended. RuleEnforcementService.stop also clears EnforcementLiveness, because a
+     * session ended (callers that also forget the link use [forgetDevice] / [endLinkFromBackground]). RuleEnforcementService.stop also clears EnforcementLiveness, because a
      * deliberate stop is not tampering. Stopping something that is not running is a no-op.
      */
     fun stopAll(context: Context) {
         RuleEnforcementService.stop(context)
         LocationReportingService.stop(context)
         SyncWorker.cancel(context)
+    }
+
+    /** Sprint 73 (T5): sign-out, an ended session, or another account taking over this phone.
+     * Stops everything, forgets the link (so no restart — sticky, boot, watch — can run the old
+     * device's protection under someone else's session) and deletes this phone's copy of the
+     * device's data: the rule cache and the queue of block events not yet reported. Deleting the
+     * queue is deliberate: those events can only be sent with this device's own session (any
+     * other account gets the uniform 404), and a minor's activity should not stay on a phone
+     * nobody supervising it is signed into. The cost: if the same person signs back in, blocks
+     * that happened offline before the sign-out never reach the tutor.
+     */
+    suspend fun forgetDevice(context: Context) {
+        stopAll(context)
+        LinkedDeviceStore.clear(context)
+        clearDeviceData(context)
+    }
+
+    /** Sprint 73 (T5): the backend answered `device_not_found` to the background work of
+     * [deviceId] — the tutor unlinked it (or it is not this account's device), possibly with the
+     * app closed, where the shell's own check never runs. Same outcome as
+     * SupervisedShell.enterUnlinked, without the UI: forget the link, delete its local data, stop
+     * everything. Ignored if the stored link is already a different device (a stale worker or loop
+     * from before a new pairing must not end the new link). Safe to call from the loop of a
+     * service it stops: everything that must happen runs before the stop cancels that loop.
+     */
+    suspend fun endLinkFromBackground(context: Context, deviceId: String) {
+        val linked = LinkedDeviceStore.read(context)?.deviceId
+        if (linked != null && linked != deviceId) return
+        Log.i(TAG, "The server ended this device's link; stopping the protection")
+        if (linked != null) LinkedDeviceStore.markEndedByServer(context)
+        clearDeviceData(context)
+        stopAll(context)
+    }
+
+    /** Deletes the Room data (rule cache, pending rule events). Never on the main thread, never
+     * cancelled half-way, never throws (logs the exception type only). */
+    suspend fun clearDeviceData(context: Context) {
+        withContext(NonCancellable + Dispatchers.IO) {
+            runCatching { NetProtectDatabase.getInstance(context).clearAllTables() }
+                .onFailure { Log.w(TAG, "Local data clear failed: ${it.javaClass.simpleName}") }
+        }
+    }
+
+    /** Sprint 73 (T5): the watch, shared by EnforcementWatchWorker (no network constraint) and
+     * SyncWorker. If RuleEnforcementService stopped stamping EnforcementLiveness while the link,
+     * the session and usage access are still there, start it again. Local only: no network. From a
+     * worker the app is usually in the background, where Android 12+ only allows a
+     * foreground-service start with an exemption (battery optimization off for NetProtect); without
+     * it the start is refused and logged. Returns what the liveness marker said before any restart.
+     */
+    fun restartEnforcementIfDead(context: Context): Boolean? {
+        val wasActive = EnforcementLiveness.isRecentlyActive(context)
+        if (wasActive != true) {
+            restorableDeviceId(context)?.let { linked -> tryStartEnforcement(context, linked) }
+        }
+        return wasActive
     }
 
     /** From a background context (BootReceiver): schedules SyncWorker and starts whatever the

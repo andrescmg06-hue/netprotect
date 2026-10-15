@@ -1,8 +1,13 @@
 package com.netprotect.app.core.storage
 
+import android.util.Log
+import com.netprotect.app.core.network.ApiException
+import com.netprotect.app.core.network.QueuedReportFailure
 import com.netprotect.app.core.network.RuleEnforcementClient
+import com.netprotect.app.core.network.classifyQueuedReportFailure
 import com.netprotect.app.core.rules.BlockReason
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 
 /** The queue behind "las reglas siguen aplicándose sin Internet" (Sprint 19): a block the device
  * already enforced but couldn't report gets held here instead of lost, and flushed opportunistically
@@ -26,8 +31,13 @@ class PendingRuleEventStore(private val database: NetProtectDatabase) {
     }
 
     /** Attempts every queued event for this device, oldest first, stopping at the first failure
-     * — later events are almost certainly for the same outage, so there's no point burning a
-     * request per row only to fail all of them the same way.
+     * that can succeed later — later events are almost certainly for the same outage, so there's
+     * no point burning a request per row only to fail all of them the same way.
+     *
+     * Sprint 73 (T5): a failure that can never succeed (a 4xx such as 422, see
+     * classifyQueuedReportFailure) no longer stops the queue forever: that event is dropped, logged
+     * by status only, and the next one is tried. The uniform `device_not_found` 404 (the link
+     * ended) is rethrown for the caller to end the link (SupervisionServices.endLinkFromBackground).
      */
     suspend fun flush(client: RuleEnforcementClient, accessToken: String, deviceId: String) {
         for (event in dao.getAll(deviceId)) {
@@ -37,7 +47,7 @@ class PendingRuleEventStore(private val database: NetProtectDatabase) {
                 dao.delete(event)
                 continue
             }
-            val reported = runCatching {
+            val failure = runCatching {
                 client.reportRuleEvent(
                     accessToken,
                     deviceId,
@@ -45,9 +55,21 @@ class PendingRuleEventStore(private val database: NetProtectDatabase) {
                     reason,
                     Instant.ofEpochMilli(event.occurredAtEpochMs),
                 )
-            }.isSuccess
-            if (!reported) return
-            dao.delete(event)
+            }.exceptionOrNull()
+            if (failure is CancellationException) throw failure
+            when (failure?.let(::classifyQueuedReportFailure)) {
+                null -> dao.delete(event)
+                QueuedReportFailure.DROP -> {
+                    Log.w(TAG, "Dropped a queued rule event the server rejected: HTTP ${(failure as ApiException).statusCode}")
+                    dao.delete(event)
+                }
+                QueuedReportFailure.DEVICE_GONE -> throw failure
+                QueuedReportFailure.RETRY_LATER -> return
+            }
         }
+    }
+
+    private companion object {
+        const val TAG = "PendingRuleEvents"
     }
 }

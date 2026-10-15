@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.LocationClient
+import com.netprotect.app.core.network.isDeviceGone
 import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.supervision.SupervisionServices
@@ -139,12 +140,14 @@ class LocationReportingService : Service() {
         val deviceId = intent?.getStringExtra(EXTRA_DEVICE_ID)
             ?: SupervisionServices.restorableDeviceId(this)
                 ?.takeIf { canStartFromBackground() && LocationPermission.isGranted(this) }
+        // Sprint 73 (T5): "running" is a loop that is still active, not merely one that was started.
+        val running = reportingJob?.isActive == true
         if (deviceId == null) {
-            if (reportingJob == null) stopSelf()
-            return if (reportingJob == null) START_NOT_STICKY else START_STICKY
+            if (!running) stopSelf()
+            return if (running) START_STICKY else START_NOT_STICKY
         }
         // Idempotent: the same device keeps the running loop; a different one replaces it.
-        if (reportingJob != null && deviceId == runningDeviceId) return START_STICKY
+        if (running && deviceId == runningDeviceId) return START_STICKY
         reportingJob?.cancel()
 
         val baseUrl = intent?.getStringExtra(EXTRA_BASE_URL) ?: BuildConfig.API_BASE_URL
@@ -159,7 +162,7 @@ class LocationReportingService : Service() {
 
     private fun giveUp(refused: Exception): Int {
         Log.w(TAG, "Could not start in the foreground: ${refused.javaClass.simpleName}")
-        if (reportingJob == null) stopSelf()
+        if (reportingJob?.isActive != true) stopSelf()
         return START_NOT_STICKY
     }
 
@@ -177,15 +180,28 @@ class LocationReportingService : Service() {
                 // Sprint 41: the token handed over at start() was never renewed, so every report
                 // after its 15-minute lifetime failed silently with 401. Ask the shared session.
                 val token = BackgroundTokenRefresher.refresh(applicationContext) ?: accessToken
+                var deviceGone = false
                 reportAndRecord {
-                    client.reportLocation(
-                        accessToken = token,
-                        deviceId = deviceId,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        accuracyMeters = location.accuracy.toDouble(),
-                        capturedAt = Instant.ofEpochMilli(location.time).toString(),
-                    )
+                    try {
+                        client.reportLocation(
+                            accessToken = token,
+                            deviceId = deviceId,
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            accuracyMeters = location.accuracy.toDouble(),
+                            capturedAt = Instant.ofEpochMilli(location.time).toString(),
+                        )
+                    } catch (failure: Exception) {
+                        deviceGone = failure.isDeviceGone()
+                        throw failure
+                    }
+                }
+                // Sprint 73 (T5): the backend refuses a device with no active link (uniform 404):
+                // the tutor unlinked it, maybe with the app closed. Stop reporting a minor's
+                // location to nobody — this ends the link and stops this service.
+                if (deviceGone) {
+                    SupervisionServices.endLinkFromBackground(applicationContext, deviceId)
+                    return
                 }
             }
             delay(REPORT_INTERVAL_MS)

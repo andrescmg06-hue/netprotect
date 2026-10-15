@@ -343,6 +343,9 @@ fun SupervisedShell(
     fun enterUnlinked() {
         SupervisionServices.stopAll(context)
         LinkedDeviceStore.clear(context)
+        // Sprint 73 (T5): the old link's rule cache and unsent events too (they could only be sent
+        // with an active link, which the backend now requires).
+        scope.launch { SupervisionServices.clearDeviceData(context) }
         // A new link shows the welcome again.
         WelcomeStore.clear(context)
         // The next link starts without a previous read: nothing to compare, so no notice.
@@ -379,7 +382,9 @@ fun SupervisedShell(
             // The device row can outlive every tutor link: /devices/me then answers 200 with an empty
             // tutor list, which is not "linked" either. With a cache this phone was linked, so the
             // tutor ended it (B1); without one it simply never was.
-            LinkCheck.Unlinked -> if (cached != null) {
+            // Sprint 73 (T5): or the background work already learnt it from the server and forgot
+            // the link (LinkedDeviceStore.endedByServer).
+            LinkCheck.Unlinked -> if (cached != null || LinkedDeviceStore.endedByServer(context)) {
                 enterUnlinked()
             } else {
                 deviceInfo = null
