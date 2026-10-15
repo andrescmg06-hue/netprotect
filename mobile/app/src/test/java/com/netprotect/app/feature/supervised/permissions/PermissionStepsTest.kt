@@ -29,6 +29,15 @@ class PermissionStepsTest {
     }
 
     @Test
+    fun approximateOnlyLocationIsStillAPendingStep() {
+        val permissions = PermissionsUi(
+            usageAccess = true, location = false, overlay = true, deviceAdmin = true, locationApproximateOnly = true,
+        )
+        assertEquals(1, permissions.pending)
+        assertEquals(PermissionStep(Location, RailStatus.Next), permissionSteps(permissions).first())
+    }
+
+    @Test
     fun allConfiguredKeepsTheCanonicalOrderWithNoNext() {
         val steps = permissionSteps(ui(usage = true, location = true, overlay = true, admin = true))
         assertEquals(listOf(UsageAccess, Location, Overlay, DeviceAdmin), steps.map { it.permission })

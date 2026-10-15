@@ -63,7 +63,7 @@ fun PermissionDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val texts = permissionTexts(permission)
+    val texts = permissionTexts(permission, permissions.locationApproximateOnly)
     val granted = permissions.isGranted(permission)
     val note = permissionDetailNote(permission)
 
@@ -154,7 +154,7 @@ fun PermissionDetailScreen(
                 SectionHeader("Cómo activarlo")
                 Spacer(Modifier.height(NpSpace.L))
                 Column(verticalArrangement = Arrangement.spacedBy(NpSpace.L)) {
-                    permissionDetailSteps(permission).forEachIndexed { index, step ->
+                    permissionDetailSteps(permission, permissions.locationApproximateOnly).forEachIndexed { index, step ->
                         StepLine(number = index + 1, text = step)
                     }
                 }

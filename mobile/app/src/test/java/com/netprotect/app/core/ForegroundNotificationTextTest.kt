@@ -19,7 +19,7 @@ class ForegroundNotificationTextTest {
     @Test
     fun `the three texts are pinned`() {
         assertEquals("Control de apps funcionando en este dispositivo.", RuleEnforcementService.NOTIFICATION_TEXT)
-        assertEquals("Tu tutor recibe una ubicación aproximada cada 15 minutos.", LocationReportingService.NOTIFICATION_TEXT)
+        assertEquals("Tu tutor recibe tu ubicación cada 15 minutos.", LocationReportingService.NOTIFICATION_TEXT)
         assertEquals("Toca para abrir NetProtect y detener la vista.", ScreenShareService.NOTIFICATION_TEXT)
     }
 

@@ -41,11 +41,12 @@ val privacySections: List<PrivacySection> = listOf(
                 title = "Aplica las reglas de apps de tu tutor",
                 body = "Puede bloquear apps y mostrar el motivo. Cuando bloquea una, le dice a tu tutor qué app fue y cuándo.",
             ),
-            // LocationReportingService: REPORT_INTERVAL_MS (15 min), NETWORK_PROVIDER only, and only
-            // ACCESS_COARSE_LOCATION is declared and requested.
+            // LocationReportingService: REPORT_INTERVAL_MS (15 min); GPS_PROVIDER with ACCESS_FINE_LOCATION, and only
+            // NETWORK_PROVIDER when the user allowed just the approximate one (precise since 2026-10-14).
             PrivacyItem(
-                title = "Comparte tu ubicación aproximada",
-                body = "Llega a tu tutor aproximadamente cada 15 minutos, no en tiempo real. No usa la ubicación precisa.",
+                title = "Comparte tu ubicación precisa",
+                body = "Llega a tu tutor aproximadamente cada 15 minutos, no en tiempo real. " +
+                    "Es la ubicación precisa si la permites; si solo permites la aproximada, se envía esa.",
             ),
             // NetProtectDeviceAdminReceiver.onDisableRequested → TamperReportWorker (UNINSTALL_ATTEMPT); it
             // cannot veto the deactivation, so this only warns.

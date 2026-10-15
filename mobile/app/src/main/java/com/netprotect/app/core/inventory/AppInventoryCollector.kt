@@ -26,6 +26,9 @@ data class AppUsageInfo(
  */
 object AppInventoryCollector {
 
+    // Same limit as app_label in backend/app/schemas/application.py.
+    private const val MAX_LABEL_LENGTH = 255
+
     /** Only apps with a launcher entry: a parent recognizes "Instagram" or "Cámara", not the
      * couple hundred background system packages (telephony providers, system UI, etc.) that
      * QUERY_ALL_PACKAGES also makes visible but that mean nothing to them.
@@ -42,11 +45,22 @@ object AppInventoryCollector {
             .map { appInfo ->
                 InstalledAppInfo(
                     packageName = appInfo.packageName,
-                    appLabel = packageManager.getApplicationLabel(appInfo).toString(),
+                    appLabel = displayLabel(
+                        packageManager.getApplicationLabel(appInfo),
+                        appInfo.packageName,
+                    ),
                     isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
                 )
             }
     }
+
+    /** The backend takes an app_label of 1 to 255 characters and rejects the whole sync for a
+     * single bad entry. A real OPPO (Android 16) has a launcher app whose label is an empty
+     * string, which kept every app's usage from reaching the tutor; the package name is the one
+     * value that always identifies it.
+     */
+    internal fun displayLabel(rawLabel: CharSequence?, packageName: String): String =
+        rawLabel?.toString()?.trim().orEmpty().ifEmpty { packageName }.take(MAX_LABEL_LENGTH)
 
     /** The device's current local calendar day, as the ISO date string the backend expects. */
     fun todayDateString(): String = LocalDate.now().toString()

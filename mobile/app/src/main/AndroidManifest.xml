@@ -47,11 +47,16 @@
          shape as PACKAGE_USAGE_STATS. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Sprint 13 (ubicación): sólo aproximada a propósito — ver docs/android/capability-matrix.md.
-         Deliberadamente sin ACCESS_FINE_LOCATION y sin ACCESS_BACKGROUND_LOCATION: un foreground
-         service foregroundServiceType="location" ya cuenta como "en primer plano" para el sistema
-         de permisos de ubicación mientras corre, así que no hace falta pedir el permiso de
-         segundo plano (y con él, la política de "Prominent Disclosure" de Play). -->
+    <!-- Ubicación precisa desde el 2026-10-14, por decisión explícita del dueño del proyecto: en
+         un teléfono real la aproximada situaba el dispositivo a kilómetros (sustituye la decisión
+         de solo aproximada del Sprint 13; ver docs/android/capability-matrix.md). FINE y COARSE se
+         declaran y piden juntos porque Android 12+ exige COARSE junto a FINE; si la persona elige
+         «aproximada» en el diálogo, solo se concede COARSE. Sigue sin ACCESS_BACKGROUND_LOCATION:
+         un foreground service foregroundServiceType="location" ya cuenta como "en primer plano"
+         para el sistema de permisos de ubicación mientras corre (y exige COARSE o FINE, no el de
+         segundo plano), así que no hace falta pedirlo ni asumir la política de "Prominent
+         Disclosure" de Play. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 

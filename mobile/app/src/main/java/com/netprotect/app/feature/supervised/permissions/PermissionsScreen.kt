@@ -71,7 +71,7 @@ fun PermissionsScreen(
         onRecheckOverlay()
     }
     val steps = permissionSteps(permissions).map { step ->
-        val texts = permissionTexts(step.permission)
+        val texts = permissionTexts(step.permission, permissions.locationApproximateOnly)
         NpRailStep(
             title = texts.title,
             description = texts.description,

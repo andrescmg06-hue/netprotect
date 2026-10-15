@@ -15,6 +15,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
 import com.netprotect.app.core.network.LocationClient
+import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
 import java.time.Instant
 import kotlin.coroutines.resume
@@ -27,7 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Foreground service that reports this supervised device's approximate location to the
+/** Foreground service that reports this supervised device's location to the
  * backend every [REPORT_INTERVAL_MS] — has to keep running while the supervised person uses
  * OTHER apps, same reason [com.netprotect.app.core.rules.RuleEnforcementService] (Sprint 8)
  * exists as a service rather than a plain Compose effect.
@@ -43,9 +44,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * the process or the user swipes the app away, reporting stops until NetProtect reopens — same
  * documented limit as RuleEnforcementService, not an oversight.
  *
- * Only ACCESS_COARSE_LOCATION is ever requested (see LocationPermission) — uses
- * LocationManager.NETWORK_PROVIDER exclusively; GPS_PROVIDER requires ACCESS_FINE_LOCATION and
- * would throw SecurityException with only the coarse grant.
+ * Precise location since 2026-10-14 (see LocationPermission): GPS_PROVIDER first when
+ * ACCESS_FINE_LOCATION is granted, NETWORK_PROVIDER as its fallback and as the only provider when
+ * the user chose approximate. Plain LocationManager, still without play-services-location.
  */
 class LocationReportingService : Service() {
 
@@ -58,7 +59,7 @@ class LocationReportingService : Service() {
         private const val NOTIFICATION_ID = 1002
 
         /** Ongoing notification text; must match [REPORT_INTERVAL_MS]. Pinned by ForegroundNotificationTextTest. */
-        internal const val NOTIFICATION_TEXT = "Tu tutor recibe una ubicación aproximada cada 15 minutos."
+        internal const val NOTIFICATION_TEXT = "Tu tutor recibe tu ubicación cada 15 minutos."
 
         // ~15 minutes: enough to tell a tutor which zone the device is in, not to track it in
         // real time — see docs/sprint-13.md for the reasoning (and MAX_HISTORY_REPORTS in
@@ -66,10 +67,19 @@ class LocationReportingService : Service() {
         // Not private: "Estado" derives its "Sin confirmar" threshold from it (B2).
         internal const val REPORT_INTERVAL_MS = 15 * 60_000L
 
-        // How long to wait for a fresh NETWORK_PROVIDER fix before falling back to whatever
-        // last-known location the system already has cached, rather than blocking this cycle
-        // indefinitely for one that may never arrive (no connectivity, provider disabled, ...).
+        // How long to wait for a fresh NETWORK_PROVIDER fix before moving on, rather than
+        // blocking this cycle indefinitely for one that may never arrive (no connectivity, ...).
         private const val LOCATION_TIMEOUT_MS = 30_000L
+
+        // A GPS fix from a cold start usually needs longer than a network one; indoors it may
+        // never come, so it is bounded too and NETWORK_PROVIDER is tried after it.
+        private const val GPS_TIMEOUT_MS = 60_000L
+
+        // A cached fix older than one report interval belongs to an earlier cycle: reporting it
+        // as this cycle's would show the tutor a place the device may have left long ago (the
+        // case behind the 2026-10-14 decision). Skipping the cycle is more honest; the next one
+        // tries again 15 minutes later.
+        private const val MAX_LAST_KNOWN_AGE_MS = REPORT_INTERVAL_MS
 
         fun start(context: Context, baseUrl: String, accessToken: String, deviceId: String) {
             val intent = Intent(context, LocationReportingService::class.java)
@@ -143,22 +153,36 @@ class LocationReportingService : Service() {
     // runCatching for the race between that check and the call landing.
     @SuppressLint("MissingPermission")
     private suspend fun fetchCurrentLocation(): Location? {
-        if (!LocationPermission.isGranted(this)) return null
+        val access = LocationPermission.access(this)
+        if (access == LocationAccess.NONE) return null
         val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
 
-        if (!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            return runCatching {
-                locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            }.getOrNull()
+        // GPS_PROVIDER needs ACCESS_FINE_LOCATION (SecurityException with only the coarse grant),
+        // so it is used only with precise access, first, and NETWORK_PROVIDER is the fallback —
+        // or the only provider when the user chose approximate.
+        val allowed = if (access == LocationAccess.PRECISE) {
+            listOf(LocationManager.GPS_PROVIDER to GPS_TIMEOUT_MS, LocationManager.NETWORK_PROVIDER to LOCATION_TIMEOUT_MS)
+        } else {
+            listOf(LocationManager.NETWORK_PROVIDER to LOCATION_TIMEOUT_MS)
         }
 
-        val fresh = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { requestSingleNetworkUpdate(locationManager) }
-        return fresh ?: runCatching {
-            locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-        }.getOrNull()
+        for ((provider, timeout) in allowed) {
+            val enabled = runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false)
+            if (!enabled) continue
+            val fresh = withTimeoutOrNull(timeout) { requestSingleUpdate(locationManager, provider) }
+            if (fresh != null) return fresh
+        }
+
+        // No fresh fix from any provider: the newest cached one, but only if it is recent enough
+        // to describe this cycle rather than an older place (see MAX_LAST_KNOWN_AGE_MS).
+        val now = System.currentTimeMillis()
+        return allowed
+            .mapNotNull { (provider, _) -> runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() }
+            .filter { now - it.time <= MAX_LAST_KNOWN_AGE_MS }
+            .maxByOrNull { it.time }
     }
 
-    private suspend fun requestSingleNetworkUpdate(locationManager: LocationManager): Location? =
+    private suspend fun requestSingleUpdate(locationManager: LocationManager, provider: String): Location? =
         suspendCancellableCoroutine { continuation ->
             val listener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {
@@ -169,7 +193,7 @@ class LocationReportingService : Service() {
             continuation.invokeOnCancellation { locationManager.removeUpdates(listener) }
             try {
                 locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER,
+                    provider,
                     /* minTimeMs = */ 0L,
                     /* minDistanceM = */ 0f,
                     listener,

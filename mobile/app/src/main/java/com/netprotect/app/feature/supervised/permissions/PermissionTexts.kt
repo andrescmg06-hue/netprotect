@@ -3,7 +3,11 @@ package com.netprotect.app.feature.supervised.permissions
 /** Texts of one permission, shared by Permisos (lámina 04) and its detail (lámina 11). */
 internal class PermissionTexts(val title: String, val description: String, val actionLabel: String)
 
-internal fun permissionTexts(permission: SupervisedPermission): PermissionTexts = when (permission) {
+/**
+ * [locationApproximateOnly]: the user allowed only approximate location (Android 12+ dialog). Location then still
+ * counts as pending (PermissionsUi.location is precise access), and its description says why.
+ */
+internal fun permissionTexts(permission: SupervisedPermission, locationApproximateOnly: Boolean = false): PermissionTexts = when (permission) {
     // ACTION_USAGE_ACCESS_SETTINGS really is a Settings screen (UsageAccessPermission.openSettings).
     SupervisedPermission.UsageAccess -> PermissionTexts(
         title = "Acceso al uso de apps",
@@ -11,10 +15,16 @@ internal fun permissionTexts(permission: SupervisedPermission): PermissionTexts 
         actionLabel = "Activar en Ajustes",
     )
     // Location is Android's own dialog, not a Settings screen: "Activar en Ajustes" would be false.
+    // Precise since 2026-10-14 (owner's decision, LocationPermission). Same button for both pending states: it asks
+    // for FINE + COARSE, and Android 12+ answers an approximate-only grant with its own "change to precise" dialog.
     SupervisedPermission.Location -> PermissionTexts(
-        title = "Ubicación aproximada",
-        description = "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
-        actionLabel = "Permitir ubicación aproximada",
+        title = "Ubicación precisa",
+        description = if (locationApproximateOnly) {
+            "Ahora solo está permitida la ubicación aproximada, que no indica bien dónde está este teléfono. Cámbiala a precisa."
+        } else {
+            "Permite reportar a tu tutor la ubicación precisa de este teléfono cada 15 minutos."
+        },
+        actionLabel = "Permitir ubicación precisa",
     )
     // ACTION_MANAGE_OVERLAY_PERMISSION with this package: Settings' page for NetProtect (OverlayPermission).
     SupervisedPermission.Overlay -> PermissionTexts(
@@ -51,18 +61,27 @@ const val PERMISSION_BACK_LABEL = "Volver a permisos"
  * DeviceAdminPermission.requestIntent (ACTION_ADD_DEVICE_ADMIN). "Lo comprobamos al volver" is the
  * shell's ON_RESUME re-read plus the launchers' result callbacks.
  */
-fun permissionDetailSteps(permission: SupervisedPermission): List<String> = when (permission) {
+fun permissionDetailSteps(permission: SupervisedPermission, locationApproximateOnly: Boolean = false): List<String> = when (permission) {
     SupervisedPermission.UsageAccess -> listOf(
         "Toca «Activar en Ajustes». Android abre la lista de apps con acceso especial al uso, no la página de NetProtect.",
         "Busca NetProtect en esa lista, tócala y activa el permiso.",
         "Vuelve a esta pantalla. Lo comprobamos automáticamente al volver.",
     )
-    SupervisedPermission.Location -> listOf(
-        "Toca «Permitir ubicación aproximada». Android muestra un cuadro para permitirla; no se abren los Ajustes.",
-        // Only ACCESS_COARSE_LOCATION is in the manifest and requested (LocationPermission).
-        "En el cuadro, elige una opción que permita la ubicación. NetProtect solo pide la aproximada.",
-        LOCATION_DENIED_HINT,
-    )
+    // FINE + COARSE are requested together (LocationPermission.REQUESTED). The dialog's labels change by Android
+    // version and language, so they are described instead of quoted.
+    SupervisedPermission.Location -> if (locationApproximateOnly) {
+        listOf(
+            "Toca «Permitir ubicación precisa». Android muestra un cuadro para cambiar a la ubicación precisa; no se abren los Ajustes.",
+            "En el cuadro, elige la opción que cambia a la ubicación precisa.",
+            LOCATION_DENIED_HINT,
+        )
+    } else {
+        listOf(
+            "Toca «Permitir ubicación precisa». Android muestra un cuadro para permitirla; no se abren los Ajustes.",
+            "En el cuadro, deja elegida la ubicación precisa, no la aproximada, y elige una opción que la permita.",
+            LOCATION_DENIED_HINT,
+        )
+    }
     SupervisedPermission.Overlay -> listOf(
         // Android 11+ ignores the package in ACTION_MANAGE_OVERLAY_PERMISSION and opens the general list
         // (seen on the API 36 emulator: "Display over other apps"), so the page of NetProtect is not promised.
@@ -89,8 +108,8 @@ fun permissionDetailNote(permission: SupervisedPermission): String? = when (perm
 }
 
 /** Every text the detail of [permission] can show, pending or configured; for the wording tests. */
-fun permissionDetailTexts(permission: SupervisedPermission): List<String> {
-    val texts = permissionTexts(permission)
+fun permissionDetailTexts(permission: SupervisedPermission, locationApproximateOnly: Boolean = false): List<String> {
+    val texts = permissionTexts(permission, locationApproximateOnly)
     return listOf(
         permissionPositionLabel(permission),
         texts.title,
@@ -100,5 +119,5 @@ fun permissionDetailTexts(permission: SupervisedPermission): List<String> {
         PERMISSION_DISABLE_HINT,
         PERMISSION_APP_SETTINGS_LABEL,
         PERMISSION_BACK_LABEL,
-    ) + permissionDetailSteps(permission) + listOfNotNull(permissionDetailNote(permission))
+    ) + permissionDetailSteps(permission, locationApproximateOnly) + listOfNotNull(permissionDetailNote(permission))
 }
