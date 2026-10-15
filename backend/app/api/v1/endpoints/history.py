@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_tutor_of_device
+from app.api.deps import get_current_user, require_tutor_of_device
 from app.db.session import get_db
-from app.models import AppRuleEvent, Device, GeofenceEvent
+from app.models import AppRuleEvent, Device, GeofenceEvent, User
 from app.schemas.history import MAX_HISTORY_EVENTS, DeviceHistoryResponse, HistoryEventResponse
 
 router = APIRouter(tags=["history"])
@@ -15,6 +15,7 @@ router = APIRouter(tags=["history"])
 @router.get("/devices/{device_id}/history", response_model=DeviceHistoryResponse)
 async def get_device_history(
     device_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _device: Device = Depends(require_tutor_of_device),
 ) -> DeviceHistoryResponse:
@@ -29,6 +30,9 @@ async def get_device_history(
     with their own retention (app_rule_event_retention_days / geofence_event_retention_days,
     enforced by their own write endpoints), so this endpoint only reads and merges what already
     exists rather than duplicating it.
+
+    The geofence half lists only events of the calling tutor's own geofences (B-12, Sprint 69);
+    the rule-event half is the device's and stays shared by every tutor.
     """
     rule_events = (
         await db.execute(
@@ -41,7 +45,10 @@ async def get_device_history(
     geofence_events = (
         await db.execute(
             select(GeofenceEvent)
-            .where(GeofenceEvent.device_id == device_id)
+            .where(
+                GeofenceEvent.device_id == device_id,
+                GeofenceEvent.tutor_user_id == current_user.id,
+            )
             .order_by(GeofenceEvent.occurred_at.desc())
             .limit(MAX_HISTORY_EVENTS)
         )

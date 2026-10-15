@@ -37,6 +37,12 @@ class Geofence(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     latitude_ciphertext: Mapped[str] = mapped_column(Text)
     longitude_ciphertext: Mapped[str] = mapped_column(Text)
     radius_meters: Mapped[float] = mapped_column(Float)
+    # B-12 (Sprint 69): every tutor sees, edits and is alerted about only the geofences they
+    # created. Nullable only for rows that predate the column and had no unambiguous owner (see
+    # migration f2b6c9d1e4a7): nobody sees or evaluates those. Every new row sets it.
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
 
 
 class GeofenceEvent(UUIDPrimaryKeyMixin, Base):
@@ -72,6 +78,11 @@ class GeofenceEvent(UUIDPrimaryKeyMixin, Base):
     geofence_id: Mapped[uuid.UUID] = mapped_column()
     geofence_name: Mapped[str] = mapped_column(String(100))
     event_type: Mapped[str] = mapped_column(String(8))
+    # Snapshot of the geofence's creator when the event fired (B-12, Sprint 69) — like
+    # geofence_name, it must outlive the geofence, so its owner keeps seeing it after deleting it.
+    tutor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     # The device's own clock for the location report that triggered detection — distinct from
     # received_at, same split as AppRuleEvent.occurred_at/received_at.
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

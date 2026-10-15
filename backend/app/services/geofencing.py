@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt_coordinate
 from app.core.geo import haversine_distance_meters
+from app.models.device import TutorDevice
 from app.models.geofence import ENTER, EXIT, Geofence, GeofenceEvent
 from app.models.location import DeviceLocationReport
 
@@ -31,8 +32,19 @@ async def evaluate_geofence_transitions(
     if previous_report is None:
         return []
 
+    # B-12 (Sprint 69): only geofences whose creator is still actively linked to this device.
+    # One left behind by an unlinked tutor (or orphaned by the backfill) would only produce
+    # events and alerts nobody can see; it is evaluated again if that tutor links again.
     geofences = (
-        await db.execute(select(Geofence).where(Geofence.device_id == device_id))
+        await db.execute(
+            select(Geofence)
+            .join(
+                TutorDevice,
+                (TutorDevice.tutor_user_id == Geofence.created_by_user_id)
+                & (TutorDevice.device_id == Geofence.device_id),
+            )
+            .where(Geofence.device_id == device_id, TutorDevice.unlinked_at.is_(None))
+        )
     ).scalars().all()
     if not geofences:
         return []
@@ -66,6 +78,7 @@ async def evaluate_geofence_transitions(
             geofence_id=geofence.id,
             geofence_name=geofence.name,
             event_type=ENTER if is_inside else EXIT,
+            tutor_user_id=geofence.created_by_user_id,
             occurred_at=occurred_at,
         )
         db.add(event)
