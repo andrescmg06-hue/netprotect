@@ -6,6 +6,8 @@ depende de la memoria local ni de archivos que solo existan en la PC del dueño.
 
 ## 1. Dónde estamos
 
+> **Actualización (14/10/2026):** el rediseño web S52–S60 está terminado y fusionado en `main` con el PR #32 el 14/10/2026. La tabla de abajo es el estado al 04/10 y se conserva como registro. Lo que queda está en `docs/tasks.md` (W-xx, H-05, H-06).
+
 | Sprint | Contenido | Estado |
 |---|---|---|
 | S52 | Fase 0: informe de inspección y propuesta (sin código) | Hecho y aprobado el 04/10/2026. `docs/sprint-52.md` |

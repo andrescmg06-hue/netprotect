@@ -1,5 +1,7 @@
 # MASTER PROMPT FOR CLAUDE CODE — rediseño Android de NetProtect
 
+> **Histórico:** prompt maestro del kit Android v1 (S40–S51), ya ejecutado; no usarlo para implementar. El diseño vigente está en `docs/diseno-vigente.md`.
+
 Pégalo al empezar el Sprint 40 o cuando una sesión nueva de Claude Code necesite entender el
 programa completo. Para cada sprint concreto basta con el "PROMPT A/C" de su archivo, que ya remite aquí.
 

@@ -23,6 +23,7 @@ persona aceptando la captura de pantalla) se declara pendiente, explícitamente.
 | `docs/` | `progress.md` (estado), `tasks.md` (backlog), `sprint-NN.md` + `-evidence.md` (historia) |
 | `docs/android/capability-matrix.md` | Qué es viable en Android. **Consultar antes de proponer una función de control** |
 | `docs/security-baseline.md` | Controles y matriz de permisos |
+| `docs/diseno-vigente.md` | Cuál es el diseño que cuenta (web y app) |
 
 ## Comandos
 

@@ -5,6 +5,7 @@ paths:
 
 # Frontend (Next.js 16)
 
+- **Diseño vigente:** está en `docs/diseno-vigente.md`; los kits de `docs/redesign/` y `docs/android-redesign/` (salvo `supervisado-v2/`) son históricos, no se implementa a partir de ellos.
 - **El aspecto sigue a los mockups; la funcionalidad sigue al backend.** Si un mockup muestra algo
   que la API no tiene, se omite o se usa el dato real equivalente. Nunca se simula.
 - Tareas de UI no cambian rutas de API ni lógica de negocio.

@@ -1,6 +1,6 @@
 # NetProtect Android — Sprint 1
 
-Aplicación Android única en Kotlin + Jetpack Compose. En sprints posteriores soportará Tutor y Supervisado sin crear dos APK independientes.
+Aplicación Android única en Kotlin + Jetpack Compose. La app es solo del supervisado (el dispositivo del menor); el tutor gestiona todo desde el panel web.
 
 ## Funcionalidad actual
 

@@ -822,3 +822,10 @@ Refrescar la lista de tutores ya no reinicia ningún servicio (G-19). Todo lo qu
 Verificado con evidencia real: 220 tests unitarios y 137 de UI en emulador, los 8 jobs de CI en cada PR, y pruebas en el emulador (servicios estables al navegar, desvinculación real, bloqueo real con YouTube, permiso quitado con `appops`).
 **Sin probar, y no se declara hecho:** TalkBack, letra al 200 %, «quitar animaciones» y los pasos de batería en el Galaxy S25 FE; la vista remota de punta a punta con un tutor real; y la prueba con cinco personas. La producción sigue siendo demo local.
 El detalle está en `docs/sprint-61.md` a `docs/sprint-67.md` (evidencia en sus `-evidence.md`).
+
+## Alcance del Sprint 72
+
+Orden del repositorio, sin cambios funcionales. Todo el trabajo pendiente (rediseño web S52–S60 con B-05, B-13, B-14, límite diario dentro de la app, ubicación precisa y la preparación de producción del S71) quedó fusionado en `main`
+y `main` es la única rama. El stack de desarrollo se construye desde el checkout principal. Se quitaron código y recursos sin uso (26 iconos y sus imágenes del antiguo modo tutor de Android, cinco símbolos de Kotlin,
+el componente web `ChartCard`, una imagen sin uso y scripts del Sprint 1), y `docs/diseno-vigente.md` dice en un solo sitio cuál es el diseño que cuenta: el código de `main`. Los kits de diseño anteriores quedan marcados como históricos.
+El detalle está en `docs/sprint-72.md` (evidencia en `docs/sprint-72-evidence.md`).

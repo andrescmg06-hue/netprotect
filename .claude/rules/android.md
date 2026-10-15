@@ -5,6 +5,7 @@ paths:
 
 # Android (Kotlin/Compose)
 
+- **Diseño vigente:** está en `docs/diseno-vigente.md`; los kits de `docs/redesign/` y `docs/android-redesign/` (salvo `supervisado-v2/`) son históricos, no se implementa a partir de ellos.
 - **Sin Hilt/DI ni ViewModel todavía** — decisión deliberada, el proyecto es pequeño y se ha
   mantenido así a propósito; no introducir esas dependencias sin que el tamaño del proyecto lo
   justifique.

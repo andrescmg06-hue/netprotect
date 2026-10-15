@@ -1,8 +1,10 @@
 # Kit del rediseño Android de NetProtect (Sprints 40–51)
 
+> **Histórico:** kit del rediseño Android v1 (S40–S51), con mockups del modo tutor que ya no existe; sirve solo como registro. El diseño vigente está en `docs/diseno-vigente.md`.
+
 Todo lo necesario para que Claude Code (planifica, implementa lo sensible y revisa) y DeepSeek V4 Pro
 en OpenCode (implementa encargos cerrados) lleven la app Android a los 17 mockups, sin perder
-funcionalidades ni mostrar datos que no existen. **Estado y cómo continuar: `CONTINUAR.md`** (S40–S48 hechos).
+funcionalidades ni mostrar datos que no existen. **Estado y cómo continuar: `CONTINUAR.md`** (kit v1 ya ejecutado; ver el aviso de arriba).
 
 ## Qué hay aquí
 
@@ -17,7 +19,6 @@ funcionalidades ni mostrar datos que no existen. **Estado y cómo continuar: `CO
 | `ARCHITECTURE_GAPS.md` | Huecos G-01…G-27 y arquitectura objetivo | Claude |
 | `mockups/*.jpg` | Las 17 pantallas | Claude y DeepSeek |
 | `mockups/README.md` | Qué copiar y qué **no** de cada mockup | Claude y DeepSeek (OpenCode lo carga siempre) |
-| `opencode/AGENTS.md`, `opencode/opencode.json` | Configuración de OpenCode; S40 los copia a la raíz | OpenCode |
 
 ## Cómo se usa, sprint a sprint
 

@@ -38,8 +38,6 @@ object LocationPermission {
     /** Any location at all (precise or approximate): what the reporting service needs to run. */
     fun isGranted(context: Context): Boolean = access(context) != LocationAccess.NONE
 
-    fun isPreciseGranted(context: Context): Boolean = access(context) == LocationAccess.PRECISE
-
     internal fun accessFrom(fineGranted: Boolean, coarseGranted: Boolean): LocationAccess = when {
         fineGranted -> LocationAccess.PRECISE
         coarseGranted -> LocationAccess.APPROXIMATE

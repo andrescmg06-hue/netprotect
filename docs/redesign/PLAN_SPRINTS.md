@@ -1,5 +1,7 @@
 # Plan por sprints — Rediseño editorial del panel web (S52–S60)
 
+> **Histórico:** plan del rediseño web (S52–S60), ya ejecutado. El diseño vigente está en `docs/diseno-vigente.md`.
+
 Plan de ejecución del paquete `docs/redesign/`. El **qué** (dirección visual, tokens, vistas) está en
 `01_PROMPT_CLAUDE_CODE.md`, `02_DESIGN_TARGET.md` y `03_VISTAS.md`; este archivo fija el **cuándo y en qué orden**.
 Para arrancar desde cero: `CONTINUAR.md`.
