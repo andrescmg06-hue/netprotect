@@ -1,5 +1,7 @@
 # SPRINT_PLAN — rediseño de la app Android (Sprints 40–51)
 
+> **Histórico:** plan de sprints del kit Android v1 (S40–S51), ya ejecutado. El diseño vigente está en `docs/diseno-vigente.md`.
+
 La numeración continúa la del repo (el último cerrado es el 39), para que `/cerrar-sprint NN`,
 `docs/sprint-NN.md` y el README sigan funcionando igual.
 

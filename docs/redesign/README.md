@@ -1,5 +1,7 @@
 # Rediseño editorial del panel web — NetProtect
 
+> **Histórico:** paquete del rediseño web (S52–S60), ya ejecutado y fusionado en `main`; sirve como registro. El diseño vigente está en `docs/diseno-vigente.md`.
+
 Paquete de diseño y plan de ejecución (Sprints 52–60). **Empieza por `CONTINUAR.md`.**
 
 | Archivo | Para qué |

@@ -1,5 +1,7 @@
 # Prompt para Claude Code — Rediseño editorial de NetProtect · Panel del tutor
 
+> **Histórico:** prompt del rediseño web (S52–S60), ya ejecutado; no usarlo para implementar. El diseño vigente está en `docs/diseno-vigente.md`.
+
 > Este archivo y su paquete ya viven en el repo (`docs/redesign/`). Para arrancar, ver `CONTINUAR.md`; el reparto en
 > sprints está en `PLAN_SPRINTS.md` (Fase 0 = S52, Fase 1 = S53, Fase 2 = S54, Fase 3 = S55–S59, Fase 4 = S60). Pega en Claude Code:
 > **«Lee `docs/redesign/01_PROMPT_CLAUDE_CODE.md` y ejecuta únicamente la FASE 0. No toques código hasta que yo apruebe.»**

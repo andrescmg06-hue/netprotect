@@ -109,3 +109,11 @@ Se quedan `scripts/verify_sprint1.py` y `scripts/verify_turn.sh` (fuera del alca
 
 `docs/android-redesign/sprints/S40-linea-base-y-decisiones.md` cita la carpeta borrada, pero describe la
 instalación hecha en su momento (historia del sprint); no se reescribe. Los archivos vigentes están en la raíz.
+
+## T4 — Diseño vigente (solo documentos, sin borrados)
+
+Sin borrados de código. Se creó `docs/diseno-vigente.md`; se añadió el aviso de histórico a los seis documentos
+de los kits; se corrigió «S40–S48 hechos» en `docs/android-redesign/README.md` y se quitó de su tabla la fila de
+la carpeta `opencode/` (borrada en T3); `docs/redesign/CONTINUAR.md` lleva una nota de actualización (rediseño web
+terminado y fusionado con el PR #32 el 14/10/2026); `docs/tasks.md` marca W-06 done; reglas de frontend y Android
+y el mapa de `CLAUDE.md` apuntan al documento nuevo.

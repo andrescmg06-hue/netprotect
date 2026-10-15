@@ -95,7 +95,7 @@ Detalle: `docs/redesign/PLAN_SPRINTS.md`, `docs/sprint-60.md` y `docs/sprint-60-
 | W-03 | P3 | todo | `DeviceCategoriesPanel.tsx:303`: la lista principal usa un `<p>` en lugar de `EmptyState` como el resto de vistas (si el diseñador lo pide; las otras 4 notas son compactas a propósito) — S60 T6 |
 | W-04 | P3 | done | `public/brand/card-twilight.jpg` (147 KB) sin uso: usarlo o borrarlo (decisión del dueño) — S60 T5. Se borró por no tener uso (sigue en el historial de git) — S72 |
 | W-05 | P3 | todo | Recapturar las 18 capturas de S59 (anteriores a `eb2db05`); faltan Apps y Silenciadas y los 390 px de casi todas las vistas — S59 |
-| W-06 | P3 | todo | `docs/redesign/CONTINUAR.md` §5 «Cómo empezar» aún habla de arrancar el S52 — S60 T1 |
+| W-06 | P3 | done | `docs/redesign/CONTINUAR.md` §5 «Cómo empezar» aún habla de arrancar el S52 — S60 T1. Resuelto en S72: nota de actualización arriba de §1 |
 | W-07 | P3 | todo | Login: la referencia dibuja un wordmark serif propio y escribe «NetProject»; se usa el logo oficial (decisión D5 con el diseñador) — S60 T9 |
 | W-08 | P3 | todo | Login en móvil: la tarjeta tapa la cara del niño; ajustar `object-position` si se quiere — S60 T9 |
 | W-09 | P3 | todo | Pasada de contraste automática (axe) sobre las 16 vistas a 1440 y 390 px; los puntos de estado de 8 px (`#16b364` 2,74:1, `#f79009` 2,35:1) no se han medido en pantalla — S60 T2 |
