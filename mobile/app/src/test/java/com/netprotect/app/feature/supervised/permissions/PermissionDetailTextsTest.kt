@@ -37,7 +37,7 @@ class PermissionDetailTextsTest {
     fun onlyUsageAccessAndOverlaySayTheyOpenSettings() {
         assertEquals("Activar en Ajustes", permissionTexts(UsageAccess).actionLabel)
         assertEquals("Activar en Ajustes", permissionTexts(Overlay).actionLabel)
-        assertEquals("Permitir ubicación aproximada", permissionTexts(Location).actionLabel)
+        assertEquals("Permitir ubicación precisa", permissionTexts(Location).actionLabel)
         assertEquals("Activar protección", permissionTexts(DeviceAdmin).actionLabel)
         listOf(Location, DeviceAdmin).forEach { permission ->
             assertTrue(permissionDetailSteps(permission).first().contains("no se abren los Ajustes"))
@@ -57,6 +57,40 @@ class PermissionDetailTextsTest {
     }
 
     @Test
+    fun locationAsksForThePreciseOne() {
+        assertEquals("Ubicación precisa", permissionTexts(Location).title)
+        assertTrue(permissionTexts(Location).description.contains("ubicación precisa"))
+        assertTrue(permissionDetailSteps(Location)[1].contains("ubicación precisa, no la aproximada"))
+    }
+
+    @Test
+    fun approximateOnlySaysWhatToChangeWithTheSameButton() {
+        val texts = permissionTexts(Location, locationApproximateOnly = true)
+        assertEquals("Permitir ubicación precisa", texts.actionLabel)
+        assertTrue(texts.description.startsWith("Ahora solo está permitida la ubicación aproximada"))
+        val steps = permissionDetailSteps(Location, locationApproximateOnly = true)
+        assertEquals(3, steps.size)
+        assertTrue(steps.first().contains("«Permitir ubicación precisa»"))
+        assertTrue(steps.first().contains("no se abren los Ajustes"))
+        assertEquals(LOCATION_DENIED_HINT, steps.last())
+    }
+
+    @Test
+    fun approximateOnlyChangesNothingForTheOtherPermissions() {
+        listOf(UsageAccess, Overlay, DeviceAdmin).forEach { permission ->
+            assertEquals(permissionDetailTexts(permission), permissionDetailTexts(permission, locationApproximateOnly = true))
+        }
+    }
+
+    @Test
+    fun noLocationTextStillPromisesOnlyTheApproximateOne() {
+        listOf(false, true).flatMap { permissionDetailTexts(Location, it) }.forEach { text ->
+            assertFalse(text, text.contains("No se usa la ubicación precisa"))
+            assertFalse(text, text.contains("solo pide la aproximada"))
+        }
+    }
+
+    @Test
     fun deviceAdminOnlyWarns() {
         assertEquals("Solo avisa a tu tutor: no bloquea la desinstalación.", permissionDetailNote(DeviceAdmin))
         listOf(UsageAccess, Location, Overlay).forEach { assertNull(permissionDetailNote(it)) }
@@ -65,7 +99,7 @@ class PermissionDetailTextsTest {
     @Test
     fun noTextClaimsPreventionControlOrRetention() {
         val banned = listOf("impide", "ni controla", "controla", "retención", "conserva", "días", "meses", "pendiente de validar")
-        all.flatMap(::permissionDetailTexts).forEach { text ->
+        (all.flatMap { permissionDetailTexts(it) } + permissionDetailTexts(Location, locationApproximateOnly = true)).forEach { text ->
             banned.forEach { word -> assertFalse("«$word» in «$text»", text.contains(word, ignoreCase = true)) }
         }
     }

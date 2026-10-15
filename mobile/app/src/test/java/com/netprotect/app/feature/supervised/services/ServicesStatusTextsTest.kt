@@ -28,7 +28,7 @@ class ServicesStatusTextsTest {
 
     @Test
     fun otherLocationStatesDescribeTheFunction() {
-        val expected = "Comparte la ubicación aproximada. Llega a tu tutor aproximadamente cada 15 minutos."
+        val expected = "Comparte la ubicación de este teléfono. Llega a tu tutor aproximadamente cada 15 minutos."
         assertEquals(expected, locationDescription(ServiceState.Active))
         assertEquals(expected, locationDescription(ServiceState.Inactive))
     }

@@ -68,7 +68,7 @@ class ServicesStatusScreenTest {
     @Test
     fun activeLocationSaysEveryFifteenMinutes() {
         set()
-        composeRule.onNodeWithText("Comparte la ubicación aproximada. Llega a tu tutor aproximadamente cada 15 minutos.")
+        composeRule.onNodeWithText("Comparte la ubicación de este teléfono. Llega a tu tutor aproximadamente cada 15 minutos.")
             .performScrollTo().assertExists()
     }
 

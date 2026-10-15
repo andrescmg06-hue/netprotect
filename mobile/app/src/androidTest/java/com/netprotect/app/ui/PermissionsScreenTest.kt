@@ -76,7 +76,7 @@ class PermissionsScreenTest {
         set(permissions = PermissionsUi(usageAccess = false, location = false, overlay = false, deviceAdmin = false))
         // Only usage access and overlay open Settings; location is Android's dialog, device admin its activation screen.
         composeRule.onAllNodesWithText("Activar en Ajustes").assertCountEquals(2)
-        composeRule.onNodeWithText("Permitir ubicación aproximada").performScrollTo().performClick()
+        composeRule.onNodeWithText("Permitir ubicación precisa").performScrollTo().performClick()
         composeRule.onAllNodesWithText("Activar en Ajustes")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithText("Activar en Ajustes")[1].performScrollTo().performClick()
         composeRule.onNodeWithText("Activar protección").performScrollTo().performClick()
@@ -86,7 +86,7 @@ class PermissionsScreenTest {
     @Test
     fun locationAsNextAsksForTheApproximateLocation() {
         set(permissions = PermissionsUi(usageAccess = true, location = false, overlay = true, deviceAdmin = true))
-        composeRule.onNodeWithText("Permitir ubicación aproximada").performScrollTo().performClick()
+        composeRule.onNodeWithText("Permitir ubicación precisa").performScrollTo().performClick()
         assertEquals(listOf("requestLocation"), calls)
     }
 
@@ -135,11 +135,24 @@ class PermissionsScreenTest {
         )
     }
 
+    // Precise location since 2026-10-14 (owner's decision): nothing may still promise only the approximate one.
     @Test
-    fun noPrecisaText() {
+    fun asksForThePreciseLocation() {
         set()
-        composeRule.onNodeWithText("No se usa la ubicación precisa.", substring = true).performScrollTo().assertExists()
-        composeRule.onAllNodes(hasText("precisa", substring = true)).assertCountEquals(1)
+        composeRule.onNodeWithText("Permite reportar a tu tutor la ubicación precisa", substring = true).performScrollTo().assertExists()
+        composeRule.onAllNodes(hasText("No se usa la ubicación precisa", substring = true)).assertCountEquals(0)
+    }
+
+    @Test
+    fun approximateOnlyIsPendingWithItsOwnTextAndButton() {
+        set(
+            permissions = PermissionsUi(
+                usageAccess = true, location = false, overlay = true, deviceAdmin = true, locationApproximateOnly = true,
+            ),
+        )
+        composeRule.onNodeWithText("Ahora solo está permitida la ubicación aproximada", substring = true).performScrollTo().assertExists()
+        composeRule.onNodeWithText("Permitir ubicación precisa").performScrollTo().performClick()
+        assertEquals(listOf("requestLocation"), calls)
     }
 
     @Test

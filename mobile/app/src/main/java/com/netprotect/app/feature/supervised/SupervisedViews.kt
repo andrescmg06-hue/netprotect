@@ -8,9 +8,12 @@ import java.time.Instant
  * checks (never re-implemented). Notifications are not here: they are optional and asked once. */
 data class PermissionsUi(
     val usageAccess: Boolean,
+    // Precise location (ACCESS_FINE_LOCATION). Approximate only counts as pending: owner's decision of 2026-10-14.
     val location: Boolean,
     val overlay: Boolean,
     val deviceAdmin: Boolean,
+    // Only the approximate one is allowed: still pending, but its texts say what to change.
+    val locationApproximateOnly: Boolean = false,
 ) {
     val pending: Int
         get() = listOf(usageAccess, location, overlay, deviceAdmin).count { !it }

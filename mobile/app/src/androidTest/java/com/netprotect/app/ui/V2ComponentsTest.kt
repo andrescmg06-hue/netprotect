@@ -53,7 +53,7 @@ class V2ComponentsTest {
                         NpRailStep("Mostrar sobre otras apps", "Necesario para mostrar la pantalla de bloqueo cuando corresponda.", RailStatus.Next),
                         NpRailStep("Protección contra desinstalación", "Avisa a tu tutor si alguien intenta desinstalar NetProtect.", RailStatus.Pending),
                         NpRailStep("Acceso al uso de apps", "Permite saber cuánto tiempo se usan las apps y aplicar las reglas de tu tutor.", RailStatus.Done),
-                        NpRailStep("Ubicación aproximada", "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.", RailStatus.Done),
+                        NpRailStep("Ubicación precisa", "Permite reportar a tu tutor la ubicación precisa de este teléfono cada 15 minutos.", RailStatus.Done),
                     ),
                 )
             }

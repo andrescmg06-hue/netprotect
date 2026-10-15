@@ -40,7 +40,7 @@ internal fun permissionRevokedTexts(permission: SupervisedPermission): Permissio
         SupervisedPermission.UsageAccess ->
             "Mientras tanto, NetProtect no puede aplicar las reglas de tu tutor ni saber cuánto tiempo se usan las apps."
         SupervisedPermission.Location ->
-            "Mientras tanto, NetProtect no puede reportar la última ubicación conocida."
+            "Mientras tanto, NetProtect no puede reportar la ubicación de este teléfono."
         SupervisedPermission.Overlay ->
             "Mientras tanto, es posible que NetProtect no pueda mostrar la pantalla de bloqueo."
         SupervisedPermission.DeviceAdmin ->

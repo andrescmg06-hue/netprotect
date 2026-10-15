@@ -50,6 +50,7 @@ import com.netprotect.app.core.network.ReconnectingRealtimeChannel
 import com.netprotect.app.core.network.toUiError
 import com.netprotect.app.core.permissions.BatteryOptimization
 import com.netprotect.app.core.permissions.DeviceAdminPermission
+import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
 import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
@@ -148,7 +149,10 @@ fun SupervisedShell(
     var state by remember { mutableStateOf<SupervisedState>(SupervisedState.CheckingLink) }
     var codeInput by rememberSaveable { mutableStateOf("") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccessPermission.isGranted(context)) }
-    var hasLocationPermission by remember { mutableStateOf(LocationPermission.isGranted(context)) }
+    // Precise, approximate or none (Android 12+ lets the user pick). The location service runs with either grant,
+    // so its effect is keyed only on the Boolean below, which changes when location is gained or lost entirely.
+    var locationAccess by remember { mutableStateOf(LocationPermission.access(context)) }
+    val hasLocationPermission = locationAccess != LocationAccess.NONE
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
     var hasOverlayPermission by remember { mutableStateOf(OverlayPermission.isGranted(context)) }
     var screenShareSignaling by remember { mutableStateOf<ReconnectingRealtimeChannel?>(null) }
@@ -246,12 +250,14 @@ fun SupervisedShell(
         ActivityResultContracts.StartActivityForResult()
     ) { hasOverlayPermission = OverlayPermission.isGranted(context) }
 
-    // ACCESS_COARSE_LOCATION is an ordinary runtime permission: the system dialog itself grants
-    // or denies it. Shown only from its card — never fired automatically — following the
-    // educational-UI pattern from docs/android/capability-matrix.md (Sprint 13).
+    // ACCESS_FINE_LOCATION + ACCESS_COARSE_LOCATION are ordinary runtime permissions: the system
+    // dialog itself grants or denies them (Android 12+ requires both together, and the user may
+    // still pick approximate). Shown only from its card — never fired automatically — following
+    // the educational-UI pattern from docs/android/capability-matrix.md (Sprint 13). The result is
+    // re-read from the system instead of the map, which holds only what this dialog asked.
     val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> hasLocationPermission = granted }
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { locationAccess = LocationPermission.access(context) }
 
     // Not required for the enforcement service to run — asked anyway because the notification is
     // deliberately visible, not something to hide. No-op callback.
@@ -270,9 +276,13 @@ fun SupervisedShell(
     // over the welcome or a screen-share request; a removal found then is not told later either.
     fun checkRevokedPermissions() {
         val deviceId = (state as? SupervisedState.Linked)?.deviceId ?: return
+        // Location counts as removed only when it is gone entirely: going from precise to approximate (or a
+        // phone that had only the approximate one before 2026-10-14) is a pending step, not "se quitó".
+        // Reads the state itself, not hasLocationPermission: the ON_RESUME observer keeps the first composition's
+        // copy of this function, where that val would be stale.
         val current = PermissionsUi(
             usageAccess = hasUsageAccess,
-            location = hasLocationPermission,
+            location = locationAccess != LocationAccess.NONE,
             overlay = hasOverlayPermission,
             deviceAdmin = hasDeviceAdmin,
         )
@@ -294,7 +304,7 @@ fun SupervisedShell(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasUsageAccess = UsageAccessPermission.isGranted(context)
-                hasLocationPermission = LocationPermission.isGranted(context)
+                locationAccess = LocationPermission.access(context)
                 hasDeviceAdmin = DeviceAdminPermission.isActive(context)
                 hasOverlayPermission = OverlayPermission.isGranted(context)
                 batteryIgnoring = BatteryOptimization.isIgnoring(context)
@@ -578,13 +588,14 @@ fun SupervisedShell(
 
     val permissions = PermissionsUi(
         usageAccess = hasUsageAccess,
-        location = hasLocationPermission,
+        location = locationAccess == LocationAccess.PRECISE,
         overlay = hasOverlayPermission,
         deviceAdmin = hasDeviceAdmin,
+        locationApproximateOnly = locationAccess == LocationAccess.APPROXIMATE,
     )
     // The permission actions, shared by Permisos and its detail so both fire exactly the same launchers.
     val openUsageAccessSettings = { UsageAccessPermission.openSettings(context) }
-    val requestLocation = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
+    val requestLocation = { locationPermissionLauncher.launch(LocationPermission.REQUESTED) }
     val requestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) }
     val requestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) }
     // Sprint 67: only opens Settings; the result is read on the next ON_RESUME. NetProtect's own page if a
@@ -721,7 +732,7 @@ fun SupervisedShell(
                     onOpenUsageAccessSettings = openUsageAccessSettings,
                     onRecheckUsageAccess = { hasUsageAccess = UsageAccessPermission.isGranted(context) },
                     onRequestLocation = requestLocation,
-                    onRecheckLocation = { hasLocationPermission = LocationPermission.isGranted(context) },
+                    onRecheckLocation = { locationAccess = LocationPermission.access(context) },
                     onRequestOverlay = requestOverlay,
                     onRecheckOverlay = { hasOverlayPermission = OverlayPermission.isGranted(context) },
                     onRequestDeviceAdmin = requestDeviceAdmin,

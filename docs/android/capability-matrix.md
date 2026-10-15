@@ -16,8 +16,8 @@ asumir capacidades que una aplicación Android convencional no posee.
 | Bloqueo de apps sin device owner | `UsageStatsManager.queryEvents()` sondeado periódicamente (eventos `MOVE_TO_FOREGROUND`/`ACTIVITY_RESUMED`) + pantalla de bloqueo propia (`Activity`/overlay) | `PACKAGE_USAGE_STATS` (mismo permiso ya concedido en Sprint 7); un foreground service para sondear de forma sostenida | No hay API de notificación push para "app pasó a primer plano": hay que sondear, así que existe una ventana entre que la app aparece y se detecta/bloquea; evadible revocando el permiso en Ajustes o deteniendo el servicio | Sprint 8 — ver detalle abajo |
 | Identificar launcher, teléfono y Ajustes (para nunca bloquearlos) | `PackageManager.resolveActivity()` con `ACTION_MAIN`+`CATEGORY_HOME` y con `Settings.ACTION_SETTINGS`; `TelecomManager.getDefaultDialerPackage()` y `getSystemDialerPackage()` | Visibilidad de paquetes (ya cubierta por `QUERY_ALL_PACKAGES` del Sprint 7) | Todas pueden devolver `null`; si la resolución falla, esa app queda fuera de la lista protegida y podría bloquearse en modo lista blanca | Sprint 9 — ver detalle abajo |
 | Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
-| Geolocalización | `LocationManager` (`NETWORK_PROVIDER`) | `ACCESS_COARSE_LOCATION` (runtime) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre | Sprint 13 — ver detalle abajo. Decisión: sólo aproximada, sin permiso de segundo plano |
-| Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza `ACCESS_COARSE_LOCATION` ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
+| Geolocalización | `LocationManager` (`GPS_PROVIDER` con precisa, `NETWORK_PROVIDER` de respaldo o único con aproximada) | `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime, pedidos juntos) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre. En Android 12+ la persona puede elegir «aproximada» igualmente | Sprint 13 — ver detalle abajo. Decisión vigente (2026-10-14): ubicación precisa, sin permiso de segundo plano |
+| Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza el permiso de ubicación ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
 | Detectar intento de desinstalación | Registro como Device Administrator (`DeviceAdminReceiver.onDisableRequested()`) — no existe ninguna API para detectar la desinstalación en sí | Activación por el usuario vía `ACTION_ADD_DEVICE_ADMIN` (pantalla del sistema); `BIND_DEVICE_ADMIN` en el receiver | No impide desinstalar: sólo obliga a desactivar el administrador primero, y eso avisa. El usuario puede retirarlo cuando quiera; el *callback* no tiene veto | Sprint 20 — ver detalle abajo |
 | Saber si un servicio propio sigue vivo desde otro proceso | Ninguna API soportada (`getRunningServices()` obsoleto y limitado al propio proceso) — marca de tiempo cooperativa (`EnforcementLiveness`) | Ninguno | Cooperativa por diseño: detecta paradas ordinarias, no a un adversario técnico decidido | Sprint 20 — ver detalle abajo |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
@@ -342,7 +342,7 @@ elección determina qué exactitud recibe la app **independientemente de qué pe
   usuario elija explícitamente "aproximada" en el selector — en ese caso, "regardless of which
   location permissions your app declares", el resultado es aproximado igual.
 
-**Decisión de este sprint**: declarar únicamente `ACCESS_COARSE_LOCATION`. La frecuencia elegida
+**Decisión de este sprint (sustituida el 2026-10-14, ver la actualización justo debajo)**: declarar únicamente `ACCESS_COARSE_LOCATION`. La frecuencia elegida
 (~15 minutos, ver `docs/sprint-13.md`) es para saber en qué zona está el dispositivo supervisado,
 no para rastrear su posición exacta en tiempo real — pedir precisión que el caso de uso no
 necesita viola minimización de datos (el mismo principio ya aplicado al resto del proyecto) y
@@ -350,6 +350,36 @@ evita además tener que programar el selector aproximada/aproximada-vs-precisa d
 sólo se activa cuando se piden ambos permisos juntos.
 
 Fuente: <https://developer.android.com/training/location/permissions>.
+
+### Actualización 2026-10-14 — ubicación precisa por decisión del dueño
+
+El 2026-10-14 el dueño del proyecto decidió pasar a ubicación **precisa** tras ver, en un teléfono
+real, que la ubicación aproximada situaba el dispositivo lejos de donde estaba: con la precisión de
+`ACCESS_COARSE_LOCATION` («about 3 square kilometers», cita de arriba) el tutor no podía saber
+dónde estaba el menor, que es el propósito de la función. La minimización de datos se reevaluó
+frente a ese uso real y cedió; el resto de la decisión del Sprint 13 se mantiene:
+
+- Se declaran y piden **juntos** `ACCESS_FINE_LOCATION` y `ACCESS_COARSE_LOCATION`
+  (`RequestMultiplePermissions`): Android 12+ exige COARSE junto a FINE, y en ese diálogo la persona
+  puede seguir eligiendo «aproximada» — no se puede impedir, solo se detecta.
+- `LocationPermission` distingue precisa / solo aproximada / ninguna. La app trata «solo
+  aproximada» como permiso **pendiente** en Inicio, Permisos y su detalle, con su propio texto y el
+  mismo botón (volver a pedir FINE hace que Android 12+ ofrezca su diálogo de cambio a precisa). El
+  aviso «Se desactivó un permiso» solo salta si la ubicación desaparece del todo: pasar a
+  aproximada, o un teléfono que solo la tenía antes de este cambio, no es «se quitó».
+- `LocationReportingService` usa `GPS_PROVIDER` (60 s) cuando hay FINE y `NETWORK_PROVIDER` (30 s)
+  como respaldo, o como único con solo COARSE; sigue con `LocationManager` puro, sin
+  `play-services-location`. Una última posición conocida solo se usa si no hubo fix fresco y si no
+  es más vieja que un intervalo de reporte (15 min): una más antigua pertenece a un ciclo anterior y
+  mostraría al tutor un lugar que el teléfono pudo haber dejado hace rato.
+- Intervalo sin cambios (~15 min) y **sin** `ACCESS_BACKGROUND_LOCATION`: el foreground service de
+  tipo `location` exige COARSE **o** FINE (ver la sección del foreground service más abajo), no el
+  permiso de segundo plano.
+- Se actualizaron todos los textos que prometían al menor «solo aproximada» (notificación,
+  Privacidad, Permisos y su detalle, Estado de NetProtect).
+
+Pendiente de comprobar en teléfono real: la exactitud del GPS en interiores y el diálogo de
+cambio a precisa del fabricante.
 
 ### `ACCESS_BACKGROUND_LOCATION`: por qué este sprint decide NO pedirlo
 
@@ -517,7 +547,8 @@ sistema, sin que la app tenga que sondear nada.
 Adoptarla exigiría revertir, no extender, tres decisiones de diseño ya tomadas y documentadas en
 el Sprint 13 (`docs/sprint-13.md`, sección "Frecuencia y precisión"):
 
-- Pasar de `ACCESS_COARSE_LOCATION` a `ACCESS_FINE_LOCATION` — más precisión de la que el caso de
+- Pasar de `ACCESS_COARSE_LOCATION` a `ACCESS_FINE_LOCATION` (hecho después, el 2026-10-14, por otro
+  motivo: ver «Actualización 2026-10-14» en la sección del Sprint 13; los otros dos puntos siguen en pie) — más precisión de la que el caso de
   uso ("¿en qué zona está?") necesita, violando minimización de datos sin un beneficio real para
   este proyecto.
 - Pedir `ACCESS_BACKGROUND_LOCATION` — exactamente el permiso que el Sprint 13 evitó a propósito

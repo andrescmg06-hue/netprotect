@@ -129,7 +129,7 @@ fun ServicesStatusScreen(
                 Hairline()
                 ServiceRow(
                     icon = NpIcons.MapPin,
-                    title = "Ubicación aproximada",
+                    title = "Ubicación",
                     state = view.location,
                     description = locationDescription(view.location),
                 )
@@ -157,7 +157,7 @@ internal fun serviceStateLabel(state: ServiceState): String = when (state) {
 /** Location is sent about every 15 min (LocationReportingService.REPORT_INTERVAL_MS), never "en tiempo real". */
 internal fun locationDescription(state: ServiceState): String = when (state) {
     ServiceState.Unconfirmed -> "No hay una ubicación reciente confirmada. Llega a tu tutor aproximadamente cada 15 minutos."
-    ServiceState.Active, ServiceState.Inactive -> "Comparte la ubicación aproximada. Llega a tu tutor aproximadamente cada 15 minutos."
+    ServiceState.Active, ServiceState.Inactive -> "Comparte la ubicación de este teléfono. Llega a tu tutor aproximadamente cada 15 minutos."
 }
 
 internal fun lastReportLabel(lastReport: Instant?, now: Instant, zone: ZoneId): String =

@@ -142,8 +142,8 @@ fun DesignGallery() {
                         RailStatus.Done,
                     ),
                     NpRailStep(
-                        "Ubicación aproximada",
-                        "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
+                        "Ubicación precisa",
+                        "Permite reportar a tu tutor la ubicación precisa de este teléfono cada 15 minutos.",
                         RailStatus.Done,
                     ),
                 ),
@@ -157,8 +157,8 @@ fun DesignGallery() {
                         RailStatus.Done,
                     ),
                     NpRailStep(
-                        "Ubicación aproximada",
-                        "Permite reportar la última ubicación conocida. No se usa la ubicación precisa.",
+                        "Ubicación precisa",
+                        "Permite reportar a tu tutor la ubicación precisa de este teléfono cada 15 minutos.",
                         RailStatus.Done,
                     ),
                     NpRailStep(

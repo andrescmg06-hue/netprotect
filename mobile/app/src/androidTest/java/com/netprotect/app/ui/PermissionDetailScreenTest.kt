@@ -85,7 +85,7 @@ class PermissionDetailScreenTest {
             .performScrollTo().assertExists()
         composeRule.onNodeWithText("Activar en Ajustes").assertDoesNotExist()
         // Pinned footer buttons.
-        composeRule.onNodeWithText("Permitir ubicación aproximada").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("Permitir ubicación precisa").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("Abrir Ajustes de la app").assertIsDisplayed().performClick()
         assertEquals(listOf("requestLocation", "openAppSettings"), calls)
     }
@@ -128,7 +128,7 @@ class PermissionDetailScreenTest {
     fun locationConfiguredHasNoAppSettingsButton() {
         set(SupervisedPermission.Location, permissions = nonePending)
         composeRule.onNodeWithText("Abrir Ajustes de la app").assertDoesNotExist()
-        composeRule.onNodeWithText("Permitir ubicación aproximada").assertDoesNotExist()
+        composeRule.onNodeWithText("Permitir ubicación precisa").assertDoesNotExist()
     }
 
     @Test
