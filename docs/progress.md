@@ -1,60 +1,37 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-14 · Android: S67 y backend B-09/B-12 en `main` · Web: rediseño S52–S60 integrado con `main` y B-05 en la rama `integracion-web-redesign` (sin push)_
+_Actualizado: 2026-10-14 · Todo está en `main`: Android S61–S67 + B-14, límite y ubicación precisa; web S52–S60 + B-05; backend B-09, B-12, B-13; preparación de producción S71. En GitHub solo existe la rama `main`._
 
 ## En curso
-- **Integración del rediseño web con `main`**, rama `integracion-web-redesign` (worktree `C:/Users/andre/np-webint`, desde
-  `origin/web-redesign`): merge de `origin/main` (B-09, B-12, S61–S67) y de `origin/sprint-70-b05-sondeo-alertas` (B-05,
-  renovación programada del access token), para que el PR #14 llegue a `main` sin perder comportamiento. Sin push.
-- **S67 (casos reales y cierre del rediseño v2)**, rama `sprint-67-casos-reales` (worktree `C:/Users/andre/np-s67`). Hecho T1–T6: bienvenida de 2 pasos, aviso de batería,
-  «Se desactivó un permiso», pasada de letra 2.0, prueba G-19, revisión de seguridad global (0 ALTA; 2 BAJA arregladas). Pendiente: PR de S67 y los dos últimos pasos de abajo.
-  Detalle, commits y evidencia: `docs/sprint-67.md` y `docs/sprint-67-evidence.md`.
-- **S60 (rediseño del panel web, cierre)**, rama `sprint-60-rediseno-web-cierre`, creada desde `fix/s54-auth-log-sin-pii`
-  (`e9e4f69`). Cadena de ramas real: `sprint-52…` → `sprint-53…` → `sprint-54…` → `fix/s54-auth-log-sin-pii` → `sprint-60…`.
-  Trabajo hecho y verificado en local (T1–T9; `make test` 295 passed, `ruff`, `lint`, `tsc`, `next build` y e2e 2 passed,
-  con control negativo del test del foco; `security-reviewer` 0 ALTA, 0 MEDIA, 1 BAJA documental corregida) y publicado en
-  el PR #16 (`sprint-60-rediseno-web-cierre` → `sprint-54-rediseno-web-marco`, que sustituye al #15, cerrado). **CI: los 8 jobs
-  en verde** sobre `3e00b9f` (run 37229445424), tras cambiar `npm audit` a `--omit=dev` por GHSA-vfj7-8cjw-p6xm (W-14).
-  El PR #16 se fusionó el 12/10/2026 y la cadena S52–S60 está en `web-redesign` (PR #14 → `main`, en borrador). **Falta:**
-  lo que solo hace una persona: revisión visual con sesión real de
-  Google (T5 de S54), login a 390 px reales y modo de alto contraste de Windows. Detalle: `docs/sprint-60.md` y
-  `docs/sprint-60-evidence.md`.
-- **S54–S59 (rediseño del panel web, marco y las 16 vistas)**: código hecho por Cristian el 04/10/2026 (`35af89d`,
-  `c76ceea`, `bdfa6e8`, `8be5abd`, `7b6b117`, `7ec38c7`/`ccde5cf`, y `eb2db05` con las correcciones y el cambio de serif a
-  Newsreader). Documentación al día desde el S60: `docs/sprint-54.md` … `docs/sprint-59.md` y sus `-evidence.md`; la
-  evidencia visual está concentrada en `docs/redesign/s59/LEEME.md` (e2e «1 passed», 18 capturas en el repo, tomadas antes
-  de `eb2db05`). Cerrado en el S60: revisión de seguridad de S57 y S59 (1 BAJA aceptada, el enlace a Google Maps) y
-  `lint`/`tsc`/build/e2e con salida real. **Pendiente del dueño**: revisión visual con sesión real de Google (T5 del
-  S54), Vista remota con un teléfono real y recaptura de las 18 capturas, que son anteriores a `eb2db05`.
-- **S53 (rediseño del panel web, base visual)**, rama `sprint-53-rediseno-web-base-visual` (sale de la del S52). Hecho:
-  línea base de 34 capturas, tokens nuevos, serif, primitivas con las mismas props, fotos, `DESIGN.md` reescrito y
-  galería; lint, tipos y build en verde. Detalle: `docs/sprint-53.md` y `docs/sprint-53-evidence.md`. Pendiente:
-  `/cerrar-sprint 53` (lo lanza el dueño), D1 (serif, hoy Newsreader, abierta para el diseñador) y D5 (logo).
-- **S52 (rediseño del panel web, Fase 0, sin código)**, rama `sprint-52-rediseno-web-fase-0`. Informe
-  `docs/redesign/fase-0-informe.md` **aprobado por el dueño el 04/10/2026**; evidencia en `docs/sprint-52-evidence.md`.
-  Pendiente: T8 (capturas base, necesitan sesión de tutor), tipografía serif y logo oficial (decisiones D1 y D5 del
-  informe) y `/cerrar-sprint 52`. Siguiente: S53 (base visual: tokens, serif, primitivas, `DESIGN.md`).
-- **S51 (endurecimiento y cierre del rediseño Android)**: cerrado **reducido** por decisión del dueño (12/10/2026) e
-  integrado en `main` (PR #17 → `android-redesign`, PR #18 → `main`, CI 8/8 en verde). Hecho: T1–T9, la parte de T10
-  hecha en el Galaxy (build `minified` con R8, vista remota real H-02, letra grande en «Dispositivo vinculado») y la
-  revisión de seguridad (0 ALTA, 2 MEDIA, 5 BAJA). Pendiente: TalkBack y fuente grande en el resto de pantallas (pasan
-  al S67). Detalle: `docs/sprint-51.md`.
+- **S72 (orden del repositorio, sin cambios funcionales)**, rama `sprint-72-orden`: quita código y recursos sin uso
+  (iconos del modo tutor, `ChartCard`, scripts del Sprint 1) y deja el diseño vigente en un solo sitio
+  (`docs/diseno-vigente.md`). Detalle: `docs/sprint-72.md`.
+
+## Cómo se trabaja desde ahora (para no volver a usar una versión equivocada)
+- **Una sola fuente:** el checkout principal en `main` actualizado. El stack de desarrollo `netprotect-dev` se
+  construye desde ese checkout (`docker compose -p netprotect-dev --env-file .env -f compose.yaml up -d --build`).
+- Cada trabajo nuevo sale de `main` en su rama, entra por PR con CI en verde y la rama se borra al fusionar.
+- Diseño: lo que cuenta es el código de `main`; ver `docs/diseno-vigente.md`.
 
 ## Siguiente paso
-1. **PR `sprint-67-casos-reales` → `android-redesign`** con los 8 jobs de CI en verde.
-2. **Fusionar `main` en `android-redesign`** (`main` tiene el merge del PR #18 que `android-redesign` no tiene: 1 commit frente a 77) y **PR `android-redesign` → `main`**
-   (S61–S67); el merge a `main` lo hace el dueño. Después, `/cerrar-sprint 67`.
-3. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): Galaxy S25 FE con One UI (TalkBack y Accessibility Scanner, letra al 200 % en el teléfono, «quitar animaciones», pasos de batería,
-   quitar cada permiso en Ajustes y recuperarlo); tutor real desde el panel web (vista remota de punta a punta, «Atrás» y caducidad de S65, desvincular de S64); la prueba con cinco personas
+1. **Prueba en un teléfono real** (sin desplegar): APK `minified` con `NETPROTECT_API_BASE_URL=http://localhost:8000`,
+   `adb install -r` y `adb reverse tcp:8000 tcp:8000`. Comprobar la ubicación «Precisa», el límite diario que bloquea
+   estando dentro de la app y el panel rediseñado con una sesión real de Google (H-05, H-06).
+2. **Despliegue:** seguir `docs/go-live-checklist.md` (S71). Antes: añadir `FCM_SERVICE_ACCOUNT_SECRET_FILE` a
+   `.env.production.example` (a mano, por el dueño) y los cuatro hallazgos BAJA anotados en `docs/sprint-71.md`.
+3. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): TalkBack, letra al 200 % y permisos en un
+   teléfono real; vista remota de punta a punta con un tutor real; la prueba con cinco personas
    (`docs/android-redesign/supervisado-v2/05_PRUEBA_USUARIOS.md`).
-4. **Para presentarlo sin la PC:** el proyecto solo corre en demo local (backend en la PC). Falta el Paso 25 (dominio, hosting, certificados, Firebase/FCM, ID de cliente de Google, TURN real)
-   y firma de release; la release real de producción no se ha instalado.
-5. **Rediseño editorial del panel web (S52–S60):** plan en `docs/redesign/PLAN_SPRINTS.md`; para retomar,
-   `docs/redesign/CONTINUAR.md`. La cadena completa está en el PR #14 (`web-redesign` → `main`, en borrador); falta la
-   revisión humana de arriba y el merge, que decide el dueño.
-
-**Para retomar: `docs/android-redesign/CONTINUAR.md`.**
+4. Abierto en el backlog (`docs/tasks.md`): D-01 (filtrado web, contradice RF-07 del informe), B-11, W-01, L-06.
 
 ## Terminado recientemente
+- 14/10/2026: consolidación en `main` (PR #32 rediseño web + B-05, #33 B-14 + límite + ubicación precisa, #34 B-13,
+  #35 Sprint 71), CI 8/8 en cada uno; borradas todas las ramas salvo `main` tras comprobar que no tenían nada fuera de él
+- Sprint 71 (PR #35): producción no arranca con valores de ejemplo, release firmado por variables, healthchecks y lista
+  de salida única `docs/go-live-checklist.md` — `docs/sprint-71.md`
+- B-13 (PR #34): el refresh token es de un solo uso también con canjes simultáneos
+- Prueba en un teléfono real (OPPO, Android 16): B-14, límite diario dentro de la app y ubicación precisa (PR #33)
+- Sprint 70 (B-05, en el PR #32): el panel renueva el token de acceso antes de que caduque — `docs/sprint-70.md`
+- Sprints 68–69 (PR #29, #30): B-09 y B-12, cada tutor ve solo los datos de ubicación y geovallas de su vínculo
 - Sprint 67 (a falta de PR): bienvenida de 2 pasos con el contenido de Privacidad, aviso de batería sin pedir la exención, aviso «Se desactivó un permiso» (con la línea base guardada en el teléfono);
   el permiso quitado de verdad en el emulador, G-19, y la revisión de seguridad global — `docs/sprint-67.md`
 - Sprint 66 (PR #24): bloqueo en v2, Privacidad (solo lo que el código respalda) y Detalle de permiso con pasos reales; dos hallazgos medidos en el emulador antes de corregir el texto — `docs/sprint-66.md`

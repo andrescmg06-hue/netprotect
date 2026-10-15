@@ -117,3 +117,27 @@ de los kits; se corrigió «S40–S48 hechos» en `docs/android-redesign/README.
 la carpeta `opencode/` (borrada en T3); `docs/redesign/CONTINUAR.md` lleva una nota de actualización (rediseño web
 terminado y fusionado con el PR #32 el 14/10/2026); `docs/tasks.md` marca W-06 done; reglas de frontend y Android
 y el mapa de `CLAUDE.md` apuntan al documento nuevo.
+
+## T5 — Verificación (`verifier`, sobre `a8e8b8e`)
+
+| Área | Comando | Resultado |
+|---|---|---|
+| Backend | `git diff --stat efbfec5..HEAD -- backend` | vacío: el backend no cambia |
+| Frontend | `npm run lint` (`--max-warnings=0`) | 0 errores, 0 avisos |
+| Frontend | `npm run build` (Next 16.3.3, con TypeScript) | OK, 7/7 páginas estáticas |
+| Android | `./gradlew test assembleDebug lintDebug` | BUILD SUCCESSFUL en 1 min 54 s |
+| Android | tests JVM | 792 tests, 0 fallos, 0 omitidos |
+| Android | `lintDebug` | 0 errores, 28 avisos (14 UseKtx, 9 GradleDependency, 3 NewerVersionAvailable, 1 DataExtractionRules, 1 AndroidGradlePluginVersion); ninguno apunta a lo borrado |
+
+`next build` regenera `frontend/next-env.d.ts` (rutas `.next/types` en lugar de `.next/dev/types`); se restauró con
+`git checkout`. Gradle crea `mobile/.kotlin/` (caché de sesión de Kotlin 2.x), que no estaba ignorada: se añadió
+`.kotlin/` a `.gitignore`.
+
+No ejecutado (el cambio no los afecta): integración y e2e del backend, tests instrumentados de Android (los corre el CI).
+
+## Revisión de seguridad (`security-reviewer`)
+
+**Sin hallazgos.** Confirmó que nada borrado tenía uso (código, tests, manifiesto, XML, reflexión), que el diff no toca
+`backend/`, `infra/`, `compose*`, `AndroidManifest`, `deps.py`, `TokenStore` ni realtime, que `isGranted` sigue igual
+tras quitar `isPreciseGranted`, y que la documentación nueva no contradice `docs/security-baseline.md` ni expone datos.
+

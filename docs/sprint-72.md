@@ -1,6 +1,6 @@
 # Sprint 72 — Orden del repositorio (sin cambios funcionales)
 
-Rama `sprint-72-orden` (desde `main` en `efbfec5`, tras fusionar #32–#35). Estado: en curso.
+Rama `sprint-72-orden` (desde `main` en `efbfec5`, tras fusionar #32–#35). Estado: cerrado.
 
 El dueño pidió que no vuelva a subirse un diseño equivocado de la web o de la app y que el código quede
 ordenado, **quitando solo lo que no hace falta, sin afectar el funcionamiento ni la seguridad**.
@@ -48,7 +48,7 @@ un diseño anterior montados, todas las dependencias en uso. Sobra:
 - [x] T3 — Repo: quitar `scripts/check.*` y `docs/android-redesign/opencode/`. Delegado (mismo writer). Commit `f31e8fd`.
 - [x] T4 — Diseño vigente en un solo sitio: avisos de histórico en los kits, `CONTINUAR.md` web al día
   (W-06), README de `android-redesign`, y la regla en `.claude/rules/`. Delegado (mismo writer). Commit `13a7a99`.
-- [ ] T5 — Verificación (`verifier`: frontend lint+build, Android test+assembleDebug+lintDebug),
+- [x] T5 — Verificación (`verifier`: frontend lint+build, Android test+assembleDebug+lintDebug),
   `security-reviewer` (toca `core/auth/WelcomeStore.kt`), `progress.md` y PR. Inline.
 
 ## Criterios de aceptación
