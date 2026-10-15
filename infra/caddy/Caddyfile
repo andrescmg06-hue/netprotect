@@ -30,5 +30,16 @@
 	@metrics path /metrics
 	respond @metrics 404
 
+	# Sprint 71: neither Caddy nor uvicorn caps a request body by default. The largest body the
+	# API accepts is POST /devices/{id}/applications/sync (backend/app/schemas/application.py):
+	# up to 2000 installed apps and 2000 usage rows with 255-character fields, about 7.5 MB in
+	# the worst case where every app label character is a JSON-escaped surrogate pair (package
+	# names are ASCII on Android). 10MB leaves
+	# headroom over that ceiling; anything larger is rejected here with 413 before it reaches
+	# Python. The web site above is left alone: the panel calls this API from the browser.
+	request_body {
+		max_size 10MB
+	}
+
 	reverse_proxy backend:8000
 }

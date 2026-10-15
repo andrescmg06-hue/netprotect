@@ -1,3 +1,8 @@
+# Sprint 71: no disk-space or backup-age rule on purpose. Prometheus scrapes only the backend and
+# itself (prometheus.yml): there is no node-exporter for host disk metrics and infra/backup/
+# backup.sh exposes no metric, so either rule would watch a series that never exists and could
+# never fire. Adding them needs an exporter first (docs/go-live-checklist.md). There is also no
+# Alertmanager yet: these rules are visible in Prometheus/Grafana but notify nobody.
 groups:
   - name: netprotect
     rules:

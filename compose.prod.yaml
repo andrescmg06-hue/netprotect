@@ -18,6 +18,11 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
+# Sprint 71: every service has a `mem_limit` so one runaway process (a leak, a heavy Grafana
+# query, a pg_dump spike) is OOM-killed and restarted on its own instead of starving PostgreSQL
+# or the API on a small VPS. The values are ceilings sized from what each process is known to do
+# here, not measurements under real load: revisit them with the Grafana dashboard after go-live.
+
 services:
   db:
     image: postgres:18.6-alpine
@@ -34,6 +39,9 @@ services:
       retries: 10
     restart: unless-stopped
     logging: *default-logging
+    # Default postgres settings (128MB shared_buffers) plus one connection pool from a single
+    # uvicorn worker; the rest of the ceiling is page cache and pg_dump's backend process.
+    mem_limit: 1g
     volumes:
       - postgres_prod_data:/var/lib/postgresql
     networks:
@@ -53,6 +61,8 @@ services:
       retries: 10
     restart: unless-stopped
     logging: *default-logging
+    # Holds only rate-limit counters with short TTLs; the AOF rewrite fork is the peak.
+    mem_limit: 256m
     volumes:
       - redis_prod_data:/data
     networks:
@@ -72,6 +82,8 @@ services:
       db:
         condition: service_healthy
     logging: *default-logging
+    # One short-lived alembic process.
+    mem_limit: 256m
     networks:
       - private
 
@@ -92,8 +104,11 @@ services:
       PAIRING_CODE_PEPPER_FILE: /run/secrets/pairing_code_pepper
       LOCATION_ENCRYPTION_KEY_FILE: /run/secrets/location_encryption_key
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Sprint 71: FCM stays optional. With FCM_PROJECT_ID unset both values are blank (push
+      # disabled); once it is set, the backend reads the key from the `fcm_service_account`
+      # secret below, and app/core/config.py refuses to start if that file is missing or empty.
       FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
-      FCM_SERVICE_ACCOUNT_FILE: ${FCM_SERVICE_ACCOUNT_FILE:-}
+      FCM_SERVICE_ACCOUNT_FILE: ${FCM_PROJECT_ID:+/run/secrets/fcm_service_account}
       WEBRTC_STUN_URLS: ${WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
       # Sprint 28: same Compose secret the `coturn` service verifies against.
       TURN_SHARED_SECRET_FILE: /run/secrets/turn_shared_secret
@@ -105,6 +120,7 @@ services:
       - pairing_code_pepper
       - location_encryption_key
       - turn_shared_secret
+      - fcm_service_account
     depends_on:
       db:
         condition: service_healthy
@@ -112,8 +128,24 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    # Sprint 71: /health/ready checks PostgreSQL and Redis, so "healthy" means able to serve.
+    # The image already ships python, so no curl is installed for this. The Host header is the
+    # first ALLOWED_HOSTS entry because TrustedHostMiddleware (app/main.py) rejects any other,
+    # including 127.0.0.1; /health is exempt from https_required, so plain HTTP is fine here.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, urllib.request as r; h = os.environ['ALLOWED_HOSTS'].split(',')[0].strip(); r.urlopen(r.Request('http://127.0.0.1:8000/api/v1/health/ready', headers={'Host': h}), timeout=4)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
     logging: *default-logging
+    # One uvicorn worker (backend/Dockerfile) plus the in-memory WebSocket registry.
+    mem_limit: 512m
     # No published host port on purpose (Sprint 26): Caddy is now the only container with a port
     # published to the host, reached over the `edge` network by its container DNS name (backend).
     # /metrics stays reachable only from other containers on `private` (Prometheus) — see
@@ -134,9 +166,24 @@ services:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    # node is already in the image (frontend/Dockerfile); any answer below 500 means the
+    # standalone server is up and rendering.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then((res) => process.exit(res.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
     logging: *default-logging
+    # Next.js standalone server (node), no build happens on the host.
+    mem_limit: 512m
     # No published host port either (Sprint 26) — same reasoning as backend, reached by Caddy
     # over `edge` as `web`.
     networks:
@@ -152,10 +199,22 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - backend
-      - web
+      backend:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    # Caddy's admin API listens on localhost:2019 by default and only answers once the config is
+    # loaded; busybox wget ships with the alpine image.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     logging: *default-logging
+    # Reverse proxy and TLS only; request bodies are capped in the Caddyfile.
+    mem_limit: 256m
     ports:
       - "80:80"
       - "443:443"
@@ -182,6 +241,8 @@ services:
       - ./infra/coturn:/etc/coturn/netprotect:ro
     restart: unless-stopped
     logging: *default-logging
+    # A relay for a handful of concurrent remote-view sessions (user-quota 16 in turnserver.conf).
+    mem_limit: 256m
     # Every port here must also be open in the host firewall (docs/manuals/manual-despliegue.md).
     # The relay range matches min-port/max-port in turnserver.conf.
     ports:
@@ -215,6 +276,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
+    # pg_dump streams to disk; it does not hold the database in memory.
+    mem_limit: 256m
     networks:
       - private
 
@@ -226,6 +289,8 @@ services:
       - prometheus_data:/prometheus
     restart: unless-stopped
     logging: *default-logging
+    # Two scrape targets at 15s; the head block and WAL replay on restart are the peak.
+    mem_limit: 512m
     # Deliberately not on `edge` and not routed to by Caddy — Prometheus has no login of its own,
     # unlike Grafana, so it stays reachable only from other containers on `private`.
     networks:
@@ -247,6 +312,8 @@ services:
       - loki
     restart: unless-stopped
     logging: *default-logging
+    # Dashboard queries run here; a wide log query is the realistic spike.
+    mem_limit: 512m
     # Sprint 26 scope decision (see docs/sprint-26.md): bound to the host's loopback only, not
     # routed through Caddy and not on `edge` — an operator reaches it through an SSH tunnel
     # (`ssh -L 3000:127.0.0.1:3000 user@host`), not a public URL. Publishing this still works even
@@ -270,6 +337,8 @@ services:
       - loki_data:/loki
     restart: unless-stopped
     logging: *default-logging
+    # Single-binary Loki ingesting this host's container logs only.
+    mem_limit: 512m
     networks:
       - private
 
@@ -284,6 +353,8 @@ services:
       - loki
     restart: unless-stopped
     logging: *default-logging
+    # Tails container log files and ships them to Loki.
+    mem_limit: 256m
     networks:
       - private
 
@@ -306,6 +377,11 @@ secrets:
     file: ./secrets/grafana_admin_password.txt
   turn_shared_secret:
     file: ./secrets/turn_shared_secret.txt
+  # Sprint 71: optional, unlike every secret above. FCM_SERVICE_ACCOUNT_SECRET_FILE is the host
+  # path of the Firebase service-account JSON (./secrets/fcm_service_account.json by convention);
+  # unset, /dev/null is mounted so the stack still starts on a host without Firebase.
+  fcm_service_account:
+    file: ${FCM_SERVICE_ACCOUNT_SECRET_FILE:-/dev/null}
 
 volumes:
   postgres_prod_data:

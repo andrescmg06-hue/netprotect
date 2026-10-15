@@ -32,11 +32,40 @@ permissions:
 
 jobs:
   build-and-push:
+    # Sprint 71: with neither production build variable set, production simply is not configured
+    # yet (docs/go-live-checklist.md, step 7), so the job is skipped instead of failing red on every
+    # push to main. Once either one is set, the first step below fails if the other is missing.
     if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+      (vars.PROD_NEXT_PUBLIC_API_BASE_URL != '' || vars.PROD_GOOGLE_WEB_CLIENT_ID != '') &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-latest
     steps:
+      # Sprint 71: the web image bakes these two values in at build time, so an image built
+      # without them points every browser at a placeholder API or cannot sign anyone in. First
+      # step on purpose: neither image is pushed when they are missing. Passed through env, not
+      # interpolated into the script, so a variable's content can never become shell code.
+      - name: Require the production build variables
+        env:
+          PROD_NEXT_PUBLIC_API_BASE_URL: ${{ vars.PROD_NEXT_PUBLIC_API_BASE_URL }}
+          PROD_GOOGLE_WEB_CLIENT_ID: ${{ vars.PROD_GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          failed=0
+          if [ -z "$PROD_NEXT_PUBLIC_API_BASE_URL" ]; then
+            echo "::error::Repository variable PROD_NEXT_PUBLIC_API_BASE_URL is not set (Settings > Secrets and variables > Actions > Variables)."
+            failed=1
+          else
+            case "$PROD_NEXT_PUBLIC_API_BASE_URL" in
+              https://*) ;;
+              *) echo "::error::PROD_NEXT_PUBLIC_API_BASE_URL must start with https://."; failed=1 ;;
+            esac
+          fi
+          if [ -z "$PROD_GOOGLE_WEB_CLIENT_ID" ]; then
+            echo "::error::Repository variable PROD_GOOGLE_WEB_CLIENT_ID is not set (Settings > Secrets and variables > Actions > Variables)."
+            failed=1
+          fi
+          exit "$failed"
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -76,19 +105,16 @@ jobs:
 
       # NEXT_PUBLIC_* are baked in at build time (see frontend/Dockerfile) and are not secrets —
       # NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is already public by design (Sprint 3: a Google OAuth
-      # *web* client ID is meant to ship in browser JS). Both fall back to the same placeholder
-      # domain .env.production.example already uses: pending a human picking the real production
-      # domain (docs/planning/plan-desarrollo.md, Paso 25), the image this job pushes today is
-      # correct in every way except that one baked-in value, and gets rebuilt with the real vars
-      # set the day that domain exists — same "pending a human with real infrastructure" situation
-      # as WEB_DOMAIN/API_DOMAIN in compose.prod.yaml.
+      # *web* client ID is meant to ship in browser JS). Sprint 71 removed the placeholder
+      # fallback (https://api.example.com) this used to have: the first step of this job now
+      # fails instead of publishing an image that points at a domain nobody owns.
       - uses: docker/build-push-action@v6
         with:
           context: frontend
           push: true
           tags: ${{ steps.meta-web.outputs.tags }}
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=${{ vars.PROD_NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com' }}
+            NEXT_PUBLIC_API_BASE_URL=${{ vars.PROD_NEXT_PUBLIC_API_BASE_URL }}
             NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ vars.PROD_GOOGLE_WEB_CLIENT_ID }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
@@ -120,3 +146,19 @@ jobs:
             docker compose --env-file .env.production -f compose.prod.yaml pull backend web migrate
             docker compose --env-file .env.production -f compose.prod.yaml run --rm migrate
             docker compose --env-file .env.production -f compose.prod.yaml up -d
+            # Sprint 71: `up -d` returns as soon as containers start, not when they work. Wait
+            # for the backend healthcheck (GET /api/v1/health/ready: PostgreSQL and Redis
+            # reachable, compose.prod.yaml) and fail the deploy if it never turns healthy.
+            backend_id=$(docker compose --env-file .env.production -f compose.prod.yaml ps -q backend)
+            for attempt in $(seq 1 24); do
+              health=$(docker inspect -f '{{.State.Health.Status}}' "$backend_id" 2>/dev/null || echo missing)
+              if [ "$health" = "healthy" ]; then
+                echo "backend healthy after attempt $attempt"
+                exit 0
+              fi
+              echo "backend health: $health (attempt $attempt/24)"
+              sleep 5
+            done
+            echo "backend did not become healthy within 2 minutes" >&2
+            docker compose --env-file .env.production -f compose.prod.yaml logs --tail=50 backend >&2
+            exit 1
