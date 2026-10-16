@@ -177,7 +177,8 @@ automático** que fuerce un `Error` en el envío.
   por ese aviso).
 - Que el panel del tutor muestre «Conectado» con la app cerrada (solo se midió lo que recibe el backend).
 - La sincronización de apps y uso con la app cerrada (cada ~5 min 15 s): no se midió.
-- Un `Error` en el envío de segundo plano (sin test automático, ver arriba) y los tests `androidTest` de Compose.
+- Un `Error` en el envío de segundo plano (sin test automático, ver arriba). Los tests `androidTest` de Compose tampoco se
+  corrieron en local; los corrió el CI después (ver «CI del PR #37» al final).
 - Con el PIN puesto, tras un reinicio Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo: la protección
   vuelve entonces, no antes.
 
@@ -199,7 +200,7 @@ lint: 0 errores y 30 avisos, ninguno nuevo (15 UseKtx, 9 GradleDependency, 3 New
       1 DataExtractionRules, 1 AGP, 1 InlinedApi en LocationPermission.kt:48)
 ```
 
-No se corrió el frontend (no se tocó) ni `connectedAndroidTest`.
+No se corrió el frontend (no se tocó) ni `connectedAndroidTest` en local; este último lo corrió el CI (ver «CI del PR #37»).
 
 `security-reviewer` sobre `main...HEAD` (lectura del diff; no ejecutó pruebas): **0 ALTA, 0 MEDIA, 4 BAJA**; nada bloquea el
 cierre. Las cuatro van al backlog (`docs/tasks.md`):
@@ -225,3 +226,24 @@ comportamiento de Android que depende de la plataforma (excepciones exactas del 
 
 La revisión por recibos de la rama (46 archivos, 3243 líneas) no cupo en el presupuesto de contexto de la herramienta
 (`lens_context_budget_exceeded`, sin autoridad de revisión creada) y el dueño decidió omitirla (`declined_this_candidate`).
+
+## CI del PR #37 (16/10/2026)
+
+El PR #37 se abrió contra `main` con la punta `8301cff` y los 8 jobs de GitHub Actions pasaron
+(ejecución `38931740520`, evento `pull_request`, conclusión `success`): `backend` 25 s, `frontend` 39 s, `api-collection`
+1 m 3 s, `integration` 1 m 44 s, `e2e` 1 m 51 s, `performance` 1 m 42 s, `android` 3 m 20 s y `android-instrumented` 4 m 11 s.
+El PR se fusionó en `main` con el commit `32220b6`.
+
+Esto cubre lo que en este documento figuraba como no corrido, los tests `androidTest`. El log del job
+`android-instrumented` (`./gradlew connectedDebugAndroidTest` en un emulador de `reactivecircus/android-emulator-runner`):
+
+```
+Starting 151 tests on emulator-5554 - 11
+Finished 151 tests on emulator-5554 - 11
+BUILD SUCCESSFUL in 2m 27s
+```
+
+Los 151 tests incluyen las 19 clases de Compose de `mobile/app/src/androidTest/.../ui/` (por ejemplo `PermissionDetailScreenTest`,
+`PermissionsScreenTest` y `BlockScreenContentTest`) y los de almacenamiento. El log no desglosa cuántos tests tiene cada
+clase, así que de ahí no sale cuántos de los 151 son de Compose. Siguen sin probarse en un teléfono real los puntos H-07 y H-08
+(`docs/tasks.md`).
