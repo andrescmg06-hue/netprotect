@@ -40,7 +40,6 @@ import com.netprotect.app.core.auth.PermissionSnapshotStore
 import com.netprotect.app.core.auth.TokenSession
 import com.netprotect.app.core.auth.WelcomeStore
 import com.netprotect.app.core.auth.authorized
-import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
@@ -62,6 +61,8 @@ import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import com.netprotect.app.core.status.servicesView
 import com.netprotect.app.core.supervision.SupervisionServices
+import com.netprotect.app.core.sync.DeviceReporter
+import com.netprotect.app.core.sync.ReportCadence
 import com.netprotect.app.core.sync.SyncWorker
 import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.consent.ConsentEvent
@@ -97,8 +98,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private const val HEARTBEAT_INTERVAL_MS = 60_000L
-private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
+// Sprint 73 (T7): the cadence lives in ReportCadence, shared with the service that sends the same reports with the app closed.
+private const val HEARTBEAT_INTERVAL_MS = ReportCadence.HEARTBEAT_INTERVAL_MS
+private const val APP_SYNC_INTERVAL_MS = ReportCadence.APP_SYNC_INTERVAL_MS
 
 /** Sprint 64 (B1): how often `/devices/me` is asked while linked, besides every ON_RESUME. */
 private const val LINK_CHECK_INTERVAL_MS = 5 * 60_000L
@@ -476,17 +478,11 @@ fun SupervisedShell(
         while (true) {
             val sent = runCatching {
                 session.authorized { token ->
-                    deviceClient.sendHeartbeat(
-                        token,
-                        deviceId,
-                        Build.VERSION.RELEASE,
-                        BuildConfig.VERSION_NAME,
-                        java.util.TimeZone.getDefault().id,
-                        // Sprint 20: read fresh on every beat, never cached — the whole point is
-                        // noticing the moment one of them changes (see app/services/tamper.py).
-                        usageAccessGranted = UsageAccessPermission.isGranted(context),
-                        serviceActive = EnforcementLiveness.isRecentlyActive(context),
-                        deviceTime = Instant.now(),
+                    // Sprint 73 (T7): the fields (read fresh on every beat, Sprint 20) are built by DeviceReporter,
+                    // shared with SyncWorker and RuleEnforcementService, which send the same heartbeat with the
+                    // app closed and stay quiet while this loop runs (ReportCadence).
+                    DeviceReporter.sendHeartbeat(
+                        context, deviceClient, token, deviceId, EnforcementLiveness.isRecentlyActive(context),
                     )
                 }
             }.isSuccess
@@ -510,15 +506,7 @@ fun SupervisedShell(
         if (!hasUsageAccess) return@LaunchedEffect
         while (true) {
             runCatching {
-                session.authorized { token ->
-                    applicationsClient.syncApplications(
-                        accessToken = token,
-                        deviceId = deviceId,
-                        usageDate = AppInventoryCollector.todayDateString(),
-                        installedApps = AppInventoryCollector.collectInstalledApps(context),
-                        dailyUsage = AppInventoryCollector.collectTodayUsage(context),
-                    )
-                }
+                session.authorized { token -> DeviceReporter.syncApps(context, applicationsClient, token, deviceId) }
             }
             delay(APP_SYNC_INTERVAL_MS)
         }

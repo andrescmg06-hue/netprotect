@@ -21,6 +21,7 @@ import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
 import com.netprotect.app.core.storage.RulesCacheStore
+import com.netprotect.app.core.sync.PeriodicReporter
 import com.netprotect.app.feature.supervised.BlockScreenActivity
 import com.netprotect.app.ui.format.CategoryLabels
 import java.time.Instant
@@ -54,6 +55,12 @@ import kotlinx.coroutines.launch
  * (see the capability matrix, Sprint 73), and HyperOS/MIUI kills the app when it is swiped from
  * Recents unless the person allowed «Inicio automático»: then nothing restarts until it is opened.
  * Before Sprint 73 there was no restart at all (Sprints 8–19).
+ *
+ * Sprint 73 (T7): this is also what keeps the tutor seeing the device with the app closed. The
+ * heartbeat and the app/usage sync lived only in SupervisedShell's loops (screen open) and in
+ * SyncWorker (every 15 min at best, while the backend marks a device offline after 5), so with
+ * the app closed the blocking worked but the tutor saw «sin reporte». The loop now sends both
+ * through PeriodicReporter (core/sync, shared with SyncWorker and the shell via DeviceReporter).
  *
  * Sprint 19 (offline): this service now primes its rule cache from Room (RulesCacheStore) on
  * start instead of only the ALLOW/no-school-mode fail-safe defaults, persists every successful
@@ -277,6 +284,9 @@ class RuleEnforcementService : Service() {
         }
         realtimeChannel = realtime
         realtime.start(serviceScope)
+        // Sprint 73 (T7): the heartbeat and the app/usage sync with the app closed — the screen's loops
+        // (SupervisedShell) only run while it is open. Sent from child coroutines, never inside the cycle.
+        val reporter = PeriodicReporter(applicationContext, baseUrl, deviceId, serviceScope)
         try {
             // Sprint 73: which app the current "visit" is, decided from every foreground transition
             // of each poll window (VisitTracker), not only from the last one — leaving a blocked
@@ -490,6 +500,12 @@ class RuleEnforcementService : Service() {
                         }
                     }
 
+                    // Sprint 73 (T7): heartbeat and app/usage sync when due (ReportCadence; a backstop for the
+                    // screen's own loops, so it stays quiet while they run). Never throws; a 404
+                    // device_not_found from either one is the same end of the link as above.
+                    reporter.tick()
+                    if (reporter.deviceGone) linkEnded = true
+
                     if (linkEnded) {
                         // Sprint 73 (T5): the tutor unlinked this device (maybe with the app
                         // closed). Forget the link, delete its data and stop everything — this
@@ -515,6 +531,7 @@ class RuleEnforcementService : Service() {
             }
         } finally {
             // This loop's own channel, also when only the loop ends and the service lives on.
+            reporter.stop()
             realtime.stop()
             if (realtimeChannel === realtime) realtimeChannel = null
         }

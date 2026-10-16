@@ -239,6 +239,13 @@ bloquea** el vínculo ni el resto. `LocationReportingService.canStartFromBackgro
 (`LocationPermission.backgroundReady`, lógica pura con tests); sin él la ubicación sigue esperando a que se abra la app.
 Retirarlo deja «Ubicación» pendiente (Permisos e Inicio), sin aviso propio ni al tutor (no cambia el backend). Si la app se
 publicara, Play exigiría la divulgación destacada y su formulario (matriz de capacidades).
+**T7 (latido y sincronización con la app cerrada):** el bucle de `RuleEnforcementService` envía también el latido y la
+sincronización de apps/uso (`PeriodicReporter`), porque los bucles de `SupervisedShell` solo corren con la pantalla abierta y
+`SyncWorker` (≥15 min) deja pasar los 5 min tras los que el backend marca «desconectado». Un solo lugar construye ambos envíos
+(`core/sync/DeviceReporter`, usado por `SyncWorker`, el servicio y el shell: no copiar sus campos); la cadencia es pura
+(`ReportCadence`: el servicio es respaldo, envía pasados el intervalo + 15 s desde el último intento o éxito de **cualquiera**,
+`ReportClock`) y se envía desde corutinas hijas para no retrasar un ciclo de bloqueo. Un 404 `device_not_found` termina el vínculo
+(`endLinkFromBackground`), un fallo cualquiera no mata el bucle. Los `LaunchedEffect` del shell siguen para la pantalla.
 
 - Un archivo Kotlin nuevo no está verificado hasta que `./gradlew compileDebugKotlin` (o más)
   corre sobre él al menos una vez. Un import que falta (p. ej. `Modifier.width` sin

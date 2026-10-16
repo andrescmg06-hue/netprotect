@@ -1,7 +1,6 @@
 package com.netprotect.app.core.sync
 
 import android.content.Context
-import android.os.Build
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -10,9 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
-import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
 import com.netprotect.app.core.network.isDeviceGone
@@ -21,8 +18,6 @@ import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
 import com.netprotect.app.core.supervision.SupervisionServices
-import java.time.Instant
-import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 private const val KEY_BASE_URL = "base_url"
@@ -63,17 +58,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         // Sprint 20: this is the heartbeat that matters most for manipulation detection — it
         // keeps running when SupervisedScreen isn't composed, which is exactly when the
         // enforcement service is most likely to have been stopped without anyone noticing.
+        // Sprint 73 (T7): built by DeviceReporter, the same code RuleEnforcementService and the screen use.
         val heartbeat = runCatching {
-            DeviceClient(baseUrl).sendHeartbeat(
-                accessToken,
-                deviceId,
-                Build.VERSION.RELEASE,
-                BuildConfig.VERSION_NAME,
-                TimeZone.getDefault().id,
-                usageAccessGranted = UsageAccessPermission.isGranted(applicationContext),
-                serviceActive = serviceActive,
-                deviceTime = Instant.now(),
-            )
+            DeviceReporter.sendHeartbeat(applicationContext, DeviceClient(baseUrl), accessToken, deviceId, serviceActive)
         }
         // Sprint 73 (T5): the backend refuses a device with no active link (uniform 404). With the
         // app closed this worker is what notices an unlink: end it here instead of reporting usage
@@ -82,13 +69,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
         if (UsageAccessPermission.isGranted(applicationContext)) {
             val sync = runCatching {
-                ApplicationsClient(baseUrl).syncApplications(
-                    accessToken = accessToken,
-                    deviceId = deviceId,
-                    usageDate = AppInventoryCollector.todayDateString(),
-                    installedApps = AppInventoryCollector.collectInstalledApps(applicationContext),
-                    dailyUsage = AppInventoryCollector.collectTodayUsage(applicationContext),
-                )
+                DeviceReporter.syncApps(applicationContext, ApplicationsClient(baseUrl), accessToken, deviceId)
             }
             if (sync.exceptionOrNull()?.isDeviceGone() == true) return endLink(deviceId)
         }

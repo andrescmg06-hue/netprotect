@@ -833,6 +833,22 @@ con la app cerrada. Fuentes consultadas antes de escribir código:
 | `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) | Programa `SyncWorker`, arranca el bloqueo (si hay vínculo, sesión y acceso a uso) y la ubicación solo en API < 30 o con `ACCESS_BACKGROUND_LOCATION` concedido | Tras desbloquear el teléfono por primera vez o actualizar la app (en MIUI/HyperOS, solo con «Inicio automático») |
 | `SyncWorker` (cada ~15 min, con red) | Si `EnforcementLiveness` dice que el bloqueo murió y siguen vínculo, sesión y acceso a uso, intenta arrancarlo (después de enviar el latido, que ya cuenta la verdad al tutor) | Solo con una excepción de arranque en segundo plano; en la práctica, con la optimización de batería quitada (pantalla «Batería»). Sin ella se rechaza y se registra |
 
+### El tutor sigue viendo el dispositivo con la app cerrada (T7)
+
+Hallazgo en el emulador (16/10/2026): con la app cerrada el bloqueo seguía, pero el latido de 1 min y la sincronización
+de apps/uso vivían en `LaunchedEffect` de `SupervisedShell` (solo con la pantalla abierta); con ella cerrada solo
+`SyncWorker` mandaba latido (WorkManager, 15 min como mínimo) y el backend da el dispositivo por desconectado a los 5 min:
+el tutor veía «sin reporte» aunque el bloqueo funcionara. Ahora el bucle de `RuleEnforcementService` (siempre vivo mientras
+hay vínculo) también los envía (`PeriodicReporter`, `core/sync`), sin red en el ciclo de bloqueo (corutinas hijas) y con
+la misma construcción de campos que `SyncWorker` y la pantalla (`DeviceReporter`: `usage_access_granted`, `service_active`,
+`device_time`...). La cadencia es una función pura (`ReportCadence`, con tests): el servicio actúa de **respaldo**, es decir,
+envía cuando pasaron el intervalo más 15 s desde el último intento o el último éxito de cualquiera (pantalla, `SyncWorker` o
+él mismo; `ReportClock`, en memoria, el mismo proceso). Con la pantalla abierta el servicio no duplica el tráfico; con
+ella cerrada el latido sale cada ~75 s (menos de los 5 min del backend) y la sincronización de apps cada ~5 min 15 s, solo con
+acceso al uso. Un 404 `device_not_found` en cualquiera de los dos termina el vínculo como en `SyncWorker`
+(`SupervisionServices.endLinkFromBackground`). Un fallo de red o una excepción en un envío no mata el bucle. **Pendiente de
+comprobar en ejecución:** que con la app cerrada el panel del tutor siga viendo el dispositivo conectado (emulador o teléfono).
+
 Cerrar sesión, la sesión caducada y la desvinculación paran los tres de forma explícita
 (`SupervisionServices.stopAll`) y borran la sesión o el vínculo que cualquier reinicio comprueba, así
 que ningún reinicio los revive. `EnforcementLiveness` mantiene su semántica: una parada deliberada
