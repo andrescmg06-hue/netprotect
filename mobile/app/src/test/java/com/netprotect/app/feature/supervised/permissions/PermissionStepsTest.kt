@@ -28,6 +28,18 @@ class PermissionStepsTest {
         )
     }
 
+    // Sprint 73 (T6): precise granted but «Permitir todo el tiempo» missing (Android 11+): the shell reports location as
+    // not configured, so it is a pending step and counts as one, never "Configurado" with a half-done permission.
+    @Test
+    fun locationWithoutTheBackgroundStepIsStillAPendingStep() {
+        val permissions = PermissionsUi(
+            usageAccess = true, location = false, overlay = true, deviceAdmin = true, locationBackgroundMissing = true,
+        )
+        assertEquals(1, permissions.pending)
+        assertEquals(PermissionStep(Location, RailStatus.Next), permissionSteps(permissions).first())
+        assertEquals("3 de 4 configurados", configuredCaption(permissions))
+    }
+
     @Test
     fun approximateOnlyLocationIsStillAPendingStep() {
         val permissions = PermissionsUi(

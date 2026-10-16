@@ -75,6 +75,50 @@ class PermissionDetailTextsTest {
         assertEquals(LOCATION_DENIED_HINT, steps.last())
     }
 
+    // Sprint 73 (T6): the last step of location, «Permitir todo el tiempo» (Android 11+), is a trip to Settings.
+    @Test
+    fun backgroundMissingNamesTheLastStepAndItsButton() {
+        val texts = permissionTexts(Location, locationBackgroundMissing = true)
+        assertEquals("Permitir todo el tiempo", texts.actionLabel)
+        assertEquals(BACKGROUND_LOCATION_ACTION, texts.actionLabel)
+        assertTrue(texts.description.startsWith("Falta un último paso"))
+        val steps = permissionDetailSteps(Location, locationBackgroundMissing = true)
+        assertEquals(3, steps.size)
+        assertTrue(steps.first().contains("«Permitir todo el tiempo»"))
+        assertTrue(steps.first().contains("Ajustes de NetProtect"))
+    }
+
+    @Test
+    fun approximateOnlyWinsOverBackgroundMissing() {
+        assertEquals(
+            permissionTexts(Location, locationApproximateOnly = true).description,
+            permissionTexts(Location, locationApproximateOnly = true, locationBackgroundMissing = true).description,
+        )
+        assertEquals("Permitir ubicación precisa", permissionTexts(Location, true, true).actionLabel)
+    }
+
+    @Test
+    fun backgroundMissingChangesNothingForTheOtherPermissions() {
+        listOf(UsageAccess, Overlay, DeviceAdmin).forEach { permission ->
+            assertEquals(permissionDetailTexts(permission), permissionDetailTexts(permission, locationBackgroundMissing = true))
+        }
+    }
+
+    // The explanation shown before Android's step says what is shared, how often, with whom, and what is not.
+    @Test
+    fun theExplanationBeforeAndroidSaysWhatIsAndIsNotShared() {
+        val body = BACKGROUND_LOCATION_EXPLANATION_BODY
+        assertTrue(body.contains("solo la ubicación"))
+        assertTrue(body.contains("15 minutos"))
+        assertTrue(body.contains("tutor vinculado"))
+        assertTrue(body.contains("nada más"))
+        assertTrue(body.contains("«Permitir todo el tiempo»"))
+        assertTrue(body.contains("Puedes quitarlo"))
+        assertEquals("Ubicación con la app cerrada", BACKGROUND_LOCATION_EXPLANATION_TITLE)
+        assertEquals("Continuar", BACKGROUND_LOCATION_EXPLANATION_CONTINUE)
+        assertEquals("Ahora no", BACKGROUND_LOCATION_EXPLANATION_DISMISS)
+    }
+
     @Test
     fun approximateOnlyChangesNothingForTheOtherPermissions() {
         listOf(UsageAccess, Overlay, DeviceAdmin).forEach { permission ->
@@ -99,7 +143,12 @@ class PermissionDetailTextsTest {
     @Test
     fun noTextClaimsPreventionControlOrRetention() {
         val banned = listOf("impide", "ni controla", "controla", "retención", "conserva", "días", "meses", "pendiente de validar")
-        (all.flatMap { permissionDetailTexts(it) } + permissionDetailTexts(Location, locationApproximateOnly = true)).forEach { text ->
+        (
+            all.flatMap { permissionDetailTexts(it) } +
+                permissionDetailTexts(Location, locationApproximateOnly = true) +
+                permissionDetailTexts(Location, locationBackgroundMissing = true) +
+                BACKGROUND_LOCATION_EXPLANATION_BODY
+            ).forEach { text ->
             banned.forEach { word -> assertFalse("«$word» in «$text»", text.contains(word, ignoreCase = true)) }
         }
     }

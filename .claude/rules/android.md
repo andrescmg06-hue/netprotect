@@ -55,11 +55,13 @@ posible del enunciado.
 **Nota del Sprint 13**: un foreground service con `foregroundServiceType="location"` cuenta como
 "en primer plano" para el sistema de permisos de ubicación de Android mientras corre (verificado en
 fuente oficial, ver `docs/android/capability-matrix.md`) — este proyecto explota eso a propósito
-para reportar ubicación en segundo plano **sin pedir nunca `ACCESS_BACKGROUND_LOCATION`**, con el
+para reportar ubicación en segundo plano **sin pedir `ACCESS_BACKGROUND_LOCATION`**, con el
 mismo patrón de arranque-sólo-desde-Activity-en-primer-plano ya usado por `RuleEnforcementService`
-desde el Sprint 8. Consecuencia aceptada: si el proceso muere (swipe en Recientes, sistema bajo
-presión de memoria), el reporte se detiene hasta reabrir la app — no hay reinicio automático
-(sigue siendo así en API 30+ tras el Sprint 73, por la restricción *while-in-use*; ver su nota).
+desde el Sprint 8. Consecuencia aceptada entonces: si el proceso muere (swipe en Recientes, sistema
+bajo presión de memoria), el reporte se detiene hasta reabrir la app, sin reinicio automático.
+**Revertido en el Sprint 73 (T6, decisión del dueño del 15/10/2026): ahora sí se pide
+`ACCESS_BACKGROUND_LOCATION`** («Permitir todo el tiempo»; ver su nota), y con él el servicio sí se
+reinicia desde segundo plano.
 Decisión de diseño separada, también documentada: Android **no** integra el SDK nativo de Google
 Maps, así que `GOOGLE_MAPS_ANDROID_API_KEY` no existe como variable de este proyecto (hasta el
 Sprint 60 la pantalla del tutor de la app abría un mapa externo con un intent `geo:`; esa pantalla
@@ -211,8 +213,8 @@ y `LocationReportingService` son `START_STICKY` y, sin extras, reconstruyen su c
 `LinkedDeviceStore` + sesión guardada + permiso, o se paran sin fallar; `BootReceiver`
 (`BOOT_COMPLETED`/`MY_PACKAGE_REPLACED`) y `SyncWorker` (vigilante por `EnforcementLiveness`) los
 rearrancan. Arrancar desde segundo plano sigue restringido: vale desde el arranque para `specialUse`
-y con la batería sin optimizar desde el vigilante; la ubicación (*while-in-use*) **no** se puede
-reiniciar desde segundo plano en API 30+ y espera a que se abra la app. HyperOS/MIUI sin «Inicio
+y con la batería sin optimizar desde el vigilante; la ubicación (*while-in-use*) solo se reinicia desde segundo plano en
+API 30+ con `ACCESS_BACKGROUND_LOCATION` concedido (T6, más abajo) y, sin él, espera a que se abra la app. HyperOS/MIUI sin «Inicio
 automático» mata la app al deslizarla en Recientes y entonces no hay reinicio posible desde código.
 El bloqueo decide la visita con **toda** la secuencia de eventos de cada ventana (`VisitTracker`),
 redibuja la pantalla de bloqueo si desaparece con la app bloqueada delante, reevalúa la visita en
@@ -229,6 +231,14 @@ arrancar (`VisitTracker.seed`), lee eventos con 2 s de solape sin duplicar (`Eve
 fallida en el ciclo siguiente, solo sella `EnforcementLiveness` en ciclos sanos y usa `ReconnectingRealtimeChannel`.
 `TokenStore` distingue «sin sesión» de «Keystore no disponible ahora» (`TokenStoreUnavailableException`): un fallo
 pasajero nunca borra la sesión.
+**T6 (ubicación en segundo plano):** `ACCESS_BACKGROUND_LOCATION` está declarado y se pide en API 30+ **aparte** y tras la
+ubicación precisa (el sistema ya no lo ofrece junto a ella y lleva a Ajustes), con una explicación previa para el menor
+(`BackgroundLocationExplanationDialog`, reutiliza `ConfirmDialog`) que dice qué se comparte y qué no. Es el último paso del
+permiso «Ubicación» (`PermissionsUi.locationBackgroundMissing`, pendiente hasta concederlo), no un quinto permiso, y **no
+bloquea** el vínculo ni el resto. `LocationReportingService.canStartFromBackground(context)` = API < 30 o permiso concedido
+(`LocationPermission.backgroundReady`, lógica pura con tests); sin él la ubicación sigue esperando a que se abra la app.
+Retirarlo deja «Ubicación» pendiente (Permisos e Inicio), sin aviso propio ni al tutor (no cambia el backend). Si la app se
+publicara, Play exigiría la divulgación destacada y su formulario (matriz de capacidades).
 
 - Un archivo Kotlin nuevo no está verificado hasta que `./gradlew compileDebugKotlin` (o más)
   corre sobre él al menos una vez. Un import que falta (p. ej. `Modifier.width` sin

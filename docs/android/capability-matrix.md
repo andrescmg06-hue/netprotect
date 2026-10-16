@@ -16,10 +16,10 @@ asumir capacidades que una aplicación Android convencional no posee.
 | Bloqueo de apps sin device owner | `UsageStatsManager.queryEvents()` sondeado periódicamente (eventos `MOVE_TO_FOREGROUND`/`ACTIVITY_RESUMED`) + pantalla de bloqueo propia (`Activity`/overlay) | `PACKAGE_USAGE_STATS` (mismo permiso ya concedido en Sprint 7); un foreground service para sondear de forma sostenida | No hay API de notificación push para "app pasó a primer plano": hay que sondear, así que existe una ventana entre que la app aparece y se detecta/bloquea; evadible revocando el permiso en Ajustes o deteniendo el servicio | Sprint 8 — ver detalle abajo |
 | Identificar launcher, teléfono y Ajustes (para nunca bloquearlos) | `PackageManager.resolveActivity()` con `ACTION_MAIN`+`CATEGORY_HOME` y con `Settings.ACTION_SETTINGS`; `TelecomManager.getDefaultDialerPackage()` y `getSystemDialerPackage()` | Visibilidad de paquetes (ya cubierta por `QUERY_ALL_PACKAGES` del Sprint 7) | Todas pueden devolver `null`; si la resolución falla, esa app queda fuera de la lista protegida y podría bloquearse en modo lista blanca | Sprint 9 — ver detalle abajo |
 | Filtrado de tráfico local | `VpnService` | Preparación/consentimiento del usuario | Sólo una app VPN puede estar preparada a la vez; el usuario puede revocar | Evaluar Sprint 10+ (pospuesto explícitamente en el Sprint 9: necesita su propia Fase C) |
-| Geolocalización | `LocationManager` (`GPS_PROVIDER` con precisa, `NETWORK_PROVIDER` de respaldo o único con aproximada) | `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime, pedidos juntos) + foreground service `location` iniciado sólo desde una `Activity` en primer plano | Sin `ACCESS_BACKGROUND_LOCATION`: el reporte se detiene si el proceso muere y la app no se reabre. En Android 12+ la persona puede elegir «aproximada» igualmente | Sprint 13 — ver detalle abajo. Decisión vigente (2026-10-14): ubicación precisa, sin permiso de segundo plano |
+| Geolocalización | `LocationManager` (`GPS_PROVIDER` con precisa, `NETWORK_PROVIDER` de respaldo o único con aproximada) | `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime, pedidos juntos) + `ACCESS_BACKGROUND_LOCATION` (aparte, desde Android 11 lleva a Ajustes) + foreground service `location` | Con `ACCESS_BACKGROUND_LOCATION` (Sprint 73): el reporte sobrevive a que el sistema mate el proceso y se reinicia desde segundo plano. Sin ese permiso, en Android 11+ el reporte se detiene si el proceso muere y la app no se reabre. En Android 12+ la persona puede elegir «aproximada» igualmente | Sprint 13 — ver detalle abajo. Decisión vigente: ubicación precisa (2026-10-14) **y** «Permitir todo el tiempo» (2026-10-15, Sprint 73, revierte la decisión de los Sprints 13/14 de no pedirlo) |
 | Geocercas | Ninguna API de Android nueva — evaluación server-side sobre `LocationReportingService` (Sprint 13) | Ninguno (reutiliza el permiso de ubicación ya concedido) | Latencia de detección atada al intervalo de reporte (~15 min), no a los 2-6 min de la Geofencing API real | Sprint 14 — ver detalle abajo. Decisión: NO usar la Geofencing API de Android/GMS |
 | Detectar intento de desinstalación | Registro como Device Administrator (`DeviceAdminReceiver.onDisableRequested()`) — no existe ninguna API para detectar la desinstalación en sí | Activación por el usuario vía `ACTION_ADD_DEVICE_ADMIN` (pantalla del sistema); `BIND_DEVICE_ADMIN` en el receiver | No impide desinstalar: sólo obliga a desactivar el administrador primero, y eso avisa. El usuario puede retirarlo cuando quiera; el *callback* no tiene veto | Sprint 20 — ver detalle abajo |
-| Mantener la protección con la app cerrada y tras reiniciar | `START_STICKY` + `BroadcastReceiver` de `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` + `WorkManager` como vigilante | `RECEIVE_BOOT_COMPLETED` (permiso normal); tipos de FGS permitidos desde el arranque (`specialUse` sí) | Arrancar un FGS desde segundo plano solo vale con una excepción (arranque, batería sin optimizar…); la ubicación (*while-in-use*) no se puede reiniciar desde segundo plano en API 30+; HyperOS/MIUI mata la app al deslizarla en Recientes sin «Inicio automático» | Sprint 73 — ver detalle abajo |
+| Mantener la protección con la app cerrada y tras reiniciar | `START_STICKY` + `BroadcastReceiver` de `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` + `WorkManager` como vigilante | `RECEIVE_BOOT_COMPLETED` (permiso normal); tipos de FGS permitidos desde el arranque (`specialUse` sí) | Arrancar un FGS desde segundo plano solo vale con una excepción (arranque, batería sin optimizar…); la ubicación (*while-in-use*) solo se reinicia desde segundo plano en API 30+ con `ACCESS_BACKGROUND_LOCATION` concedido; HyperOS/MIUI mata la app al deslizarla en Recientes sin «Inicio automático» | Sprint 73 — ver detalle abajo |
 | Saber si un servicio propio sigue vivo desde otro proceso | Ninguna API soportada (`getRunningServices()` obsoleto y limitado al propio proceso) — marca de tiempo cooperativa (`EnforcementLiveness`) | Ninguno | Cooperativa por diseño: detecta paradas ordinarias, no a un adversario técnico decidido | Sprint 20 — ver detalle abajo |
 | Notificaciones | `NotificationListenerService` | Acceso habilitado por el usuario | Debe minimizarse el contenido recolectado | Evaluar Sprint 17/23 |
 | Captura de pantalla | `MediaProjection` + `ScreenCapturerAndroid` (WebRTC) | Diálogo del sistema (`createScreenCaptureIntent()`) **por sesión** + foreground service `mediaProjection` + `FOREGROUND_SERVICE_MEDIA_PROJECTION` | Un `MediaProjection` sirve para **una sola** `createVirtualDisplay()`; reutilizar el `Intent` lanza `SecurityException`. Android 15 QPR1+ la corta al bloquear la pantalla y ofrece un chip del sistema para detenerla | Sprint 23 — ver detalle abajo |
@@ -376,7 +376,7 @@ frente a ese uso real y cedió; el resto de la decisión del Sprint 13 se mantie
   `play-services-location`. Una última posición conocida solo se usa si no hubo fix fresco y si no
   es más vieja que un intervalo de reporte (15 min): una más antigua pertenece a un ciclo anterior y
   mostraría al tutor un lugar que el teléfono pudo haber dejado hace rato.
-- Intervalo sin cambios (~15 min) y **sin** `ACCESS_BACKGROUND_LOCATION`: el foreground service de
+- Intervalo sin cambios (~15 min) y, entonces, **sin** `ACCESS_BACKGROUND_LOCATION` (desde el Sprint 73 sí se pide): el foreground service de
   tipo `location` exige COARSE **o** FINE (ver la sección del foreground service más abajo), no el
   permiso de segundo plano.
 - Se actualizaron todos los textos que prometían al menor «solo aproximada» (notificación,
@@ -385,7 +385,45 @@ frente a ese uso real y cedió; el resto de la decisión del Sprint 13 se mantie
 Pendiente de comprobar en teléfono real: la exactitud del GPS en interiores y el diálogo de
 cambio a precisa del fabricante.
 
-### `ACCESS_BACKGROUND_LOCATION`: por qué este sprint decide NO pedirlo
+### `ACCESS_BACKGROUND_LOCATION`: por qué el Sprint 13 decidió NO pedirlo (revertido en el Sprint 73)
+
+> **Actualización del Sprint 73 (T6, 16/10/2026): ahora SÍ se pide.** El dueño decidió el 15/10/2026
+> pedir «Permitir todo el tiempo», como hacen las apps de familia tipo Life360, y esto **revierte**
+> lo que decidieron los Sprints 13 y 14 (lo de abajo se deja como historia de por qué se evitó). Motivo,
+> medido en el emulador (Pixel 8, API 36): con la app cerrada el bloqueo sobrevive, pero tras `kill -9`
+> el `LocationReportingService` **no revive**, porque un servicio `location` arrancado desde segundo
+> plano en Android 11+ solo puede leer la ubicación (y en Android 14+ solo puede arrancar) con este
+> permiso. Qué se hizo:
+>
+> - Se declara en el manifiesto. Desde Android 11 el sistema **no** lo ofrece junto con la ubicación
+>   en primer plano: se pide aparte, **después** de la ubicación precisa, y el sistema lleva a los
+>   Ajustes de NetProtect. Por eso, antes se muestra una explicación para el menor (`ConfirmDialog`,
+>   «Ubicación con la app cerrada»): qué se comparte (solo la ubicación, cada ~15 min, solo con el
+>   tutor vinculado) y qué no. Aparece sola al conceder la ubicación precisa y desde el botón
+>   «Permitir todo el tiempo» del permiso «Ubicación» en Permisos. En Android 10 e inferiores no se
+>   pide (no hay esa restricción).
+> - No bloquea nada: sin concederlo el vínculo y el resto siguen igual, y la ubicación se reporta
+>   mientras el proceso vive. El permiso de Ubicación queda **pendiente** («Falta un último paso») y
+>   cuenta en «Falta un paso» de Inicio; si se retira en Ajustes, vuelve a quedar pendiente
+>   (no hay aviso de «se quitó» propio, igual que pasar de precisa a aproximada).
+> - `LocationReportingService.canStartFromBackground(context)` es `true` en API < 30 o con el permiso
+>   concedido (`LocationPermission.backgroundReady`); el arranque del teléfono (`BootReceiver`) y el
+>   reinicio `START_STICKY` arrancan la ubicación solo en ese caso.
+> - **Play:** declarar este permiso activa, si algún día se publica, la **divulgación destacada**
+>   (*Prominent Disclosure*) y el formulario de declaración con vídeo de demostración (sección
+>   «Política de Google Play», más abajo). El proyecto sigue instalándose por *sideload*, así que hoy
+>   no aplica; la explicación previa del menor ya cubre lo que esa divulgación pide (qué dato, para
+>   qué, con quién), pero habría que revisarla contra el formulario antes de publicar.
+> - **No se cambió el backend:** ningún contrato nuevo; el latido no lleva este permiso, así que el
+>   tutor no se entera si el menor lo retira (queda en el backlog junto con «avisar de la ubicación
+>   retirada», nota del T5).
+> - **Pendiente de comprobar en ejecución:** que el diálogo de explicación, el salto a Ajustes y el
+>   reinicio de la ubicación tras `kill -9` funcionan con el permiso concedido (emulador/teléfono real);
+>   el texto exacto de «Permitir todo el tiempo» cambia según versión e idioma, por eso los pasos lo
+>   describen.
+
+Lo que sigue es el razonamiento original del Sprint 13 (ya no vigente en la decisión, sí en los hechos
+de la plataforma):
 
 Verificado en <https://developer.android.com/develop/sensors-and-location/location/permissions/background>
 y <https://developer.android.com/about/versions/10/privacy/changes>:
@@ -425,7 +463,9 @@ deslizarla en Recientes no mata un proceso con un foreground service en marcha),
 arranque del teléfono) no puede leer la ubicación: es un permiso *while-in-use* y ni
 `BOOT_COMPLETED` ni el reinicio del sistema son excepciones de esa restricción; desde Android 14
 `startForeground()` lanza `SecurityException`. Por eso solo se reinicia solo en API < 30; en el resto
-el servicio se para sin fallar y vuelve al abrir la app. Ver la sección del Sprint 73.
+el servicio se para sin fallar y vuelve al abrir la app. *(Superado en el T6 del mismo sprint: con
+`ACCESS_BACKGROUND_LOCATION` concedido sí se reinicia; ver la actualización al inicio de esta sección.)*
+Ver la sección del Sprint 73.
 
 Ventaja adicional de esta decisión, verificada más abajo: al no declarar
 `ACCESS_BACKGROUND_LOCATION`, la política de Play sobre "Prominent Disclosure" de ubicación en
@@ -445,8 +485,8 @@ Verificado en <https://developer.android.com/develop/background-work/services/fg
   de ejecución antes de llamar a `startForeground()`.
 - **Misma restricción ya verificada en ejecución real en el Sprint 8**: *"you cannot create a
   `location` foreground service while your app is in the background, unless you've been granted
-  the `ACCESS_BACKGROUND_LOCATION` runtime permission"*. Como este proyecto no pide ese permiso
-  (ver arriba), `LocationReportingService.start()` debe llamarse siempre desde una `Activity` en
+  the `ACCESS_BACKGROUND_LOCATION` runtime permission"*. Como el Sprint 13 no pedía ese permiso
+  (el Sprint 73 sí lo pide; ver arriba), `LocationReportingService.start()` debía llamarse siempre desde una `Activity` en
   primer plano — exactamente el mismo patrón que `RuleEnforcementService.start()` en
   `SupervisedScreen`, nunca desde un contexto de fondo. No se repite la verificación empírica en
   emulador hecha en el Sprint 8 para este servicio nuevo porque el mecanismo de arranque (mismo
@@ -481,10 +521,11 @@ nuevo para este permiso en concreto porque el enunciado pedía no copiarlo sin m
 - Play también exige un formulario de declaración de permisos con un video de demostración para
   cualquier app que pida ubicación en segundo plano, evaluado sólo al publicar en la tienda —
   igual que el formulario de `QUERY_ALL_PACKAGES` del Sprint 7.
-- **Este proyecto no declara `ACCESS_BACKGROUND_LOCATION`** (ver decisión de diseño arriba), así
-  que esta política no aplica ni siquiera bajo el razonamiento de "sólo al publicar": el permiso
-  que la activa no existe en el manifiesto. Se documenta de todas formas para que quede registrado
-  qué se verificó y por qué no aplica, no para dejarlo asumido.
+- **Sprint 73: el proyecto ya declara `ACCESS_BACKGROUND_LOCATION`**, así que esta política **sí
+  quedaría activada si la app se publicara**: habría que añadir la divulgación destacada y el
+  formulario con vídeo. Hoy no aplica solo porque el proyecto se instala por *sideload*. (Hasta el
+  Sprint 14 no aplicaba ni siquiera bajo ese razonamiento, porque el permiso no existía en el
+  manifiesto.)
 
 Fuentes: <https://support.google.com/googleplay/android-developer/answer/11150561> (mejores
 prácticas de "prominent disclosure and consent"),
@@ -788,8 +829,8 @@ con la app cerrada. Fuentes consultadas antes de escribir código:
 |---|---|---|
 | Efectos de `SupervisedShell` | Arrancan (idempotente) bloqueo, ubicación y `SyncWorker`; los paran solo al desvincular o retirar el permiso. Ya **no** paran nada al cerrar la pantalla | Con la app abierta (actividad visible): siempre |
 | `START_STICKY` en `RuleEnforcementService` | El propio servicio si el sistema mata el proceso; reconstruye la configuración con `BuildConfig.API_BASE_URL`, el `deviceId` de `LinkedDeviceStore`, la sesión guardada y el acceso a uso; si falta algo se para sin fallar | Cuando el sistema decide reiniciarlo y le deja pasar a primer plano; si Android lo rechaza, se para y queda el vigilante |
-| `START_STICKY` en `LocationReportingService` | Igual, pero solo en API < 30 (ver *while-in-use*); en 30+ se para y espera a que se abra la app | API 26–29 |
-| `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) | Programa `SyncWorker`, arranca el bloqueo (si hay vínculo, sesión y acceso a uso) y la ubicación solo en API < 30 | Tras desbloquear el teléfono por primera vez o actualizar la app (en MIUI/HyperOS, solo con «Inicio automático») |
+| `START_STICKY` en `LocationReportingService` | Igual, pero solo con `ACCESS_BACKGROUND_LOCATION` concedido en API 30+ (ver *while-in-use*; T6); sin él se para y espera a que se abra la app | API 26–29, o con el permiso concedido |
+| `BootReceiver` (`BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`) | Programa `SyncWorker`, arranca el bloqueo (si hay vínculo, sesión y acceso a uso) y la ubicación solo en API < 30 o con `ACCESS_BACKGROUND_LOCATION` concedido | Tras desbloquear el teléfono por primera vez o actualizar la app (en MIUI/HyperOS, solo con «Inicio automático») |
 | `SyncWorker` (cada ~15 min, con red) | Si `EnforcementLiveness` dice que el bloqueo murió y siguen vínculo, sesión y acceso a uso, intenta arrancarlo (después de enviar el latido, que ya cuenta la verdad al tutor) | Solo con una excepción de arranque en segundo plano; en la práctica, con la optimización de batería quitada (pantalla «Batería»). Sin ella se rechaza y se registra |
 
 Cerrar sesión, la sesión caducada y la desvinculación paran los tres de forma explícita

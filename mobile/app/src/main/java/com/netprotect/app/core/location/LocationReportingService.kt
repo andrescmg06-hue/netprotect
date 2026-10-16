@@ -11,7 +11,6 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -38,19 +37,16 @@ import kotlinx.coroutines.withTimeoutOrNull
  * OTHER apps, same reason [com.netprotect.app.core.rules.RuleEnforcementService] (Sprint 8)
  * exists as a service rather than a plain Compose effect.
  *
- * Declared with foregroundServiceType="location" (AndroidManifest.xml) and started only from a
- * foreground Activity (SupervisedShell's DisposableEffect, exactly like RuleEnforcementService)
- * — never from a background context. That combination is deliberate, not incidental: per
- * Android's own docs (see docs/android/capability-matrix.md, Sprint 13), an app running a
+ * Declared with foregroundServiceType="location" (AndroidManifest.xml) and started from a
+ * foreground Activity (SupervisedShell's DisposableEffect, exactly like RuleEnforcementService).
+ * Per Android's own docs (see docs/android/capability-matrix.md, Sprint 13), an app running a
  * `location`-typed foreground service already counts as "in the foreground" for the location
- * permission system, which is what lets this project report location in the background WITHOUT
- * ever requesting ACCESS_BACKGROUND_LOCATION (and without taking on the Play "Prominent
- * Disclosure" policy that permission carries). The real cost of that choice: if the system kills
- * the process or the user swipes the app away, reporting stops until NetProtect reopens — same
- * documented limit as RuleEnforcementService, not an oversight. Sprint 73: the service is
- * START_STICKY and no longer stopped when the screen closes, but a restart from the background
- * can only report on Android 10 and older (see [canStartFromBackground]); on newer versions it
- * stops itself and waits for the app to be opened.
+ * permission system, which is what lets it report while the person uses other apps. Sprint 73:
+ * the service is START_STICKY and no longer stopped when the screen closes, and since T6 the app
+ * also asks for ACCESS_BACKGROUND_LOCATION so that a restart from the background (the system
+ * bringing it back after killing the process) can still read the location. Without that
+ * permission, on Android 11+ the restarted service stops itself and waits for the app to be
+ * opened (see [canStartFromBackground]).
  *
  * Precise location since 2026-10-14 (see LocationPermission): GPS_PROVIDER first when
  * ACCESS_FINE_LOCATION is granted, NETWORK_PROVIDER as its fallback and as the only provider when
@@ -106,11 +102,17 @@ class LocationReportingService : Service() {
         /** Sprint 73: whether this service can do its job when started with no visible Activity
          * (boot, system restart). Location is a while-in-use permission: from Android 11 (API 30)
          * a `location` foreground service started from the background gets no location access,
-         * and from Android 14 (API 34) startForeground() itself throws SecurityException — this
-         * project never asks for ACCESS_BACKGROUND_LOCATION (capability matrix, Sprints 13 and
-         * 73). Below API 30 there is no such restriction. Otherwise it waits for the app to open.
+         * and from Android 14 (API 34) startForeground() itself throws SecurityException — unless
+         * ACCESS_BACKGROUND_LOCATION is granted. Sprint 73 (T6): the owner decided to ask for it
+         * (capability matrix, Sprint 73), so this is true on Android 10 and older, where there is
+         * no such restriction, or once that permission is granted; otherwise the service waits for
+         * the app to open.
          */
-        fun canStartFromBackground(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+        fun canStartFromBackground(context: Context): Boolean = LocationPermission.backgroundReady(context)
+
+        /** The decision of [canStartFromBackground] without a Context, for tests. */
+        internal fun canStartFromBackground(sdkInt: Int, backgroundGranted: Boolean): Boolean =
+            LocationPermission.backgroundReady(sdkInt, backgroundGranted)
     }
 
     private val serviceJob = Job()
@@ -139,7 +141,7 @@ class LocationReportingService : Service() {
         // (canStartFromBackground) and the location permission is still granted.
         val deviceId = intent?.getStringExtra(EXTRA_DEVICE_ID)
             ?: SupervisionServices.restorableDeviceId(this)
-                ?.takeIf { canStartFromBackground() && LocationPermission.isGranted(this) }
+                ?.takeIf { canStartFromBackground(this) && LocationPermission.isGranted(this) }
         // Sprint 73 (T5): "running" is a loop that is still active, not merely one that was started.
         val running = reportingJob?.isActive == true
         if (deviceId == null) {

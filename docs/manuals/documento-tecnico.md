@@ -103,7 +103,7 @@ usuario, los criterios de aceptación y las decisiones de diseño de cada uno.
 | 10 | Categorías | 11 categorías (decisión propia, ver `docs/sprint-10.md`) con regla por categoría. |
 | 11 | Tiempo | Límite semanal, `schedule_days_mask`, zona horaria del dispositivo. |
 | 12 | Modo escolar | Vigencia horaria sobre la política por defecto. |
-| 13 | Ubicación | Reporte cada ~15 min, cifrado Fernet, retención 7 días, sin `ACCESS_BACKGROUND_LOCATION`. |
+| 13 | Ubicación | Reporte cada ~15 min, cifrado Fernet, retención 7 días. Pide `ACCESS_BACKGROUND_LOCATION` («Permitir todo el tiempo») desde el Sprint 73, para que el reporte sobreviva a un reinicio del proceso; hasta el Sprint 14 no se pedía. |
 | 14 | Geocercas | Detección ENTER/EXIT por Haversine comparando reportes consecutivos — sin la Geofencing API de Google. |
 | 15 | Historial | Línea de tiempo unificada de bloqueos y geocercas, retención 90 días. |
 | 16 | Estadísticas | Agregaciones hoy/7d/30d calculadas al vuelo. |

@@ -52,6 +52,7 @@ import com.netprotect.app.core.permissions.BatteryOptimization
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
+import com.netprotect.app.core.permissions.LocationRequest
 import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.EnforcementLiveness
@@ -75,6 +76,7 @@ import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
+import com.netprotect.app.feature.supervised.permissions.BackgroundLocationExplanationDialog
 import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionRevokedScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
@@ -159,6 +161,11 @@ fun SupervisedShell(
     // so its effect is keyed only on the Boolean below, which changes when location is gained or lost entirely.
     var locationAccess by remember { mutableStateOf(LocationPermission.access(context)) }
     val hasLocationPermission = locationAccess != LocationAccess.NONE
+    // Sprint 73 (T6): "Permitir todo el tiempo" (Android 11+; true where it is not needed). Not an effect key: the
+    // location service starts with any location access, this only lets it be restarted from the background.
+    var backgroundLocationReady by remember { mutableStateOf(LocationPermission.backgroundReady(context)) }
+    // Sprint 73 (T6): the explanation shown before Android sends the person to Settings. Presentation only.
+    var showBackgroundExplanation by remember { mutableStateOf(false) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
     var hasOverlayPermission by remember { mutableStateOf(OverlayPermission.isGranted(context)) }
     var screenShareSignaling by remember { mutableStateOf<ReconnectingRealtimeChannel?>(null) }
@@ -266,7 +273,21 @@ fun SupervisedShell(
     // re-read from the system instead of the map, which holds only what this dialog asked.
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { locationAccess = LocationPermission.access(context) }
+    ) {
+        locationAccess = LocationPermission.access(context)
+        // Sprint 73 (T6): precise location just granted and the background step still missing (Android 11+): it
+        // follows right away, with its explanation first. Declining it leaves the permission pending in Permisos.
+        if (LocationPermission.nextRequest(locationAccess, backgroundLocationReady) == LocationRequest.BACKGROUND_EXPLANATION) {
+            showBackgroundExplanation = true
+        }
+    }
+
+    // Sprint 73 (T6): ACCESS_BACKGROUND_LOCATION on its own (from API 30 the system does not offer it with the
+    // foreground ones): Android opens the app's location page in Settings. Launched only after the explanation.
+    // The result is re-read from the system, like the others, and again on every ON_RESUME.
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { backgroundLocationReady = LocationPermission.backgroundReady(context) }
 
     // Not required for the enforcement service to run — asked anyway because the notification is
     // deliberately visible, not something to hide. No-op callback.
@@ -286,7 +307,9 @@ fun SupervisedShell(
     fun checkRevokedPermissions() {
         val deviceId = (state as? SupervisedState.Linked)?.deviceId ?: return
         // Location counts as removed only when it is gone entirely: going from precise to approximate (or a
-        // phone that had only the approximate one before 2026-10-14) is a pending step, not "se quitó".
+        // phone that had only the approximate one before 2026-10-14) is a pending step, not "se quitó". The same
+        // goes for «Permitir todo el tiempo» (Sprint 73, T6): losing it leaves Location pending in Permisos and
+        // Inicio ("Falta un paso"); it is not a notice of its own.
         // Reads the state itself, not hasLocationPermission: the ON_RESUME observer keeps the first composition's
         // copy of this function, where that val would be stale.
         val current = PermissionsUi(
@@ -314,6 +337,7 @@ fun SupervisedShell(
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasUsageAccess = UsageAccessPermission.isGranted(context)
                 locationAccess = LocationPermission.access(context)
+                backgroundLocationReady = LocationPermission.backgroundReady(context)
                 hasDeviceAdmin = DeviceAdminPermission.isActive(context)
                 hasOverlayPermission = OverlayPermission.isGranted(context)
                 batteryIgnoring = BatteryOptimization.isIgnoring(context)
@@ -524,9 +548,9 @@ fun SupervisedShell(
 
     // Independent gate from the rule-enforcement service above: reporting location doesn't need
     // usage access, and enforcing rules doesn't need location. Same foreground-start requirement
-    // (see LocationReportingService): this effect only fires while the shell is composed — which
-    // is why this is the start that matters for location (a background restart cannot report on
-    // Android 11+). Sprint 73: same start/stop shape as the service above, nothing in onDispose.
+    // (see LocationReportingService): this effect only fires while the shell is composed. Sprint 73:
+    // same start/stop shape as the service above, nothing in onDispose; a background restart reports
+    // only with ACCESS_BACKGROUND_LOCATION on Android 11+ (T6), so this start stays the reliable one.
     DisposableEffect(linkKnown, linkedDeviceId, hasLocationPermission) {
         val deviceId = linkedDeviceId
         when {
@@ -623,16 +647,25 @@ fun SupervisedShell(
     }
     val serviceStatus by ServiceStatusRegistry.status.collectAsState()
 
+    val locationNext = LocationPermission.nextRequest(locationAccess, backgroundLocationReady)
     val permissions = PermissionsUi(
         usageAccess = hasUsageAccess,
-        location = locationAccess == LocationAccess.PRECISE,
+        // Sprint 73 (T6): complete only with the background step too (where Android needs it).
+        location = locationAccess == LocationAccess.PRECISE && backgroundLocationReady,
         overlay = hasOverlayPermission,
         deviceAdmin = hasDeviceAdmin,
         locationApproximateOnly = locationAccess == LocationAccess.APPROXIMATE,
+        locationBackgroundMissing = locationNext == LocationRequest.BACKGROUND_EXPLANATION,
     )
     // The permission actions, shared by Permisos and its detail so both fire exactly the same launchers.
     val openUsageAccessSettings = { UsageAccessPermission.openSettings(context) }
-    val requestLocation = { locationPermissionLauncher.launch(LocationPermission.REQUESTED) }
+    // Sprint 73 (T6): with precise location granted the next step is the background one, behind its explanation.
+    val requestLocation = {
+        when (locationNext) {
+            LocationRequest.FOREGROUND_DIALOG -> locationPermissionLauncher.launch(LocationPermission.REQUESTED)
+            LocationRequest.BACKGROUND_EXPLANATION -> showBackgroundExplanation = true
+        }
+    }
     val requestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) }
     val requestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) }
     // Sprint 67: only opens Settings; the result is read on the next ON_RESUME. NetProtect's own page if a
@@ -646,6 +679,16 @@ fun SupervisedShell(
                 context.startActivity(BatteryOptimization.appDetailsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }
+    }
+
+    if (showBackgroundExplanation) {
+        BackgroundLocationExplanationDialog(
+            onContinue = {
+                showBackgroundExplanation = false
+                backgroundLocationLauncher.launch(LocationPermission.BACKGROUND)
+            },
+            onDismiss = { showBackgroundExplanation = false },
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NpColors.Cream)) {

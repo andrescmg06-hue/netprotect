@@ -114,9 +114,10 @@ object SupervisionServices {
             .onFailure { Log.w(TAG, "Sync schedule failed: ${it.javaClass.simpleName}") }
         tryStartEnforcement(context, deviceId)
         // See LocationReportingService.canStartFromBackground: from API 30 a location service
-        // started from the background cannot read the location (and from API 34 it is refused),
-        // so it is left for the next time the app is opened.
-        if (LocationReportingService.canStartFromBackground() && LocationPermission.isGranted(context)) {
+        // started from the background cannot read the location (and from API 34 it is refused)
+        // unless ACCESS_BACKGROUND_LOCATION is granted (Sprint 73, T6); without it, it is left for
+        // the next time the app is opened.
+        if (LocationReportingService.canStartFromBackground(context) && LocationPermission.isGranted(context)) {
             tryStart("location") {
                 LocationReportingService.start(context, BuildConfig.API_BASE_URL, "", deviceId)
             }

@@ -14,6 +14,9 @@ data class PermissionsUi(
     val deviceAdmin: Boolean,
     // Only the approximate one is allowed: still pending, but its texts say what to change.
     val locationApproximateOnly: Boolean = false,
+    // Sprint 73 (T6): precise location is granted and only the background one ("Permitir todo el tiempo", Android 11+)
+    // is missing: `location` is false meanwhile, and its texts say that this is the last step.
+    val locationBackgroundMissing: Boolean = false,
 ) {
     val pending: Int
         get() = listOf(usageAccess, location, overlay, deviceAdmin).count { !it }

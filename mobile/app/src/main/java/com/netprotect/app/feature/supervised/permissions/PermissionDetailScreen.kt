@@ -63,7 +63,7 @@ fun PermissionDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val texts = permissionTexts(permission, permissions.locationApproximateOnly)
+    val texts = permissionTexts(permission, permissions.locationApproximateOnly, permissions.locationBackgroundMissing)
     val granted = permissions.isGranted(permission)
     val note = permissionDetailNote(permission)
 
@@ -154,7 +154,7 @@ fun PermissionDetailScreen(
                 SectionHeader("Cómo activarlo")
                 Spacer(Modifier.height(NpSpace.L))
                 Column(verticalArrangement = Arrangement.spacedBy(NpSpace.L)) {
-                    permissionDetailSteps(permission, permissions.locationApproximateOnly).forEachIndexed { index, step ->
+                    permissionDetailSteps(permission, permissions.locationApproximateOnly, permissions.locationBackgroundMissing).forEachIndexed { index, step ->
                         StepLine(number = index + 1, text = step)
                     }
                 }
@@ -164,8 +164,9 @@ fun PermissionDetailScreen(
         Footer(
             granted = granted,
             actionLabel = texts.actionLabel,
-            // Location is Android's dialog, not a screen outside the app: no external-link icon.
-            actionOpensScreen = permission != SupervisedPermission.Location,
+            // Location is Android's dialog, not a screen outside the app: no external-link icon. Its last step
+            // (Sprint 73, T6, «Permitir todo el tiempo») is the exception: Android sends the person to Settings.
+            actionOpensScreen = permission != SupervisedPermission.Location || permissions.locationBackgroundMissing,
             onActivate = when (permission) {
                 SupervisedPermission.UsageAccess -> onOpenUsageAccessSettings
                 SupervisedPermission.Location -> onRequestLocation

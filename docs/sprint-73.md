@@ -119,6 +119,29 @@ teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arran
   - (a) La lectura hacia atrás es de 30 min: una app abierta antes y que sigue delante no se ve hasta su siguiente
     transición. (l) Además de no repetir eventos, se descarta un evento tardío más antiguo que otro ya entregado: si
     se aplicara fuera de orden pondría delante una app que ya no lo está.
+- [x] T6 — Hallazgo de la prueba en el emulador (Pixel 8, API 36, 16/10/2026): con la app cerrada el bloqueo sigue
+  (Atrás + deslizar en Recientes: sin `MainActivity`, proceso y servicios vivos), pero **la ubicación no revive** tras
+  `kill -9` del proceso: en Android 11+ un servicio `location` no arranca desde segundo plano sin
+  `ACCESS_BACKGROUND_LOCATION` (`LocationReportingService.canStartFromBackground`). El dueño ya decidió pedirlo
+  («Permitir todo el tiempo», Engram `decision/android-background-location`, 15/10/2026). Se implementa: permiso en el
+  manifiesto, flujo con explicación previa en el supervisado, `canStartFromBackground` según el permiso concedido, y
+  la matriz de capacidades/regla de Android (cambia la decisión de los Sprints 13/14). Delegado (writer).
+  **Hecho** (commit `HASH_T6`; `compileDebugKotlin` + `testDebugUnitTest` en verde, 309 tests). Decisiones: no se
+  añadió un quinto permiso (todo el texto y los contadores «N de 4» siguen igual): «Permitir todo el tiempo» es el
+  **último paso del permiso «Ubicación»** (`PermissionsUi.locationBackgroundMissing`; `location` solo es «configurado»
+  con precisa y con el de fondo donde Android lo exige). Con precisa concedida y el de fondo pendiente (API 30+), el
+  botón abre antes la explicación para el menor (`BackgroundLocationExplanationDialog`, sobre `ConfirmDialog`) y
+  luego `RequestPermission(ACCESS_BACKGROUND_LOCATION)`, que lleva a Ajustes; la explicación sale también sola al
+  conceder la precisa. «Ahora no» no bloquea nada. `canStartFromBackground(context)` = API < 30 o permiso concedido
+  (`LocationPermission.backgroundReady`, puro y con tests). Retirarlo en Ajustes deja «Ubicación» pendiente en Permisos
+  e Inicio, **sin** aviso «se quitó» ni al tutor (el latido no lo lleva; no se cambió el backend: avisarle al tutor sería
+  un campo nuevo, al backlog junto con el de T5). **Sin comprobar en ejecución:** el diálogo, el salto a Ajustes y el
+  reinicio de la ubicación tras `kill -9` con el permiso concedido.
+- [ ] T7 — Hallazgo de la misma prueba: el latido de 1 min y la sincronización de apps/uso viven en `SupervisedShell`
+  (`LaunchedEffect`, solo con la pantalla abierta). Con la app cerrada solo manda latidos `SyncWorker` (≥15 min) y el
+  backend da por desconectado al dispositivo a los 5 min: el tutor lo vería «sin reporte» aunque el bloqueo funcione.
+  Se corrige haciendo que el servicio de reglas (siempre vivo mientras hay vínculo) envíe el latido en su pulso de
+  60 s y la sincronización de apps cada pocos minutos, reutilizando lo que ya hace `SyncWorker`. Delegado (mismo writer).
 - [ ] T4 — Verificación (`verifier`: test, assembleDebug, lintDebug), `security-reviewer` (toca `core/rules`, sesión y
   arranque de servicios) y prueba real en el Redmi: re-entrada rápida a Facebook, app deslizada en Recientes, reinicio.
   Inline.

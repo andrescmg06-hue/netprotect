@@ -51,13 +51,17 @@
          un teléfono real la aproximada situaba el dispositivo a kilómetros (sustituye la decisión
          de solo aproximada del Sprint 13; ver docs/android/capability-matrix.md). FINE y COARSE se
          declaran y piden juntos porque Android 12+ exige COARSE junto a FINE; si la persona elige
-         «aproximada» en el diálogo, solo se concede COARSE. Sigue sin ACCESS_BACKGROUND_LOCATION:
-         un foreground service foregroundServiceType="location" ya cuenta como "en primer plano"
-         para el sistema de permisos de ubicación mientras corre (y exige COARSE o FINE, no el de
-         segundo plano), así que no hace falta pedirlo ni asumir la política de "Prominent
-         Disclosure" de Play. -->
+         «aproximada» en el diálogo, solo se concede COARSE. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Sprint 73 (T6): «Permitir todo el tiempo», por decisión del dueño (15/10/2026), que revierte
+         la de los Sprints 13/14 de no pedirlo. Sin él, en Android 11+ un servicio de tipo `location`
+         no puede arrancar desde segundo plano (el reinicio del sistema tras matar el proceso) y la
+         ubicación dejaba de llegar al tutor hasta reabrir la app. Se pide aparte, tras la ubicación
+         precisa y con una explicación previa (SupervisedShell); si no se concede, el resto sigue
+         funcionando. Si la app se publicara, Play exigiría su divulgación destacada y su formulario
+         (ver docs/android/capability-matrix.md). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- Sprint 23 (supervisión remota): la captura de pantalla se autoriza con el diálogo del
