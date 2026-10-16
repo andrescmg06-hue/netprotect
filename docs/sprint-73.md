@@ -1,7 +1,8 @@
 # Sprint 73 — El bloqueo no se salta y la protección sigue con la app cerrada
 
-Rama `sprint-73-bloqueo-segundo-plano` (desde `main` en `e5b0a81`). Estado: **cerrado en local el 16/10/2026, sin PR**.
-Lo comprobado está en `docs/sprint-73-evidence.md`; lo que solo puede probar una persona (el Redmi con HyperOS y el aviso
+Rama `sprint-73-bloqueo-segundo-plano` (desde `main` en `e5b0a81`, ya borrada). Estado: **cerrado el 16/10/2026: PR #37
+fusionado en `main` (`32220b6`) con los 8 jobs de CI en verde**. La corrección documental posterior de los tests de
+Compose es el PR #38 (`df442ad`). Lo comprobado está en `docs/sprint-73-evidence.md`; lo que solo puede probar una persona (el Redmi con HyperOS y el aviso
 instantáneo del panel) queda como H-07 y H-08 en `docs/tasks.md`, no como hecho.
 
 Dos fallos que el dueño encontró probando en un teléfono real (Redmi Note 13, Android 15, HyperOS 2.0) el 15/10/2026.
