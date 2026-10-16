@@ -153,13 +153,23 @@ class PeriodicReporter(
         if (heartbeat) lastHeartbeatAttemptMs = nowMs
         if (appSync) lastAppSyncAttemptMs = nowMs
         job = scope.launch {
-            // No usable token right now (offline, session ended): try again at the next due time.
-            val token = BackgroundTokenRefresher.refresh(context) ?: return@launch
-            if (heartbeat) {
-                val serviceActive = EnforcementLiveness.isRecentlyActive(context)
-                if (!attempt { DeviceReporter.sendHeartbeat(context, deviceClient, token, deviceId, serviceActive) }) return@launch
+            // `scope` belongs to the enforcement service (a plain Job, no SupervisorJob): anything that
+            // escapes this coroutine cancels the whole service scope and with it the blocking loop. An
+            // Error (OutOfMemoryError listing thousands of apps, NoSuchMethodError on an odd OEM) is not
+            // an Exception, so it is caught here too; only cancellation is allowed through.
+            try {
+                // No usable token right now (offline, session ended): try again at the next due time.
+                val token = BackgroundTokenRefresher.refresh(context) ?: return@launch
+                if (heartbeat) {
+                    val serviceActive = EnforcementLiveness.isRecentlyActive(context)
+                    if (!attempt { DeviceReporter.sendHeartbeat(context, deviceClient, token, deviceId, serviceActive) }) return@launch
+                }
+                if (appSync) attempt { DeviceReporter.syncApps(context, applicationsClient, token, deviceId) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                // Dropped: the next due time retries.
             }
-            if (appSync) attempt { DeviceReporter.syncApps(context, applicationsClient, token, deviceId) }
         }
     }
 

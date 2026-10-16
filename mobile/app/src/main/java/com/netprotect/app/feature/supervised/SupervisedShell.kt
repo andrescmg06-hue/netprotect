@@ -367,6 +367,8 @@ fun SupervisedShell(
     // longer stopped by a dispose, so they are stopped here explicitly (the effects would also stop
     // them on Unlinked), and the cleared link keeps any restart (sticky, boot, watch) from reviving them.
     fun enterUnlinked() {
+        // Nothing is asked of an unlinked phone: close the background-location explanation if it was open.
+        showBackgroundExplanation = false
         SupervisionServices.stopAll(context)
         LinkedDeviceStore.clear(context)
         // Sprint 73 (T5): the old link's rule cache and unsent events too (they could only be sent

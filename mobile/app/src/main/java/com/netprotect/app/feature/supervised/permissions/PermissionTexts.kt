@@ -31,7 +31,7 @@ internal fun permissionTexts(
             locationApproximateOnly ->
                 "Ahora solo está permitida la ubicación aproximada, que no indica bien dónde está este teléfono. Cámbiala a precisa."
             locationBackgroundMissing ->
-                "Falta un último paso: permitir la ubicación todo el tiempo, para que siga llegando a tu tutor aunque NetProtect esté cerrada."
+                "Falta un último paso: permitir la ubicación todo el tiempo, para que normalmente siga llegando a tu tutor aunque NetProtect esté cerrada."
             else -> "Permite reportar a tu tutor la ubicación precisa de este teléfono cada 15 minutos."
         },
         actionLabel = if (locationBackgroundMissing && !locationApproximateOnly) BACKGROUND_LOCATION_ACTION else "Permitir ubicación precisa",
@@ -63,10 +63,12 @@ fun permissionPositionLabel(permission: SupervisedPermission): String =
 const val BACKGROUND_LOCATION_ACTION = "Permitir todo el tiempo"
 const val BACKGROUND_LOCATION_EXPLANATION_TITLE = "Ubicación con la app cerrada"
 const val BACKGROUND_LOCATION_EXPLANATION_BODY =
-    "Para que tu tutor siga recibiendo la ubicación de este teléfono aunque NetProtect esté cerrada, Android pide " +
-        "permitirla «todo el tiempo». Se comparte solo la ubicación, más o menos cada 15 minutos, y solo con el tutor " +
-        "vinculado a este teléfono. Con este permiso no se envía nada más. Al continuar, Android abre los Ajustes de " +
-        "NetProtect para que elijas «Permitir todo el tiempo». Puedes quitarlo cuando quieras en esos mismos Ajustes."
+    "Para que la ubicación de este teléfono siga llegando a tu tutor cuando NetProtect no esté abierta, Android pide " +
+        "permitirla «todo el tiempo». Este permiso da acceso solo a la ubicación, que se comparte más o menos cada " +
+        "15 minutos con los tutores vinculados a este teléfono; no da acceso a nada más. Lo demás que NetProtect ya " +
+        "comparte con tu tutor, como qué apps usas, no depende de este permiso. Al continuar, Android abre los Ajustes " +
+        "de NetProtect para que elijas «Permitir todo el tiempo». Puedes quitarlo cuando quieras en esos mismos Ajustes. " +
+        "Si el teléfono cierra NetProtect para ahorrar batería, la ubicación puede dejar de llegar."
 const val BACKGROUND_LOCATION_EXPLANATION_CONTINUE = "Continuar"
 const val BACKGROUND_LOCATION_EXPLANATION_DISMISS = "Ahora no"
 

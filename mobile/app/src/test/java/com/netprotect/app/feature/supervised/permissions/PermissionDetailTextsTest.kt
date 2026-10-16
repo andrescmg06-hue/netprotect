@@ -108,10 +108,13 @@ class PermissionDetailTextsTest {
     @Test
     fun theExplanationBeforeAndroidSaysWhatIsAndIsNotShared() {
         val body = BACKGROUND_LOCATION_EXPLANATION_BODY
-        assertTrue(body.contains("solo la ubicación"))
+        assertTrue(body.contains("solo a la ubicación"))
         assertTrue(body.contains("15 minutos"))
-        assertTrue(body.contains("tutor vinculado"))
+        assertTrue(body.contains("tutores vinculados"))
         assertTrue(body.contains("nada más"))
+        // Honest about the rest: what else NetProtect shares with the app closed, and the battery limit.
+        assertTrue(body.contains("no depende de este permiso"))
+        assertTrue(body.contains("ahorrar batería"))
         assertTrue(body.contains("«Permitir todo el tiempo»"))
         assertTrue(body.contains("Puedes quitarlo"))
         assertEquals("Ubicación con la app cerrada", BACKGROUND_LOCATION_EXPLANATION_TITLE)
