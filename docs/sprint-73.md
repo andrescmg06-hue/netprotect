@@ -142,7 +142,7 @@ teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arran
   backend da por desconectado al dispositivo a los 5 min: el tutor lo vería «sin reporte» aunque el bloqueo funcione.
   Se corrige haciendo que el servicio de reglas (siempre vivo mientras hay vínculo) envíe el latido en su pulso de
   60 s y la sincronización de apps cada pocos minutos, reutilizando lo que ya hace `SyncWorker`. Delegado (mismo writer).
-  **Hecho** (commit `HASH_T7`; `compileDebugKotlin`, `testDebugUnitTest` (322 tests, 0 fallos) y `lintDebug` en verde).
+  **Hecho** (commit `139323b`; `compileDebugKotlin`, `testDebugUnitTest` (322 tests, 0 fallos) y `lintDebug` en verde).
   Decisiones: el envío vive en un solo lugar, `core/sync/DeviceReporter` (campos del latido y de la sincronización), usado por
   `SyncWorker`, por el servicio (`PeriodicReporter`, desde su bucle de 3 s) y por los `LaunchedEffect` del shell, que se
   quedan para la pantalla. La cadencia es pura (`ReportCadence`, con tests): el servicio es **respaldo** de la pantalla y
