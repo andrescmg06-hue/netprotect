@@ -301,6 +301,30 @@ sincronización de apps/uso (`PeriodicReporter`), porque los bucles de `Supervis
   `adb reverse --list` antes de culpar al backend.
 - Al automatizar `adb` + `uiautomator`: partir el volcado con `sed 's/>/>\n/g'` (no con `tr`) y arrancar la app desde cero
   en cada pantalla en vez de depender de `KEYCODE_BACK`.
+- **Lección del Sprint 73, servicios con su propio `CoroutineScope`:** un scope sin `SupervisorJob` cancela **todo** su
+  trabajo si una corrutina hija deja escapar un `Error` (no solo una `Exception`); sin manejador, la excepción llega al
+  manejador de Android, que cierra el proceso, y `START_STICKY` lo reinicia: el bloqueo se interrumpe unos segundos, no «muere
+  sin rastro» (el revisor lo matizó; no se midió). Lo que se envía en segundo plano (`PeriodicReporter.tick`) debe capturar
+  `Throwable` y relanzar solo `CancellationException`; un `catch (e: Exception)` no basta. Corregido ahí en `81a6de9`. **No
+  se cumple todavía** en el `launch` del bucle principal ni en el ciclo de `RuleEnforcementService` (solo `Exception`):
+  `docs/tasks.md`, B-19. Sin test automático que fuerce un `Error` (D-10).
+- **Lección del Sprint 73, pruebas de segundo plano en el emulador** (`docs/sprint-73-evidence.md`): `adb` no está en el
+  PATH, está en `%LOCALAPPDATA%\Android\Sdk\platform-tools`. `adb shell run-as com.netprotect.app kill -9 <pid>` simula la
+  muerte del proceso en el APK debug. Deslizar la app en Recientes es `KEYCODE_APP_SWITCH` más `input swipe`. El foco se lee
+  con `dumpsys window | grep mCurrentFocus` (cada 5 s para medir cuánto tarda un bloqueo). Las reglas de prueba se insertan por
+  `psql` en `app_rules` del contenedor `db` y **se borran al terminar**. `screencap` sale negro con la pantalla apagada. Esto
+  no reproduce a HyperOS/MIUI: ahí solo vale un teléfono real.
+- **Lección del Sprint 73, reinicio con PIN:** Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo del usuario. Un
+  emulador (o teléfono) con PIN no arranca la protección tras reiniciar hasta que una persona lo escribe; la protección vuelve
+  entonces, no antes. Nunca adivinar ni probar el PIN para seguir con la prueba.
+- **Lección del Sprint 73, ubicación desde `BOOT_COMPLETED`:** con `ACCESS_BACKGROUND_LOCATION` concedido el servicio de
+  ubicación sí arranca desde `BOOT_COMPLETED`, aunque Android registre `Foreground service started from background can not
+  have location… access` para el servicio. Ese registro no significa que falle: lo que decide es el permiso de fondo (medido
+  en el emulador, la ubicación llegó al backend). No dar por rota la ubicación por ese mensaje.
+- **Lección del Sprint 73, texto al pedir un permiso al menor:** debe cubrir **todo** lo que NetProtect comparte con la app
+  cerrada, no solo lo que concede ese permiso (el latido y la sincronización de apps también salen con la app cerrada), y decir
+  «tutores» en plural, porque un dispositivo puede tener varios. Hallazgo MEDIA del `security-reviewer` sobre el diálogo de
+  «Permitir todo el tiempo», corregido en `81a6de9`.
 
 ## Lecciones del rediseño v2 (S61 a S67)
 

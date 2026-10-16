@@ -1,6 +1,8 @@
 # Sprint 73 — El bloqueo no se salta y la protección sigue con la app cerrada
 
-Rama `sprint-73-bloqueo-segundo-plano` (desde `main` en `e5b0a81`). Estado: en curso.
+Rama `sprint-73-bloqueo-segundo-plano` (desde `main` en `e5b0a81`). Estado: **cerrado en local el 16/10/2026, sin PR**.
+Lo comprobado está en `docs/sprint-73-evidence.md`; lo que solo puede probar una persona (el Redmi con HyperOS y el aviso
+instantáneo del panel) queda como H-07 y H-08 en `docs/tasks.md`, no como hecho.
 
 Dos fallos que el dueño encontró probando en un teléfono real (Redmi Note 13, Android 15, HyperOS 2.0) el 15/10/2026.
 
@@ -163,6 +165,25 @@ teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arran
   presupuesto de contexto de la herramienta y el dueño decidió omitirla el 16/10/2026.
 
 ## Criterios de aceptación
+
+Estado de cada uno al cierre (16/10/2026):
+
+1. **Cumplido** (`docs/sprint-73-evidence.md`): test con la secuencia real de eventos y, en el emulador, reentrada a 1 s,
+   instantánea y a 8 s: siempre bloqueada, un evento por visita.
+2. **Pendiente de medir en ejecución.** Cubierto solo por tests JVM (redibujo periódico y detección de la pantalla quitada
+   por el sistema); no se quitó la superposición en el emulador para medir el ≤ 3 s.
+3. **Cumplido en el emulador, pendiente en HyperOS (H-07).** Atrás y deslizada en Recientes: sin `MainActivity` ni tarea,
+   proceso y servicios vivos y bloqueo operativo; también tras `kill -9` y tras reiniciar. «Inicio automático» no existe
+   en el emulador: la parte de MIUI/HyperOS solo la confirma el Redmi.
+4. **Cumplido en pruebas automáticas, sin comprobar en un teléfono.** Los 358 tests de backend (rechazo uniforme de envíos
+   tras desvincular) y los 322 de Android cubren la parada de servicios; no se cerró sesión ni se desvinculó el emulador
+   para no deshacer el vínculo que usó la prueba.
+5. **Cumplido por el refresco periódico, pendiente por el aviso instantáneo (H-08).** Regla `BLOCK` con la app abierta: 5 s;
+   horario: 52 s; al quitar la regla, 46 s; límite diario: 62 s (≈ un refresco más el muestreo de 5 s). El aviso
+   `rules_changed` (≤ 3 s) no se probó: la extensión de Chrome no estaba conectada y las reglas se pusieron por `psql`.
+   Un evento por visita bloqueada en `app_rule_events`; tests de `VisitRecheck` para «nunca un segundo evento».
+
+Texto original de los criterios:
 
 1. Salir al inicio y volver a una app bloqueada, por rápido que sea, la vuelve a bloquear (test con la secuencia real).
 2. Si la pantalla de bloqueo desaparece y la app bloqueada sigue delante, vuelve en el siguiente ciclo (≤ 3 s).

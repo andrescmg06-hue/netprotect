@@ -180,3 +180,48 @@ automático** que fuerce un `Error` en el envío.
 - Un `Error` en el envío de segundo plano (sin test automático, ver arriba) y los tests `androidTest` de Compose.
 - Con el PIN puesto, tras un reinicio Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo: la protección
   vuelve entonces, no antes.
+
+## Cierre del sprint — verificación completa y revisión de seguridad (16/10/2026)
+
+Hecho por el `verifier` (modo completo; backend en un proyecto de compose aislado `np-s73-test`, sin tocar el stack
+`netprotect-dev` que usaba el emulador) sobre `HEAD` limpio:
+
+```
+$ docker compose -p np-s73-test -f compose.test.yaml build backend migrate        OK
+$ docker compose -p np-s73-test -f compose.test.yaml run --rm migrate             exit 0 (hasta f2b6c9d1e4a7)
+$ docker compose -p np-s73-test -f compose.test.yaml up --abort-on-container-exit --exit-code-from backend db redis backend
+358 passed, 0 failed, 0 skipped    (4 avisos de pytest, ajenos a la app: 2 StarletteDeprecationWarning, 1 PytestCacheWarning)
+$ docker compose -p np-s73-test -f compose.test.yaml run --rm --no-deps backend ruff check --no-cache app tests alembic
+All checks passed!
+$ cd mobile && ./gradlew test assembleDebug lintDebug --rerun-tasks --console=plain   # 114 de 114 tareas ejecutadas
+BUILD SUCCESSFUL   testDebug/testMinified/testRelease: 322 tests, 0 fallos, 0 errores, 0 omitidos
+lint: 0 errores y 30 avisos, ninguno nuevo (15 UseKtx, 9 GradleDependency, 3 NewerVersionAvailable,
+      1 DataExtractionRules, 1 AGP, 1 InlinedApi en LocationPermission.kt:48)
+```
+
+No se corrió el frontend (no se tocó) ni `connectedAndroidTest`.
+
+`security-reviewer` sobre `main...HEAD` (lectura del diff; no ejecutó pruebas): **0 ALTA, 0 MEDIA, 4 BAJA**; nada bloquea el
+cierre. Las cuatro van al backlog (`docs/tasks.md`):
+
+- **B-18** — el diálogo previo a «Permitir todo el tiempo» puede abrirse tras una desvinculación si esta ocurre mientras
+  Android muestra el cuadro de ubicación (`SupervisedShell.kt:283` y `:674`); `81a6de9` solo cerró el diálogo ya abierto.
+  Sin fuga de datos.
+- **B-19** — el `launch` del bucle principal de `RuleEnforcementService` y su ciclo capturan solo `Exception`. Corrección
+  propia: durante el sprint se dijo que un `Error` «apagaría el bloqueo en silencio». El revisor lo matiza y es lo más
+  probable: sin `SupervisorJob`, el `Error` cancela el scope y llega al manejador de excepciones de Android, que cierra el
+  proceso, y `START_STICKY` lo reinicia. Es una interrupción de unos segundos, no un apagado silencioso. Ese
+  comportamiento no se midió. La lección de `.claude/rules/android.md` se reescribió con esa precisión.
+- **B-20** — `TokenStore.isPermanentReadFailure` solo reconoce cuatro tipos de excepción del Keystore; otro tipo
+  (según el OEM) se trataría como transitorio para siempre y la persona solo saldría cerrando sesión. No se borra nada de
+  forma indebida.
+- **B-21** — tras una desvinculación el dueño aún puede abrir el WebSocket y pedir `GET /webrtc-config` (credenciales TURN
+  efímeras, sin fuga); `docs/security-baseline.md` y `.claude/rules/backend.md` dicen que «todo lo que el teléfono envía o
+  lee» recibe el 404, lo cual es impreciso (relacionado con B-17).
+
+El revisor confirmó que las tres correcciones de `81a6de9` son correctas, y dejó dicho que no pudo comprobar: el
+comportamiento de Android que depende de la plataforma (excepciones exactas del Keystore por OEM, si
+`MY_PACKAGE_REPLACED` está exento de la restricción de arrancar servicios en primer plano) ni HyperOS.
+
+La revisión por recibos de la rama (46 archivos, 3243 líneas) no cupo en el presupuesto de contexto de la herramienta
+(`lens_context_budget_exceeded`, sin autoridad de revisión creada) y el dueño decidió omitirla (`declined_this_candidate`).
