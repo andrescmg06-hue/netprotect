@@ -154,7 +154,11 @@ teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arran
   cerrada (emulador o teléfono).
 - [ ] T4 — Verificación (`verifier`: test, assembleDebug, lintDebug), `security-reviewer` (toca `core/rules`, sesión y
   arranque de servicios) y prueba real en el Redmi: re-entrada rápida a Facebook, app deslizada en Recientes, reinicio.
-  Inline.
+  Inline. **Hecho en el emulador (16/10/2026, `docs/sprint-73-evidence.md`):** tests, `assembleDebug` y `lintDebug` en
+  verde, revisión de seguridad de T5 y de T6/T7 (3 hallazgos corregidos en `81a6de9`), y los tres fallos del dueño más
+  app cerrada, proceso muerto, reinicio, latido y ubicación con la app cerrada. **Pendiente, por eso sigue abierta:** la
+  prueba en el Redmi con HyperOS (el emulador no reproduce cómo mata el sistema los procesos), el aviso instantáneo
+  `rules_changed` desde el panel y el reinicio con el permiso de fondo concedido.
 
 ## Criterios de aceptación
 

@@ -127,8 +127,56 @@ Nada del comportamiento en ejecución en un teléfono: la siembra al reiniciar, 
 superposición y el `forgetDevice` al cerrar sesión. Tampoco `assembleDebug`, `lintDebug` ni `security-reviewer`.
 Queda para T4.
 
-## Pendiente (T4)
+## T4 — verificación y prueba en emulador (16/10/2026)
 
-No ejecutado en este paso: `assembleDebug`, `lintDebug`, `security-reviewer` y la prueba en el Redmi Note 13
-(re-entrada rápida a Facebook, regla creada con la app abierta, app deslizada en Recientes con y sin «Inicio
-automático», reinicio del teléfono). Ningún comportamiento en ejecución de este sprint está comprobado todavía.
+Entorno: emulador Pixel 8, Android 16 (API 36), APK `assembleDebug`, backend y base de desarrollo en contenedor, dispositivo
+supervisado vinculado por una persona con su cuenta de Google. Las reglas de prueba se insertaron en `app_rules` por `psql`
+y se borraron después; no se usó el panel del tutor (la extensión de Chrome no estaba conectada), así que el aviso
+instantáneo `rules_changed` **no** se probó. Cada medida se tomó con `dumpsys window | grep mCurrentFocus` cada 5 s.
+
+### Compilación, tests, lint y revisión (verifier y security-reviewer)
+
+```
+$ cd mobile && ./gradlew test assembleDebug lintDebug --rerun-tasks      # 114 de 114 tareas ejecutadas
+BUILD SUCCESSFUL   testDebug/testRelease/testMinified: 322 tests, 0 fallos, 0 errores, 0 omitidos
+lint: 0 errores, 30 avisos (15 UseKtx, 9 GradleDependency, 3 NewerVersionAvailable, 1 DataExtractionRules,
+      1 AGP, 1 InlinedApi en LocationPermission.kt:48: constante de texto, sin efecto en ejecución)
+```
+
+`security-reviewer` sobre T5 (`main...HEAD`): sin hallazgos. Sobre T6/T7: 3 hallazgos, corregidos en `81a6de9` y
+reverificados (mismo comando, 322 tests, sin avisos de lint nuevos): (1) el envío de segundo plano solo capturaba
+`Exception` y un `Error` habría cancelado el scope del servicio y apagado el bloqueo; (2) el texto previo a «Permitir
+todo el tiempo» daba a entender que la ubicación era lo único compartido y hablaba de un solo tutor; (3) el diálogo
+sobrevivía a una desvinculación. El primero se comprobó leyendo el código (`scope` es un `Job` normal); **no hay test
+automático** que fuerce un `Error` en el envío.
+
+### Resultados en ejecución
+
+| Caso | Medida |
+|---|---|
+| Reentrada a YouTube bloqueada tras «Ir al inicio» a 1 s, con tecla Inicio al instante y a 8 s | foco en la ventana de bloqueo en los tres; un evento `BLOCK` por visita en `app_rule_events` |
+| Regla `BLOCK` insertada con Chrome ya abierto | bloqueada a los 5 s; al borrarla, desbloqueada a los 46 s |
+| Regla `SCHEDULE` 00:00–23:59 con Chrome abierto | bloqueada a los 52 s |
+| Regla `DAILY_LIMIT` de 1 min con Chrome abierto (más de 1 min de uso hoy) | bloqueada a los 62 s (ciclo de refresco + muestreo de 5 s) |
+| NetProtect cerrada con Atrás y deslizada en Recientes | sin `MainActivity` ni tarea; mismo pid y los dos servicios vivos; YouTube se bloquea |
+| `kill -9` del proceso (APK anterior a T6/T7) | `RuleEnforcementService` renace en ~2 s; **la ubicación no renace** (hueco A) |
+| Reinicio del teléfono, tras desbloquear el PIN (APK anterior a T6/T7) | `BootReceiver` arranca el proceso y el servicio de reglas con 0 actividades; YouTube se bloquea. La ubicación no arranca |
+| Latido con la app cerrada (APK anterior a T7) | último latido parado más de 6 min (hueco B) |
+| APK con T6/T7: `adb install -r` sin abrir la app | el proceso y `RuleEnforcementService` se relanzan solos (`MY_PACKAGE_REPLACED`) |
+| Latido con la app cerrada (APK con T7) | el backend ve latidos a las 15:59:05, 16:00:22, 16:01:38 y 16:02:54 (~76 s) |
+| Flujo real de T6: Permisos → «Permitir todo el tiempo» → explicación → Continuar → Ajustes → «Allow all the time» | la pantalla de Inicio pasó de «3 de 4» a completa; al volver arranca `LocationReportingService` |
+| T6: app cerrada + `kill -9` con el permiso concedido | renacen **los dos** servicios (`isForeground=true`, tipos `specialUse` y `location`) sin abrir ninguna pantalla; una ubicación llega al backend 6 s después (16:04:52); YouTube se bloquea |
+
+### No comprobado
+
+- **HyperOS/MIUI** (Redmi Note 13): el emulador no reproduce cómo mata el sistema los procesos al deslizar en Recientes
+  ni la exigencia de «Inicio automático» y batería «Sin restricciones». Es el único sitio donde el límite documentado
+  puede confirmarse.
+- El aviso instantáneo `rules_changed` del panel (la medida de 5 s con `BLOCK` se explica por el refresco periódico, no
+  por ese aviso).
+- Reinicio del teléfono con el permiso de fondo concedido (¿arranca la ubicación desde `BOOT_COMPLETED`?) y que el
+  panel del tutor muestre «Conectado» con la app cerrada (solo se midió lo que recibe el backend).
+- La sincronización de apps y uso con la app cerrada (cada ~5 min 15 s): no se midió.
+- Un `Error` en el envío de segundo plano (sin test automático, ver arriba) y los tests `androidTest` de Compose.
+- Con el PIN puesto, tras un reinicio Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo: la protección
+  vuelve entonces, no antes.
