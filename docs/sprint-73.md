@@ -158,7 +158,9 @@ teléfono real; nada del comportamiento en ejecución (redibujo, reinicio, arran
   verde, revisión de seguridad de T5 y de T6/T7 (3 hallazgos corregidos en `81a6de9`), y los tres fallos del dueño más
   app cerrada, proceso muerto, reinicio, latido y ubicación con la app cerrada. **Pendiente, por eso sigue abierta:** la
   prueba en el Redmi con HyperOS (el emulador no reproduce cómo mata el sistema los procesos), el aviso instantáneo
-  `rules_changed` desde el panel y el reinicio con el permiso de fondo concedido.
+  `rules_changed` desde el panel. El reinicio con el permiso de fondo concedido se comprobó (ambos servicios,
+  latido y ubicación llegan sin abrir la app). La revisión por recibos de la rama (46 archivos) no cabe en el
+  presupuesto de contexto de la herramienta y el dueño decidió omitirla el 16/10/2026.
 
 ## Criterios de aceptación
 

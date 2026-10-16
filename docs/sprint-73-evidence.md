@@ -166,6 +166,7 @@ automático** que fuerce un `Error` en el envío.
 | Latido con la app cerrada (APK con T7) | el backend ve latidos a las 15:59:05, 16:00:22, 16:01:38 y 16:02:54 (~76 s) |
 | Flujo real de T6: Permisos → «Permitir todo el tiempo» → explicación → Continuar → Ajustes → «Allow all the time» | la pantalla de Inicio pasó de «3 de 4» a completa; al volver arranca `LocationReportingService` |
 | T6: app cerrada + `kill -9` con el permiso concedido | renacen **los dos** servicios (`isForeground=true`, tipos `specialUse` y `location`) sin abrir ninguna pantalla; una ubicación llega al backend 6 s después (16:04:52); YouTube se bloquea |
+| Reinicio del teléfono con el permiso de fondo concedido, tras desbloquear el PIN | `BootReceiver` arranca el proceso (16:12:11) y ambos servicios están en primer plano con 0 actividades; el backend recibe un latido (16:12:14) y una ubicación (16:12:18); YouTube se bloquea. Android registra `Foreground service started from background can not have location… access` para los dos servicios, y aun así la ubicación llega: la concede el permiso de fondo |
 
 ### No comprobado
 
@@ -174,8 +175,7 @@ automático** que fuerce un `Error` en el envío.
   puede confirmarse.
 - El aviso instantáneo `rules_changed` del panel (la medida de 5 s con `BLOCK` se explica por el refresco periódico, no
   por ese aviso).
-- Reinicio del teléfono con el permiso de fondo concedido (¿arranca la ubicación desde `BOOT_COMPLETED`?) y que el
-  panel del tutor muestre «Conectado» con la app cerrada (solo se midió lo que recibe el backend).
+- Que el panel del tutor muestre «Conectado» con la app cerrada (solo se midió lo que recibe el backend).
 - La sincronización de apps y uso con la app cerrada (cada ~5 min 15 s): no se midió.
 - Un `Error` en el envío de segundo plano (sin test automático, ver arriba) y los tests `androidTest` de Compose.
 - Con el PIN puesto, tras un reinicio Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo: la protección
