@@ -51,13 +51,17 @@
          un teléfono real la aproximada situaba el dispositivo a kilómetros (sustituye la decisión
          de solo aproximada del Sprint 13; ver docs/android/capability-matrix.md). FINE y COARSE se
          declaran y piden juntos porque Android 12+ exige COARSE junto a FINE; si la persona elige
-         «aproximada» en el diálogo, solo se concede COARSE. Sigue sin ACCESS_BACKGROUND_LOCATION:
-         un foreground service foregroundServiceType="location" ya cuenta como "en primer plano"
-         para el sistema de permisos de ubicación mientras corre (y exige COARSE o FINE, no el de
-         segundo plano), así que no hace falta pedirlo ni asumir la política de "Prominent
-         Disclosure" de Play. -->
+         «aproximada» en el diálogo, solo se concede COARSE. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Sprint 73 (T6): «Permitir todo el tiempo», por decisión del dueño (15/10/2026), que revierte
+         la de los Sprints 13/14 de no pedirlo. Sin él, en Android 11+ un servicio de tipo `location`
+         no puede arrancar desde segundo plano (el reinicio del sistema tras matar el proceso) y la
+         ubicación dejaba de llegar al tutor hasta reabrir la app. Se pide aparte, tras la ubicación
+         precisa y con una explicación previa (SupervisedShell); si no se concede, el resto sigue
+         funcionando. Si la app se publicara, Play exigiría su divulgación destacada y su formulario
+         (ver docs/android/capability-matrix.md). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- Sprint 23 (supervisión remota): la captura de pantalla se autoriza con el diálogo del
@@ -67,6 +71,10 @@
          un MediaProjection sirve para una sola llamada a createVirtualDisplay() y reutilizar el
          Intent lanza SecurityException. Ver docs/android/capability-matrix.md. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+    <!-- Sprint 73: la protección se restablece sola al encender el teléfono (BootReceiver), sin
+         esperar a que el supervisado abra la app. Permiso normal, sin diálogo. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="false"
@@ -121,6 +129,20 @@
             android:name=".core.screenshare.ScreenShareService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- Sprint 73: reinicia la protección tras reiniciar el teléfono (BOOT_COMPLETED) o
+             actualizar la app (MY_PACKAGE_REPLACED). exported="false": ambos los envía el propio
+             sistema, que puede entregar a un receptor no exportado (la comprobación de exportado no
+             aplica al uid del sistema), y así ninguna otra app puede dispararlo. Ver
+             core/boot/BootReceiver.kt y docs/android/capability-matrix.md (Sprint 73). -->
+        <receiver
+            android:name=".core.boot.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Sprint 20 (detección de manipulación): registro como Device Administrator, NO como
              device owner. El usuario lo concede desde la pantalla del sistema

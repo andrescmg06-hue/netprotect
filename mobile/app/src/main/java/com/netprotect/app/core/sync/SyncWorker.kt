@@ -1,7 +1,6 @@
 package com.netprotect.app.core.sync
 
 import android.content.Context
-import android.os.Build
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -10,18 +9,15 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.netprotect.app.BuildConfig
 import com.netprotect.app.core.auth.BackgroundTokenRefresher
-import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
+import com.netprotect.app.core.network.isDeviceGone
 import com.netprotect.app.core.network.RuleEnforcementClient
 import com.netprotect.app.core.permissions.UsageAccessPermission
-import com.netprotect.app.core.rules.EnforcementLiveness
 import com.netprotect.app.core.storage.NetProtectDatabase
 import com.netprotect.app.core.storage.PendingRuleEventStore
-import java.time.Instant
-import java.util.TimeZone
+import com.netprotect.app.core.supervision.SupervisionServices
 import java.util.concurrent.TimeUnit
 
 private const val KEY_BASE_URL = "base_url"
@@ -44,6 +40,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val baseUrl = inputData.getString(KEY_BASE_URL) ?: return Result.failure()
         val deviceId = inputData.getString(KEY_DEVICE_ID) ?: return Result.failure()
 
+        // Sprint 73: the watch. Sprint 73 (T5): first, and local — it used to run only after the
+        // network work, so with no token or no network it never ran (EnforcementWatchWorker, with
+        // no network constraint, is now the main watch; this one is a second chance). The heartbeat
+        // below still reports what the marker said BEFORE this restart (a restart stamps it at
+        // once), so the tutor is told the service had died. A deliberate stop never gets here:
+        // sign-out and unlink cancel this worker (SupervisionServices.stopAll) and clear the link or
+        // session the watch checks.
+        val serviceActive = SupervisionServices.restartEnforcementIfDead(applicationContext)
+
         // No stored session (signed out) or genuinely offline: nothing to do, and not a
         // worker "failure" either way — WorkManager's exponential backoff on Result.retry()
         // is for transient errors, not for "there was nothing to sync this cycle".
@@ -53,36 +58,33 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         // Sprint 20: this is the heartbeat that matters most for manipulation detection — it
         // keeps running when SupervisedScreen isn't composed, which is exactly when the
         // enforcement service is most likely to have been stopped without anyone noticing.
-        runCatching {
-            DeviceClient(baseUrl).sendHeartbeat(
-                accessToken,
-                deviceId,
-                Build.VERSION.RELEASE,
-                BuildConfig.VERSION_NAME,
-                TimeZone.getDefault().id,
-                usageAccessGranted = UsageAccessPermission.isGranted(applicationContext),
-                serviceActive = EnforcementLiveness.isRecentlyActive(applicationContext),
-                deviceTime = Instant.now(),
-            )
+        // Sprint 73 (T7): built by DeviceReporter, the same code RuleEnforcementService and the screen use.
+        val heartbeat = runCatching {
+            DeviceReporter.sendHeartbeat(applicationContext, DeviceClient(baseUrl), accessToken, deviceId, serviceActive)
         }
+        // Sprint 73 (T5): the backend refuses a device with no active link (uniform 404). With the
+        // app closed this worker is what notices an unlink: end it here instead of reporting usage
+        // and enforcing old rules for a device nobody supervises.
+        if (heartbeat.exceptionOrNull()?.isDeviceGone() == true) return endLink(deviceId)
 
         if (UsageAccessPermission.isGranted(applicationContext)) {
-            runCatching {
-                ApplicationsClient(baseUrl).syncApplications(
-                    accessToken = accessToken,
-                    deviceId = deviceId,
-                    usageDate = AppInventoryCollector.todayDateString(),
-                    installedApps = AppInventoryCollector.collectInstalledApps(applicationContext),
-                    dailyUsage = AppInventoryCollector.collectTodayUsage(applicationContext),
-                )
+            val sync = runCatching {
+                DeviceReporter.syncApps(applicationContext, ApplicationsClient(baseUrl), accessToken, deviceId)
             }
+            if (sync.exceptionOrNull()?.isDeviceGone() == true) return endLink(deviceId)
         }
 
         val database = NetProtectDatabase.getInstance(applicationContext)
-        runCatching {
+        val flush = runCatching {
             PendingRuleEventStore(database).flush(RuleEnforcementClient(baseUrl), accessToken, deviceId)
         }
+        if (flush.exceptionOrNull()?.isDeviceGone() == true) return endLink(deviceId)
 
+        return Result.success()
+    }
+
+    private suspend fun endLink(deviceId: String): Result {
+        SupervisionServices.endLinkFromBackground(applicationContext, deviceId)
         return Result.success()
     }
 
@@ -103,10 +105,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 .build()
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(UNIQUE_WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+            // Sprint 73 (T5): the network-free watch goes wherever this worker goes (the shell's
+            // effect, BootReceiver) and is cancelled with it (SupervisionServices.stopAll).
+            EnforcementWatchWorker.schedule(context)
         }
 
         fun cancel(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+            EnforcementWatchWorker.cancel(context)
         }
     }
 }

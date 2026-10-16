@@ -3,6 +3,7 @@ package com.netprotect.app.core.permissions
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 
 /** What the user granted. Since Android 12 the same system dialog lets them choose precise or
@@ -10,6 +11,10 @@ import androidx.core.content.ContextCompat
  * ACCESS_COARSE_LOCATION.
  */
 enum class LocationAccess { NONE, APPROXIMATE, PRECISE }
+
+/** Sprint 73 (T6): the next step of the location permission. [BACKGROUND_EXPLANATION] means precise location is
+ * granted and the background one is still missing: the shell shows its explanation, then the system request. */
+enum class LocationRequest { FOREGROUND_DIALOG, BACKGROUND_EXPLANATION }
 
 /** ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION are ordinary runtime permissions (unlike
  * PACKAGE_USAGE_STATS): the system dialog grants or denies them directly, no trip to Settings.
@@ -20,11 +25,15 @@ enum class LocationAccess { NONE, APPROXIMATE, PRECISE }
  * The app treats [LocationAccess.APPROXIMATE] as an incomplete permission in the UI; the reporting
  * service still runs with it (NETWORK_PROVIDER only) because an approximate fix beats none.
  *
- * Still never ACCESS_BACKGROUND_LOCATION: a foreground service declaring
- * foregroundServiceType="location" already counts as "foreground" for Android's location
- * permission system while it runs, which is this project's actual mechanism (see
- * LocationReportingService) — requesting the background permission on top would only add a
- * Play policy obligation (Prominent Disclosure) this project doesn't need to take on.
+ * Sprint 73 (T6): ACCESS_BACKGROUND_LOCATION ("Permitir todo el tiempo") is now requested too, by
+ * explicit decision of the project owner (2026-10-15), which reverses the Sprint 13/14 choice of never
+ * asking for it: the `location`-typed foreground-service trick keeps reporting while the process lives, but
+ * from Android 11 (API 30) a service started from the background (the system restarting it after killing the
+ * process) cannot read the location without it, so reporting stopped until the app was reopened. From API 30
+ * the system dialog no longer offers it together with the foreground permission: it is requested on its own,
+ * after precise location, and the system sends the person to Settings (hence the explanation shown first,
+ * see SupervisedShell). Below API 30 there is no such restriction and it is not asked. Not having it never
+ * blocks anything: location reporting works as before while the app or its service is alive.
  */
 object LocationPermission {
     /** Both are requested together: Android 12+ requires COARSE alongside FINE. */
@@ -35,8 +44,36 @@ object LocationPermission {
         coarseGranted = isPermissionGranted(context, Manifest.permission.ACCESS_COARSE_LOCATION),
     )
 
+    /** The background permission, requested on its own from API 30 (see the class comment). */
+    const val BACKGROUND = Manifest.permission.ACCESS_BACKGROUND_LOCATION
+
     /** Any location at all (precise or approximate): what the reporting service needs to run. */
     fun isGranted(context: Context): Boolean = access(context) != LocationAccess.NONE
+
+    /** Whether the background-start restriction applies and the permission is therefore needed. */
+    fun backgroundNeeded(): Boolean = backgroundNeeded(Build.VERSION.SDK_INT)
+
+    /** True when the background permission is not needed on this Android version or is granted. */
+    fun backgroundReady(context: Context): Boolean = backgroundReady(
+        sdkInt = Build.VERSION.SDK_INT,
+        backgroundGranted = isPermissionGranted(context, BACKGROUND),
+    )
+
+    /** From Android 11 a location foreground service started from the background needs the permission. */
+    internal fun backgroundNeeded(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.R
+
+    internal fun backgroundReady(sdkInt: Int, backgroundGranted: Boolean): Boolean =
+        !backgroundNeeded(sdkInt) || backgroundGranted
+
+    /** What the "Ubicación" permission asks for next, given what is granted and whether the background
+     * permission is ready. Approximate goes first: the person is asked to change to precise (existing flow)
+     * before the background step, which only follows precise location.
+     */
+    internal fun nextRequest(access: LocationAccess, backgroundReady: Boolean): LocationRequest = when {
+        access != LocationAccess.PRECISE -> LocationRequest.FOREGROUND_DIALOG
+        !backgroundReady -> LocationRequest.BACKGROUND_EXPLANATION
+        else -> LocationRequest.FOREGROUND_DIALOG
+    }
 
     internal fun accessFrom(fineGranted: Boolean, coarseGranted: Boolean): LocationAccess = when {
         fineGranted -> LocationAccess.PRECISE

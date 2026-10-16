@@ -122,6 +122,14 @@ dispositivo físico; se resuelve con `adb kill-server && adb start-server`. La p
 infraestructura real del Sprint 26, cualquier número de quiebre sólo describiría el contenedor de
 desarrollo de quien la ejecute. Ver `docs/sprint-25.md` y `docs/sprint-25-evidence.md`.
 
+**Nota del Sprint 73, válida para cualquier ruta nueva del dispositivo supervisado**:
+`require_supervised_owner_of_device` exige, además de ser el dueño, que el dispositivo tenga **al menos un tutor con
+vínculo activo** (`TutorDevice.unlinked_at IS NULL`), y si no responde el 404 uniforme `device_not_found`. Desde que la
+protección sigue con la app cerrada, ese 404 es la única forma de que el teléfono se entere de una desvinculación sin
+abrir la app (lo trata como fin del vínculo y deja de enviar datos del menor). Una ruta que el teléfono necesite
+**sin** vínculo (enterarse de él, volver a vincularse: `/devices/me`, `/pairing/redeem`) no debe usar esa dependencia.
+Pruebas en `test_devices_integration.py` (sección Sprint 73). Ver `docs/sprint-73.md` (T5).
+
 - Un JWT firmado con HS256 puede coincidir carácter por carácter con otro si sólo cambia el último
   byte de la firma (relleno de Base64). Para pruebas que "alteran" un token, tocar un carácter del
   medio, no el último.

@@ -1,10 +1,11 @@
 # Progreso — NetProtect
-_Actualizado: 2026-10-14 · Todo está en `main`: Android S61–S67 + B-14, límite y ubicación precisa; web S52–S60 + B-05; backend B-09, B-12, B-13; preparación de producción S71. En GitHub solo existe la rama `main`._
+_Actualizado: 2026-10-16 · En `main`: Android S61–S67 + B-14, límite y ubicación precisa; web S52–S60 + B-05; backend B-09, B-12, B-13; preparación de producción S71; orden del repositorio S72 (PR #36). S73 está terminado en local en su rama, sin PR. En GitHub solo existe la rama `main`._
 
 ## En curso
-- **S72 (orden del repositorio, sin cambios funcionales)**, rama `sprint-72-orden`: quita código y recursos sin uso
-  (iconos del modo tutor, `ChartCard`, scripts del Sprint 1) y deja el diseño vigente en un solo sitio
-  (`docs/diseno-vigente.md`). Detalle: `docs/sprint-72.md`.
+- **S73 (el bloqueo no se salta y la protección sigue con la app cerrada)**, rama `sprint-73-bloqueo-segundo-plano`
+  (desde `main` en `e5b0a81`): terminado en local el 16/10/2026, **sin PR todavía**. Probado en el emulador Pixel 8
+  (API 36), no en el Redmi. **T4 sigue abierta solo por** la prueba en el Redmi con HyperOS y el aviso instantáneo
+  `rules_changed` desde el panel. Detalle: `docs/sprint-73.md` y `docs/sprint-73-evidence.md`.
 
 ## Cómo se trabaja desde ahora (para no volver a usar una versión equivocada)
 - **Una sola fuente:** el checkout principal en `main` actualizado. El stack de desarrollo `netprotect-dev` se
@@ -13,17 +14,29 @@ _Actualizado: 2026-10-14 · Todo está en `main`: Android S61–S67 + B-14, lím
 - Diseño: lo que cuenta es el código de `main`; ver `docs/diseno-vigente.md`.
 
 ## Siguiente paso
-1. **Prueba en un teléfono real** (sin desplegar): APK `minified` con `NETPROTECT_API_BASE_URL=http://localhost:8000`,
+1. **Cerrar T4 del S73 en el Redmi Note 13 (HyperOS 2.0):** conceder «Inicio automático» y batería «Sin restricciones»,
+   y comprobar re-entrada rápida a una app bloqueada, app deslizada en Recientes, reinicio y «Permitir todo el tiempo».
+   Después, desde el panel del tutor: el aviso instantáneo `rules_changed` (regla nueva con la app ya abierta) y que
+   el dispositivo siga «Conectado» con la app cerrada (H-07, H-08).
+2. **Decidir el push y el PR de la rama `sprint-73-bloqueo-segundo-plano`** (no se hace sin que lo pida el dueño).
+3. **Prueba en un teléfono real** (sin desplegar): APK `minified` con `NETPROTECT_API_BASE_URL=http://localhost:8000`,
    `adb install -r` y `adb reverse tcp:8000 tcp:8000`. Comprobar la ubicación «Precisa», el límite diario que bloquea
    estando dentro de la app y el panel rediseñado con una sesión real de Google (H-05, H-06).
-2. **Despliegue:** seguir `docs/go-live-checklist.md` (S71). Antes: añadir `FCM_SERVICE_ACCOUNT_SECRET_FILE` a
+4. **Despliegue:** seguir `docs/go-live-checklist.md` (S71). Antes: añadir `FCM_SERVICE_ACCOUNT_SECRET_FILE` a
    `.env.production.example` (a mano, por el dueño) y los cuatro hallazgos BAJA anotados en `docs/sprint-71.md`.
-3. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): TalkBack, letra al 200 % y permisos en un
+5. **Pruebas que solo puede hacer una persona** (declaradas, no hechas): TalkBack, letra al 200 % y permisos en un
    teléfono real; vista remota de punta a punta con un tutor real; la prueba con cinco personas
    (`docs/android-redesign/supervisado-v2/05_PRUEBA_USUARIOS.md`).
-4. Abierto en el backlog (`docs/tasks.md`): D-01 (filtrado web, contradice RF-07 del informe), B-11, W-01, L-06.
+6. Abierto en el backlog (`docs/tasks.md`): D-01 (filtrado web, contradice RF-07 del informe), B-11, W-01, L-06, y lo
+   que dejó el S73 (B-17, D-09 a D-11; B-14 ampliado).
 
 ## Terminado recientemente
+- Sprint 73 (en local, 16/10/2026, sin PR): el bloqueo vuelve a bloquear tras «Ir al inicio», una regla nueva bloquea la
+  app que ya está abierta, y bloqueo, latido y ubicación siguen y reviven con la app cerrada (servicios que sobreviven
+  a la pantalla, `START_STICKY`, arranque al encender, «Permitir todo el tiempo» por decisión del dueño). Verificado en
+  el emulador Pixel 8, 322 tests JVM; sin probar en el Redmi con HyperOS ni `rules_changed` desde el panel —
+  `docs/sprint-73.md` (+ `docs/sprint-73-evidence.md`)
+- Sprint 72 (PR #36, en `main`): orden del repositorio sin cambios funcionales; `docs/diseno-vigente.md` — `docs/sprint-72.md`
 - 14/10/2026: consolidación en `main` (PR #32 rediseño web + B-05, #33 B-14 + límite + ubicación precisa, #34 B-13,
   #35 Sprint 71), CI 8/8 en cada uno; borradas todas las ramas salvo `main` tras comprobar que no tenían nada fuera de él
 - Sprint 71 (PR #35): producción no arranca con valores de ejemplo, release firmado por variables, healthchecks y lista

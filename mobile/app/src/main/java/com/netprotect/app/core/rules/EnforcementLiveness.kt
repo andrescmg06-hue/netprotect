@@ -3,7 +3,8 @@ package com.netprotect.app.core.rules
 import android.content.Context
 
 /** Sprint 20: how anything outside RuleEnforcementService's own process can tell whether that
- * service is still running. The service stamps [markActive] on every poll cycle (~3s); everything
+ * service is still running. The service stamps [markActive] on every poll cycle (~3s) that
+ * completes and can evaluate (Sprint 73, T5: not on a cycle whose evaluation failed); everything
  * that sends a heartbeat reads [isRecentlyActive] and reports it as `service_active`, which the
  * backend turns into a SERVICE_INACTIVE tamper alert (app/services/tamper.py).
  *

@@ -42,6 +42,7 @@ import com.netprotect.app.core.network.RoleClient
 import com.netprotect.app.core.network.UiError
 import com.netprotect.app.core.network.toHealthUiError
 import com.netprotect.app.core.network.toUiError
+import com.netprotect.app.core.supervision.SupervisionServices
 import com.netprotect.app.feature.supervised.SupervisedShell
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -136,6 +137,12 @@ fun HomeScreen() {
     }
 
     suspend fun signOut() {
+        // Sprint 73: SupervisedShell no longer stops the protection when it leaves the screen
+        // (closing the app must not switch it off), so signing out stops it here, first. The
+        // session cleared next also keeps any restart (sticky, boot, SyncWorker) from reviving it.
+        // Sprint 73 (T5): and the link and the device's local data are forgotten too — another
+        // account signing in on this phone must not inherit this device (forgetDevice).
+        SupervisionServices.forgetDevice(context)
         authRepository.signOut()
         SupervisedRoleCache.clear(context)
         state = HomeState.SignedOut()
@@ -152,6 +159,9 @@ fun HomeScreen() {
                 state = HomeState.SignedOut(signInErrorMessage(exception))
                 return@launch
             }
+            // Sprint 73 (T5): a different account than the one this phone protected (the previous
+            // session ended in the background, without a sign-out here): its link and data go.
+            if (!SupervisedRoleCache.isConfirmedFor(context, user.id)) SupervisionServices.forgetDevice(context)
             resolveRole(user)
         }
     }
@@ -181,7 +191,12 @@ fun HomeScreen() {
     suspend fun restore() {
         when (val result = authRepository.restoreSession()) {
             is RestoreResult.Restored -> resolveRole(result.user)
-            RestoreResult.NoSession -> state = HomeState.SignedOut()
+            RestoreResult.NoSession -> {
+                // Sprint 73 (T5): no session (it ended while the app was closed, say): nothing can
+                // be protected under it, so nothing of the old link may be kept for the next one.
+                SupervisionServices.forgetDevice(context)
+                state = HomeState.SignedOut()
+            }
             is RestoreResult.Unreachable -> state = HomeState.SignedOut(result.error.message)
         }
     }
@@ -193,6 +208,9 @@ fun HomeScreen() {
     val sessionExpired by authRepository.session.expired.collectAsState()
     LaunchedEffect(sessionExpired) {
         if (sessionExpired && state !is HomeState.SignedOut && state !is HomeState.Loading) {
+            // Sprint 73: leaving the shell used to stop the protection; an ended session still
+            // does, now explicitly, as on sign-out (and, Sprint 73 T5, forgetting the link too).
+            SupervisionServices.forgetDevice(context)
             state = HomeState.SignedOut(UiError.SessionExpired.message)
         }
     }

@@ -88,9 +88,28 @@ async def require_supervised_owner_of_device(
     """The mirror image of require_tutor_of_device: only the person this device belongs to
     (the one it supervises) may act as it — e.g. send its heartbeat. Same 404-for-both
     reasoning as the tutor check.
+
+    Sprint 73 (T5): and only while the device still has at least one active tutor link
+    (TutorDevice.unlinked_at IS NULL), mirroring require_tutor_of_device. Since Sprint 73 the
+    phone keeps protecting with the app closed, so after an unlink its background work kept
+    sending heartbeat, usage, inventory, rule events and location, and kept enforcing rules it
+    fetched here — data about a minor nobody supervises any more. Every route behind this check
+    is one the device only needs while linked; the uniform `device_not_found` 404 is what the
+    phone reads as "the link ended" and stops everything. What it needs to find out about the
+    unlink or to link again (GET /devices/me, /pairing/redeem) does not use this dependency.
     """
     device = await db.get(Device, device_id)
     if device is None or device.supervised_user_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
+    has_active_tutor = (
+        await db.execute(
+            select(TutorDevice.id).where(
+                TutorDevice.device_id == device_id,
+                TutorDevice.unlinked_at.is_(None),
+            )
+        )
+    ).first() is not None
+    if not has_active_tutor:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device_not_found")
     return device
 

@@ -9,7 +9,7 @@
 | `GET/POST /users/me/roles` | Sí | Sí | No — 401 |
 | Leer/administrar un dispositivo (a partir del Sprint 6) | Sólo si existe un `tutor_devices` activo entre ese tutor y ese dispositivo | No | No |
 | Ser el operador supervisado de un dispositivo | N/A | Sólo el dispositivo donde `devices.supervised_user_id` es su propio id | No |
-| Reportar telemetría del dispositivo (`/heartbeat`, `/rule-events`, `/location`, y desde el Sprint 20 `/tamper-events`) | No — 404 | Sólo el suyo (`require_supervised_owner_of_device`) | No |
+| Reportar telemetría del dispositivo (`/heartbeat`, `/rule-events`, `/location`, `/applications/sync`, `/push-token`, desde el Sprint 20 `/tamper-events`) y leer sus reglas (`/rules/active`) | No — 404 | Sólo el suyo (`require_supervised_owner_of_device`) y, desde el Sprint 73, sólo mientras tenga al menos un tutor con vínculo activo | No |
 | Leer alertas, incluidas las de manipulación (Sprint 20) | Sólo del dispositivo que supervisa | No | No |
 
 Reglas de diseño:
@@ -22,7 +22,12 @@ Reglas de diseño:
   (anti-IDOR/BOLA).
 - **Desvincular revoca el acceso de inmediato.** `require_tutor_of_device` sólo considera vínculos
   con `unlinked_at IS NULL`; verificado con una prueba que crea el vínculo, confirma acceso, lo
-  desvincula, y confirma que el acceso desaparece.
+  desvincula, y confirma que el acceso desaparece. Desde el Sprint 73 también del lado del
+  supervisado: sin ningún vínculo activo, `require_supervised_owner_of_device` responde el mismo
+  404 `device_not_found` a todo lo que el teléfono envía o lee como dispositivo vinculado, y el
+  teléfono lo toma como fin del vínculo (para todo y borra sus datos locales) aunque la app esté
+  cerrada. `/devices/me` y `/pairing/redeem` no pasan por esa dependencia: el teléfono necesita
+  poder enterarse de la desvinculación y volver a vincularse (`test_devices_integration.py`).
 - **Un usuario puede sostener ambos roles a la vez** (por ejemplo, ser tutor de un dispositivo y
   supervisado en otro). Nada en el esquema ni en `require_role` lo impide.
 

@@ -2,9 +2,12 @@ package com.netprotect.app.core.auth
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyStore
+import java.security.UnrecoverableKeyException
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -24,6 +27,8 @@ class TokenStore(context: Context) {
 
     fun saveRefreshToken(token: String) = save(KEY_REFRESH_TOKEN, token)
 
+    /** Null when there is no stored session (or it can never be read again); throws
+     * [TokenStoreUnavailableException] when it exists but the Keystore failed transiently. */
     fun readRefreshToken(): String? = read(KEY_REFRESH_TOKEN)
 
     fun clear() {
@@ -52,11 +57,23 @@ class TokenStore(context: Context) {
             }
             val plaintext = cipher.doFinal(Base64.decode(valueEncoded, Base64.NO_WRAP))
             String(plaintext, Charsets.UTF_8)
-        } catch (_: Exception) {
-            // Key rotated, keystore cleared by the OS, or corrupted entry: treat as logged out.
-            null
+        } catch (gone: Exception) {
+            // Sprint 73 (T5): only a failure that can never succeed later means "no session" — the
+            // key was rotated or wiped (the old ciphertext no longer authenticates), invalidated by
+            // the OS, or the stored entry is corrupt. Anything else (the Keystore daemon busy or not
+            // ready yet after boot, a provider error) is transient: before, it also returned null,
+            // TokenSession read that as "signed out" and wiped a perfectly good session — taking
+            // the background protection down with it. Now it is reported as such and retried.
+            if (gone.isPermanentReadFailure()) null else throw TokenStoreUnavailableException()
         }
     }
+
+    private fun Exception.isPermanentReadFailure(): Boolean =
+        this is AEADBadTagException ||
+            this is KeyPermanentlyInvalidatedException ||
+            this is UnrecoverableKeyException ||
+            // Base64.decode on a corrupt entry.
+            this is IllegalArgumentException
 
     private fun loadOrCreateKey(): SecretKey {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }

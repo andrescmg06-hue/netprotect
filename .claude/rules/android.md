@@ -35,7 +35,8 @@ aplicando sólo si se publica). Con `targetSdk` 34+ además hace falta declarar 
 único que sirve, con su propiedad `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` justificando el uso (revisada
 por Google sólo al publicar). Verificado también en ejecución real: Android 12+ rechaza arrancar
 un foreground service si la app no tiene antes una actividad visible — hay que arrancarlo siempre
-desde un efecto de una pantalla en primer plano, nunca desde un contexto de fondo.
+desde un efecto de una pantalla en primer plano, nunca desde un contexto de fondo (matizado en el
+Sprint 73: hay excepciones de la plataforma, como `BOOT_COMPLETED`; ver su nota).
 
 **Nota del Sprint 9, válida para cualquier sprint que amplíe el bloqueo**: existe una lista de apps
 que nunca se bloquean (`ProtectedPackages`: launcher, teléfono, Ajustes y la propia app), resuelta en
@@ -54,10 +55,13 @@ posible del enunciado.
 **Nota del Sprint 13**: un foreground service con `foregroundServiceType="location"` cuenta como
 "en primer plano" para el sistema de permisos de ubicación de Android mientras corre (verificado en
 fuente oficial, ver `docs/android/capability-matrix.md`) — este proyecto explota eso a propósito
-para reportar ubicación en segundo plano **sin pedir nunca `ACCESS_BACKGROUND_LOCATION`**, con el
+para reportar ubicación en segundo plano **sin pedir `ACCESS_BACKGROUND_LOCATION`**, con el
 mismo patrón de arranque-sólo-desde-Activity-en-primer-plano ya usado por `RuleEnforcementService`
-desde el Sprint 8. Consecuencia aceptada: si el proceso muere (swipe en Recientes, sistema bajo
-presión de memoria), el reporte se detiene hasta reabrir la app — no hay reinicio automático.
+desde el Sprint 8. Consecuencia aceptada entonces: si el proceso muere (swipe en Recientes, sistema
+bajo presión de memoria), el reporte se detiene hasta reabrir la app, sin reinicio automático.
+**Revertido en el Sprint 73 (T6, decisión del dueño del 15/10/2026): ahora sí se pide
+`ACCESS_BACKGROUND_LOCATION`** («Permitir todo el tiempo»; ver su nota), y con él el servicio sí se
+reinicia desde segundo plano.
 Decisión de diseño separada, también documentada: Android **no** integra el SDK nativo de Google
 Maps, así que `GOOGLE_MAPS_ANDROID_API_KEY` no existe como variable de este proyecto (hasta el
 Sprint 60 la pantalla del tutor de la app abría un mapa externo con un intent `geo:`; esa pantalla
@@ -98,7 +102,8 @@ la siguiente lectura (a diferencia de heartbeat/ubicación/uso). `SyncWorker` co
 sondeos en primer plano de `SupervisedScreen` (no los reemplaza — el piso de WorkManager, 15
 minutos, es más lento que ellos) y es, además, la única vía que sigue entregando *heartbeat*/uso/
 cola pendiente si el proceso de `RuleEnforcementService` muere; el bloqueo de apps en sí sigue sin
-reiniciarse solo (límite aceptado desde el Sprint 8, sin cambios). Se agregó
+reiniciarse solo (límite aceptado desde el Sprint 8, sin cambios; cambia en el Sprint 73, ver su
+nota). Se agregó
 `BackgroundTokenRefresher` porque ambos componentes corren mucho más de los 15 minutos de vida de
 un *access token*: sin renovarlo habrían empezado a fallar en silencio con 401 en cualquier sesión
 medianamente larga, no sólo durante un corte de red real — reutiliza el mismo `refresh_token`
@@ -196,6 +201,52 @@ que descarte por tipo inválido o rol equivocado — nunca el contenido de una o
 candidato ICE, verificado con `/security-review` — porque antes de este sprint ese descarte era
 silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprint-29.md`.
 
+**Nota del Sprint 73, válida para cualquier trabajo futuro sobre los servicios del supervisado, su
+arranque o su parada** (cambia lo que dicen arriba las notas de los Sprints 8, 13 y 19 sobre «no hay
+reinicio automático», que se dejan como historia): la protección ya no vive con la pantalla. Los
+efectos de `SupervisedShell` solo arrancan (idempotente: mismo `deviceId` = mismo bucle) o paran
+cuando el vínculo ya se conoce y dice que toca (desvinculado o permiso retirado); **nada se para en
+`onDispose`**, porque cerrar la app destruye la `Activity`. Cerrar sesión, la sesión caducada y la
+desvinculación paran todo explícitamente con `SupervisionServices.stopAll` — cualquier sitio nuevo
+que deba apagar la protección tiene que llamarlo, no confiar en un dispose. `RuleEnforcementService`
+y `LocationReportingService` son `START_STICKY` y, sin extras, reconstruyen su configuración desde
+`LinkedDeviceStore` + sesión guardada + permiso, o se paran sin fallar; `BootReceiver`
+(`BOOT_COMPLETED`/`MY_PACKAGE_REPLACED`) y `SyncWorker` (vigilante por `EnforcementLiveness`) los
+rearrancan. Arrancar desde segundo plano sigue restringido: vale desde el arranque para `specialUse`
+y con la batería sin optimizar desde el vigilante; la ubicación (*while-in-use*) solo se reinicia desde segundo plano en
+API 30+ con `ACCESS_BACKGROUND_LOCATION` concedido (T6, más abajo) y, sin él, espera a que se abra la app. HyperOS/MIUI sin «Inicio
+automático» mata la app al deslizarla en Recientes y entonces no hay reinicio posible desde código.
+El bloqueo decide la visita con **toda** la secuencia de eventos de cada ventana (`VisitTracker`),
+redibuja la pantalla de bloqueo si desaparece con la app bloqueada delante, reevalúa la visita en
+curso en cada refresco de reglas (`VisitRecheck`) y un ciclo que lanza una excepción ya no mata el
+bucle. Ver `docs/sprint-73.md` y la sección del Sprint 73 de `docs/android/capability-matrix.md`.
+**T5 (endurecimiento):** el backend responde el 404 `device_not_found` a todo lo que el teléfono envía o lee como
+vinculado si ya no hay vínculo activo, y el trabajo en segundo plano (`SyncWorker`, ubicación, bucle de bloqueo, cola)
+lo trata como fin del vínculo con `SupervisionServices.endLinkFromBackground` — solo ese detalle (`isDeviceGone`),
+nunca un 404 cualquiera, y solo para el `deviceId` del vínculo guardado. Cerrar sesión, sesión caducada, abrir sin
+sesión o entrar con otra cuenta usan `forgetDevice` (para todo, olvida el vínculo, borra Room); un sitio nuevo que
+termine una sesión debe llamarlo. El vigilante principal es `EnforcementWatchWorker` (sin restricción de red, va y se
+cancela con `SyncWorker`). El bucle evalúa la visita nueva **antes** de cualquier red, siembra la app delante al
+arrancar (`VisitTracker.seed`), lee eventos con 2 s de solape sin duplicar (`EventWindow`), reintenta una evaluación
+fallida en el ciclo siguiente, solo sella `EnforcementLiveness` en ciclos sanos y usa `ReconnectingRealtimeChannel`.
+`TokenStore` distingue «sin sesión» de «Keystore no disponible ahora» (`TokenStoreUnavailableException`): un fallo
+pasajero nunca borra la sesión.
+**T6 (ubicación en segundo plano):** `ACCESS_BACKGROUND_LOCATION` está declarado y se pide en API 30+ **aparte** y tras la
+ubicación precisa (el sistema ya no lo ofrece junto a ella y lleva a Ajustes), con una explicación previa para el menor
+(`BackgroundLocationExplanationDialog`, reutiliza `ConfirmDialog`) que dice qué se comparte y qué no. Es el último paso del
+permiso «Ubicación» (`PermissionsUi.locationBackgroundMissing`, pendiente hasta concederlo), no un quinto permiso, y **no
+bloquea** el vínculo ni el resto. `LocationReportingService.canStartFromBackground(context)` = API < 30 o permiso concedido
+(`LocationPermission.backgroundReady`, lógica pura con tests); sin él la ubicación sigue esperando a que se abra la app.
+Retirarlo deja «Ubicación» pendiente (Permisos e Inicio), sin aviso propio ni al tutor (no cambia el backend). Si la app se
+publicara, Play exigiría la divulgación destacada y su formulario (matriz de capacidades).
+**T7 (latido y sincronización con la app cerrada):** el bucle de `RuleEnforcementService` envía también el latido y la
+sincronización de apps/uso (`PeriodicReporter`), porque los bucles de `SupervisedShell` solo corren con la pantalla abierta y
+`SyncWorker` (≥15 min) deja pasar los 5 min tras los que el backend marca «desconectado». Un solo lugar construye ambos envíos
+(`core/sync/DeviceReporter`, usado por `SyncWorker`, el servicio y el shell: no copiar sus campos); la cadencia es pura
+(`ReportCadence`: el servicio es respaldo, envía pasados el intervalo + 15 s desde el último intento o éxito de **cualquiera**,
+`ReportClock`) y se envía desde corutinas hijas para no retrasar un ciclo de bloqueo. Un 404 `device_not_found` termina el vínculo
+(`endLinkFromBackground`), un fallo cualquiera no mata el bucle. Los `LaunchedEffect` del shell siguen para la pantalla.
+
 - Un archivo Kotlin nuevo no está verificado hasta que `./gradlew compileDebugKotlin` (o más)
   corre sobre él al menos una vez. Un import que falta (p. ej. `Modifier.width` sin
   `androidx.compose.foundation.layout.width`) no lo marca ningún editor por sí solo; sólo el
@@ -250,6 +301,30 @@ silencioso y fue lo que más retrasó encontrar el primer fallo. Ver `docs/sprin
   `adb reverse --list` antes de culpar al backend.
 - Al automatizar `adb` + `uiautomator`: partir el volcado con `sed 's/>/>\n/g'` (no con `tr`) y arrancar la app desde cero
   en cada pantalla en vez de depender de `KEYCODE_BACK`.
+- **Lección del Sprint 73, servicios con su propio `CoroutineScope`:** un scope sin `SupervisorJob` cancela **todo** su
+  trabajo si una corrutina hija deja escapar un `Error` (no solo una `Exception`); sin manejador, la excepción llega al
+  manejador de Android, que cierra el proceso, y `START_STICKY` lo reinicia: el bloqueo se interrumpe unos segundos, no «muere
+  sin rastro» (el revisor lo matizó; no se midió). Lo que se envía en segundo plano (`PeriodicReporter.tick`) debe capturar
+  `Throwable` y relanzar solo `CancellationException`; un `catch (e: Exception)` no basta. Corregido ahí en `81a6de9`. **No
+  se cumple todavía** en el `launch` del bucle principal ni en el ciclo de `RuleEnforcementService` (solo `Exception`):
+  `docs/tasks.md`, B-19. Sin test automático que fuerce un `Error` (D-10).
+- **Lección del Sprint 73, pruebas de segundo plano en el emulador** (`docs/sprint-73-evidence.md`): `adb` no está en el
+  PATH, está en `%LOCALAPPDATA%\Android\Sdk\platform-tools`. `adb shell run-as com.netprotect.app kill -9 <pid>` simula la
+  muerte del proceso en el APK debug. Deslizar la app en Recientes es `KEYCODE_APP_SWITCH` más `input swipe`. El foco se lee
+  con `dumpsys window | grep mCurrentFocus` (cada 5 s para medir cuánto tarda un bloqueo). Las reglas de prueba se insertan por
+  `psql` en `app_rules` del contenedor `db` y **se borran al terminar**. `screencap` sale negro con la pantalla apagada. Esto
+  no reproduce a HyperOS/MIUI: ahí solo vale un teléfono real.
+- **Lección del Sprint 73, reinicio con PIN:** Android no entrega `BOOT_COMPLETED` hasta el primer desbloqueo del usuario. Un
+  emulador (o teléfono) con PIN no arranca la protección tras reiniciar hasta que una persona lo escribe; la protección vuelve
+  entonces, no antes. Nunca adivinar ni probar el PIN para seguir con la prueba.
+- **Lección del Sprint 73, ubicación desde `BOOT_COMPLETED`:** con `ACCESS_BACKGROUND_LOCATION` concedido el servicio de
+  ubicación sí arranca desde `BOOT_COMPLETED`, aunque Android registre `Foreground service started from background can not
+  have location… access` para el servicio. Ese registro no significa que falle: lo que decide es el permiso de fondo (medido
+  en el emulador, la ubicación llegó al backend). No dar por rota la ubicación por ese mensaje.
+- **Lección del Sprint 73, texto al pedir un permiso al menor:** debe cubrir **todo** lo que NetProtect comparte con la app
+  cerrada, no solo lo que concede ese permiso (el latido y la sincronización de apps también salen con la app cerrada), y decir
+  «tutores» en plural, porque un dispositivo puede tener varios. Hallazgo MEDIA del `security-reviewer` sobre el diálogo de
+  «Permitir todo el tiempo», corregido en `81a6de9`.
 
 ## Lecciones del rediseño v2 (S61 a S67)
 

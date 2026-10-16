@@ -40,7 +40,6 @@ import com.netprotect.app.core.auth.PermissionSnapshotStore
 import com.netprotect.app.core.auth.TokenSession
 import com.netprotect.app.core.auth.WelcomeStore
 import com.netprotect.app.core.auth.authorized
-import com.netprotect.app.core.inventory.AppInventoryCollector
 import com.netprotect.app.core.location.LocationReportingService
 import com.netprotect.app.core.network.ApplicationsClient
 import com.netprotect.app.core.network.DeviceClient
@@ -52,6 +51,7 @@ import com.netprotect.app.core.permissions.BatteryOptimization
 import com.netprotect.app.core.permissions.DeviceAdminPermission
 import com.netprotect.app.core.permissions.LocationAccess
 import com.netprotect.app.core.permissions.LocationPermission
+import com.netprotect.app.core.permissions.LocationRequest
 import com.netprotect.app.core.permissions.OverlayPermission
 import com.netprotect.app.core.permissions.UsageAccessPermission
 import com.netprotect.app.core.rules.EnforcementLiveness
@@ -60,6 +60,9 @@ import com.netprotect.app.core.screenshare.ScreenCapture
 import com.netprotect.app.core.screenshare.ScreenShareService
 import com.netprotect.app.core.status.ServiceStatusRegistry
 import com.netprotect.app.core.status.servicesView
+import com.netprotect.app.core.supervision.SupervisionServices
+import com.netprotect.app.core.sync.DeviceReporter
+import com.netprotect.app.core.sync.ReportCadence
 import com.netprotect.app.core.sync.SyncWorker
 import com.netprotect.app.feature.supervised.battery.BatteryScreen
 import com.netprotect.app.feature.supervised.consent.ConsentEvent
@@ -74,6 +77,7 @@ import com.netprotect.app.feature.supervised.unlinked.UnlinkedScreen
 import com.netprotect.app.ui.components.ActiveShareBanner
 import com.netprotect.app.feature.supervised.link.LinkDeviceScreen
 import com.netprotect.app.feature.supervised.linked.LinkedDeviceScreen
+import com.netprotect.app.feature.supervised.permissions.BackgroundLocationExplanationDialog
 import com.netprotect.app.feature.supervised.permissions.PermissionDetailScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionRevokedScreen
 import com.netprotect.app.feature.supervised.permissions.PermissionsScreen
@@ -94,8 +98,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private const val HEARTBEAT_INTERVAL_MS = 60_000L
-private const val APP_SYNC_INTERVAL_MS = 5 * 60_000L
+// Sprint 73 (T7): the cadence lives in ReportCadence, shared with the service that sends the same reports with the app closed.
+private const val HEARTBEAT_INTERVAL_MS = ReportCadence.HEARTBEAT_INTERVAL_MS
+private const val APP_SYNC_INTERVAL_MS = ReportCadence.APP_SYNC_INTERVAL_MS
 
 /** Sprint 64 (B1): how often `/devices/me` is asked while linked, besides every ON_RESUME. */
 private const val LINK_CHECK_INTERVAL_MS = 5 * 60_000L
@@ -132,6 +137,11 @@ private sealed interface SupervisedState {
  * over time inside `SupervisedState.Linked`: every change would restart (stop + start) all of them.
  *
  * The screens only receive values and callbacks; none of them starts or stops anything.
+ *
+ * Sprint 73: the protection services and SyncWorker outlive this shell. Their effects start them
+ * (idempotently) or stop them on unlink / permission withdrawn, and nothing in onDispose stops them,
+ * so closing the app leaves the protection running; sign-out stops them in HomeScreen. Only the
+ * screen-share socket, which is useful only with the UI, still ends with the shell.
  */
 @Composable
 fun SupervisedShell(
@@ -153,6 +163,11 @@ fun SupervisedShell(
     // so its effect is keyed only on the Boolean below, which changes when location is gained or lost entirely.
     var locationAccess by remember { mutableStateOf(LocationPermission.access(context)) }
     val hasLocationPermission = locationAccess != LocationAccess.NONE
+    // Sprint 73 (T6): "Permitir todo el tiempo" (Android 11+; true where it is not needed). Not an effect key: the
+    // location service starts with any location access, this only lets it be restarted from the background.
+    var backgroundLocationReady by remember { mutableStateOf(LocationPermission.backgroundReady(context)) }
+    // Sprint 73 (T6): the explanation shown before Android sends the person to Settings. Presentation only.
+    var showBackgroundExplanation by remember { mutableStateOf(false) }
     var hasDeviceAdmin by remember { mutableStateOf(DeviceAdminPermission.isActive(context)) }
     var hasOverlayPermission by remember { mutableStateOf(OverlayPermission.isGranted(context)) }
     var screenShareSignaling by remember { mutableStateOf<ReconnectingRealtimeChannel?>(null) }
@@ -187,6 +202,9 @@ fun SupervisedShell(
     // The only key the service effects below use: null in every state but Linked, and stable while
     // linked — a B1 refresh that changes the tutors leaves it untouched.
     val linkedDeviceId = (state as? SupervisedState.Linked)?.deviceId
+    // Sprint 73: false only while the link is first being checked. The protection effects neither
+    // start nor stop anything until it is known (see the RuleEnforcementService effect).
+    val linkKnown = state !is SupervisedState.CheckingLink
 
     fun leaveConsentRoute() {
         if (route == SupervisedRoute.Consent) route = SupervisedRoute.Linked
@@ -257,7 +275,21 @@ fun SupervisedShell(
     // re-read from the system instead of the map, which holds only what this dialog asked.
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { locationAccess = LocationPermission.access(context) }
+    ) {
+        locationAccess = LocationPermission.access(context)
+        // Sprint 73 (T6): precise location just granted and the background step still missing (Android 11+): it
+        // follows right away, with its explanation first. Declining it leaves the permission pending in Permisos.
+        if (LocationPermission.nextRequest(locationAccess, backgroundLocationReady) == LocationRequest.BACKGROUND_EXPLANATION) {
+            showBackgroundExplanation = true
+        }
+    }
+
+    // Sprint 73 (T6): ACCESS_BACKGROUND_LOCATION on its own (from API 30 the system does not offer it with the
+    // foreground ones): Android opens the app's location page in Settings. Launched only after the explanation.
+    // The result is re-read from the system, like the others, and again on every ON_RESUME.
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { backgroundLocationReady = LocationPermission.backgroundReady(context) }
 
     // Not required for the enforcement service to run — asked anyway because the notification is
     // deliberately visible, not something to hide. No-op callback.
@@ -277,7 +309,9 @@ fun SupervisedShell(
     fun checkRevokedPermissions() {
         val deviceId = (state as? SupervisedState.Linked)?.deviceId ?: return
         // Location counts as removed only when it is gone entirely: going from precise to approximate (or a
-        // phone that had only the approximate one before 2026-10-14) is a pending step, not "se quitó".
+        // phone that had only the approximate one before 2026-10-14) is a pending step, not "se quitó". The same
+        // goes for «Permitir todo el tiempo» (Sprint 73, T6): losing it leaves Location pending in Permisos and
+        // Inicio ("Falta un paso"); it is not a notice of its own.
         // Reads the state itself, not hasLocationPermission: the ON_RESUME observer keeps the first composition's
         // copy of this function, where that val would be stale.
         val current = PermissionsUi(
@@ -305,6 +339,7 @@ fun SupervisedShell(
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasUsageAccess = UsageAccessPermission.isGranted(context)
                 locationAccess = LocationPermission.access(context)
+                backgroundLocationReady = LocationPermission.backgroundReady(context)
                 hasDeviceAdmin = DeviceAdminPermission.isActive(context)
                 hasOverlayPermission = OverlayPermission.isGranted(context)
                 batteryIgnoring = BatteryOptimization.isIgnoring(context)
@@ -327,10 +362,18 @@ fun SupervisedShell(
         Result.failure(exception)
     }
 
-    // Sprint 64 (B1): the only way out of Linked besides signing out. Clearing the cache and leaving
-    // Linked lets the effects' onDispose stop the services, the socket, the heartbeat and SyncWorker.
+    // Sprint 64 (B1): the only way out of Linked besides signing out. Leaving Linked ends the socket
+    // and the heartbeat (their effects). Sprint 73: the protection services and SyncWorker are no
+    // longer stopped by a dispose, so they are stopped here explicitly (the effects would also stop
+    // them on Unlinked), and the cleared link keeps any restart (sticky, boot, watch) from reviving them.
     fun enterUnlinked() {
+        // Nothing is asked of an unlinked phone: close the background-location explanation if it was open.
+        showBackgroundExplanation = false
+        SupervisionServices.stopAll(context)
         LinkedDeviceStore.clear(context)
+        // Sprint 73 (T5): the old link's rule cache and unsent events too (they could only be sent
+        // with an active link, which the backend now requires).
+        scope.launch { SupervisionServices.clearDeviceData(context) }
         // A new link shows the welcome again.
         WelcomeStore.clear(context)
         // The next link starts without a previous read: nothing to compare, so no notice.
@@ -367,7 +410,9 @@ fun SupervisedShell(
             // The device row can outlive every tutor link: /devices/me then answers 200 with an empty
             // tutor list, which is not "linked" either. With a cache this phone was linked, so the
             // tutor ended it (B1); without one it simply never was.
-            LinkCheck.Unlinked -> if (cached != null) {
+            // Sprint 73 (T5): or the background work already learnt it from the server and forgot
+            // the link (LinkedDeviceStore.endedByServer).
+            LinkCheck.Unlinked -> if (cached != null || LinkedDeviceStore.endedByServer(context)) {
                 enterUnlinked()
             } else {
                 deviceInfo = null
@@ -435,17 +480,11 @@ fun SupervisedShell(
         while (true) {
             val sent = runCatching {
                 session.authorized { token ->
-                    deviceClient.sendHeartbeat(
-                        token,
-                        deviceId,
-                        Build.VERSION.RELEASE,
-                        BuildConfig.VERSION_NAME,
-                        java.util.TimeZone.getDefault().id,
-                        // Sprint 20: read fresh on every beat, never cached — the whole point is
-                        // noticing the moment one of them changes (see app/services/tamper.py).
-                        usageAccessGranted = UsageAccessPermission.isGranted(context),
-                        serviceActive = EnforcementLiveness.isRecentlyActive(context),
-                        deviceTime = Instant.now(),
+                    // Sprint 73 (T7): the fields (read fresh on every beat, Sprint 20) are built by DeviceReporter,
+                    // shared with SyncWorker and RuleEnforcementService, which send the same heartbeat with the
+                    // app closed and stay quiet while this loop runs (ReportCadence).
+                    DeviceReporter.sendHeartbeat(
+                        context, deviceClient, token, deviceId, EnforcementLiveness.isRecentlyActive(context),
                     )
                 }
             }.isSuccess
@@ -469,15 +508,7 @@ fun SupervisedShell(
         if (!hasUsageAccess) return@LaunchedEffect
         while (true) {
             runCatching {
-                session.authorized { token ->
-                    applicationsClient.syncApplications(
-                        accessToken = token,
-                        deviceId = deviceId,
-                        usageDate = AppInventoryCollector.todayDateString(),
-                        installedApps = AppInventoryCollector.collectInstalledApps(context),
-                        dailyUsage = AppInventoryCollector.collectTodayUsage(context),
-                    )
-                }
+                session.authorized { token -> DeviceReporter.syncApps(context, applicationsClient, token, deviceId) }
             }
             delay(APP_SYNC_INTERVAL_MS)
         }
@@ -487,23 +518,38 @@ fun SupervisedShell(
     // foreground — the whole point is catching when the supervised user opens some other app.
     // A foreground service, not a LaunchedEffect, is what makes that possible; see
     // RuleEnforcementService. Same hasUsageAccess gate as the sync above.
-    DisposableEffect(linkedDeviceId, hasUsageAccess) {
+    // Sprint 73: nothing is stopped in onDispose any more — closing the app (Back, swiping it from
+    // Recents) disposes this shell and used to switch the protection off with it. The body starts
+    // the service when linked with the permission (start is idempotent for the same device) and
+    // stops it only when the link state is known and says otherwise: unlinked or permission
+    // withdrawn. While the link is still being checked nothing is touched, so opening the app never
+    // interrupts a service that kept running with the app closed. Sign-out stops it explicitly
+    // (HomeScreen, SupervisionServices.stopAll).
+    DisposableEffect(linkKnown, linkedDeviceId, hasUsageAccess) {
         val deviceId = linkedDeviceId
-        if (hasUsageAccess && deviceId != null) {
-            RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+        when {
+            !linkKnown -> Unit
+            hasUsageAccess && deviceId != null ->
+                RuleEnforcementService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+            else -> RuleEnforcementService.stop(context)
         }
-        onDispose { RuleEnforcementService.stop(context) }
+        onDispose { }
     }
 
     // Independent gate from the rule-enforcement service above: reporting location doesn't need
     // usage access, and enforcing rules doesn't need location. Same foreground-start requirement
-    // (see LocationReportingService): this effect only fires while the shell is composed.
-    DisposableEffect(linkedDeviceId, hasLocationPermission) {
+    // (see LocationReportingService): this effect only fires while the shell is composed. Sprint 73:
+    // same start/stop shape as the service above, nothing in onDispose; a background restart reports
+    // only with ACCESS_BACKGROUND_LOCATION on Android 11+ (T6), so this start stays the reliable one.
+    DisposableEffect(linkKnown, linkedDeviceId, hasLocationPermission) {
         val deviceId = linkedDeviceId
-        if (hasLocationPermission && deviceId != null) {
-            LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+        when {
+            !linkKnown -> Unit
+            hasLocationPermission && deviceId != null ->
+                LocationReportingService.start(context, BuildConfig.API_BASE_URL, session.currentAccessToken().orEmpty(), deviceId)
+            else -> LocationReportingService.stop(context)
         }
-        onDispose { LocationReportingService.stop(context) }
+        onDispose { }
     }
 
     // Sprint 23: a second WebSocket, open only while the shell is composed, whose single job is
@@ -541,12 +587,17 @@ fun SupervisedShell(
     // Sprint 19: the background counterpart to the heartbeat/app-sync loops above — same data,
     // sent by SyncWorker on WorkManager's own schedule so it keeps happening while the app isn't
     // in the foreground. No permission gate: SyncWorker checks usage access itself.
-    DisposableEffect(linkedDeviceId) {
+    // Sprint 73: kept scheduled when the app closes (it is also the watch that restarts
+    // RuleEnforcementService); cancelled only on unlink or sign-out. schedule() uses
+    // ExistingPeriodicWorkPolicy.UPDATE on one unique name, so calling it again never duplicates it.
+    DisposableEffect(linkKnown, linkedDeviceId) {
         val deviceId = linkedDeviceId
-        if (deviceId != null) {
-            SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
+        when {
+            !linkKnown -> Unit
+            deviceId != null -> SyncWorker.schedule(context, BuildConfig.API_BASE_URL, deviceId)
+            else -> SyncWorker.cancel(context)
         }
-        onDispose { SyncWorker.cancel(context) }
+        onDispose { }
     }
 
     // Sprint 50/65: a pending request opens the consent screen, wherever the person is (onConsentEvent).
@@ -586,16 +637,25 @@ fun SupervisedShell(
     }
     val serviceStatus by ServiceStatusRegistry.status.collectAsState()
 
+    val locationNext = LocationPermission.nextRequest(locationAccess, backgroundLocationReady)
     val permissions = PermissionsUi(
         usageAccess = hasUsageAccess,
-        location = locationAccess == LocationAccess.PRECISE,
+        // Sprint 73 (T6): complete only with the background step too (where Android needs it).
+        location = locationAccess == LocationAccess.PRECISE && backgroundLocationReady,
         overlay = hasOverlayPermission,
         deviceAdmin = hasDeviceAdmin,
         locationApproximateOnly = locationAccess == LocationAccess.APPROXIMATE,
+        locationBackgroundMissing = locationNext == LocationRequest.BACKGROUND_EXPLANATION,
     )
     // The permission actions, shared by Permisos and its detail so both fire exactly the same launchers.
     val openUsageAccessSettings = { UsageAccessPermission.openSettings(context) }
-    val requestLocation = { locationPermissionLauncher.launch(LocationPermission.REQUESTED) }
+    // Sprint 73 (T6): with precise location granted the next step is the background one, behind its explanation.
+    val requestLocation = {
+        when (locationNext) {
+            LocationRequest.FOREGROUND_DIALOG -> locationPermissionLauncher.launch(LocationPermission.REQUESTED)
+            LocationRequest.BACKGROUND_EXPLANATION -> showBackgroundExplanation = true
+        }
+    }
     val requestOverlay = { overlayPermissionLauncher.launch(OverlayPermission.requestIntent(context)) }
     val requestDeviceAdmin = { deviceAdminLauncher.launch(DeviceAdminPermission.requestIntent(context)) }
     // Sprint 67: only opens Settings; the result is read on the next ON_RESUME. NetProtect's own page if a
@@ -609,6 +669,16 @@ fun SupervisedShell(
                 context.startActivity(BatteryOptimization.appDetailsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }
+    }
+
+    if (showBackgroundExplanation) {
+        BackgroundLocationExplanationDialog(
+            onContinue = {
+                showBackgroundExplanation = false
+                backgroundLocationLauncher.launch(LocationPermission.BACKGROUND)
+            },
+            onDismiss = { showBackgroundExplanation = false },
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NpColors.Cream)) {
