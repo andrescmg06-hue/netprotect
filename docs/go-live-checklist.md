@@ -111,13 +111,14 @@ fuera de `127.0.0.1` una vez arrancado el stack.
   rechazan la conexión (pasan el firewall, aún sin servicio); 8080, 5432 y 6379 no responden.
 - **Software:** Docker Engine 29.9.2, Compose v5.6.1, Git 2.43; repositorio clonado en
   `/opt/netprotect` (rama `main`) como `deploy`.
+- **Docker sin `sudo`:** `deploy` está en el grupo `docker` (`sudo usermod -aG docker deploy`),
+  porque `cd.yml` ejecuta `docker compose` por SSH sin `sudo`. Equivale a darle root, pero
+  `deploy` ya tiene `sudo` sin contraseña, así que no amplía el riesgo. Comprobado en una sesión
+  nueva: `id` incluye `docker` y `docker ps` responde sin `sudo`.
 
 **Pendiente en el servidor:**
 
 - Desactivar **VNC** en el panel de Contabo (sigue habilitado y no va cifrado).
-- Añadir `deploy` al grupo `docker` (`sudo usermod -aG docker deploy`): `cd.yml` ejecuta
-  `docker compose` por SSH sin `sudo`, así que sin esto el despliegue falla. Equivale a darle
-  root, pero `deploy` ya tiene `sudo` sin contraseña, así que no amplía el riesgo.
 - Verificar **UDP 3478 y 49160-49200**: no se pueden comprobar desde fuera mientras coturn no
   esté corriendo (paso 9).
 - La copia de seguridad automática de Contabo no está contratada (paso 11).
@@ -235,7 +236,7 @@ Settings → Secrets and variables → Actions:
 | Variable | `PROD_NEXT_PUBLIC_API_BASE_URL` | `https://<API_DOMAIN>` |
 | Variable | `PROD_GOOGLE_WEB_CLIENT_ID` | El ID del paso 3 |
 | Variable | `PROD_HOST` | `<IP>` o un nombre que resuelva a ella |
-| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` (en el servidor real, `deploy`, una vez en el grupo `docker`; ver paso 2) |
+| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` (en el servidor real, `deploy`, que ya está en el grupo `docker`; ver paso 2) |
 | Secreto | `PROD_SSH_KEY` | Clave privada SSH de despliegue (una propia para esto, no la personal) |
 
 La llave que hoy autoriza a `deploy` es la de administración del dueño; para `PROD_SSH_KEY` hay que
