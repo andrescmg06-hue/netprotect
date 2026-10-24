@@ -182,6 +182,13 @@ de secretos): sin ella, las ubicaciones de un backup restaurado son ilegibles.
 
 Verificar: `ls secrets/` muestra los nueve `.txt`; ninguno está vacío (`wc -c secrets/*.txt`).
 
+**Estado real (24-oct-2026):** los nueve `.txt` se generaron en el servidor con la imagen del
+backend, sin imprimir ni leer ningún valor. Carpeta en `700` (`deploy`), archivos en `644`, ninguno
+vacío, y `git` los ignora (comprobado con `git check-ignore` y `git status`). Tamaños coherentes:
+64 bytes los secretos aleatorios, 44 la clave Fernet. **Pendiente del dueño:** copiar
+`location_encryption_key.txt` a un gestor de contraseñas fuera del servidor, y guardar también la
+contraseña de Grafana.
+
 ## 5. Variables en `.env.production` (Dueño, en el servidor)
 
 Copiar `.env.production.example` a `/opt/netprotect/.env.production` y completar. Variables que
@@ -211,6 +218,13 @@ Verificar que Compose resuelve todo (no imprime valores):
 ```bash
 docker compose --env-file .env.production -f compose.prod.yaml config -q && echo OK
 ```
+
+**Estado real (24-oct-2026):** `.env.production` escrito en el servidor (`600`, ignorado por `git`)
+con los valores no secretos: dominios `panel.`/`api.netprotectapp.online`, el ID de cliente del
+cliente OAuth web de producción, `POSTGRES_DB`/`POSTGRES_USER` = `netprotect`, `APP_VERSION=1.0.0`,
+`TURN_EXTERNAL_IP=194.163.167.22`, `TURN_REALM=netprotectapp.online` y `TURN_URLS` por UDP y TCP.
+FCM queda vacío. Añade además `BACKEND_IMAGE=netprotect-backend:local` y
+`WEB_IMAGE=netprotect-web:local` (ver paso 8). `docker compose ... config -q` resolvió todo.
 
 ## 6. Firebase / FCM (Dueño, opcional)
 
@@ -277,6 +291,25 @@ error de configuración nombra la variable.
 
 Después, iniciar sesión con Google en `https://<WEB_DOMAIN>` con una cuenta real.
 
+**Estado real (24-oct-2026), primer despliegue hecho a mano en el servidor:**
+
+- **Las imágenes se construyeron en el servidor** desde el clon (`183d18a`) con
+  `docker build`, y no se descargaron de GHCR. Las de GHCR eran del 15-oct, sin etiqueta de
+  commit, y la web hornea `NEXT_PUBLIC_API_BASE_URL` al compilarse (aquí
+  `https://api.netprotectapp.online`), así que no se podía garantizar que fueran las correctas. Por
+  eso `.env.production` apunta a `netprotect-backend:local` y `netprotect-web:local`. Mientras no
+  existan las variables `PROD_*` de GitHub (paso 7), el CI no publica imágenes propias.
+- **Migraciones aplicadas** completas; los 11 servicios arrancaron (`backend`, `web`, `caddy`, `db`
+  y `redis` en `healthy`).
+- **Comprobado desde fuera, sin `-k`:** `GET /api/v1/health/ready` devuelve `ready` con base de datos
+  y Redis conectados; `/metrics` devuelve 404; el panel responde 200; los certificados de
+  `api.` y `panel.` los emite Let's Encrypt; 22, 80, 443 y 3478/TCP están abiertos; coturn contestó a
+  una petición STUN por UDP 3478 (`Binding Success`).
+- **Sin comprobar todavía:** el rango de relay UDP 49160-49200 (hace falta una asignación TURN real,
+  paso 13), el inicio de sesión con Google en el panel real, y la vista remota.
+- Al volver a desplegar con estas imágenes locales hay que reconstruirlas a mano (`docker build`
+  de `backend` y `web`) antes del `up -d`; un `pull` no las actualiza.
+
 ## 9. TURN (Dueño)
 
 Verificar desde fuera del servidor que los puertos responden (por ejemplo con
@@ -293,6 +326,20 @@ cuando ambos extremos se alcanzan directamente.
    ```
 
    Abrir `http://localhost:3000`, entrar con `GRAFANA_ADMIN_USER` y `secrets/grafana_admin_password.txt`.
+
+   **Hallazgo del servidor real (24-oct-2026):** con Docker 29.9.2 el puerto `127.0.0.1:3000` de
+   Grafana **no se publica**, a pesar del comentario de `compose.prod.yaml`: la red `private` es
+   `internal` y `docker port` no devuelve nada. La causa exacta no está verificada; la evidencia es
+   la red interna y el `HTTP 000` en `127.0.0.1:3000`. Grafana sí funciona (`HTTP 200` por la IP
+   del contenedor, p. ej. `172.18.0.9`) y desde fuera el 3000 está cerrado. Mientras no se
+   corrija el compose, el túnel debe apuntar a esa IP interna:
+
+   ```bash
+   IP=$(docker inspect netprotect-prod-grafana-1 --format '{{(index .NetworkSettings.Networks "netprotect-prod_private").IPAddress}}')
+   ssh -L 3000:$IP:3000 <PROD_SSH_USER>@<IP_DEL_SERVIDOR>
+   ```
+
+   La IP del contenedor puede cambiar al recrearlo: hay que volver a consultarla.
 2. Verificar que el panel `netprotect-overview` muestra datos del backend y que en Prometheus
    (Grafana → Explore) `up{job="netprotect-backend"}` vale `1`.
 3. Destino de alertas (decisión 0.4): **pendiente de trabajo en el repositorio**. Hoy no hay
