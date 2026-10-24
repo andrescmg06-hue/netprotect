@@ -49,6 +49,20 @@ dig +short <WEB_DOMAIN>    # debe imprimir <IP>
 dig +short <API_DOMAIN>    # debe imprimir <IP>
 ```
 
+**Estado real (24-oct-2026):** dominio `netprotectapp.online`, comprado en Hostinger por 1 año
+(caduca el 2027-10-24), con privacidad WHOIS incluida. `<WEB_DOMAIN>` = `panel.netprotectapp.online`,
+`<API_DOMAIN>` = `api.netprotectapp.online`, `<IP>` = `194.163.167.22`. Los dos registros `A`
+(TTL 300) se crearon en la zona DNS de Hostinger, sin proxy: coturn necesita UDP directo. Se
+comprobó que los servidores de nombres de Hostinger y los resolvedores 8.8.8.8 y 9.9.9.9
+devuelven `194.163.167.22` para ambos nombres; 1.1.1.1 aún guardaba la respuesta negativa de una
+consulta hecha antes de la propagación.
+
+- **Renovación:** el dominio se renueva a COP 117.900 al año (el primer año fue COP 4.736). Se
+  eligió `.online` por precio al ser un proyecto académico; con uso real conviene un `.com`.
+  Cambiar de dominio después obliga a reconstruir la imagen web (la URL de la API y la CSP se
+  hornean al compilar) y la app Android. Decidir antes de esa fecha si se renueva.
+- Pendiente de verificar: que la autorrenovación quedó desactivada en Hostinger.
+
 ## 2. Servidor (Dueño)
 
 1. Contratar un VPS Linux con IPv4 pública fija. Memoria: la suma de los límites de
@@ -77,6 +91,36 @@ dig +short <API_DOMAIN>    # debe imprimir <IP>
 
 Verificar: `docker compose version` responde v2; `ss -tulpn` no muestra nada escuchando en 3000
 fuera de `127.0.0.1` una vez arrancado el stack.
+
+**Estado real (24-oct-2026), servidor `194.163.167.22`:**
+
+- **Proveedor y plan:** Contabo, Cloud VPS 4 (4 vCPU, 8 GB de RAM, 100 GB), Ubuntu 24.04, región UE.
+  Contrato **mensual** (US$9,00 al mes); uno de 12 o 24 meses sale más barato, pero conviene
+  decidir antes la región: desde Europa, el relay TURN añade latencia a usuarios en América.
+- **Acceso:** SSH solo con llave, usuario `deploy` (con `sudo` sin contraseña). El login por
+  contraseña y el de `root` están desactivados en
+  `/etc/ssh/sshd_config.d/00-netprotect-hardening.conf`. El prefijo `00-` importa: SSH usa el
+  primer valor que lee y `50-cloud-init.conf` activa las contraseñas. Comprobado desde fuera:
+  `root` y la contraseña se rechazan con `Permission denied (publickey)`. No se restringió el
+  puerto 22 a una IP porque la del dueño puede cambiar; lo protegen la llave y `fail2ban`.
+- **Firewall del sistema:** `ufw` con entrada denegada por defecto y solo los puertos de la tabla;
+  `fail2ban` con la regla de SSH.
+- **Firewall de Contabo:** `netprotect`, asignado al servidor, con las mismas seis reglas de
+  permiso y `Block all traffic` al final. Docker publica puertos saltándose `ufw`, así que este
+  es el filtro que cuenta para ellos. Comprobado desde fuera: 22 abierto; 80, 443 y 3478/TCP
+  rechazan la conexión (pasan el firewall, aún sin servicio); 8080, 5432 y 6379 no responden.
+- **Software:** Docker Engine 29.9.2, Compose v5.6.1, Git 2.43; repositorio clonado en
+  `/opt/netprotect` (rama `main`) como `deploy`.
+
+**Pendiente en el servidor:**
+
+- Desactivar **VNC** en el panel de Contabo (sigue habilitado y no va cifrado).
+- Añadir `deploy` al grupo `docker` (`sudo usermod -aG docker deploy`): `cd.yml` ejecuta
+  `docker compose` por SSH sin `sudo`, así que sin esto el despliegue falla. Equivale a darle
+  root, pero `deploy` ya tiene `sudo` sin contraseña, así que no amplía el riesgo.
+- Verificar **UDP 3478 y 49160-49200**: no se pueden comprobar desde fuera mientras coturn no
+  esté corriendo (paso 9).
+- La copia de seguridad automática de Contabo no está contratada (paso 11).
 
 ## 3. Google OAuth de producción, cliente web (Dueño)
 
@@ -191,8 +235,13 @@ Settings → Secrets and variables → Actions:
 | Variable | `PROD_NEXT_PUBLIC_API_BASE_URL` | `https://<API_DOMAIN>` |
 | Variable | `PROD_GOOGLE_WEB_CLIENT_ID` | El ID del paso 3 |
 | Variable | `PROD_HOST` | `<IP>` o un nombre que resuelva a ella |
-| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` |
+| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` (en el servidor real, `deploy`, una vez en el grupo `docker`; ver paso 2) |
 | Secreto | `PROD_SSH_KEY` | Clave privada SSH de despliegue (una propia para esto, no la personal) |
+
+La llave que hoy autoriza a `deploy` es la de administración del dueño; para `PROD_SSH_KEY` hay que
+generar **otra** (`ssh-keygen -t ed25519`) y añadir solo su parte pública a
+`/home/deploy/.ssh/authorized_keys`, de modo que se pueda revocar sin perder el acceso de
+administración.
 
 Settings → Environments → `production` → «Required reviewers»: agregarte (pendiente H-04 en
 `docs/tasks.md`; exige ser administrador del repositorio).
