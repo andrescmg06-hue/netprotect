@@ -111,6 +111,10 @@ fuera de `127.0.0.1` una vez arrancado el stack.
   rechazan la conexión (pasan el firewall, aún sin servicio); 8080, 5432 y 6379 no responden.
 - **Software:** Docker Engine 29.9.2, Compose v5.6.1, Git 2.43; repositorio clonado en
   `/opt/netprotect` (rama `main`) como `deploy`.
+- **VNC desactivado** en el panel de Contabo (no va cifrado). Contabo solo aplica el cambio
+  tras reiniciar, así que se reinició el servidor: volvió solo, con `ufw`, `fail2ban` y Docker
+  activos, los 11 contenedores arriba y `GET /api/v1/health/ready` en `ready` desde fuera. Sin VNC,
+  la vía de emergencia si se pierde SSH es el «Sistema de Rescate» del mismo menú de Contabo.
 - **Docker sin `sudo`:** `deploy` está en el grupo `docker` (`sudo usermod -aG docker deploy`),
   porque `cd.yml` ejecuta `docker compose` por SSH sin `sudo`. Equivale a darle root, pero
   `deploy` ya tiene `sudo` sin contraseña, así que no amplía el riesgo. Comprobado en una sesión
@@ -118,7 +122,6 @@ fuera de `127.0.0.1` una vez arrancado el stack.
 
 **Pendiente en el servidor:**
 
-- Desactivar **VNC** en el panel de Contabo (sigue habilitado y no va cifrado).
 - Verificar **UDP 3478 y 49160-49200**: no se pueden comprobar desde fuera mientras coturn no
   esté corriendo (paso 9).
 - La copia de seguridad automática de Contabo no está contratada (paso 11).
