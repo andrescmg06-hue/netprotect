@@ -312,6 +312,16 @@ Después, iniciar sesión con Google en `https://<WEB_DOMAIN>` con una cuenta re
   paso 13), el inicio de sesión con Google en el panel real, y la vista remota.
 - Al volver a desplegar con estas imágenes locales hay que reconstruirlas a mano (`docker build`
   de `backend` y `web`) antes del `up -d`; un `pull` no las actualiza.
+- **Redespliegue con Next 16.4.3 (24-oct-2026):** el CI detectó con `npm audit` una vulnerabilidad
+  crítica en Next 16.0.0–16.4.0 y el panel corría la 16.3.8. Tras el PR #41 se actualizó el clon a
+  `c9f6870` (`git merge --ff-only origin/main`), se reconstruyeron las imágenes y se recreó `web`.
+  Comprobado dentro del contenedor en ejecución: `next` 16.4.3; `GET /api/v1/health/ready` en `ready`,
+  el panel responde 200 y conserva la URL de la API y el cliente de Google horneados. El backend no se
+  recreó (Compose no lo detectó cambiado); su código no varió, así que sigue con la imagen anterior.
+- **Trampa al desplegar por SSH:** `docker compose run` dentro de un script pasado por `ssh` lee la
+  entrada estándar y se come el resto del script, que termina con código 0 sin ejecutar `up -d`. Usar
+  `docker compose run -T ...` o redirigir `< /dev/null`, y no fiarse del código de salida: comparar
+  la imagen del contenedor (`docker inspect <contenedor> --format '{{.Image}}'`) con la recién construida.
 
 ## 9. TURN (Dueño)
 
