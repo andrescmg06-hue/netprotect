@@ -124,7 +124,8 @@ fuera de `127.0.0.1` una vez arrancado el stack.
 
 - Verificar **UDP 3478 y 49160-49200**: no se pueden comprobar desde fuera mientras coturn no
   esté corriendo (paso 9).
-- La copia de seguridad automática de Contabo no está contratada (paso 11).
+- Los backups se descargan cifrados al PC del dueño (paso 11); la copia automática de pago de
+  Contabo no está contratada.
 
 ## 3. Google OAuth de producción, cliente web (Dueño)
 
@@ -382,6 +383,48 @@ El contenedor `backup` hace un `pg_dump` al arrancar y cada 24 h en el volumen
    ```bash
    docker compose --env-file .env.production -f compose.prod.yaml run --rm --entrypoint /scripts/restore.sh backup /backups/netprotect-<fecha>.dump
    ```
+
+**Estado real (25-oct-2026): descarga diaria y cifrada al PC del dueño**, sin costo ni cuentas nuevas.
+
+- **Cómo funciona:** una llave SSH dedicada (`netprotect_backup_pull`, en `~/.ssh/` del PC, sin
+  contraseña porque corre sola) está registrada en `~deploy/.ssh/authorized_keys` con
+  `restrict,command="/usr/local/bin/netprotect-backup-export"`: solo puede lanzar ese script, sin
+  consola, sin `sudo` y sin reenvíos. El script (propiedad de `root`) lee el volcado más reciente
+  del contenedor `backup`, comprueba que empieza por `PGDMP` y lo emite cifrado con
+  `openssl cms -encrypt -aes256` para el certificado **público** `/etc/netprotect/backup-cert.pem`.
+  El servidor no guarda la clave de descifrado: un servidor o un archivo robados no revelan nada.
+- **En el PC:** `C:\Users\andre\netprotect-backups\pull-backup.sh` descarga a esa carpeta (fuera de
+  OneDrive), descarta lo que pese menos de 4 KB, conserva los últimos 14 y escribe `pull.log`. La
+  tarea de Windows «NetProtect Backup Pull» lo ejecuta cada día a las 16:00, o en cuanto el PC se
+  encienda si estaba apagado.
+- **Clave de descifrado:** `backup-decrypt-key.pem`, protegida con contraseña, solo en el PC del
+  dueño (fuera de OneDrive) y con una copia aparte. Sin ella y su contraseña **los backups no se
+  pueden abrir**. Se crea con:
+
+  ```powershell
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -keyout backup-decrypt-key.pem -out backup-cert.pem -subj "/CN=netprotect-backup"
+  ```
+
+  y solo `backup-cert.pem` (público) se sube al servidor. Para abrir un backup:
+
+  ```powershell
+  openssl cms -decrypt -binary -inform DER -in netprotect-<fecha>.dump.cms -inkey backup-decrypt-key.pem -out netprotect.dump
+  ```
+
+  Ese `.dump` ya no está cifrado: borrarlo tras usarlo. Luego se restaura como en el paso 3.
+- **Verificado:** la descarga a mano y desde la tarea (resultado 0); el archivo empieza por la
+  estructura CMS, no contiene texto de PostgreSQL y el número de serie de su destinatario es el del
+  certificado; la llave limitada devuelve el backup aunque se le pida otro comando; el servidor
+  rechaza que pida una consola (`PTY allocation request failed`).
+- **Sin verificar:** la restauración completa (descifrar con la contraseña del dueño y restaurar con
+  `restore.sh`); y que `restrict` bloquee el reenvío de puertos, que la documentación de OpenSSH
+  garantiza pero la prueba hecha no logró demostrar.
+- **Límites:** un solo destino, el PC; si se pierde, se pierde la copia. Como los archivos están
+  cifrados se pueden duplicar a OneDrive o a un USB sin riesgo; **la clave privada, no**. Se pierde
+  como máximo ~24 h de datos. La tarea solo corre con la sesión de Windows iniciada. El volcado no
+  incluye `location_encryption_key.txt` ni el resto de secretos: guardarlos aparte (paso 4).
+- **Trampa:** `>` de PowerShell 5 redirige como texto y corrompe un archivo binario. La descarga
+  usa `bash` (o `cmd`), nunca una redirección de PowerShell.
 
 ## 12. App Android de release (Dueño, en su PC)
 
