@@ -43,3 +43,10 @@
 
 	reverse_proxy backend:8000
 }
+
+# Static sites for other projects hosted on the same server. One snippet per site, generated on
+# the server by a root-owned script into /srv/sites/conf (mounted read-only below, outside this
+# repository), so adding a site never touches this file. With no snippets this does nothing.
+# Caddy rejects a snippet that redefines {$WEB_DOMAIN} or {$API_DOMAIN} (ambiguous site), so a
+# snippet cannot take over this application's own addresses. See infra/sites/README.md.
+import /etc/caddy/sites.d/*.caddy
