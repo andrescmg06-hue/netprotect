@@ -49,6 +49,20 @@ dig +short <WEB_DOMAIN>    # debe imprimir <IP>
 dig +short <API_DOMAIN>    # debe imprimir <IP>
 ```
 
+**Estado real (24-oct-2026):** dominio `netprotectapp.online`, comprado en Hostinger por 1 año
+(caduca el 2027-10-24), con privacidad WHOIS incluida. `<WEB_DOMAIN>` = `panel.netprotectapp.online`,
+`<API_DOMAIN>` = `api.netprotectapp.online`, `<IP>` = `194.163.167.22`. Los dos registros `A`
+(TTL 300) se crearon en la zona DNS de Hostinger, sin proxy: coturn necesita UDP directo. Se
+comprobó que los servidores de nombres de Hostinger y los resolvedores 8.8.8.8 y 9.9.9.9
+devuelven `194.163.167.22` para ambos nombres; 1.1.1.1 aún guardaba la respuesta negativa de una
+consulta hecha antes de la propagación.
+
+- **Renovación:** el dominio se renueva a COP 117.900 al año (el primer año fue COP 4.736). Se
+  eligió `.online` por precio al ser un proyecto académico; con uso real conviene un `.com`.
+  Cambiar de dominio después obliga a reconstruir la imagen web (la URL de la API y la CSP se
+  hornean al compilar) y la app Android. Decidir antes de esa fecha si se renueva.
+- Pendiente de verificar: que la autorrenovación quedó desactivada en Hostinger.
+
 ## 2. Servidor (Dueño)
 
 1. Contratar un VPS Linux con IPv4 pública fija. Memoria: la suma de los límites de
@@ -77,6 +91,40 @@ dig +short <API_DOMAIN>    # debe imprimir <IP>
 
 Verificar: `docker compose version` responde v2; `ss -tulpn` no muestra nada escuchando en 3000
 fuera de `127.0.0.1` una vez arrancado el stack.
+
+**Estado real (24-oct-2026), servidor `194.163.167.22`:**
+
+- **Proveedor y plan:** Contabo, Cloud VPS 4 (4 vCPU, 8 GB de RAM, 100 GB), Ubuntu 24.04, región UE.
+  Contrato **mensual** (US$9,00 al mes); uno de 12 o 24 meses sale más barato, pero conviene
+  decidir antes la región: desde Europa, el relay TURN añade latencia a usuarios en América.
+- **Acceso:** SSH solo con llave, usuario `deploy` (con `sudo` sin contraseña). El login por
+  contraseña y el de `root` están desactivados en
+  `/etc/ssh/sshd_config.d/00-netprotect-hardening.conf`. El prefijo `00-` importa: SSH usa el
+  primer valor que lee y `50-cloud-init.conf` activa las contraseñas. Comprobado desde fuera:
+  `root` y la contraseña se rechazan con `Permission denied (publickey)`. No se restringió el
+  puerto 22 a una IP porque la del dueño puede cambiar; lo protegen la llave y `fail2ban`.
+- **Firewall del sistema:** `ufw` con entrada denegada por defecto y solo los puertos de la tabla;
+  `fail2ban` con la regla de SSH.
+- **Firewall de Contabo:** `netprotect`, asignado al servidor, con las mismas seis reglas de
+  permiso y `Block all traffic` al final. Docker publica puertos saltándose `ufw`, así que este
+  es el filtro que cuenta para ellos. Comprobado desde fuera: 22 abierto; 80, 443 y 3478/TCP
+  rechazan la conexión (pasan el firewall, aún sin servicio); 8080, 5432 y 6379 no responden.
+- **Software:** Docker Engine 29.9.2, Compose v5.6.1, Git 2.43; repositorio clonado en
+  `/opt/netprotect` (rama `main`) como `deploy`.
+- **VNC desactivado** en el panel de Contabo (no va cifrado). Contabo solo aplica el cambio
+  tras reiniciar, así que se reinició el servidor: volvió solo, con `ufw`, `fail2ban` y Docker
+  activos, los 11 contenedores arriba y `GET /api/v1/health/ready` en `ready` desde fuera. Sin VNC,
+  la vía de emergencia si se pierde SSH es el «Sistema de Rescate» del mismo menú de Contabo.
+- **Docker sin `sudo`:** `deploy` está en el grupo `docker` (`sudo usermod -aG docker deploy`),
+  porque `cd.yml` ejecuta `docker compose` por SSH sin `sudo`. Equivale a darle root, pero
+  `deploy` ya tiene `sudo` sin contraseña, así que no amplía el riesgo. Comprobado en una sesión
+  nueva: `id` incluye `docker` y `docker ps` responde sin `sudo`.
+
+**Pendiente en el servidor:**
+
+- Verificar **UDP 3478 y 49160-49200**: no se pueden comprobar desde fuera mientras coturn no
+  esté corriendo (paso 9).
+- La copia de seguridad automática de Contabo no está contratada (paso 11).
 
 ## 3. Google OAuth de producción, cliente web (Dueño)
 
@@ -137,6 +185,13 @@ de secretos): sin ella, las ubicaciones de un backup restaurado son ilegibles.
 
 Verificar: `ls secrets/` muestra los nueve `.txt`; ninguno está vacío (`wc -c secrets/*.txt`).
 
+**Estado real (24-oct-2026):** los nueve `.txt` se generaron en el servidor con la imagen del
+backend, sin imprimir ni leer ningún valor. Carpeta en `700` (`deploy`), archivos en `644`, ninguno
+vacío, y `git` los ignora (comprobado con `git check-ignore` y `git status`). Tamaños coherentes:
+64 bytes los secretos aleatorios, 44 la clave Fernet. **Pendiente del dueño:** copiar
+`location_encryption_key.txt` a un gestor de contraseñas fuera del servidor, y guardar también la
+contraseña de Grafana.
+
 ## 5. Variables en `.env.production` (Dueño, en el servidor)
 
 Copiar `.env.production.example` a `/opt/netprotect/.env.production` y completar. Variables que
@@ -167,6 +222,13 @@ Verificar que Compose resuelve todo (no imprime valores):
 docker compose --env-file .env.production -f compose.prod.yaml config -q && echo OK
 ```
 
+**Estado real (24-oct-2026):** `.env.production` escrito en el servidor (`600`, ignorado por `git`)
+con los valores no secretos: dominios `panel.`/`api.netprotectapp.online`, el ID de cliente del
+cliente OAuth web de producción, `POSTGRES_DB`/`POSTGRES_USER` = `netprotect`, `APP_VERSION=1.0.0`,
+`TURN_EXTERNAL_IP=194.163.167.22`, `TURN_REALM=netprotectapp.online` y `TURN_URLS` por UDP y TCP.
+FCM queda vacío. Añade además `BACKEND_IMAGE=netprotect-backend:local` y
+`WEB_IMAGE=netprotect-web:local` (ver paso 8). `docker compose ... config -q` resolvió todo.
+
 ## 6. Firebase / FCM (Dueño, opcional)
 
 FCM sirve para despertar a un teléfono sin el canal en tiempo real abierto. **Hoy la app Android
@@ -191,8 +253,13 @@ Settings → Secrets and variables → Actions:
 | Variable | `PROD_NEXT_PUBLIC_API_BASE_URL` | `https://<API_DOMAIN>` |
 | Variable | `PROD_GOOGLE_WEB_CLIENT_ID` | El ID del paso 3 |
 | Variable | `PROD_HOST` | `<IP>` o un nombre que resuelva a ella |
-| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` |
+| Variable | `PROD_SSH_USER` | Usuario SSH del servidor con acceso a Docker y a `/opt/netprotect` (en el servidor real, `deploy`, que ya está en el grupo `docker`; ver paso 2) |
 | Secreto | `PROD_SSH_KEY` | Clave privada SSH de despliegue (una propia para esto, no la personal) |
+
+La llave que hoy autoriza a `deploy` es la de administración del dueño; para `PROD_SSH_KEY` hay que
+generar **otra** (`ssh-keygen -t ed25519`) y añadir solo su parte pública a
+`/home/deploy/.ssh/authorized_keys`, de modo que se pueda revocar sin perder el acceso de
+administración.
 
 Settings → Environments → `production` → «Required reviewers»: agregarte (pendiente H-04 en
 `docs/tasks.md`; exige ser administrador del repositorio).
@@ -227,6 +294,35 @@ error de configuración nombra la variable.
 
 Después, iniciar sesión con Google en `https://<WEB_DOMAIN>` con una cuenta real.
 
+**Estado real (24-oct-2026), primer despliegue hecho a mano en el servidor:**
+
+- **Las imágenes se construyeron en el servidor** desde el clon (`183d18a`) con
+  `docker build`, y no se descargaron de GHCR. Las de GHCR eran del 15-oct, sin etiqueta de
+  commit, y la web hornea `NEXT_PUBLIC_API_BASE_URL` al compilarse (aquí
+  `https://api.netprotectapp.online`), así que no se podía garantizar que fueran las correctas. Por
+  eso `.env.production` apunta a `netprotect-backend:local` y `netprotect-web:local`. Mientras no
+  existan las variables `PROD_*` de GitHub (paso 7), el CI no publica imágenes propias.
+- **Migraciones aplicadas** completas; los 11 servicios arrancaron (`backend`, `web`, `caddy`, `db`
+  y `redis` en `healthy`).
+- **Comprobado desde fuera, sin `-k`:** `GET /api/v1/health/ready` devuelve `ready` con base de datos
+  y Redis conectados; `/metrics` devuelve 404; el panel responde 200; los certificados de
+  `api.` y `panel.` los emite Let's Encrypt; 22, 80, 443 y 3478/TCP están abiertos; coturn contestó a
+  una petición STUN por UDP 3478 (`Binding Success`).
+- **Sin comprobar todavía:** el rango de relay UDP 49160-49200 (hace falta una asignación TURN real,
+  paso 13), el inicio de sesión con Google en el panel real, y la vista remota.
+- Al volver a desplegar con estas imágenes locales hay que reconstruirlas a mano (`docker build`
+  de `backend` y `web`) antes del `up -d`; un `pull` no las actualiza.
+- **Redespliegue con Next 16.4.3 (24-oct-2026):** el CI detectó con `npm audit` una vulnerabilidad
+  crítica en Next 16.0.0–16.4.0 y el panel corría la 16.3.8. Tras el PR #41 se actualizó el clon a
+  `c9f6870` (`git merge --ff-only origin/main`), se reconstruyeron las imágenes y se recreó `web`.
+  Comprobado dentro del contenedor en ejecución: `next` 16.4.3; `GET /api/v1/health/ready` en `ready`,
+  el panel responde 200 y conserva la URL de la API y el cliente de Google horneados. El backend no se
+  recreó (Compose no lo detectó cambiado); su código no varió, así que sigue con la imagen anterior.
+- **Trampa al desplegar por SSH:** `docker compose run` dentro de un script pasado por `ssh` lee la
+  entrada estándar y se come el resto del script, que termina con código 0 sin ejecutar `up -d`. Usar
+  `docker compose run -T ...` o redirigir `< /dev/null`, y no fiarse del código de salida: comparar
+  la imagen del contenedor (`docker inspect <contenedor> --format '{{.Image}}'`) con la recién construida.
+
 ## 9. TURN (Dueño)
 
 Verificar desde fuera del servidor que los puertos responden (por ejemplo con
@@ -243,6 +339,20 @@ cuando ambos extremos se alcanzan directamente.
    ```
 
    Abrir `http://localhost:3000`, entrar con `GRAFANA_ADMIN_USER` y `secrets/grafana_admin_password.txt`.
+
+   **Hallazgo del servidor real (24-oct-2026):** con Docker 29.9.2 el puerto `127.0.0.1:3000` de
+   Grafana **no se publica**, a pesar del comentario de `compose.prod.yaml`: la red `private` es
+   `internal` y `docker port` no devuelve nada. La causa exacta no está verificada; la evidencia es
+   la red interna y el `HTTP 000` en `127.0.0.1:3000`. Grafana sí funciona (`HTTP 200` por la IP
+   del contenedor, p. ej. `172.18.0.9`) y desde fuera el 3000 está cerrado. Mientras no se
+   corrija el compose, el túnel debe apuntar a esa IP interna:
+
+   ```bash
+   IP=$(docker inspect netprotect-prod-grafana-1 --format '{{(index .NetworkSettings.Networks "netprotect-prod_private").IPAddress}}')
+   ssh -L 3000:$IP:3000 <PROD_SSH_USER>@<IP_DEL_SERVIDOR>
+   ```
+
+   La IP del contenedor puede cambiar al recrearlo: hay que volver a consultarla.
 2. Verificar que el panel `netprotect-overview` muestra datos del backend y que en Prometheus
    (Grafana → Explore) `up{job="netprotect-backend"}` vale `1`.
 3. Destino de alertas (decisión 0.4): **pendiente de trabajo en el repositorio**. Hoy no hay
